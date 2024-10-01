@@ -5,7 +5,7 @@ import {
     CreateDateColumn,
     UpdateDateColumn,
     ManyToOne,
-    JoinColumn, ManyToMany, JoinTable
+    JoinColumn, ManyToMany, JoinTable, Index
 } from "typeorm"
 import {SeriesStatus} from "../enum/SeriesStatus";
 import {Category} from "./category.entity";
@@ -14,6 +14,7 @@ import {Theme} from "./theme.entity";
 @Entity({
     name: "series"
 })
+@Index("idx_series_category_id", ["category_id"])
 export class Series {
     @PrimaryGeneratedColumn()
     id: number

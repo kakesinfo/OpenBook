@@ -6,7 +6,7 @@ import {
     UpdateDateColumn,
     ManyToOne,
     JoinColumn,
-    Unique, PrimaryColumn
+    Unique, PrimaryColumn, Index
 } from "typeorm";
 import { Series } from "./series.entity";
 import { Theme } from "./theme.entity";
@@ -14,7 +14,9 @@ import { Theme } from "./theme.entity";
 @Entity({
     name: "series_has_theme"
 })
-@Unique(["series", "theme"])
+@Unique(["series_id", "theme_id"])
+@Index("idx_series_has_theme_series_id", ["series_id"])
+@Index("idx_series_has_theme_theme_id", ["theme_id"])
 export class SeriesHasTheme {
     @PrimaryGeneratedColumn()
     id: number;

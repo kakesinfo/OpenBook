@@ -6,7 +6,7 @@ import {
     UpdateDateColumn,
     OneToOne,
     JoinColumn,
-    Unique
+    Unique, Index
 } from "typeorm"
 import {Image} from "./image.entity";
 
@@ -14,6 +14,7 @@ import {Image} from "./image.entity";
     name: "author"
 })
 @Unique(["firstname", "lastname"])
+@Index(["firstname", "lastname"], { unique: true })
 export class Author {
     @PrimaryGeneratedColumn()
     id: number
