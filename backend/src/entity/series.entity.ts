@@ -7,7 +7,7 @@ import {
     ManyToOne,
     JoinColumn, ManyToMany, JoinTable
 } from "typeorm"
-import {SeriesStatus} from "../SeriesStatus";
+import {SeriesStatus} from "../enum/SeriesStatus";
 import {Category} from "./category.entity";
 import {Theme} from "./theme.entity";
 
