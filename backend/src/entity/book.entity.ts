@@ -6,10 +6,12 @@ import {
     UpdateDateColumn,
     ManyToOne,
     JoinColumn,
-    Index
+    Index, OneToOne, OneToMany
 } from "typeorm";
 import { Series } from "./series.entity";
 import { Editor } from "./editor.entity";
+import {BookHasAuthor} from "./book_has_author.entity";
+import {BookHasImage} from "./book_has_image.entity";
 
 @Entity({
     name: "book"
@@ -44,6 +46,12 @@ export class Book {
     @ManyToOne(() => Editor, editor => editor.id)
     @JoinColumn({ name: "editor_id" })
     editor: Editor;
+
+    @OneToMany(() => BookHasAuthor, bookHasAuthor => bookHasAuthor.book)
+    bookHasAuthors: BookHasAuthor[];
+
+    @OneToMany(() => BookHasImage, bookHasImage => bookHasImage.book)
+    bookHasImages: BookHasImage[];
 
     @Column()
     release_date: Date;

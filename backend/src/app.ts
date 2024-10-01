@@ -1,6 +1,7 @@
 import * as express from "express"
 import { myDataSource } from "./app-data-source"
 import UserController from "./controller/user.controller";
+import BookController from "./controller/book.controller";
 
 // establish database connection
 myDataSource
@@ -19,6 +20,7 @@ app.use(express.json())
 const defaultRouter = express.Router()
 
 defaultRouter.use(UserController)
+defaultRouter.use(BookController)
 
 app.use("/api", defaultRouter)
 
