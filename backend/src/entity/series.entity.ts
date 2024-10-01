@@ -29,6 +29,9 @@ export class Series {
     })
     status: SeriesStatus
 
+    @Column()
+    category_id: number
+
     @ManyToOne(() => Category, category => category.id)
     @JoinColumn({ name: "category_id" })
     category: Category
