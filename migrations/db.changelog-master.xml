@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="1" author="Axel">
+        <createTable tableName="editor">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false" unique="true" />
+            </column>
+
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="editor" indexName="idx_editor_name">
+            <column name="name" />
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2" author="Axel">
+        <createTable tableName="category">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false" unique="true" />
+            </column>
+
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="category" indexName="idx_category_name">
+            <column name="name" />
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="3" author="Axel">
+        <sql>
+            CREATE TYPE "series_status" AS ENUM (
+              'ANNOUNCED',
+              'ON_GOING',
+              'FINISHED',
+              'ABANDONED'
+            );
+        </sql>
+
+        <createTable tableName="series">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false" unique="true" />
+            </column>
+
+            <column name="status" type="series_status">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="editor_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="category_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="series" indexName="idx_series_name">
+            <column name="name" />
+        </createIndex>
+
+        <createIndex tableName="series" indexName="idx_series_category_id">
+            <column name="category_id" />
+        </createIndex>
+
+        <createIndex tableName="series" indexName="idx_series_editor_id">
+            <column name="editor_id" />
+        </createIndex>
+
+        <addForeignKeyConstraint
+            constraintName="fk_series_category_id"
+            baseTableName="series"
+            baseColumnNames="category_id"
+            referencedTableName="category"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"
+            onUpdate="RESTRICT"
+        />
+
+        <addForeignKeyConstraint
+            constraintName="fk_series_editor_id"
+            baseTableName="series"
+            baseColumnNames="editor_id"
+            referencedTableName="editor"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"
+            onUpdate="RESTRICT"
+        />
+    </changeSet>
+
+    <changeSet id="4" author="Axel">
+        <createTable tableName="theme">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false" unique="true" />
+            </column>
+
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="theme" indexName="idx_theme_name">
+            <column name="name" />
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="5" author="Axel">
+        <createTable tableName="series_has_theme">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+
+            <column name="series_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="theme_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="series_has_theme" indexName="idx_series_has_theme_series_id">
+            <column name="series_id" />
+        </createIndex>
+
+        <createIndex tableName="series_has_theme" indexName="idx_series_has_theme_theme_id">
+            <column name="theme_id" />
+        </createIndex>
+
+        <addForeignKeyConstraint
+            constraintName="fk_series_has_theme_series_id"
+            baseTableName="series_has_theme"
+            baseColumnNames="series_id"
+            referencedTableName="series"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"
+            onUpdate="RESTRICT"
+        />
+
+        <addForeignKeyConstraint
+            constraintName="fk_series_has_theme_theme_id"
+            baseTableName="series_has_theme"
+            baseColumnNames="theme_id"
+            referencedTableName="theme"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"
+            onUpdate="RESTRICT"
+        />
+
+        <addUniqueConstraint
+            constraintName="uk_series_has_theme_series_id_theme_id"
+            tableName="series_has_theme"
+            columnNames="series_id, theme_id"
+        />
+    </changeSet>
+
+    <changeSet id="6" author="Axel">
+        <createTable tableName="author">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+
+            <column name="firstname" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="lastname" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="birthday" type="date">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="author" indexName="idx_author_firstname">
+            <column name="firstname" />
+        </createIndex>
+
+        <createIndex tableName="author" indexName="idx_author_lastname">
+            <column name="lastname" />
+        </createIndex>
+
+        <addUniqueConstraint
+            constraintName="uk_author_firstname_lastname"
+            tableName="author"
+            columnNames="firstname, lastname"
+        />
+    </changeSet>
+
+    <changeSet id="7" author="Axel">
+        <createTable tableName="author_type">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false" unique="true" />
+            </column>
+
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="author_type" indexName="idx_author_type_name">
+            <column name="name" />
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="8" author="Axel">
+        <createTable tableName="book">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+
+            <column name="title" type="varchar(255)">
+                <constraints nullable="false" unique="true" />
+            </column>
+
+            <column name="page_count" type="integer" />
+            <column name="volume" type="integer" />
+            <column name="weight" type="integer" />
+            <column name="price" type="integer" />
+
+            <column name="series_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="release_date" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="book" indexName="idx_book_title">
+            <column name="title" />
+        </createIndex>
+
+        <createIndex tableName="book" indexName="idx_book_series_id">
+            <column name="series_id" />
+        </createIndex>
+
+        <createIndex tableName="book" indexName="idx_book_release_date">
+            <column name="release_date" />
+        </createIndex>
+
+        <addForeignKeyConstraint
+            constraintName="fk_book_series_id"
+            baseTableName="book"
+            baseColumnNames="series_id"
+            referencedTableName="series"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"
+            onUpdate="RESTRICT"
+        />
+    </changeSet>
+    <changeSet id="9" author="Axel">
+        <createTable tableName="book_has_author">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+
+            <column name="book_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="author_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="author_type_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="book_has_author" indexName="idx_book_has_author_book_id">
+            <column name="book_id" />
+        </createIndex>
+
+        <createIndex tableName="book_has_author" indexName="idx_book_has_author_author_id">
+            <column name="author_id" />
+        </createIndex>
+
+        <createIndex tableName="book_has_author" indexName="idx_book_has_author_author_type_id">
+            <column name="author_type_id" />
+        </createIndex>
+
+        <addForeignKeyConstraint
+            constraintName="fk_book_has_author_book_id"
+            baseTableName="book_has_author"
+            baseColumnNames="book_id"
+            referencedTableName="book"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"
+            onUpdate="RESTRICT"
+        />
+
+        <addForeignKeyConstraint
+            constraintName="fk_book_has_author_author_id"
+            baseTableName="book_has_author"
+            baseColumnNames="author_id"
+            referencedTableName="author"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"
+            onUpdate="RESTRICT"
+        />
+
+        <addForeignKeyConstraint
+            constraintName="fk_book_has_author_author_type_id"
+            baseTableName="book_has_author"
+            baseColumnNames="author_type_id"
+            referencedTableName="author_type"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"
+            onUpdate="RESTRICT"
+        />
+
+        <addUniqueConstraint
+            constraintName="uk_book_has_author_book_id_author_id_author_type_id"
+            tableName="book_has_author"
+            columnNames="book_id, author_id, author_type_id"
+        />
+    </changeSet>
+</databaseChangeLog>

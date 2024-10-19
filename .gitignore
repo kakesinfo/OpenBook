@@ -1,4 +1,4 @@
-postgresql_data/
+postgresql-data/
 .idea/
 dist/
 node_modules/
