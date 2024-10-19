@@ -1,7 +1,7 @@
 package fr.chapter_and_chai.api.controllers;
 
+import fr.chapter_and_chai.api.services.RepositoryService;
 import fr.chapter_and_chai.api.entities.EditorEntity;
-import fr.chapter_and_chai.api.services.EditorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,25 +12,25 @@ import java.util.List;
 public class EditorController {
 
     @Autowired
-    private EditorService editorService;
+    private RepositoryService repositoryService;
 
     @GetMapping
     public List<EditorEntity> getAllUsers() {
-        return editorService.getAllUsers();
+        return repositoryService.getEditorRepository().findAll();
     }
 
     @GetMapping("/{id}")
     public EditorEntity getUserById(@PathVariable Long id) {
-        return editorService.getUserById(id);
+        return repositoryService.getEditorRepository().findById(id).orElse(null);
     }
 
     @PostMapping
     public EditorEntity createUser(@RequestBody EditorEntity user) {
-        return editorService.saveUser(user);
+        return repositoryService.getEditorRepository().save(user);
     }
 
     @DeleteMapping("/{id}")
     public void deleteUser(@PathVariable Long id) {
-        editorService.deleteUser(id);
+        repositoryService.getEditorRepository().deleteById(id);
     }
 }
