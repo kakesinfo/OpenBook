@@ -25,3 +25,15 @@ services:
       - ./migrations/changelog.xml:/liquibase/changelog.xml
       - ./migrations/scripts:/liquibase/scripts
     entrypoint: ["liquibase", "--changeLogFile=changelog.xml", "update"]
+
+  # Run spring boot api using maven and jdk 21
+  project-backend:
+    image: maven:3.9-eclipse-temurin-21
+    depends_on:
+      - project-postgres
+    volumes:
+      - ./backend:/usr/src/app
+    ports:
+      - "8080:8080"
+    working_dir: /usr/src/app
+    entrypoint: ["mvn", "spring-boot:run"]
