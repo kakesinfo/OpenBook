@@ -13,19 +13,19 @@ public class EditorService {
     @Autowired
     private EditorRepository userRepository;
 
-    public List<EditorEntity> getAllUsers() {
+    public List<EditorEntity> getAllEditors() {
         return userRepository.findAll();
     }
 
-    public EditorEntity getUserById(Long id) {
+    public EditorEntity getEditorById(Long id) {
         return userRepository.findById(id).orElse(null);
     }
 
-    public EditorEntity saveUser(EditorEntity user) {
+    public EditorEntity saveEditor(EditorEntity user) {
         return userRepository.save(user);
     }
 
-    public void deleteUser(Long id) {
+    public void deleteEditor(Long id) {
         userRepository.deleteById(id);
     }
 }
