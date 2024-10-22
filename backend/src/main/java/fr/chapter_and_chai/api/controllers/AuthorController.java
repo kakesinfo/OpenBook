@@ -22,22 +22,22 @@ public class AuthorController {
     private RepositoryService repositoryService;
 
     @GetMapping
-    public List<AuthorEntity> getAllUsers() {
+    public List<AuthorEntity> getAll() {
         return repositoryService.getAuthorRepository().findAll();
     }
 
     @GetMapping("/{id}")
-    public AuthorEntity getUserById(@PathVariable Long id) {
+    public AuthorEntity getById(@PathVariable Long id) {
         return repositoryService.getAuthorRepository().findById(id).orElse(null);
     }
 
     @PostMapping
-    public AuthorEntity createUser(@RequestBody AuthorEntity user) {
+    public AuthorEntity create(@RequestBody AuthorEntity user) {
         return repositoryService.getAuthorRepository().save(user);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable Long id) {
+    public void delete(@PathVariable Long id) {
         repositoryService.getAuthorRepository().deleteById(id);
     }
 }

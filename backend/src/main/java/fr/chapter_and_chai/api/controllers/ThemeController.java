@@ -21,22 +21,22 @@ public class ThemeController {
     private RepositoryService repositoryService;
 
     @GetMapping
-    public List<ThemeEntity> getAllUsers() {
+    public List<ThemeEntity> getAll() {
         return repositoryService.getThemeRepository().findAll();
     }
 
     @GetMapping("/{id}")
-    public ThemeEntity getUserById(@PathVariable Long id) {
+    public ThemeEntity getById(@PathVariable Long id) {
         return repositoryService.getThemeRepository().findById(id).orElse(null);
     }
 
     @PostMapping
-    public ThemeEntity createUser(@RequestBody ThemeEntity user) {
+    public ThemeEntity create(@RequestBody ThemeEntity user) {
         return repositoryService.getThemeRepository().save(user);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable Long id) {
+    public void delete(@PathVariable Long id) {
         repositoryService.getThemeRepository().deleteById(id);
     }
 }

@@ -22,22 +22,22 @@ public class CategoryController {
     private RepositoryService repositoryService;
 
     @GetMapping
-    public List<CategoryEntity> getAllUsers() {
+    public List<CategoryEntity> getAll() {
         return repositoryService.getCategoryRepository().findAll();
     }
 
     @GetMapping("/{id}")
-    public CategoryEntity getUserById(@PathVariable Long id) {
+    public CategoryEntity getById(@PathVariable Long id) {
         return repositoryService.getCategoryRepository().findById(id).orElse(null);
     }
 
     @PostMapping
-    public CategoryEntity createUser(@RequestBody CategoryEntity user) {
+    public CategoryEntity create(@RequestBody CategoryEntity user) {
         return repositoryService.getCategoryRepository().save(user);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable Long id) {
+    public void delete(@PathVariable Long id) {
         repositoryService.getCategoryRepository().deleteById(id);
     }
 }

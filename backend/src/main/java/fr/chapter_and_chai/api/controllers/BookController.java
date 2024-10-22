@@ -22,22 +22,22 @@ public class BookController {
     private RepositoryService repositoryService;
 
     @GetMapping
-    public List<BookEntity> getAllUsers() {
+    public List<BookEntity> getAll() {
         return repositoryService.getBookRepository().findAll();
     }
 
     @GetMapping("/{id}")
-    public BookEntity getUserById(@PathVariable Long id) {
+    public BookEntity getById(@PathVariable Long id) {
         return repositoryService.getBookRepository().findById(id).orElse(null);
     }
 
     @PostMapping
-    public BookEntity createUser(@RequestBody BookEntity user) {
+    public BookEntity create(@RequestBody BookEntity user) {
         return repositoryService.getBookRepository().save(user);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable Long id) {
+    public void delete(@PathVariable Long id) {
         repositoryService.getBookRepository().deleteById(id);
     }
 }

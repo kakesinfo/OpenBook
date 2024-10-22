@@ -21,22 +21,22 @@ public class SeriesController {
     private RepositoryService repositoryService;
 
     @GetMapping
-    public List<SeriesEntity> getAllUsers() {
+    public List<SeriesEntity> getAll() {
         return repositoryService.getSeriesRepository().findAll();
     }
 
     @GetMapping("/{id}")
-    public SeriesEntity getUserById(@PathVariable Long id) {
+    public SeriesEntity getById(@PathVariable Long id) {
         return repositoryService.getSeriesRepository().findById(id).orElse(null);
     }
 
     @PostMapping
-    public SeriesEntity createUser(@RequestBody SeriesEntity user) {
+    public SeriesEntity create(@RequestBody SeriesEntity user) {
         return repositoryService.getSeriesRepository().save(user);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable Long id) {
+    public void delete(@PathVariable Long id) {
         repositoryService.getSeriesRepository().deleteById(id);
     }
 }

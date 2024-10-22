@@ -15,27 +15,27 @@ public class EditorController {
     private EditorService editorService;
 
     @GetMapping
-    public List<EditorEntity> getAllEditors() {
+    public List<EditorEntity> getAll() {
         return editorService.getAllEditors();
     }
 
     @GetMapping("/{id}")
-    public EditorEntity getEditorById(@PathVariable Long id) {
+    public EditorEntity getById(@PathVariable Long id) {
         return editorService.getEditorById(id);
     }
 
     @PostMapping
-    public EditorEntity createEditor(@RequestBody EditorEntity user) {
+    public EditorEntity create(@RequestBody EditorEntity user) {
         return editorService.saveEditor(user);
     }
 
     @PatchMapping
-    public EditorEntity updateEditor(@RequestBody EditorEntity user) {
+    public EditorEntity update(@RequestBody EditorEntity user) {
         return editorService.saveEditor(user);
     }
 
     @DeleteMapping("/{id}")
-    public void deleteEditor(@PathVariable Long id) {
+    public void delete(@PathVariable Long id) {
         editorService.deleteEditor(id);
     }
 }
