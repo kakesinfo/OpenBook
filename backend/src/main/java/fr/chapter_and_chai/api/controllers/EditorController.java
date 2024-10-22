@@ -1,5 +1,8 @@
 package fr.chapter_and_chai.api.controllers;
 
+import fr.chapter_and_chai.api.dtos.editor.CreateEditorDTO;
+import fr.chapter_and_chai.api.dtos.editor.EditorDTO;
+import fr.chapter_and_chai.api.dtos.editor.UpdateEditorDTO;
 import fr.chapter_and_chai.api.services.EditorService;
 import fr.chapter_and_chai.api.entities.EditorEntity;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,23 +18,23 @@ public class EditorController {
     private EditorService editorService;
 
     @GetMapping
-    public List<EditorEntity> getAll() {
+    public List<EditorDTO> getAll() {
         return editorService.getAllEditors();
     }
 
     @GetMapping("/{id}")
-    public EditorEntity getById(@PathVariable Long id) {
+    public EditorDTO getById(@PathVariable Long id) {
         return editorService.getEditorById(id);
     }
 
     @PostMapping
-    public EditorEntity create(@RequestBody EditorEntity user) {
-        return editorService.saveEditor(user);
+    public EditorDTO create(@RequestBody CreateEditorDTO editorDTO) {
+        return editorService.createEditor(editorDTO);
     }
 
     @PatchMapping
-    public EditorEntity update(@RequestBody EditorEntity user) {
-        return editorService.saveEditor(user);
+    public EditorDTO update(@RequestBody UpdateEditorDTO editorDTO) {
+        return editorService.updateEditor(editorDTO);
     }
 
     @DeleteMapping("/{id}")

@@ -1,5 +1,6 @@
 services:
   project-postgres:
+    container_name: project-postgres
     image: postgres:alpine3.20
     environment:
       POSTGRES_USER: strapi
@@ -15,6 +16,7 @@ services:
       retries: 10
 
   project-liquibase:
+    container_name: project-liquibase
     image: liquibase/liquibase
     depends_on:
       project-postgres:
@@ -30,6 +32,7 @@ services:
 
   # Run spring boot api using maven and jdk 21
   project-backend:
+    container_name: project-backend
     image: maven:3.9-eclipse-temurin-21
     depends_on:
       project-liquibase:
