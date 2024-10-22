@@ -436,4 +436,141 @@
             <column name="updated_at" valueComputed="NOW()" />
         </insert>
     </changeSet>
+    <changeSet id="11" author="Axel">
+        <insert tableName="editor">
+            <column name="name" value="Urban Comics" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Panini Comics" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Dargaud" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Glenat" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Bliss Comics" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Mangetsu" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Ankama" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="404 Editions" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="DC Comics" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Delcourt" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Rue De Sevres" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Casterman" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Kana" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Cornelius" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Les Humanoïdes Associés" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Bubble Editions" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Bragelonne" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Fayard" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Gallimard" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="J'ai lu" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Robert Laffont" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Albin Michel" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Les Belles Lettres" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Puf" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Flammarion" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Pocket" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="editor">
+            <column name="name" value="Hachette Collections" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+    </changeSet>
 </databaseChangeLog>

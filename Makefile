@@ -1,9 +1,12 @@
-all:
+up:
 	docker compose up --build
+
+down:
+	docker compose down
 
 fclean:
 	rm -rf postgresql-data
 
-re: fclean all
+re: down fclean up
 
-.PHONY: all fclean re
+.PHONY: up down fclean re

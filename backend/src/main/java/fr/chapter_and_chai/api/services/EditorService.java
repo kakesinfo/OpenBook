@@ -11,21 +11,21 @@ import java.util.List;
 public class EditorService {
 
     @Autowired
-    private EditorRepository userRepository;
+    private EditorRepository editorRepository;
 
     public List<EditorEntity> getAllEditors() {
-        return userRepository.findAll();
+        return editorRepository.findAll();
     }
 
     public EditorEntity getEditorById(Long id) {
-        return userRepository.findById(id).orElse(null);
+        return editorRepository.findById(id).orElse(null);
     }
 
     public EditorEntity saveEditor(EditorEntity user) {
-        return userRepository.save(user);
+        return editorRepository.save(user);
     }
 
     public void deleteEditor(Long id) {
-        userRepository.deleteById(id);
+        editorRepository.deleteById(id);
     }
 }
