@@ -404,4 +404,36 @@
             columnNames="book_id, author_id, author_type_id"
         />
     </changeSet>
+    <changeSet id="10" author="Axel">
+        <insert tableName="category">
+            <column name="name" value="Roman" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="category">
+            <column name="name" value="Bande dessinée" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="category">
+            <column name="name" value="Comics" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="category">
+            <column name="name" value="Manga" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="category">
+            <column name="name" value="Roman Graphique" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+        <insert tableName="category">
+            <column name="name" value="Beau-livre" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+    </changeSet>
 </databaseChangeLog>
