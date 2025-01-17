@@ -3,6 +3,7 @@ package fr.chapter_and_chai.api.controllers;
 import fr.chapter_and_chai.api.entities.BookEntity;
 import fr.chapter_and_chai.api.entities.EditorEntity;
 import fr.chapter_and_chai.api.services.RepositoryService;
+import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,9 +17,9 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/books")
+@AllArgsConstructor
 public class BookController {
 
-    @Autowired
     private RepositoryService repositoryService;
 
     @GetMapping
