@@ -4,7 +4,6 @@ import fr.chapter_and_chai.api.dtos.editor.CreateEditorDTO;
 import fr.chapter_and_chai.api.dtos.editor.EditorDTO;
 import fr.chapter_and_chai.api.dtos.editor.UpdateEditorDTO;
 import fr.chapter_and_chai.api.services.EditorService;
-import fr.chapter_and_chai.api.entities.EditorEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 

@@ -43,12 +43,13 @@ services:
     working_dir: /usr/src/app
     entrypoint: ["mvn", "spring-boot:run"]
 
-  # Run nextjs frontend using node 16
+  # Run frontend using node 20
   project-frontend:
       container_name: project-frontend
       image: node:20-alpine
       depends_on:
-        - project-backend
+        project-liquibase:
+          condition: service_completed_successfully
       volumes:
       - ./frontend:/usr/src/app
       ports:

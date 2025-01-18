@@ -5,6 +5,8 @@ import fr.chapter_and_chai.api.dtos.auth.LoginResponseDTO;
 import fr.chapter_and_chai.api.dtos.auth.RegisterRequestDTO;
 import fr.chapter_and_chai.api.dtos.auth.RegisterResponseDTO;
 import fr.chapter_and_chai.api.entities.UserEntity;
+import fr.chapter_and_chai.api.services.AuthService;
+import fr.chapter_and_chai.api.services.JwtService;
 import fr.chapter_and_chai.api.services.RepositoryService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,6 +14,9 @@ import jakarta.servlet.http.HttpSession;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,54 +28,40 @@ import java.util.Optional;
 @RestController
 @AllArgsConstructor
 @RequestMapping("/auth")
-public class AuthController {
+public class AuthController
+{
+    private final AuthService authService;
 
-    private final RepositoryService repositoryService;
-    private final BCryptPasswordEncoder bCryptPasswordEncoder;
+    private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
+
+    @PostMapping("/register")
+    public ResponseEntity<Object> register(@RequestBody RegisterRequestDTO request) throws Exception {
+        RegisterResponseDTO user = authService.register(request);
+
+        if (user == null)
+            return ResponseEntity.badRequest().body("User already exists");
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(new RegisterResponseDTO(user.getId()));
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginDTO, HttpSession session) {
-        Optional<UserEntity> result = repositoryService.getUserRepository().findByEmail(loginDTO.getEmail());
+        UserEntity result = authService.login(loginDTO);
 
-        if (result.isEmpty())
-            return ResponseEntity.badRequest().body("User not found");
+        if (result == null)
+            return ResponseEntity.badRequest().body("Invalid credentials");
 
-        UserEntity userEntity = result.get();
+        session.setAttribute("user", result);
 
-        if (!bCryptPasswordEncoder.matches(loginDTO.getPassword(), userEntity.getPassword()))
-            return ResponseEntity.badRequest().body("User not found");
-
-        session.setAttribute("user", userEntity);
+        String jwtToken = jwtService.generateToken(result);
 
         LoginResponseDTO responseDTO = new LoginResponseDTO();
-        responseDTO.setId(userEntity.getId());
-        responseDTO.setUsername(userEntity.getUsername());
-        responseDTO.setFirstname(userEntity.getFirstname());
-        responseDTO.setLastname(userEntity.getLastname());
-        responseDTO.setEmail(userEntity.getEmail());
-        responseDTO.setCreated_at(userEntity.getCreatedAt());
-        responseDTO.setUpdated_at(userEntity.getUpdatedAt());
+        responseDTO.setToken(jwtToken);
+        responseDTO.setExpiresIn(jwtService.getExpirationTime());
 
         return ResponseEntity.ok().body(responseDTO);
-    }
-
-    @PostMapping("/register")
-    public ResponseEntity<Object> register(@RequestBody RegisterRequestDTO user) throws Exception {
-        if (repositoryService.getUserRepository()
-                .existsByUsernameOrEmail(user.getUsername(), user.getEmail()))
-            return ResponseEntity.badRequest().body("Username or email already exists");
-
-        UserEntity userEntity = new UserEntity();
-        userEntity.setUsername(user.getUsername());
-        userEntity.setFirstname(user.getFirstname());
-        userEntity.setLastname(user.getLastname());
-        userEntity.setEmail(user.getEmail());
-        userEntity.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
-
-        userEntity = repositoryService.getUserRepository().save(userEntity);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new RegisterResponseDTO(userEntity.getId()));
     }
 
     @PostMapping("/logout")

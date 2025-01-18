@@ -10,11 +10,6 @@ import java.time.Instant;
 @Setter
 public class LoginResponseDTO implements Serializable
 {
-    private Long id;
-    private String username;
-    private String firstname;
-    private String lastname;
-    private String email;
-    private Instant created_at;
-    private Instant updated_at;
+    private String token;
+    private long expiresIn;
 }
