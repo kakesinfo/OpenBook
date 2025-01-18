@@ -1,6 +1,6 @@
 import {useState} from "react";
 
-export default function useAuth() {
+export default function useSession() {
     const [token, setToken] = useState<string | null>(() => {
         if (typeof window !== "undefined") {
             return localStorage.getItem("token");
@@ -22,7 +22,10 @@ export default function useAuth() {
             const data = await response.json();
             setToken(data.token);
             localStorage.setItem("token", data.token);
+            return true;
         }
+
+        return false;
     }
 
     const logout = async () => {
@@ -38,12 +41,21 @@ export default function useAuth() {
         if (response.status === 200) {
             setToken(null);
             localStorage.removeItem("token");
+            return true;
         }
+
+        return false;
     }
 
-    const isLogged = () => {
-        return token !== null;
+    const customFetch = async (url: string, options: RequestInit) => {
+       return window.fetch(url, {
+           ...options,
+           headers: {
+               ...options.headers,
+               Authorization: `Bearer ${token}`
+           }
+       });
     }
 
-    return { token, isLogged, login, logout };
+    return { token, login, logout, customFetch };
 }

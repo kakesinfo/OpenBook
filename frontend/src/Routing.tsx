@@ -3,17 +3,18 @@ import '@fontsource/roboto/400.css';
 import '@fontsource/roboto/500.css';
 import '@fontsource/roboto/700.css';
 
+import { Routes, Route, Navigate } from "react-router";
+
 import Login from "./pages/Login.tsx";
 
-import { Routes, Route, Navigate } from "react-router";
 import Register from "./pages/Register.tsx";
-import useAuth from "./hooks/UseAuth.tsx";
+import useSession from "./hooks/UseSession.tsx";
 import Profile from "./pages/Profile.tsx";
 
 function ProtectedRoute({ redirectPath, children }: { redirectPath: string, children: React.ReactNode }) {
-    const auth = useAuth();
+    const auth = useSession();
 
-    if (!auth.isLogged()) {
+    if (!auth.token) {
         return <Navigate replace to={redirectPath} />;
     }
 
@@ -21,12 +22,12 @@ function ProtectedRoute({ redirectPath, children }: { redirectPath: string, chil
 }
 
 export default function Routing() {
-    const auth = useAuth();
+    const session = useSession();
 
     return (
         <Routes>
             <Route path="/" element={
-                auth.isLogged()
+                session.token
                     ? <Navigate replace to="/profile" />
                     : <Navigate replace to="/login" />
             } />
