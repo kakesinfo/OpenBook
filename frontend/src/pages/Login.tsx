@@ -3,7 +3,7 @@ import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import {useState} from "react";
 import useSession from "../hooks/UseSession.tsx";
-import { useNavigate } from 'react-router';
+import {Link, useNavigate} from 'react-router';
 import {enqueueSnackbar} from "notistack";
 
 export default function Login(){
@@ -42,6 +42,8 @@ export default function Login(){
                         <TextField
                             required
                             fullWidth
+                            id="email"
+                            name="email"
                             placeholder="your@email.com"
                             autoComplete="email"
                             variant="outlined"
@@ -55,6 +57,8 @@ export default function Login(){
                         <TextField
                             required
                             fullWidth
+                            id="password"
+                            name="password"
                             placeholder="••••••"
                             autoComplete="new-password"
                             variant="outlined"
@@ -64,6 +68,7 @@ export default function Login(){
                         />
                     </FormControl>
                     <Button fullWidth variant="contained" onClick={handleLogin}>Login</Button>
+                    <Link to={'/register'}>Pas de compte? Inscrivez-vous</Link>
                 </Box>
             </Card>
         </div>

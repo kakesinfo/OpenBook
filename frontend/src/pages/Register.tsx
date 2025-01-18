@@ -3,7 +3,7 @@ import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import {useState} from "react";
 
-import { useNavigate } from 'react-router';
+import {Link, useNavigate} from 'react-router';
 
 export default function Register(){
     const [email, setEmail] = useState<string>();
@@ -75,6 +75,7 @@ export default function Register(){
                         />
                     </FormControl>
                     <Button fullWidth variant="contained" onClick={handleRegister}>Login</Button>
+                    <Link to={'/login'}>Déjà un compte? Connectez-vous</Link>
                 </Box>
             </Card>
         </div>

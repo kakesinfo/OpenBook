@@ -15,7 +15,9 @@ export default function LogoutButton() {
             return enqueueSnackbar("Une erreur est survenue", {variant: "error"});
         }
 
-        navigate('/');
+        setTimeout(() => {
+            navigate('/');
+        }, 100);
     }
 
     return (
