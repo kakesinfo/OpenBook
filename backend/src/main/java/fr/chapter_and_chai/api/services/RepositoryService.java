@@ -9,6 +9,7 @@ import fr.chapter_and_chai.api.repositories.EditorRepository;
 import fr.chapter_and_chai.api.repositories.SeriesHasThemeRepository;
 import fr.chapter_and_chai.api.repositories.SeriesRepository;
 import fr.chapter_and_chai.api.repositories.ThemeRepository;
+import fr.chapter_and_chai.api.repositories.UserRepository;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor(onConstructor = @__(@Autowired))
 public class RepositoryService
 {
+    private final UserRepository userRepository;
     private final AuthorRepository authorRepository;
     private final AuthorTypeRepository authorTypeRepository;
     private final BookRepository bookRepository;

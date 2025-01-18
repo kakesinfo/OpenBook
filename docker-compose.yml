@@ -42,3 +42,16 @@ services:
       - "8080:8080"
     working_dir: /usr/src/app
     entrypoint: ["mvn", "spring-boot:run"]
+
+  # Run nextjs frontend using node 16
+  project-frontend:
+      container_name: project-frontend
+      image: node:20-alpine
+      depends_on:
+        - project-backend
+      volumes:
+      - ./frontend:/usr/src/app
+      ports:
+      - "3000:3000"
+      working_dir: /usr/src/app
+      entrypoint: ["npm", "run", "dev"]
