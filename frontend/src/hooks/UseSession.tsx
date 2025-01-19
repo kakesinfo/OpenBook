@@ -1,24 +1,9 @@
-import {useEffect, useState} from "react";
-import { jwtDecode } from 'jwt-decode'
+import { useState} from "react";
 
 export default function useSession() {
     const [token, setToken] = useState<string | null>(() => {
         return localStorage.getItem("token");
     });
-
-    const [data, setData] = useState<{
-        username: string;
-        email: string;
-    }>();
-
-    useEffect(() => {
-        if (token) {
-            const payload: any = jwtDecode(token);
-
-            setData({ username: payload["username"], email: payload["email"] });
-        }
-        return () => {};
-    }, []);
 
     const login = async (email: string, password: string) => {
         const response = await fetch("http://localhost:8080/auth/login", {
@@ -32,11 +17,8 @@ export default function useSession() {
 
         if (response.ok) {
             const data = await response.json();
-            const payload: any = jwtDecode(data.token);
 
             setToken(data.token);
-            setData({ username: payload["username"], email: payload["email"] });
-
             localStorage.setItem("token", data.token);
 
             return true;
@@ -74,5 +56,5 @@ export default function useSession() {
        });
     }
 
-    return { token, data, login, logout, customFetch };
+    return { token, login, logout, customFetch };
 }
