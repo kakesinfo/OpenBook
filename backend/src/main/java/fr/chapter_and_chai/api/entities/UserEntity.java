@@ -67,6 +67,10 @@ public class UserEntity implements UserDetails {
         return password;
     }
 
+    public String getRealUsername() {
+        return username;
+    }
+
     @Override
     public String getUsername() {
         return email;

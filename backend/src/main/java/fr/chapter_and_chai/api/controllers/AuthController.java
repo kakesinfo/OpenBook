@@ -7,23 +7,18 @@ import fr.chapter_and_chai.api.dtos.auth.RegisterResponseDTO;
 import fr.chapter_and_chai.api.entities.UserEntity;
 import fr.chapter_and_chai.api.services.AuthService;
 import fr.chapter_and_chai.api.services.JwtService;
-import fr.chapter_and_chai.api.services.RepositoryService;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Optional;
+import java.util.HashMap;
 
 @RestController
 @AllArgsConstructor
@@ -33,7 +28,6 @@ public class AuthController
     private final AuthService authService;
 
     private final JwtService jwtService;
-    private final AuthenticationManager authenticationManager;
 
     @PostMapping("/register")
     public ResponseEntity<Object> register(@RequestBody RegisterRequestDTO request) throws Exception {
@@ -55,7 +49,11 @@ public class AuthController
 
         session.setAttribute("user", result);
 
-        String jwtToken = jwtService.generateToken(result);
+        HashMap<String, Object> claims = new HashMap<>();
+        claims.put("username", result.getRealUsername());
+        claims.put("email", result.getEmail());
+
+        String jwtToken = jwtService.generateToken(claims, result);
 
         LoginResponseDTO responseDTO = new LoginResponseDTO();
         responseDTO.setToken(jwtToken);

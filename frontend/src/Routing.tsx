@@ -39,7 +39,13 @@ export default function Routing() {
                 <ProtectedRoute redirectPath="/">
                     <Profile />
                 </ProtectedRoute>
-            } />
+            }>
+                <Route index path="home" element={<h2>Profil</h2>} />
+                <Route path="books" element={<h2>Mes livres</h2>} />
+                <Route path="wishlist" element={<h2>Ma wishlist</h2>} />
+                <Route path="coming-soon" element={<h2>Mes sorties</h2>} />
+                <Route path="stats" element={<h2>Mes statistiques</h2>} />
+            </Route>
         </Routes>
     )
 }
