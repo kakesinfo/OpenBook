@@ -32,6 +32,11 @@ public class BookController {
         return repositoryService.getBookRepository().findById(id).orElse(null);
     }
 
+    @GetMapping("/search/{name}")
+    public List<BookEntity> search(@PathVariable String name) {
+        return repositoryService.getBookRepository().findAllByNameOrSeriesName(name);
+    }
+
     @PostMapping
     public BookEntity create(@RequestBody BookEntity user) {
         return repositoryService.getBookRepository().save(user);

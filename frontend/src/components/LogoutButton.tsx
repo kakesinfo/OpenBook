@@ -21,18 +21,6 @@ export default function LogoutButton() {
             return enqueueSnackbar("Une erreur est survenue", {variant: "error"});
         }
 
-        // Wait for the token to be removed from localStorage
-        await new Promise((resolve) => {
-            const checkToken = () => {
-                if (!localStorage.getItem("token")) {
-                    resolve(true);
-                } else {
-                    setTimeout(checkToken, 100);
-                }
-            };
-            checkToken();
-        });
-
         setLoading(false);
         navigate('/');
     }

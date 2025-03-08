@@ -10,6 +10,7 @@ import Login from "./pages/Login.tsx";
 import Register from "./pages/Register.tsx";
 import useSession from "./hooks/UseSession.tsx";
 import Profile from "./pages/Profile.tsx";
+import Search from "./pages/Search.tsx";
 
 function ProtectedRoute({ redirectPath, children }: { redirectPath: string, children: React.ReactNode }) {
     const auth = useSession();
@@ -35,6 +36,14 @@ export default function Routing() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
+
+
+            <Route path="/search" element={
+                <ProtectedRoute redirectPath="/">
+                    <Search />
+                </ProtectedRoute>
+            } />
+
             <Route path="/profile" element={
                 <ProtectedRoute redirectPath="/">
                     <Profile />
@@ -47,6 +56,7 @@ export default function Routing() {
                 <Route path="coming-soon" element={<h2>Mes sorties</h2>} />
                 <Route path="stats" element={<h2>Mes statistiques</h2>} />
             </Route>
+
         </Routes>
     )
 }

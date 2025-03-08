@@ -724,4 +724,36 @@
             <column name="updated_at" valueComputed="NOW()" />
         </insert>
     </changeSet>
+    <changeSet  id="14" author="Axel">
+        <sql>
+            -- Insert authors
+            INSERT INTO author (firstname, lastname, birthday, created_at, updated_at) VALUES
+                ('J.K.', 'Rowling', '1965-07-31', NOW(), NOW()),
+                ('George', 'Orwell', '1903-06-25', NOW(), NOW()),
+                ('J.R.R.', 'Tolkien', '1892-01-03', NOW(), NOW());
+
+            -- Insert series
+            INSERT INTO series (name, status, editor_id, category_id, created_at, updated_at) VALUES
+                ('Harry Potter', 'FINISHED', 1, 4, NOW(), NOW()),
+                ('1984', 'FINISHED', 2, 1, NOW(), NOW()),
+                ('The Lord of the Rings', 'FINISHED', 3, 4, NOW(), NOW());
+
+            -- Insert books
+            INSERT INTO book (title, page_count, volume, weight, price, series_id, release_date, created_at, updated_at) VALUES
+                ('Harry Potter and the Philosophers Stone', 223, 1, 500, 20, 1, '1997-06-26', NOW(), NOW()),
+                ('1984', 328, 1, 300, 15, 2, '1949-06-08', NOW(), NOW()),
+                ('The Fellowship of the Ring', 423, 1, 600, 25, 3, '1954-07-29', NOW(), NOW());
+
+            -- Insert author types
+            INSERT INTO author_type (name, created_at, updated_at) VALUES
+                ('Writer', NOW(), NOW()),
+                ('Illustrator', NOW(), NOW());
+
+            -- Link books with authors
+            INSERT INTO book_has_author (book_id, author_id, author_type_id, created_at, updated_at) VALUES
+                (1, 1, 1, NOW(), NOW()), -- J.K. Rowling for Harry Potter
+                (2, 2, 1, NOW(), NOW()), -- George Orwell for 1984
+                (3, 3, 1, NOW(), NOW()); -- J.R.R. Tolkien for The Fellowship of the Ring
+        </sql>
+    </changeSet>
 </databaseChangeLog>
