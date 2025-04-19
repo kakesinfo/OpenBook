@@ -18,7 +18,7 @@ down:
 
 fclean:
 	rm -rf Cache/postgresql-data
-	rm -rf Cache/.m2
+	rm -rf Cache/service-api/.m2
 	rm -rf Services/backend/target
 
 re: down fclean up

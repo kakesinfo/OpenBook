@@ -38,7 +38,7 @@ services:
         condition: service_completed_successfully
     volumes:
       - ./Services/service-api:/usr/src/app
-      - ./Cache/.m2:/root/.m2
+      - ./Cache/service-api/.m2:/root/.m2
     ports:
       - "8080:8080"
     working_dir: /usr/src/app
