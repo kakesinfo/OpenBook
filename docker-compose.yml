@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: strapi
       POSTGRES_DB: strapi
     volumes:
-      - ./postgresql-data:/var/lib/postgresql/data
+      - ./Cache/postgresql-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -26,7 +26,7 @@ services:
       LIQUIBASE_COMMAND_USERNAME: strapi
       LIQUIBASE_COMMAND_PASSWORD: strapi
     volumes:
-      - ./migrations/db.changelog-master.xml:/liquibase/db.changelog-master.xml
+      - ./Migrations/db.changelog-master.xml:/liquibase/db.changelog-master.xml
     entrypoint: ["liquibase", "--changeLogFile=db.changelog-master.xml", "update"]
 
   # Run spring boot api using maven and jdk 21
@@ -37,7 +37,8 @@ services:
       project-liquibase:
         condition: service_completed_successfully
     volumes:
-      - ./backend:/usr/src/app
+      - ./Services/backend:/usr/src/app
+      - ./Cache/.m2:/root/.m2
     ports:
       - "8080:8080"
     working_dir: /usr/src/app

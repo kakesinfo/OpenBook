@@ -1,0 +1,35 @@
+package fr.openbook.api.services;
+
+import fr.openbook.api.repositories.AuthorRepository;
+import fr.openbook.api.repositories.AuthorTypeRepository;
+import fr.openbook.api.repositories.BookHasAuthorRepository;
+import fr.openbook.api.repositories.BookRepository;
+import fr.openbook.api.repositories.CategoryRepository;
+import fr.openbook.api.repositories.CollectionRepository;
+import fr.openbook.api.repositories.EditorRepository;
+import fr.openbook.api.repositories.SeriesHasThemeRepository;
+import fr.openbook.api.repositories.SeriesRepository;
+import fr.openbook.api.repositories.ThemeRepository;
+import fr.openbook.api.repositories.UserRepository;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+@Service
+@Getter
+@RequiredArgsConstructor(onConstructor = @__(@Autowired))
+public class RepositoryService
+{
+    private final UserRepository userRepository;
+    private final AuthorRepository authorRepository;
+    private final AuthorTypeRepository authorTypeRepository;
+    private final BookRepository bookRepository;
+    private final BookHasAuthorRepository bookHasAuthorRepository;
+    private final CategoryRepository categoryRepository;
+    private final CollectionRepository collectionRepository;
+    private final EditorRepository editorRepository;
+    private final SeriesHasThemeRepository seriesHasThemeRepository;
+    private final SeriesRepository seriesRepository;
+    private final ThemeRepository themeRepository;
+}

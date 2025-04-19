@@ -8,7 +8,7 @@ export default function Navigation() {
        <nav className="navbar">
            <Container style={{maxWidth: "1000px", flexDirection: "row"}}>
                 <div className="navbar-left">
-                    <h1>Chapter & Chai</h1>
+                    <h1>OpenBook</h1>
                 </div>
                 <div className="navbar-right">
                     <LogoutButton />

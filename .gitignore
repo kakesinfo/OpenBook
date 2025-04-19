@@ -3,3 +3,6 @@ postgresql-data/
 dist/
 node_modules/
 out/
+
+Cache/*
+!Cache/.gitkeep
