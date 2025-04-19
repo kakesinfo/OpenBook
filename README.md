@@ -1,1 +1,3 @@
-# Projet-Flo-Backend
+# OpenBook
+
+The first open-source book manager
