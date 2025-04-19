@@ -17,7 +17,8 @@ down:
 	docker compose down
 
 fclean:
-	rm -rf postgresql-data
+	rm -rf Cache/postgresql-data
+	rm -rf Cache/.m2
 	rm -rf Services/backend/target
 
 re: down fclean up
