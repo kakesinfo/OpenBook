@@ -1,10 +1,10 @@
-import {Box, Card, FormControl, FormLabel, Typography} from "@mui/material";
-import TextField from "@mui/material/TextField";
-import Button from "@mui/material/Button";
 import {useState} from "react";
 import useSession from "../hooks/UseSession.tsx";
 import {Link, useNavigate} from 'react-router';
 import {enqueueSnackbar} from "notistack";
+
+import Card from "../components/Card/Card.tsx";
+import FormGroup from "../components/Form/FormGroup.tsx";
 
 export default function Login(){
     const [email, setEmail] = useState<string>();
@@ -32,44 +32,40 @@ export default function Login(){
 
     return (
         <div style={{position: "absolute", width: '500px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'}}>
-            <Card sx={{padding: '10px'}}>
-                <Typography component="h1" variant="h4" sx={{width: '100%'}}>
-                    Se connecter
-                </Typography>
-                <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
-                    <FormControl>
-                        <FormLabel htmlFor="email">Email</FormLabel>
-                        <TextField
-                            required
-                            fullWidth
-                            id="email"
-                            name="email"
-                            placeholder="your@email.com"
-                            autoComplete="email"
-                            variant="outlined"
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
-                    </FormControl>
-                    <FormControl>
-                        <FormLabel htmlFor="password">Password</FormLabel>
-                        <TextField
-                            required
-                            fullWidth
-                            id="password"
-                            name="password"
-                            placeholder="••••••"
-                            autoComplete="new-password"
-                            variant="outlined"
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
-                    </FormControl>
-                    <Button fullWidth variant="contained" onClick={handleLogin}>Login</Button>
+            <Card>
+                <FormGroup>
+                    <label htmlFor="email">Email</label>
+                    <input
+                        type="email"
+                        name="email"
+                        autoComplete="email"
+                        placeholder="your@email.com"
+                        value={email as string}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                    />
+                </FormGroup>
+
+                <FormGroup>
+                    <label htmlFor="password">Password</label>
+                    <input
+                        type="password"
+                        name="password"
+                        autoComplete="password"
+                        placeholder="••••••"
+                        value={password as string}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    />
+                </FormGroup>
+
+                <FormGroup>
+                    <button onClick={handleLogin}>Login</button>
+                </FormGroup>
+
+                <FormGroup>
                     <Link to={'/register'}>Pas de compte? Inscrivez-vous</Link>
-                </Box>
+                </FormGroup>
             </Card>
         </div>
     );

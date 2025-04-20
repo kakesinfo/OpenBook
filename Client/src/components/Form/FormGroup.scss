@@ -1,0 +1,44 @@
+.form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+
+    input, textarea {
+        margin-top: 10px;
+        height: 40px;
+        border-radius: 5px;
+        padding: 10px;
+
+        background-color: #171717;
+        border: 1px solid #2C2C2C;
+        outline: none;
+        color: #ffffff;
+    }
+
+    button {
+        color: #fff;
+        font-weight: bold;
+        background: rgba(#41CF7C, 0.1);
+        height: 40px;
+
+        border: none;
+        border-radius: 40px;
+
+        cursor: pointer;
+
+        &:hover {
+            color: #41CF7C;
+        }
+    }
+
+    a {
+        text-align: center;
+        color: #D4DCFF;
+        text-decoration: none;
+        cursor: pointer;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+}

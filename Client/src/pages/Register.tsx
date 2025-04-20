@@ -1,9 +1,9 @@
-import {Box, Card, FormControl, FormLabel, Typography} from "@mui/material";
-import TextField from "@mui/material/TextField";
-import Button from "@mui/material/Button";
 import {useState} from "react";
 
 import {Link, useNavigate} from 'react-router';
+import FormGroup from "../components/Form/FormGroup.tsx";
+import Card from "../components/Card/Card.tsx";
+import {enqueueSnackbar} from "notistack";
 
 export default function Register(){
     const [email, setEmail] = useState<string>();
@@ -13,6 +13,10 @@ export default function Register(){
     const navigate = useNavigate();
 
     const handleRegister = async () => {
+        if (!email || !password || !username) {
+            return enqueueSnackbar("Email, password, and username are required", {variant: "error"});
+        }
+
         const response = await fetch("http://localhost:8080/auth/register", {
             method: "POST",
             headers: {
@@ -27,56 +31,53 @@ export default function Register(){
 
     return (
         <div style={{position: "absolute", width: '500px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'}}>
-            <Card sx={{padding: '10px'}}>
-                <Typography component="h1" variant="h4" sx={{width: '100%'}}>
-                    S'inscrire
-                </Typography>
-                <Box sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
-                    <FormControl>
-                        <FormLabel htmlFor="username">Pseudonyme</FormLabel>
-                        <TextField
-                            required
-                            fullWidth
-                            id="username"
-                            name="username"
-                            placeholder="Batman"
-                            autoComplete="username"
-                            variant="outlined"
-                            type="text"
-                            onChange={(e) => setUsername(e.target.value)}
-                        />
-                    </FormControl>
-                    <FormControl>
-                        <FormLabel htmlFor="email">Email</FormLabel>
-                        <TextField
-                            required
-                            fullWidth
-                            id="email"
-                            name="email"
-                            placeholder="bruce.wayne@gotham.us"
-                            autoComplete="email"
-                            variant="outlined"
-                            type="email"
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
-                    </FormControl>
-                    <FormControl>
-                        <FormLabel htmlFor="password">Password</FormLabel>
-                        <TextField
-                            required
-                            fullWidth
-                            id="password"
-                            name="password"
-                            placeholder="••••••"
-                            autoComplete="new-password"
-                            variant="outlined"
-                            type="password"
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
-                    </FormControl>
-                    <Button fullWidth variant="contained" onClick={handleRegister}>Login</Button>
+            <Card>
+                <FormGroup>
+                    <label htmlFor="username">Pseudonyme</label>
+                    <input
+                        type="text"
+                        name="username"
+                        autoComplete="username"
+                        placeholder="Batman"
+                        value={username as string}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
+                    />
+                </FormGroup>
+
+                <FormGroup>
+                    <label htmlFor="email">Email</label>
+                    <input
+                        type="email"
+                        name="email"
+                        autoComplete="email"
+                        placeholder="bruce.wayne@gotham.us"
+                        value={email as string}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                    />
+                </FormGroup>
+
+                <FormGroup>
+                    <label htmlFor="password">Password</label>
+                    <input
+                        type="password"
+                        name="password"
+                        autoComplete="new-password"
+                        placeholder="••••••"
+                        value={password as string}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    />
+                </FormGroup>
+
+                <FormGroup>
+                    <button onClick={handleRegister}>S'inscire</button>
+                </FormGroup>
+
+                <FormGroup>
                     <Link to={'/login'}>Déjà un compte? Connectez-vous</Link>
-                </Box>
+                </FormGroup>
             </Card>
         </div>
     );
