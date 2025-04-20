@@ -10,12 +10,11 @@ import Login from "./pages/Login.tsx";
 import Register from "./pages/Register.tsx";
 import useSession from "./hooks/UseSession.tsx";
 import Profile from "./pages/Profile.tsx";
-import Search from "./pages/Search.tsx";
 
 function ProtectedRoute({ redirectPath, children }: { redirectPath: string, children: React.ReactNode }) {
-    const auth = useSession();
+    const session = useSession();
 
-    if (!auth.token) {
+    if (!session.token) {
         return <Navigate replace to={redirectPath} />;
     }
 
@@ -36,14 +35,6 @@ export default function Routing() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
-
-
-            <Route path="/search" element={
-                <ProtectedRoute redirectPath="/">
-                    <Search />
-                </ProtectedRoute>
-            } />
-
             <Route path="/profile" element={
                 <ProtectedRoute redirectPath="/">
                     <Profile />
@@ -51,10 +42,11 @@ export default function Routing() {
             }>
                 <Route index element={<Navigate replace to="home" />} />
                 <Route path="home" element={<h2>Profil</h2>} />
-                <Route path="books" element={<h2>Mes livres</h2>} />
+                <Route path="collection" element={<h2>Mes livres</h2>} />
                 <Route path="wishlist" element={<h2>Ma wishlist</h2>} />
-                <Route path="coming-soon" element={<h2>Mes sorties</h2>} />
+                <Route path="planning" element={<h2>Mes sorties</h2>} />
                 <Route path="stats" element={<h2>Mes statistiques</h2>} />
+                <Route path="search" element={<h2>Recherche</h2>} />
             </Route>
 
         </Routes>

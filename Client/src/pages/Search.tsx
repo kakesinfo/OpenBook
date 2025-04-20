@@ -1,4 +1,3 @@
-import Navigation from '../components/Navigation/Navigation.tsx';
 import Container from '../components/Container/Container.tsx';
 import LogBook from '../components/LogBook.tsx';
 import useSession from "../hooks/UseSession.tsx";
@@ -29,8 +28,6 @@ export default function Search(){
 
     return (
         <>
-            <Navigation />
-
             <Container style={{maxWidth: "1000px", flexDirection: "row"}}>
 
                 { books.map((book: any) => {

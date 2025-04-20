@@ -1,21 +1,23 @@
-import Navigation from "../components/Navigation/Navigation.tsx";
-import ProfileHeader from "../components/ProfileHeader/ProfileHeader.tsx";
-import {Outlet} from "react-router";
-import Container from "../components/Container/Container.tsx";
 import LogBook from "../components/LogBook.tsx";
+import {Outlet} from "react-router";
+import {Wrapper, WrapperButton, WrapperContent, WrapperNavigation} from "../components/Wrapper/Wrapper.tsx";
+import { faNewspaper, faBook, faHeart, faCalendarDays, faChartSimple, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons'
 
 export default function Profile(){
-
     return (
-        <>
-            <Navigation />
-            <ProfileHeader />
-
-            <Container style={{maxWidth: "1000px", flexDirection: "row"}}>
+        <Wrapper>
+            <WrapperNavigation title="OpenBook">
+                <WrapperButton to={'/profile/home'} icon={faNewspaper}>Nouveautés</WrapperButton>
+                <WrapperButton to={'/profile/collection'} icon={faBook}>Collection</WrapperButton>
+                <WrapperButton to={'/profile/wishlist'} icon={faHeart}>Souhaits</WrapperButton>
+                <WrapperButton to={'/profile/planning'} icon={faCalendarDays}>Planning</WrapperButton>
+                <WrapperButton to={'/profile/stats'} icon={faChartSimple}>Statistiques</WrapperButton>
+                <WrapperButton to={'/profile/search'} icon={faMagnifyingGlass}>Recherche</WrapperButton>
+            </WrapperNavigation>
+            <WrapperContent>
                 <Outlet />
-            </Container>
-
+            </WrapperContent>
             <LogBook />
-        </>
+        </Wrapper>
     );
 }
