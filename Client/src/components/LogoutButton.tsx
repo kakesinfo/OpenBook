@@ -26,6 +26,6 @@ export default function LogoutButton() {
     }
 
     return (
-        <Button variant="text" sx={{color: "#fff"}} loading={loading} onClick={handleLogout}>Logout</Button>
+        <Button variant="text" sx={{color: "#fff"}} disabled={loading} onClick={handleLogout}>Logout</Button>
     );
 }

@@ -1,6 +1,6 @@
 package fr.openbook.api.controllers;
 
-import fr.openbook.api.dtos.user.UserProfileDTO;
+import fr.openbook.api.dtos.UserProfileDTO;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.services.RepositoryService;
 import jakarta.servlet.http.HttpSession;

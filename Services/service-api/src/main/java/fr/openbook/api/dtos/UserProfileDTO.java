@@ -1,4 +1,4 @@
-package fr.openbook.api.dtos.user;
+package fr.openbook.api.dtos;
 
 import lombok.Getter;
 import lombok.Setter;

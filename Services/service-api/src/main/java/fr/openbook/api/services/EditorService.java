@@ -1,8 +1,8 @@
 package fr.openbook.api.services;
 
-import fr.openbook.api.dtos.editor.CreateEditorDTO;
-import fr.openbook.api.dtos.editor.EditorDTO;
-import fr.openbook.api.dtos.editor.UpdateEditorDTO;
+import fr.openbook.api.dtos.CreateEditorDTO;
+import fr.openbook.api.dtos.EditorDTO;
+import fr.openbook.api.dtos.UpdateEditorDTO;
 import fr.openbook.api.entities.EditorEntity;
 import fr.openbook.api.repositories.EditorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +17,7 @@ public class EditorService {
     private EditorRepository editorRepository;
 
     public List<EditorDTO> getAllEditors() {
-        return editorRepository.findAll().stream().map(this::convertEntityToDTO).toList();
+        return editorRepository.findAll().stream().map(EditorService::entityToDTO).toList();
     }
 
     public EditorDTO getEditorById(Long id) {
@@ -27,14 +27,14 @@ public class EditorService {
             return null;
         }
 
-        return convertEntityToDTO(editorEntity);
+        return entityToDTO(editorEntity);
     }
 
     public EditorDTO createEditor(CreateEditorDTO editorDTO) {
         EditorEntity editorEntity = new EditorEntity();
         editorEntity.setName(editorDTO.getName());
 
-        return convertEntityToDTO(editorRepository.save(editorEntity));
+        return entityToDTO(editorRepository.save(editorEntity));
     }
 
     public EditorDTO updateEditor(UpdateEditorDTO editorDTO) {
@@ -46,16 +46,15 @@ public class EditorService {
 
         editorEntity.setName(editorDTO.getName());
 
-        return convertEntityToDTO(editorRepository.save(editorEntity));
+        return entityToDTO(editorRepository.save(editorEntity));
     }
 
     public void deleteEditor(Long id) {
         editorRepository.deleteById(id);
     }
 
-    private EditorDTO convertEntityToDTO(EditorEntity entity) {
+    public static EditorDTO entityToDTO(EditorEntity entity) {
         EditorDTO entityDTO = new EditorDTO();
-        entityDTO.setId(entity.getId());
         entityDTO.setName(entity.getName());
         return entityDTO;
     }

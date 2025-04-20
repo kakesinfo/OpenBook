@@ -1,7 +1,10 @@
-package fr.openbook.api.dtos.book;
+package fr.openbook.api.dtos;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -13,4 +16,10 @@ public class BookDTO extends BookSummaryDTO {
     private Integer length;
     private Integer thickness;
     private String description;
+
+    private SeriesDTO series;
+    private EditorDTO editor;
+    private CollectionDTO collection;
+
+    private List<BookHasAuthorDTO> authors = new ArrayList<>();
 }

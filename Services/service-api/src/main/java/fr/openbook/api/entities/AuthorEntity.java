@@ -27,9 +27,6 @@ public class AuthorEntity {
     @Column(name = "lastname", nullable = false)
     private String lastname;
 
-    @Column(name = "birthday", nullable = false)
-    private LocalDate birthday;
-
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

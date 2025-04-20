@@ -1,6 +1,9 @@
 package fr.openbook.api.entities;
 
-public enum SeriesStatus {
+
+import java.io.Serializable;
+
+public enum SeriesStatus implements Serializable {
     ANNOUNCED,
     ON_GOING,
     FINISHED,

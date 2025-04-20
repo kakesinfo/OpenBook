@@ -877,6 +877,12 @@
                 ('Harry Potter and the Chamber of Secrets', '9780747538493', 2, 251, 'The second book in the Harry Potter series.', 1, '1998-07-02 00:00:00', NOW(), NOW()),
                 ('1984', '9780451524935', null, 328, 'A dystopian novel set in a totalitarian society.', 2, '1949-06-08 00:00:00', NOW(), NOW()),
                 ('The Lord of the Rings: The Fellowship of the Ring', '9780261102354', 1, 423, 'The first part of The Lord of the Rings trilogy.', 3, '1954-07-29 00:00:00', NOW(), NOW());
+
+            INSERT INTO book_has_author (book_id, author_id, author_type_id, created_at, updated_at) VALUES
+                (1, 1, 1, NOW(), NOW()),
+                (2, 1, 1, NOW(), NOW()),
+                (3, 2, 1, NOW(), NOW()),
+                (4, 3, 1, NOW(), NOW());
         </sql>
     </changeSet>
 </databaseChangeLog>

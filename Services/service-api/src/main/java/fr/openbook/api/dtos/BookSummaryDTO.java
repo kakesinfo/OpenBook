@@ -1,8 +1,6 @@
-package fr.openbook.api.dtos.book;
+package fr.openbook.api.dtos;
 
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
 
 @Data
 public class BookSummaryDTO {

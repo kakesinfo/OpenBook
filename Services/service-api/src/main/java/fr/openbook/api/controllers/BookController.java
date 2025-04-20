@@ -1,29 +1,35 @@
 package fr.openbook.api.controllers;
 
-import fr.openbook.api.dtos.book.BookDTO;
-import fr.openbook.api.dtos.book.BookSummaryDTO;
+import fr.openbook.api.dtos.BookDTO;
+import fr.openbook.api.dtos.BookHasAuthorDTO;
+import fr.openbook.api.dtos.BookSummaryDTO;
+import fr.openbook.api.entities.AuthorEntity;
+import fr.openbook.api.entities.AuthorTypeEntity;
 import fr.openbook.api.entities.BookEntity;
+import fr.openbook.api.services.CollectionService;
+import fr.openbook.api.services.EditorService;
 import fr.openbook.api.services.RepositoryService;
-import lombok.AllArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import fr.openbook.api.services.SeriesService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/books")
-@AllArgsConstructor
+@RequiredArgsConstructor(onConstructor = @__(@Autowired))
 public class BookController {
 
-    private RepositoryService repositoryService;
+    private final RepositoryService repositoryService;
 
     @GetMapping
     public List<BookSummaryDTO> getAll() {
@@ -35,20 +41,23 @@ public class BookController {
     }
 
     @GetMapping("/{id}")
-    public BookDTO getById(@PathVariable Long id) {
+    public BookDTO getById(
+            @PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "true")  boolean withSeries,
+            @RequestParam(required = false, defaultValue = "false") boolean withCollection,
+            @RequestParam(required = false, defaultValue = "false") boolean withEditor,
+            @RequestParam(required = false, defaultValue = "false") boolean withAuthors
+    ) {
         return repositoryService.getBookRepository()
                 .findById(id)
-                .map(this::entityToDTO)
+                .map(bookEntity -> entityToDTO(
+                    bookEntity, withSeries, withCollection, withEditor, withAuthors
+                ))
                 .orElse(null);
     }
 
     @GetMapping("/search/{query}")
     public List<BookSummaryDTO> search(@PathVariable String query) {
-        // TODO: Add pagination
-        // TODO: Add sorting
-        // TODO: Add filtering
-        // TODO: Add search by author
-        // TODO: Add search by series title
         return repositoryService.getBookRepository()
                 .findAllByTitleContainingIgnoreCaseOrIsbn(query, query)
                 .stream()
@@ -76,7 +85,13 @@ public class BookController {
         return dto;
     }
 
-    private BookDTO entityToDTO(BookEntity book) {
+    private BookDTO entityToDTO(
+            BookEntity book,
+            boolean withSeries,
+            boolean withCollection,
+            boolean withEditor,
+            boolean withAuthors
+    ) {
         BookDTO dto = new BookDTO();
         dto.setId(book.getId());
         dto.setTitle(book.getTitle());
@@ -90,7 +105,36 @@ public class BookController {
         dto.setThickness(book.getThickness());
         dto.setPageCount(book.getPageCount());
         dto.setDescription(book.getDescription());
+
+        if (withSeries)
+            dto.setSeries(SeriesService.entityToDTO(book.getSeries()));
+
+        if (withCollection)
+            dto.setCollection(CollectionService.entityToDTO(book.getCollection()));
+
+        if (withEditor)
+            dto.setEditor(EditorService.entityToDTO(book.getEditor()));
+
+        if (withAuthors) {
+            List<BookHasAuthorDTO> authorsDTO = book.getBookHasAuthors()
+                    .stream()
+                    .map(bookHasAuthor -> {
+                        AuthorEntity author = bookHasAuthor.getAuthor();
+                        AuthorTypeEntity authorType = bookHasAuthor.getAuthorType();
+
+                        BookHasAuthorDTO bookHasAuthorDto = new BookHasAuthorDTO();
+                        bookHasAuthorDto.setFirstname(author.getFirstname());
+                        bookHasAuthorDto.setLastname(author.getLastname());
+                        bookHasAuthorDto.setType(authorType.getName());
+                        return bookHasAuthorDto;
+                    })
+                    .toList();
+
+            dto.setAuthors(authorsDTO);
+        }
+
         System.out.println(dto);
+
         return dto;
     }
 }
