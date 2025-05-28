@@ -4,6 +4,23 @@ import {IconDefinition} from "@fortawesome/free-solid-svg-icons";
 import {Link, useLocation} from "react-router";
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 
+export function WrapperAction({ children, icon, callback }: {
+    children: React.ReactNode,
+    icon: IconDefinition,
+    callback?: () => void
+}) {
+
+    return (
+        <button
+            onClick={callback}
+            className="wrapper-navigation__button"
+        >
+            <FontAwesomeIcon icon={icon} className="font-light" />
+            {children}
+        </button>
+    );
+}
+
 export function WrapperButton({ children, to, icon }: { children: React.ReactNode, to: string, icon: IconDefinition }) {
     const location = useLocation();
     const isActive = location.pathname === to || location.pathname.endsWith(to);

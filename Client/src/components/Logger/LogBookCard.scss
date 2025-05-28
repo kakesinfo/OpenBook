@@ -1,0 +1,45 @@
+.logbook-card {
+	display: flex;
+	flex-direction: row;
+	width: 100%;
+	background-color: var(--color-background);
+	border-radius: var(--border-radius);
+	box-shadow: var(--box-shadow);
+	overflow: hidden;
+
+	h2 {
+		font-size: 1rem;
+	}
+
+	span {
+		color: var(--color-text-secondary);
+	}
+}
+
+.logbook-card__left,
+.logbook-card__right {
+	display: flex;
+	flex-direction: column;
+	padding: 1rem;
+}
+
+.logbook-card__right {
+	align-items: flex-end;
+}
+
+.logbook-card__button {
+	color: #fff;
+	font-weight: bold;
+	background: rgba(#41CF7C, 0.1);
+	height: 40px;
+	padding: 0 10px;
+
+	border: none;
+	border-radius: 40px;
+
+	cursor: pointer;
+
+	&:hover {
+		color: #41CF7C;
+	}
+}

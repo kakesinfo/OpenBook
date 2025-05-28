@@ -15,11 +15,13 @@
         color: #ffffff;
     }
 
-    button {
+    button, .form-button {
         color: #fff;
         font-weight: bold;
         background: rgba(#41CF7C, 0.1);
         height: 40px;
+        line-height: 40px;
+        padding: 0 20px;
 
         border: none;
         border-radius: 40px;
@@ -28,6 +30,7 @@
 
         &:hover {
             color: #41CF7C;
+            text-decoration: none;
         }
     }
 

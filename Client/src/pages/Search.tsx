@@ -1,5 +1,5 @@
 import Container from '../components/Container/Container.tsx';
-import LogBook from '../components/LogBook.tsx';
+import LogBook from '../components/Logger/LogBook.tsx';
 import useSession from "../hooks/UseSession.tsx";
 import {useEffect, useState} from "react";
 
