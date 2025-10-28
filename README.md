@@ -26,11 +26,8 @@ Built by readers, for readers, who also happen to write code at 2 AM.
 ---
 
 ### 🧠 Roadmap  
-- [ ] Import/export from CSV  
-- [ ] API integrations (maybe)  
-- [ ] Fancy charts for your reading habits  
-- [ ] Sync (in your dreams)  
-- [ ] Dark mode that’s *actually* dark  
+
+The Trello will be soon avalaible!
 
 ---
 
