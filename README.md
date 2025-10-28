@@ -11,7 +11,7 @@
 **Yet Another Library** is an open-source book collection manager for people who swore they’d never build “another” collection app.  
 And yet… here we are.  
 
-It helps you track your books, mangas, and graphic novels without the overhead of a bloated SaaS or the shame of an Excel sheet.  
+It helps you track your books, mangas, comics and graphic novels without the overhead of a bloated SaaS or the shame of an Excel sheet.  
 Built by readers, for readers, who also happen to write code at 2 AM.  
 
 ---
