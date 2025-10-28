@@ -41,10 +41,14 @@ So here’s Yet Another One, built with just enough irony to justify its existen
 
 “It’s not about managing books. It’s about managing the illusion of order.”
 
+---
+
 ### 🧩 Contributing
 
 Issues, PRs, and unsolicited feature requests are welcome.
 Just remember: if it works on your machine, it’s probably fine.
+
+---
 
 ### 📜 License
 
