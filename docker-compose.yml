@@ -12,7 +12,7 @@ services:
       - "5432:5432"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U strapi" ]
-      interval: 1s
+      interval: 2s
       retries: 20
 
   project-liquibase:
@@ -27,7 +27,12 @@ services:
       LIQUIBASE_COMMAND_PASSWORD: strapi
     volumes:
       - ./Migrations/db.changelog-master.xml:/liquibase/db.changelog-master.xml
-    entrypoint: ["liquibase", "--changeLogFile=db.changelog-master.xml", "update"]
+      - ./Drivers/postgresql-42.7.8.jar:/liquibase/lib/postgresql-42.7.8.jar
+    entrypoint:
+      - "liquibase"
+      - "--classpath=/liquibase/lib/postgresql-42.7.8.jar"
+      - "--changeLogFile=db.changelog-master.xml"
+      - "update"
 
   # Run spring boot api using maven and jdk 21
   project-backend:
@@ -56,4 +61,4 @@ services:
       ports:
       - "3000:3000"
       working_dir: /usr/src/app
-      entrypoint: ["npm", "run", "dev"]
+      entrypoint: ["sh", "-c", "npm ci && npm run dev"]
