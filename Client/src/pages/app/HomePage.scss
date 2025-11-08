@@ -1,3 +1,15 @@
+.newbooks-wrapper {
+	width: 100%;
+}
+
+.newbooks-body {
+	display: block;
+	
+	width: 100%;
+
+	overflow-y: auto;
+}
+
 .newbooks-order-button {
 	display: inline-flex;
 	align-items: center;

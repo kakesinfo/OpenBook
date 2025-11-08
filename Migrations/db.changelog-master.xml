@@ -897,4 +897,33 @@
                 (4, 3, 1, NOW(), NOW());
         </sql>
     </changeSet>
+
+    <changeSet id="dummy-data-2" author="Axel">
+        <sql>
+            INSERT INTO editor (name, created_at, updated_at) VALUES
+                ('Scholastic', NOW(), NOW()),
+                ('Houghton Mifflin Harcourt', NOW(), NOW()),
+                ('Allen and Unwin', NOW(), NOW());
+
+            INSERT INTO book (title, isbn, volume, page_count, description, series_id, release_date, created_at, updated_at, cover_url) VALUES
+                ('Harry Potter and the Prisoner of Azkaban', '9780747542155', 3, 317, 'The third book in the Harry Potter series.', 1, '1999-07-08 00:00:00', NOW(), NOW(), 'https://static.fnac-static.com/multimedia/PE/Images/FR/NR/36/d5/ef/15717686/1507-1/tsp20251016080401/Harry-Potter-et-le-Prisonnier-d-Azkaban.jpg'),
+                ('1984: Special Edition', '9780451524936', null, 328, 'A special edition of the dystopian novel set in a totalitarian society.', 2, '2009-05-01 00:00:00', NOW(), NOW(), 'https://static.fnac-static.com/multimedia/PE/Images/FR/NR/10/35/01/79120/1507-1/tsp20250103092736/1984.jpg'),
+                ('The Lord of the Rings: The Two Towers', '9780261102361', 2, 352, 'The second part of The Lord of the Rings trilogy.', 3, '1954-11-11 00:00:00', NOW(), NOW(), 'https://static.fnac-static.com/multimedia/PE/Images/FR/NR/ec/3c/1e/18758894/1507-1/tsp20251107083058/Le-Seigneur-des-Anneaux-T2-Les-Deux-Tours-relie.jpg');
+
+            INSERT INTO book_has_author (book_id, author_id, author_type_id, created_at, updated_at) VALUES
+                (5, 1, 1, NOW(), NOW()),
+                (6, 2, 1, NOW(), NOW()),
+                (7, 3, 1, NOW(), NOW());
+        </sql>
+    </changeSet>
+
+    <changeSet id="dummy-data-3" author="Axel">
+        <sql>
+            INSERT INTO book (title, isbn, volume, page_count, description, series_id, release_date, created_at, updated_at, cover_url) VALUES
+                ('The Lord of the Rings: The Return of the King', '9780261102378', 3, 416, 'The final part of The Lord of the Rings trilogy.', 3, '1955-10-20 00:00:00', NOW(), NOW(), 'https://static.fnac-static.com/multimedia/PE/Images/FR/NR/ec/3c/1e/18758896/1507-1/tsp20251107083102/Le-Seigneur-des-Anneaux-T3-Le-Retour-du-Roi-relie.jpg');
+
+            INSERT INTO book_has_author (book_id, author_id, author_type_id, created_at, updated_at) VALUES
+                (8, 3, 1, NOW(), NOW());
+        </sql>
+    </changeSet>
 </databaseChangeLog>

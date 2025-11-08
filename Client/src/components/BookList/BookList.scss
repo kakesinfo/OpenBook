@@ -5,6 +5,8 @@
 	gap: 16px;
 	
 	padding: 10px;
+
+	width: 100%;
 }
 
 $book-width: 250px;
@@ -20,7 +22,7 @@ $book-width: 250px;
 	width: $book-width;
 	border: 1px solid #2C2C2C;
 	border-radius: 8px;
-	aspect-ratio: 0.6980802792;
+	aspect-ratio: 0.67;
 	overflow: hidden;
 	object-fit: cover;
 }
