@@ -26,7 +26,7 @@ export default function Login(){
             return enqueueSnackbar("Invalid email or password", {variant: "error"});
         }
 
-        navigate('/profile');
+        navigate('/app');
         enqueueSnackbar("Bienvenue!", {variant: "success"})
     }
 

@@ -7,4 +7,5 @@ public class SeriesDTO {
     private String name;
     private String category;
     private String status;
+    private Integer totalVolumes;
 }

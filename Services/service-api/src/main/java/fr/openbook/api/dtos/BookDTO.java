@@ -16,6 +16,7 @@ public class BookDTO extends BookSummaryDTO {
     private Integer length;
     private Integer thickness;
     private String description;
+    private String coverUrl;
 
     private SeriesDTO series;
     private EditorDTO editor;

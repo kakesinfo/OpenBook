@@ -11,6 +11,7 @@ public class SeriesService {
         dto.setName(entity.getName());
         dto.setCategory(entity.getCategory().getName());
         dto.setStatus(entity.getStatus().name());
+        dto.setTotalVolumes(entity.getTotalVolumes());
         return dto;
     }
 }

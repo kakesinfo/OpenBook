@@ -105,6 +105,7 @@ public class BookController {
         dto.setThickness(book.getThickness());
         dto.setPageCount(book.getPageCount());
         dto.setDescription(book.getDescription());
+        dto.setCoverUrl(book.getCoverUrl());
 
         if (withSeries)
             dto.setSeries(SeriesService.entityToDTO(book.getSeries()));

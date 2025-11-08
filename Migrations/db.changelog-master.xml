@@ -885,4 +885,11 @@
                 (4, 3, 1, NOW(), NOW());
         </sql>
     </changeSet>
+    <changeSet id="18" author="Axel">
+        <addColumn tableName="book">
+            <column name="cover_url" type="varchar">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

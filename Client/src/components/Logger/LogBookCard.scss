@@ -1,18 +1,22 @@
 .logbook-card {
 	display: flex;
 	flex-direction: row;
+	justify-content: space-between;
+	
 	width: 100%;
-	background-color: var(--color-background);
-	border-radius: var(--border-radius);
-	box-shadow: var(--box-shadow);
+	height: 40px;
 	overflow: hidden;
-
+	
+	padding: 10px 0;
+	
+	box-sizing: content-box;
+	
 	h2 {
 		font-size: 1rem;
 	}
 
-	span {
-		color: var(--color-text-secondary);
+	&:hover {
+		background-color: #212121;
 	}
 }
 
@@ -20,7 +24,6 @@
 .logbook-card__right {
 	display: flex;
 	flex-direction: column;
-	padding: 1rem;
 }
 
 .logbook-card__right {
@@ -32,7 +35,7 @@
 	font-weight: bold;
 	background: rgba(#41CF7C, 0.1);
 	height: 40px;
-	padding: 0 10px;
+	padding: 10px;
 
 	border: none;
 	border-radius: 40px;

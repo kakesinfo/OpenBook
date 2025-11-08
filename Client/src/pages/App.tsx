@@ -15,7 +15,7 @@ import Card from "../components/Card/Card.tsx";
 import FormGroup from "../components/Form/FormGroup.tsx";
 import LogBookCard from "../components/Logger/LogBookCard.tsx";
 
-export default function Profile(){
+export default function App(){
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [books, setBooks] = useState<any[]>([]);
@@ -65,11 +65,11 @@ export default function Profile(){
     return (
         <Wrapper>
             <WrapperNavigation title="OpenBook">
-                <WrapperButton to={'/profile/home'} icon={faNewspaper}>Nouveautés</WrapperButton>
-                <WrapperButton to={'/profile/collection'} icon={faBook}>Collection</WrapperButton>
-                <WrapperButton to={'/profile/wishlist'} icon={faHeart}>Souhaits</WrapperButton>
-                <WrapperButton to={'/profile/planning'} icon={faCalendarDays}>Planning</WrapperButton>
-                <WrapperButton to={'/profile/stats'} icon={faChartSimple}>Statistiques</WrapperButton>
+                <WrapperButton to={'/app/home'} icon={faNewspaper}>Nouveautés</WrapperButton>
+                <WrapperButton to={'/app/collection'} icon={faBook}>Collection</WrapperButton>
+                <WrapperButton to={'/app/wishlist'} icon={faHeart}>Souhaits</WrapperButton>
+                <WrapperButton to={'/app/planning'} icon={faCalendarDays}>Planning</WrapperButton>
+                <WrapperButton to={'/app/stats'} icon={faChartSimple}>Statistiques</WrapperButton>
 
                 <WrapperAction icon={faMagnifyingGlass} callback={handleOpen}>Recherche</WrapperAction>
             </WrapperNavigation>
@@ -97,7 +97,7 @@ export default function Profile(){
                     </FormGroup>
                     <ul>
                         {books.map((book) => (
-                            <LogBookCard key={book.id} book={book} />
+                            <LogBookCard key={book.id} book={book} onClose={handleClose} />
                         ))}
                     </ul>
                 </Card>

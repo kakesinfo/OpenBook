@@ -12,6 +12,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Formula;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -43,6 +44,10 @@ public class SeriesEntity {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    // computed column: number of book rows referencing this series (read-only)
+    @Formula("(select count(b.id) from book b where b.series_id = id)")
+    private Integer totalVolumes;
 
     @PrePersist
     protected void onCreate()
