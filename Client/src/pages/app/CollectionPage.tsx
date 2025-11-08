@@ -1,12 +1,9 @@
-import useSession from "../../hooks/UseSession.tsx";
-
 import "./BookPage.scss";
+import {WrapperHeader} from "../../components/Wrapper/Wrapper.tsx";
 
 export default function CollectionPage(){
-	const session = useSession();
-
 	return <div className="collection-wrapper">
-		<div className="collection-header"></div>
+		<WrapperHeader><h2>Collection</h2></WrapperHeader>
 
 		<div className="collection-body">
 			

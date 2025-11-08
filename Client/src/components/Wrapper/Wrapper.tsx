@@ -55,6 +55,14 @@ export function WrapperContent({ children }: { children: React.ReactNode }) {
     )
 }
 
+export function WrapperHeader({ children }: { children?: React.ReactNode }) {
+	return (
+		<header className="wrapper-header">
+			{children}
+		</header>
+	)
+}
+
 export function Wrapper({ children }: { children: React.ReactNode }) {
     return (
         <div className="wrapper">

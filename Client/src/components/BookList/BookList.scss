@@ -1,0 +1,40 @@
+.booklist {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 16px;
+	
+	padding: 10px;
+}
+
+$book-width: 250px;
+
+.booklist-book {
+	display: flex;
+	flex-direction: column;
+	width: $book-width;
+	text-decoration: none;
+}
+
+.booklist-book_cover {
+	width: $book-width;
+	border: 1px solid #2C2C2C;
+	border-radius: 8px;
+	aspect-ratio: 0.6980802792;
+	overflow: hidden;
+	object-fit: cover;
+}
+
+.booklist-book_info {
+	padding: 10px 0;
+}
+
+.booklist-book_title {
+	color: #fff;
+	text-decoration: none;
+}
+
+.booklist-book_volume{
+	color: #D4DCFF;
+	text-decoration: none;
+}

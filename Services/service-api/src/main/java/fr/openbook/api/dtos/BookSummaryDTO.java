@@ -9,4 +9,5 @@ public class BookSummaryDTO {
     private Integer volume;
     private Integer price;
     private String releaseDate;
+    private String coverUrl;
 }

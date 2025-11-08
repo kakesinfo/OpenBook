@@ -8,6 +8,7 @@ import fr.openbook.api.entities.AuthorTypeEntity;
 import fr.openbook.api.entities.BookEntity;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
+import fr.openbook.api.repositories.BookRepository;
 import fr.openbook.api.services.CollectionService;
 import fr.openbook.api.services.EditorService;
 import fr.openbook.api.services.RepositoryService;
@@ -40,6 +41,28 @@ public class BookController {
         return repositoryService.getBookRepository()
                 .findAll()
                 .stream()
+                .map(this::entityToSummaryDTO)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/newest")
+    public List<BookSummaryDTO> getAllOrderedByReleaseDateDesc() {
+        return getAllByReleaseDateOrderBy("desc");
+    }
+
+    @GetMapping("/oldest")
+    public List<BookSummaryDTO> getAllOrderedByReleaseDateAsc() {
+        return getAllByReleaseDateOrderBy("asc");
+    }
+
+    private List<BookSummaryDTO> getAllByReleaseDateOrderBy(String order) {
+        final BookRepository repository = repositoryService.getBookRepository();
+
+        List<BookEntity> books = "asc".equalsIgnoreCase(order)
+                ? repository.findAllByOrderByReleaseDateAsc()
+                : repository.findAllByOrderByReleaseDateDesc();
+
+        return books.stream()
                 .map(this::entityToSummaryDTO)
                 .collect(Collectors.toList());
     }
@@ -93,6 +116,7 @@ public class BookController {
         dto.setVolume(book.getVolume());
         dto.setPrice(book.getPrice());
         dto.setReleaseDate(book.getReleaseDate().toString());
+        dto.setCoverUrl(book.getCoverUrl());
         return dto;
     }
 

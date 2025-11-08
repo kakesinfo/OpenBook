@@ -9,4 +9,7 @@ import java.util.List;
 public interface BookRepository extends JpaRepository<BookEntity, Long> {
 
     List<BookEntity> findAllByTitleContainingIgnoreCaseOrIsbn(String title, String isbn);
+
+    List<BookEntity> findAllByOrderByReleaseDateDesc();
+    List<BookEntity> findAllByOrderByReleaseDateAsc();
 }

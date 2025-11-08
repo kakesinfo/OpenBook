@@ -5,6 +5,7 @@ import useSession from "../../hooks/UseSession.tsx";
 import {getSeriesStatusLabel} from "../../dto/Series.dto.ts";
 
 import "./BookPage.scss";
+import {WrapperHeader} from "../../components/Wrapper/Wrapper.tsx";
 
 function ChangeBookStatusButton({
 	status,
@@ -44,12 +45,10 @@ function ChangeBookStatusButton({
 			setProcessing(false);
 		}
 	};
-
-	const isActive = status === newStatus;
 	
 	return (
 		<button onClick={handleClick} disabled={processing}>
-			{isActive ? `-` : `+`}
+			{status === newStatus ? `-` : `+`}
 			{children}
 		</button>
 	);
@@ -90,7 +89,7 @@ export default function BookPage(){
     }, []);
 
     return <div className="book-wrapper">
-		<div className="book-header"></div>
+		<WrapperHeader />
 		
 		<div className="book-body">
 			{loading && <p>Chargement...</p>}
@@ -116,7 +115,7 @@ export default function BookPage(){
 				</div>
 				
 				<nav className="book-actions">
-					<ChangeBookStatusButton
+					{bookStatus !== "OWNED" && <ChangeBookStatusButton
 						status={bookStatus}
 						setStatus={setBookStatus}
 						newStatus="WISHLISTED"
@@ -124,17 +123,17 @@ export default function BookPage(){
 						session={session}
 					>
 						Liste de souhait
-					</ChangeBookStatusButton>
+					</ChangeBookStatusButton>}
 
-					<ChangeBookStatusButton
-						status={bookStatus}
-						setStatus={setBookStatus}
-						newStatus="OWNED"
-						bookId={id}
-						session={session}
-					>
-						Ajouter à la collection
-					</ChangeBookStatusButton>
+					{bookStatus !== "WISHLISTED" && <ChangeBookStatusButton
+							status={bookStatus}
+							setStatus={setBookStatus}
+							newStatus="OWNED"
+							bookId={id}
+							session={session}
+						>
+							Ajouter à la collection
+						</ChangeBookStatusButton>}
 				</nav>
 				
 				<div className="book-details">

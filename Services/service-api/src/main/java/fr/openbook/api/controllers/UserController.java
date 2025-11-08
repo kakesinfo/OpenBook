@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -101,5 +102,19 @@ public class UserController {
         repositoryService.getUserOwnsBooksRepository()
                 .findByUserIdAndBookId(user.getId(), id)
                 .ifPresent(entity -> repositoryService.getUserOwnsBooksRepository().delete(entity));
+    }
+
+    @GetMapping("/books")
+    public List<UserOwnsBookDTO> getUserBooks(HttpSession session) {
+        UserEntity user = (UserEntity) session.getAttribute("user");
+        if (user == null) {
+            throw new RuntimeException("User not logged in");
+        }
+
+        return repositoryService.getUserOwnsBooksRepository()
+                .findAllByUserIdAndStatus(user.getId(), UserOwnsBookStatus.OWNED.name())
+                .stream()
+                .map(UserOwnsBookDTO::from)
+                .toList();
     }
 }

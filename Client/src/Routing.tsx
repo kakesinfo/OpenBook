@@ -11,6 +11,10 @@ import Register from "./pages/Register.tsx";
 import useSession from "./hooks/UseSession.tsx";
 import App from "./pages/App.tsx";
 import BookPage from "./pages/app/BookPage.tsx";
+import HomePage from "./pages/app/HomePage.tsx";
+import CollectionPage from "./pages/app/CollectionPage.tsx";
+import WishlistPage from "./pages/app/WishlistPage.tsx";
+import PlanningPage from "./pages/app/PlanningPage.tsx";
 
 function ProtectedRoute({ redirectPath, children }: { redirectPath: string, children: React.ReactNode }) {
     const session = useSession();
@@ -43,12 +47,11 @@ export default function Routing() {
                 </ProtectedRoute>
             }>
                 <Route index element={<Navigate replace to="home" />} />
-                <Route path="home" element={<h2>Profil</h2>} />
-                <Route path="collection" element={<h2>Mes livres</h2>} />
-                <Route path="wishlist" element={<h2>Ma wishlist</h2>} />
-                <Route path="planning" element={<h2>Mes sorties</h2>} />
-                <Route path="stats" element={<h2>Mes statistiques</h2>} />
-                <Route path="search" element={<h2>Recherche</h2>} />
+                <Route path="home" element={<HomePage key={location.pathname}/>} />
+                <Route path="collection" element={<CollectionPage key={location.pathname}/>} />
+                <Route path="wishlist" element={<WishlistPage key={location.pathname}/>} />
+                <Route path="planning" element={<PlanningPage key={location.pathname}/>} />
+				
                 <Route path="book/:id" element={ <BookPage key={location.pathname} /> } />
             </Route>
 

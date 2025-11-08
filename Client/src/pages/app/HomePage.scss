@@ -1,0 +1,76 @@
+.newbooks-order-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 16px;
+	min-height: 40px;
+
+	background: rgba(65,207,124,0.1); 
+	color: #41CF7C;
+	border: none;
+	border-radius: 40px;
+
+	font-size: 15px;
+	font-weight: 600;
+	user-select: none;
+
+	&:focus-within {
+		outline: none;
+		box-shadow: none;
+	}
+
+	span {
+		display: inline-block;
+		margin-left: 2px;
+		margin-right: 4px;
+		font-size: 14px;
+		font-weight: 600;
+	}
+
+	select {
+		background: rgba(65,207,124,0.1);
+		color: #41CF7C;
+		padding: 6px 28px 6px 10px;
+		font-size: 14px;
+		font-weight: 600;
+		line-height: 1.1;
+		cursor: pointer;
+		-webkit-appearance: none;
+		appearance: none;
+		outline: none;
+		min-width: 140px;
+		border-radius: 999px;
+		box-shadow: none;
+		border: 1px solid rgba(65,207,124,0.12);
+		position: relative;
+		z-index: 9999;
+		color-scheme: light;
+	}
+
+	select::-ms-expand {
+		display: none;
+	}
+
+	select:hover {
+		background: rgba(65,207,124,0.12);
+	}
+	select:focus, select:focus-visible {
+		background: rgba(65,207,124,0.12);
+		box-shadow: none;
+		border-color: rgba(65,207,124,0.18);
+	}
+
+	select option {
+		color: #06121a;
+		background: #ffffff;
+	}
+
+	&:hover {}
+
+	@media (max-width: 480px) {
+		gap: 6px;
+		padding: 6px 10px;
+		span { font-size: 13px; }
+		select { min-width: 100px; font-size: 13px; }
+	}
+}
