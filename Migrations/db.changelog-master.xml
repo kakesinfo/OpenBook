@@ -800,13 +800,6 @@
         />
     </changeSet>
     <changeSet id="17" author="Axel">
-        <sql>
-            CREATE TYPE "user_owns_book_status" AS ENUM (
-              'WISHLISTED',
-              'OWNED'
-            );
-        </sql>
-
         <createTable tableName="user_owns_book">
             <column name="id" type="integer" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false" />
@@ -820,7 +813,7 @@
                 <constraints nullable="false" />
             </column>
 
-            <column name="status" type="user_owns_book_status">
+            <column name="status" type="varchar(50)">
                 <constraints nullable="false" />
             </column>
 
