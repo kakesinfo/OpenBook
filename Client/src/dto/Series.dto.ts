@@ -9,13 +9,13 @@ export default interface SeriesDTO {
 export function getSeriesStatusLabel(status: string): string | null {
 	switch (status) {
 		case "FINISHED":
-			return "Terminé";
+			return "Terminée";
 		case "ANNOUNCED":
-			return "Annoncé";
+			return "Annoncée";
 		case "ON_GOING":
 			return "En cours";
 		case "CANCELLED":
-			return "Annulé";
+			return "Annulée";
 		default:
 			return null;
 	}
