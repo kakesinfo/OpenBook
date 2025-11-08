@@ -6,10 +6,13 @@ import fr.openbook.api.dtos.BookSummaryDTO;
 import fr.openbook.api.entities.AuthorEntity;
 import fr.openbook.api.entities.AuthorTypeEntity;
 import fr.openbook.api.entities.BookEntity;
+import fr.openbook.api.entities.UserEntity;
+import fr.openbook.api.entities.UserOwnsBookEntity;
 import fr.openbook.api.services.CollectionService;
 import fr.openbook.api.services.EditorService;
 import fr.openbook.api.services.RepositoryService;
 import fr.openbook.api.services.SeriesService;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -42,16 +46,23 @@ public class BookController {
 
     @GetMapping("/{id}")
     public BookDTO getById(
+            HttpSession session,
             @PathVariable Long id,
             @RequestParam(required = false, defaultValue = "true")  boolean withSeries,
             @RequestParam(required = false, defaultValue = "false") boolean withCollection,
             @RequestParam(required = false, defaultValue = "false") boolean withEditor,
-            @RequestParam(required = false, defaultValue = "false") boolean withAuthors
+            @RequestParam(required = false, defaultValue = "false") boolean withAuthors,
+            @RequestParam(required = false, defaultValue = "false") boolean withStatus
     ) {
+        UserEntity userEntity = (UserEntity) session.getAttribute("user");
+        if (userEntity == null) {
+            throw new RuntimeException("User not logged in");
+        }
+
         return repositoryService.getBookRepository()
                 .findById(id)
                 .map(bookEntity -> entityToDTO(
-                    bookEntity, withSeries, withCollection, withEditor, withAuthors
+                    bookEntity, userEntity, withSeries, withCollection, withEditor, withAuthors, withStatus
                 ))
                 .orElse(null);
     }
@@ -86,38 +97,40 @@ public class BookController {
     }
 
     private BookDTO entityToDTO(
-            BookEntity book,
+            BookEntity bookEntity,
+            UserEntity userEntity,
             boolean withSeries,
             boolean withCollection,
             boolean withEditor,
-            boolean withAuthors
+            boolean withAuthors,
+            boolean withStatus
     ) {
         BookDTO dto = new BookDTO();
-        dto.setId(book.getId());
-        dto.setTitle(book.getTitle());
-        dto.setVolume(book.getVolume());
-        dto.setPrice(book.getPrice());
-        dto.setReleaseDate(book.getReleaseDate().toString());
-        dto.setIsbn(book.getIsbn());
-        dto.setWeight(book.getWeight());
-        dto.setHeight(book.getHeight());
-        dto.setLength(book.getLength());
-        dto.setThickness(book.getThickness());
-        dto.setPageCount(book.getPageCount());
-        dto.setDescription(book.getDescription());
-        dto.setCoverUrl(book.getCoverUrl());
+        dto.setId(bookEntity.getId());
+        dto.setTitle(bookEntity.getTitle());
+        dto.setVolume(bookEntity.getVolume());
+        dto.setPrice(bookEntity.getPrice());
+        dto.setReleaseDate(bookEntity.getReleaseDate().toString());
+        dto.setIsbn(bookEntity.getIsbn());
+        dto.setWeight(bookEntity.getWeight());
+        dto.setHeight(bookEntity.getHeight());
+        dto.setLength(bookEntity.getLength());
+        dto.setThickness(bookEntity.getThickness());
+        dto.setPageCount(bookEntity.getPageCount());
+        dto.setDescription(bookEntity.getDescription());
+        dto.setCoverUrl(bookEntity.getCoverUrl());
 
         if (withSeries)
-            dto.setSeries(SeriesService.entityToDTO(book.getSeries()));
+            dto.setSeries(SeriesService.entityToDTO(bookEntity.getSeries()));
 
         if (withCollection)
-            dto.setCollection(CollectionService.entityToDTO(book.getCollection()));
+            dto.setCollection(CollectionService.entityToDTO(bookEntity.getCollection()));
 
         if (withEditor)
-            dto.setEditor(EditorService.entityToDTO(book.getEditor()));
+            dto.setEditor(EditorService.entityToDTO(bookEntity.getEditor()));
 
         if (withAuthors) {
-            List<BookHasAuthorDTO> authorsDTO = book.getBookHasAuthors()
+            List<BookHasAuthorDTO> authorsDTO = bookEntity.getBookHasAuthors()
                     .stream()
                     .map(bookHasAuthor -> {
                         AuthorEntity author = bookHasAuthor.getAuthor();
@@ -132,6 +145,13 @@ public class BookController {
                     .toList();
 
             dto.setAuthors(authorsDTO);
+        }
+
+        if (withStatus) {
+            dto.setStatus(repositoryService.getUserOwnsBooksRepository()
+                    .findByUserIdAndBookId(userEntity.getId(), bookEntity.getId())
+                    .map(UserOwnsBookEntity::getStatus)
+                    .orElse(null));
         }
 
         System.out.println(dto);

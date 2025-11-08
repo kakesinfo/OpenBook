@@ -64,7 +64,7 @@ export default function App(){
 
     return (
         <Wrapper>
-            <WrapperNavigation title="OpenBook">
+            <WrapperNavigation title="Yet Another Library">
                 <WrapperButton to={'/app/home'} icon={faNewspaper}>Nouveautés</WrapperButton>
                 <WrapperButton to={'/app/collection'} icon={faBook}>Collection</WrapperButton>
                 <WrapperButton to={'/app/wishlist'} icon={faHeart}>Souhaits</WrapperButton>

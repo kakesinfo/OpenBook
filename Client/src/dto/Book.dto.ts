@@ -15,5 +15,7 @@ export default interface BookDTO {
 	coverUrl: string;
     releaseDate: string;
 	
+	status: string;
+	
 	series: SeriesDTO;
 }

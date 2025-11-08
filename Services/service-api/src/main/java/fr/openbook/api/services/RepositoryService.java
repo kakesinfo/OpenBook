@@ -10,6 +10,7 @@ import fr.openbook.api.repositories.EditorRepository;
 import fr.openbook.api.repositories.SeriesHasThemeRepository;
 import fr.openbook.api.repositories.SeriesRepository;
 import fr.openbook.api.repositories.ThemeRepository;
+import fr.openbook.api.repositories.UserOwnsBooksRepository;
 import fr.openbook.api.repositories.UserRepository;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -32,4 +33,5 @@ public class RepositoryService
     private final SeriesHasThemeRepository seriesHasThemeRepository;
     private final SeriesRepository seriesRepository;
     private final ThemeRepository themeRepository;
+    private final UserOwnsBooksRepository userOwnsBooksRepository;
 }

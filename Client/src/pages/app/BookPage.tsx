@@ -1,10 +1,59 @@
 import {useParams} from "react-router";
-import {useEffect, useState} from "react";
+import {ReactNode, useEffect, useState} from "react";
 import BookDTO from "../../dto/Book.dto";
 import useSession from "../../hooks/UseSession.tsx";
 import {getSeriesStatusLabel} from "../../dto/Series.dto.ts";
 
 import "./BookPage.scss";
+
+function ChangeBookStatusButton({
+	status,
+	setStatus,
+	newStatus,
+	children,
+	bookId,
+	session
+}: {
+	status: string | null;
+	setStatus: (s: string | null) => void;
+	newStatus: string;
+	children: ReactNode;
+	bookId?: string;
+	session?: any;
+}) {
+	const [processing, setProcessing] = useState(false);
+
+	const handleClick = async () => {
+		if (!newStatus || !bookId || !session || processing) return;
+		setProcessing(true);
+		try {
+			if (status === newStatus) {
+				// retirer le livre
+				const url = `http://localhost:8080/user/removeBook/${encodeURIComponent(bookId)}`;
+				const response = await session.customFetch(url, { method: "DELETE" });
+				if (response.ok) setStatus(null);
+			} else {
+				// ajouter / changer le statut
+				const url = `http://localhost:8080/user/addBook/${encodeURIComponent(bookId)}/${encodeURIComponent(newStatus)}`;
+				const response = await session.customFetch(url, { method: "POST" });
+				if (response.ok) setStatus(newStatus);
+			}
+		} catch (err) {
+			console.error(err);
+		} finally {
+			setProcessing(false);
+		}
+	};
+
+	const isActive = status === newStatus;
+	
+	return (
+		<button onClick={handleClick} disabled={processing}>
+			{isActive ? `-` : `+`}
+			{children}
+		</button>
+	);
+}
 
 export default function BookPage(){
     const { id } = useParams<{ id?: string }>();
@@ -12,6 +61,7 @@ export default function BookPage(){
     const session = useSession();
 
     const [book, setBook] = useState<BookDTO | null>(null);
+	const [bookStatus, setBookStatus] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -21,21 +71,22 @@ export default function BookPage(){
         setLoading(true);
         setError(null);
         setBook(null);
+		setBookStatus(null);
 
-        const fetchUrl = `http://localhost:8080/books/${encodeURIComponent(id)}?withCollection=0&withEditor=0&withAuthors=1`;
+        const fetchUrl = `http://localhost:8080/books/${encodeURIComponent(id)}?withCollection=0&withEditor=0&withAuthors=1&withStatus=1`;
         session.customFetch(fetchUrl, {
             method: "GET",
         }).then(async (response) => {
             if (response.ok) {
                 const data = await response.json();
                 setBook(data);
+				setBookStatus(data.status)
             } else {
                 const errorText = await response.text();
                 setError(`Erreur ${response.status}: ${errorText}`);
             }
             setLoading(false);
         });
-
     }, []);
 
     return <div className="book-wrapper">
@@ -65,9 +116,25 @@ export default function BookPage(){
 				</div>
 				
 				<nav className="book-actions">
-					<button>Liste de souhait</button>
-					<button>Ajouter à la collection</button>
-					<button>Marquer comme lu</button>
+					<ChangeBookStatusButton
+						status={bookStatus}
+						setStatus={setBookStatus}
+						newStatus="WISHLISTED"
+						bookId={id}
+						session={session}
+					>
+						Liste de souhait
+					</ChangeBookStatusButton>
+
+					<ChangeBookStatusButton
+						status={bookStatus}
+						setStatus={setBookStatus}
+						newStatus="OWNED"
+						bookId={id}
+						session={session}
+					>
+						Ajouter à la collection
+					</ChangeBookStatusButton>
 				</nav>
 				
 				<div className="book-details">

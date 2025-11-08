@@ -800,6 +800,13 @@
         />
     </changeSet>
     <changeSet id="17" author="Axel">
+        <sql>
+            CREATE TYPE "user_owns_book_status" AS ENUM (
+              'WISHLISTED',
+              'OWNED'
+            );
+        </sql>
+
         <createTable tableName="user_owns_book">
             <column name="id" type="integer" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false" />
@@ -810,6 +817,10 @@
             </column>
 
             <column name="book_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+
+            <column name="status" type="user_owns_book_status">
                 <constraints nullable="false" />
             </column>
 
@@ -856,6 +867,14 @@
             columnNames="user_id, book_id"
         />
     </changeSet>
+    <changeSet id="18" author="Axel">
+        <addColumn tableName="book">
+            <column name="cover_url" type="varchar">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+    </changeSet>
+
     <changeSet  id="dummy-data-1" author="Axel">
         <sql>
             INSERT INTO author (firstname, lastname, created_at, updated_at) VALUES
@@ -868,15 +887,15 @@
                 ('Illustrator', NOW(), NOW());
 
             INSERT INTO series (name, status, category_id, created_at, updated_at) VALUES
-                ('Harry Potter', 'FINISHED', 4, NOW(), NOW()),
+                ('Harry Potter', 'FINISHED', 1, NOW(), NOW()),
                 ('1984', 'FINISHED', 1, NOW(), NOW()),
-                ('The Lord of the Rings', 'FINISHED', 4, NOW(), NOW());
+                ('The Lord of the Rings', 'FINISHED', 1, NOW(), NOW());
 
-            INSERT INTO book (title, isbn, volume, page_count, description, series_id, release_date, created_at, updated_at) VALUES
-                ('Harry Potter and the Philosophers Stone', '9780747532699', 1, 223, 'The first book in the Harry Potter series.', 1, '1997-06-26 00:00:00', NOW(), NOW()),
-                ('Harry Potter and the Chamber of Secrets', '9780747538493', 2, 251, 'The second book in the Harry Potter series.', 1, '1998-07-02 00:00:00', NOW(), NOW()),
-                ('1984', '9780451524935', null, 328, 'A dystopian novel set in a totalitarian society.', 2, '1949-06-08 00:00:00', NOW(), NOW()),
-                ('The Lord of the Rings: The Fellowship of the Ring', '9780261102354', 1, 423, 'The first part of The Lord of the Rings trilogy.', 3, '1954-07-29 00:00:00', NOW(), NOW());
+            INSERT INTO book (title, isbn, volume, page_count, description, series_id, release_date, created_at, updated_at, cover_url) VALUES
+                ('Harry Potter and the Philosophers Stone', '9780747532699', 1, 223, 'The first book in the Harry Potter series.', 1, '1997-06-26 00:00:00', NOW(), NOW(), 'https://static.fnac-static.com/multimedia/PE/Images/FR/NR/32/d5/ef/15717682/1507-1/tsp20251105085800/Harry-Potter-a-l-ecole-des-sorciers.jpg'),
+                ('Harry Potter and the Chamber of Secrets', '9780747538493', 2, 251, 'The second book in the Harry Potter series.', 1, '1998-07-02 00:00:00', NOW(), NOW(), 'https://static.fnac-static.com/multimedia/PE/Images/FR/NR/34/d5/ef/15717684/1507-1/tsp20251016080356/Harry-Potter-et-la-Chambre-des-Secrets.jpg'),
+                ('1984', '9780451524935', null, 328, 'A dystopian novel set in a totalitarian society.', 2, '1949-06-08 00:00:00', NOW(), NOW(), 'https://static.fnac-static.com/multimedia/PE/Images/FR/NR/10/35/01/79120/1507-1/tsp20250103092736/1984.jpg'),
+                ('The Lord of the Rings: The Fellowship of the Ring', '9780261102354', 1, 423, 'The first part of The Lord of the Rings trilogy.', 3, '1954-07-29 00:00:00', NOW(), NOW(), 'https://static.fnac-static.com/multimedia/PE/Images/FR/NR/ec/3c/1e/18758892/1507-1/tsp20251107083053/Le-Seigneur-des-Anneaux-T1-La-Fraternite-de-l-Anneau-relie.jpg');
 
             INSERT INTO book_has_author (book_id, author_id, author_type_id, created_at, updated_at) VALUES
                 (1, 1, 1, NOW(), NOW()),
@@ -884,12 +903,5 @@
                 (3, 2, 1, NOW(), NOW()),
                 (4, 3, 1, NOW(), NOW());
         </sql>
-    </changeSet>
-    <changeSet id="18" author="Axel">
-        <addColumn tableName="book">
-            <column name="cover_url" type="varchar">
-                <constraints nullable="true" />
-            </column>
-        </addColumn>
     </changeSet>
 </databaseChangeLog>

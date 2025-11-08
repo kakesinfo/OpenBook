@@ -3,7 +3,6 @@ export default interface SeriesDTO {
 	category: string;
 	status: string;
 	totalVolumes: number;
-	
 }
 
 export function getSeriesStatusLabel(status: string): string | null {
