@@ -17,7 +17,15 @@ FRENCH_MONTHS = {
     "mars": "March", "avril": "April", "mai": "May", "juin": "June",
     "juillet": "July", "août": "August", "aout": "August",
     "septembre": "September", "octobre": "October",
-    "novembre": "November", "décembre": "December", "decembre": "December"
+    "novembre": "November", "décembre": "December", "decembre": "December",
+    "janv.": "January", "janv": "January",
+    "févr.": "February", "févr": "February", "fevr.": "February", "fevr": "February",
+    "avr.": "April", "avr": "April",
+    "juil.": "July", "juil": "July",
+    "sept.": "September", "sept": "September",
+    "oct.": "October", "oct": "October",
+    "nov.": "November", "nov": "November",
+    "déc.": "December", "déc": "December", "dec.": "December", "dec": "December",
 }
 
 def parse_french_date(text: str) -> Optional[datetime]:

@@ -60,15 +60,15 @@ export default function PlanningPage() {
     }, [session]);
 
     // Reference dates for time windows
-    const { startOfToday, endOfToday, twoMonthsAgo, sixMonthsAhead } = useMemo(() => {
+    const { endOfToday, startOfTomorrow, twoMonthsAgo, sixMonthsAhead } = useMemo(() => {
         const now = new Date();
-        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
         const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
         const twoPast = new Date(now.getFullYear(), now.getMonth() - 2, now.getDate(), 0, 0, 0, 0);
         const sixFuture = new Date(now.getFullYear(), now.getMonth() + 6, now.getDate(), 23, 59, 59, 999);
         return {
-            startOfToday: start,
             endOfToday: end,
+            startOfTomorrow: tomorrow,
             twoMonthsAgo: twoPast,
             sixMonthsAhead: sixFuture
         };
@@ -85,11 +85,11 @@ export default function PlanningPage() {
                 // Parus récemment: 2 derniers mois jusqu'à aujourd'hui inclus
                 return bDate >= twoMonthsAgo && bDate <= endOfToday;
             } else {
-                // À venir: à partir d'aujourd'hui jusqu'aux 6 prochains mois
-                return bDate >= startOfToday && bDate <= sixMonthsAhead;
+                // À venir: sorties futures à partir de demain jusqu'aux 6 prochains mois
+                return bDate >= startOfTomorrow && bDate <= sixMonthsAhead;
             }
         });
-    }, [books, timeFilter, twoMonthsAgo, endOfToday, startOfToday, sixMonthsAhead]);
+    }, [books, timeFilter, twoMonthsAgo, endOfToday, startOfTomorrow, sixMonthsAhead]);
 
     // Matching helper for categories
     const matchCategory = (book: BookSummaryDTO, filterId: string): boolean => {
@@ -154,9 +154,9 @@ export default function PlanningPage() {
         return books.filter((b) => {
             if (!b.releaseDate) return false;
             const d = new Date(b.releaseDate);
-            return !isNaN(d.getTime()) && d >= startOfToday && d <= sixMonthsAhead;
+            return !isNaN(d.getTime()) && d >= startOfTomorrow && d <= sixMonthsAhead;
         }).length;
-    }, [books, startOfToday, sixMonthsAhead]);
+    }, [books, startOfTomorrow, sixMonthsAhead]);
 
     // Grouping by Month: "Janvier 2026", "Février 2026", etc.
     const monthGroups = useMemo(() => {

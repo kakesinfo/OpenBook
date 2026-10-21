@@ -176,7 +176,7 @@ class Database:
                             clean_desc,
                             book.price, book.price,
                             book.page_count, book.page_count,
-                            rel_date,
+                            book.release_date,
                             editor_id,
                             book.book_type,
                             book_id

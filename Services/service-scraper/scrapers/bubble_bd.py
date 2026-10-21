@@ -9,6 +9,7 @@ from dateutil import parser as date_parser
 
 from config import settings
 from scrapers.base import BaseScraper, ScrapedBook, ScrapedAuthor, clean_text
+from scrapers.urban_comics import parse_french_date
 
 logger = logging.getLogger(__name__)
 
@@ -140,14 +141,26 @@ class BubbleBDScraper(BaseScraper):
 
         # 7. Release date
         release_date = None
-        m_date = re.search(r'["\']publicationDate["\']\s*:\s*["\']([^"\']+)["\']', page_content)
+        m_date = re.search(r'["\']publicationDate["\']\s*[:,]\s*["\']([^"\']+)["\']', page_content)
         if m_date:
             try:
                 release_date = date_parser.isoparse(m_date.group(1))
             except Exception:
                 pass
         if not release_date:
-            release_date = datetime.now()
+            m_html_date = re.search(r'Date de parution</div><div>([^<]+)</div>', page_content, re.I)
+            if m_html_date:
+                try:
+                    release_date = parse_french_date(m_html_date.group(1)) or date_parser.parse(m_html_date.group(1), fuzzy=True)
+                except Exception:
+                    pass
+        if not release_date:
+            m_date_any = re.search(r'(\d{1,2}\s+(?:janv|f[ée]vr|mars|avr|mai|juin|juil|ao[ûu]t|sept|oct|nov|d[ée]c)[a-z]*\.?\s+\d{4})', page_content, re.I)
+            if m_date_any:
+                try:
+                    release_date = parse_french_date(m_date_any.group(1)) or date_parser.parse(m_date_any.group(1), fuzzy=True)
+                except Exception:
+                    pass
 
         # 8. Series & Volume
         series_name = title
