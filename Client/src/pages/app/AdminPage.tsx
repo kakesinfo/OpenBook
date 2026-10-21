@@ -143,10 +143,7 @@ export default function AdminPage() {
             <WrapperHeader>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
                     <div>
-                        <h2 style={{ margin: 0, fontSize: "1.75rem", fontWeight: 800 }}>Administration</h2>
-                        <p style={{ margin: "4px 0 0", color: "var(--text-muted, #9ca3af)", fontSize: "0.9rem" }}>
-                            Gestion des collecteurs de données, scrapers de parutions et maintenance de la base
-                        </p>
+                        <h2>Administration</h2>
                     </div>
 
                     <div style={{

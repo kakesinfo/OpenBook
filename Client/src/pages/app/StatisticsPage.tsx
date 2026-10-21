@@ -58,10 +58,7 @@ export default function StatisticsPage() {
         <div className="stats-page">
             <WrapperHeader>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <h2 style={{ margin: 0, fontSize: "1.75rem", fontWeight: 800 }}>Statistiques Personnelles</h2>
-                    <p style={{ margin: 0, color: "var(--text-muted, #9ca3af)", fontSize: "0.9rem" }}>
-                        Analyse insolite et métriques détaillées de votre bibliothèque
-                    </p>
+                    <h2>Statistiques</h2>
                 </div>
             </WrapperHeader>
 

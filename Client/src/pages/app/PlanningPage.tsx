@@ -236,10 +236,7 @@ export default function PlanningPage() {
         <div className="planning-page">
             <WrapperHeader>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <h2 style={{ margin: 0, fontSize: "1.75rem", fontWeight: 800 }}>Planning des Sorties</h2>
-                    <p style={{ margin: 0, color: "var(--text-muted, #9ca3af)", fontSize: "0.9rem" }}>
-                        Calendrier et suivi des parutions par mois pour les nouveautés et sorties futures
-                    </p>
+                    <h2>Planning des Sorties</h2>
                 </div>
             </WrapperHeader>
 
