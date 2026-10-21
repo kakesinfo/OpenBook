@@ -6,7 +6,6 @@ import '@fontsource/roboto/700.css';
 import {Routes, Route, Navigate, useLocation} from "react-router";
 
 import Login from "./pages/Login.tsx";
-
 import Register from "./pages/Register.tsx";
 import useSession from "./hooks/UseSession.tsx";
 import App from "./pages/App.tsx";
@@ -16,19 +15,29 @@ import CollectionPage from "./pages/app/CollectionPage.tsx";
 import WishlistPage from "./pages/app/WishlistPage.tsx";
 import PlanningPage from "./pages/app/PlanningPage.tsx";
 
-function ProtectedRoute({ redirectPath, children }: { redirectPath: string, children: React.ReactNode }) {
+function ProtectedRoute({ redirectPath = "/login", children }: { redirectPath?: string, children: React.ReactNode }) {
     const session = useSession();
 
     if (!session.token) {
         return <Navigate replace to={redirectPath} />;
     }
 
-    return children;
+    return <>{children}</>;
+}
+
+function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
+    const session = useSession();
+
+    if (session.token) {
+        return <Navigate replace to="/app" />;
+    }
+
+    return <>{children}</>;
 }
 
 export default function Routing() {
     const session = useSession();
-	const location = useLocation();
+    const location = useLocation();
 
     return (
         <Routes>
@@ -38,11 +47,19 @@ export default function Routing() {
                     : <Navigate replace to="/login" />
             } />
 
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/login" element={
+                <PublicOnlyRoute>
+                    <Login />
+                </PublicOnlyRoute>
+            } />
+            <Route path="/register" element={
+                <PublicOnlyRoute>
+                    <Register />
+                </PublicOnlyRoute>
+            } />
 
             <Route path="/app" element={
-                <ProtectedRoute redirectPath="/">
+                <ProtectedRoute redirectPath="/login">
                     <App />
                 </ProtectedRoute>
             }>
@@ -51,10 +68,10 @@ export default function Routing() {
                 <Route path="collection" element={<CollectionPage key={location.pathname}/>} />
                 <Route path="wishlist" element={<WishlistPage key={location.pathname}/>} />
                 <Route path="planning" element={<PlanningPage key={location.pathname}/>} />
-				
                 <Route path="book/:id" element={ <BookPage key={location.pathname} /> } />
             </Route>
 
+            <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
-    )
+    );
 }

@@ -1,49 +1,52 @@
-import { useState } from "react";
-import { Link, useNavigate } from 'react-router';
+import {useState} from "react";
+import {Link, useNavigate} from 'react-router';
 import FormGroup from "../components/Form/FormGroup.tsx";
 import Card from "../components/Card/Card.tsx";
-import { enqueueSnackbar } from "notistack";
+import {enqueueSnackbar} from "notistack";
+import useSession from "../hooks/UseSession.tsx";
 
 export default function Register() {
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const [username, setUsername] = useState<string>("");
+    const [loading, setLoading] = useState<boolean>(false);
 
+    const session = useSession();
     const navigate = useNavigate();
 
-    const handleRegister = async () => {
-        if (!email || !password || !username) {
-            return enqueueSnackbar("Email, password, and username are required", { variant: "error" });
+    const handleRegister = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (loading) return;
+
+        const trimmedEmail = email.trim();
+        const trimmedUsername = username.trim();
+
+        if (!trimmedEmail || !password || !trimmedUsername) {
+            return enqueueSnackbar("Email, password, and username are required", {variant: "error"});
         }
 
+        setLoading(true);
         try {
-            const response = await fetch("http://localhost:8080/auth/register", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                credentials: "include",
-                body: JSON.stringify({ email, password, username }),
-            });
+            const result = await session.register(trimmedUsername, trimmedEmail, password);
 
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({ message: response.statusText }));
-                enqueueSnackbar(data?.message || "Registration failed", { variant: "error" });
-                return;
+            if (!result.success) {
+                return enqueueSnackbar(result.error || "Registration failed", {variant: "error"});
             }
 
-            enqueueSnackbar("Inscription réussie", { variant: "success" });
+            enqueueSnackbar("Inscription réussie", {variant: "success"});
             navigate("/login");
         } catch (err) {
-            enqueueSnackbar("Requête bloquée ou erreur réseau. Désactivez les extensions (ex. adblock) ou utilisez un proxy de dev.", { variant: "error" });
+            enqueueSnackbar("Requête bloquée ou erreur réseau. Vérifiez que le serveur est accessible.", {variant: "error"});
             console.error(err);
+        } finally {
+            setLoading(false);
         }
-    }
+    };
 
     return (
-        <div style={{ position: "absolute", width: '500px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
+        <div style={{position: "absolute", width: '500px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'}}>
             <Card>
-                <form onSubmit={(e) => { e.preventDefault(); handleRegister(); }}>
+                <form onSubmit={handleRegister}>
                     <FormGroup>
                         <label htmlFor="username">Pseudonyme</label>
                         <input
@@ -87,7 +90,9 @@ export default function Register() {
                     </FormGroup>
 
                     <FormGroup>
-                        <button type="submit">S'inscire</button>
+                        <button type="submit" disabled={loading}>
+                            {loading ? "Inscription..." : "S'inscrire"}
+                        </button>
                     </FormGroup>
 
                     <FormGroup>

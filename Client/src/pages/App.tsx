@@ -53,13 +53,15 @@ export default function App(){
         if (!trimmedValue || trimmedValue.length === 0)
             return setBooks([]);
 
-        session.customFetch(`http://localhost:8080/books/search/${value}`, {
+        session.customFetch(`/books/search/${encodeURIComponent(trimmedValue)}`, {
             method: "GET",
         }).then(data => {
             if (data.ok) {
                 data.json().then(setBooks);
             }
-        })
+        }).catch(err => {
+            console.error("Search error:", err);
+        });
     });
 
     return (

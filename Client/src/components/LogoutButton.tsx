@@ -1,4 +1,3 @@
-
 import {useNavigate} from "react-router";
 import useSession from "../hooks/UseSession.tsx";
 import {enqueueSnackbar} from "notistack";
@@ -14,18 +13,20 @@ export default function LogoutButton() {
     const handleLogout = async () => {
         setLoading(true);
 
-        const status = await auth.logout();
-
-        if (!status) {
+        try {
+            await auth.logout();
+            navigate('/login');
+        } catch (error) {
+            console.error(error);
+            enqueueSnackbar("Une erreur est survenue lors de la déconnexion", {variant: "error"});
+        } finally {
             setLoading(false);
-            return enqueueSnackbar("Une erreur est survenue", {variant: "error"});
         }
-
-        setLoading(false);
-        navigate('/');
-    }
+    };
 
     return (
-        <Button variant="text" sx={{color: "#fff"}} disabled={loading} onClick={handleLogout}>Logout</Button>
+        <Button variant="text" sx={{color: "#fff"}} disabled={loading} onClick={handleLogout}>
+            {loading ? "Déconnexion..." : "Logout"}
+        </Button>
     );
 }

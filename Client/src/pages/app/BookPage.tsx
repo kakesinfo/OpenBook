@@ -1,7 +1,7 @@
 import {useParams} from "react-router";
 import {ReactNode, useEffect, useState} from "react";
 import BookDTO from "../../dto/Book.dto";
-import useSession from "../../hooks/UseSession.tsx";
+import useSession, { SessionContextType } from "../../hooks/UseSession.tsx";
 import {getSeriesStatusLabel} from "../../dto/Series.dto.ts";
 
 import "./BookPage.scss";
@@ -20,7 +20,7 @@ function ChangeBookStatusButton({
 	newStatus: string;
 	children: ReactNode;
 	bookId?: string;
-	session?: any;
+	session?: SessionContextType;
 }) {
 	const [processing, setProcessing] = useState(false);
 
@@ -30,12 +30,12 @@ function ChangeBookStatusButton({
 		try {
 			if (status === newStatus) {
 				// retirer le livre
-				const url = `http://localhost:8080/user/removeBook/${encodeURIComponent(bookId)}`;
+				const url = `/user/removeBook/${encodeURIComponent(bookId)}`;
 				const response = await session.customFetch(url, { method: "DELETE" });
 				if (response.ok) setStatus(null);
 			} else {
 				// ajouter / changer le statut
-				const url = `http://localhost:8080/user/addBook/${encodeURIComponent(bookId)}/${encodeURIComponent(newStatus)}`;
+				const url = `/user/addBook/${encodeURIComponent(bookId)}/${encodeURIComponent(newStatus)}`;
 				const response = await session.customFetch(url, { method: "POST" });
 				if (response.ok) setStatus(newStatus);
 			}
@@ -72,7 +72,7 @@ export default function BookPage(){
         setBook(null);
 		setBookStatus(null);
 
-        const fetchUrl = `http://localhost:8080/books/${encodeURIComponent(id)}?withCollection=0&withEditor=0&withAuthors=1&withStatus=1`;
+        const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=0&withEditor=0&withAuthors=1&withStatus=1`;
         session.customFetch(fetchUrl, {
             method: "GET",
         }).then(async (response) => {
@@ -84,9 +84,12 @@ export default function BookPage(){
                 const errorText = await response.text();
                 setError(`Erreur ${response.status}: ${errorText}`);
             }
+        }).catch((err) => {
+            setError(`Erreur de connexion: ${err.message}`);
+        }).finally(() => {
             setLoading(false);
         });
-    }, []);
+    }, [id, session]);
 
     return <div className="book-wrapper">
 		<WrapperHeader />

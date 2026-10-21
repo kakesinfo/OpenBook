@@ -13,7 +13,7 @@ export default function HomePage(){
 	const [order, setOrder] = useState<"oldest" | "newest">("newest");
 	
 	useEffect(() => {
-		session.customFetch(`http://localhost:8080/books/${order}`, {
+		session.customFetch(`/books/${order}`, {
 			method: "GET"
 		}).then(async (response) => {
 			if (response.ok) {
@@ -21,9 +21,9 @@ export default function HomePage(){
 				setBooks(data);
 			}
 		}).catch((err) => {
-			console.error(err);
+			console.error("HomePage fetch error:", err);
 		});
-	}, [order]);
+	}, [order, session]);
 	
 	const handleOrderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
 		setOrder(e.target.value as "oldest" | "newest");
