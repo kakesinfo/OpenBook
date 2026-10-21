@@ -8,7 +8,8 @@ import {
     faBook,
     faHeart,
     faCalendarDays,
-    faGear
+    faGear,
+    faChartPie
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useLocation } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -163,6 +164,13 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
                 >
                     <FontAwesomeIcon icon={faCalendarDays} />
                     <span>Planning</span>
+                </Link>
+                <Link
+                    to="/app/statistics"
+                    className={`wrapper-bottom-nav__item ${location.pathname.includes('/statistics') ? 'active' : ''}`}
+                >
+                    <FontAwesomeIcon icon={faChartPie} />
+                    <span>Stats</span>
                 </Link>
             </nav>
         </>

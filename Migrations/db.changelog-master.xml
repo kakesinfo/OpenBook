@@ -1070,4 +1070,16 @@
             ON CONFLICT DO NOTHING;
         </sql>
     </changeSet>
+    <changeSet id="24" author="Antigravity">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="book" columnName="origin_country" />
+            </not>
+        </preConditions>
+        <addColumn tableName="book">
+            <column name="origin_country" type="varchar(100)">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

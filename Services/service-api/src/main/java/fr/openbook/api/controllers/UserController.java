@@ -4,6 +4,11 @@ import fr.openbook.api.dtos.BookDTO;
 import fr.openbook.api.dtos.BookSummaryDTO;
 import fr.openbook.api.dtos.UserOwnsBookDTO;
 import fr.openbook.api.dtos.UserProfileDTO;
+import fr.openbook.api.dtos.UserStatisticsDTO;
+import fr.openbook.api.dtos.stats.AuthorHighlightDTO;
+import fr.openbook.api.dtos.stats.BookHighlightDTO;
+import fr.openbook.api.dtos.stats.CategoryStatDTO;
+import fr.openbook.api.dtos.stats.CountryStatDTO;
 import fr.openbook.api.dtos.user.UpdateEmailRequestDTO;
 import fr.openbook.api.dtos.user.UpdatePasswordRequestDTO;
 import fr.openbook.api.dtos.user.UpdateProfileRequestDTO;
@@ -30,7 +35,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -75,6 +82,10 @@ public class UserController {
             dto.setReleaseDate(book.getReleaseDate().toString());
         }
         dto.setCoverUrl(book.getCoverUrl());
+        if (book.getSeries() != null && book.getSeries().getCategory() != null) {
+            dto.setCategory(book.getSeries().getCategory().getName());
+        }
+        dto.setType(book.getType());
         return dto;
     }
 
@@ -231,12 +242,11 @@ public class UserController {
 
         String newToken = jwtService.generateToken(claims, user);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("message", "Adresse email mise à jour avec succès.");
-        response.put("email", newEmail);
-        response.put("token", newToken);
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of(
+                "message", "Adresse email modifiée avec succès.",
+                "email", newEmail,
+                "token", newToken
+        ));
     }
 
     @PutMapping("/password")
@@ -244,7 +254,7 @@ public class UserController {
         UserEntity user = getAuthenticatedUser(session);
 
         if (request.getCurrentPassword() == null || request.getCurrentPassword().isEmpty()) {
-            return ResponseEntity.badRequest().body("Le mot de passe actuel est requis pour confirmer le changement.");
+            return ResponseEntity.badRequest().body("Le mot de passe actuel est requis.");
         }
 
         if (!bCryptPasswordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
@@ -266,7 +276,7 @@ public class UserController {
         UserEntity user = getAuthenticatedUser(session);
 
         if (request.getPassword() == null || request.getPassword().isEmpty()) {
-            return ResponseEntity.badRequest().body("Le mot de passe actuel est requis pour confirmer la suppression.");
+            return ResponseEntity.badRequest().body("Le mot de passe est obligatoire pour confirmer la suppression.");
         }
 
         if (!bCryptPasswordEncoder.matches(request.getPassword(), user.getPassword())) {
@@ -305,8 +315,6 @@ public class UserController {
             throw new RuntimeException("Invalid status: " + status);
         }
 
-        System.out.println("Adding book with ID " + id + " and status " + status + " for user " + user.getRealUsername());
-
         final BookEntity book = repositoryService.getBookRepository()
                 .findById(id)
                 .orElseThrow(() -> new RuntimeException("Book not found"));
@@ -321,12 +329,9 @@ public class UserController {
                 });
 
         entity.setStatus(status.toUpperCase());
-        System.out.println("Status to save: " + entity.getStatus());
 
         try {
-            UserOwnsBookDTO userOwnsBookDTO = UserOwnsBookDTO.from(repositoryService.getUserOwnsBooksRepository().saveAndFlush(entity));
-            System.out.println("New entity: " + userOwnsBookDTO);
-            return userOwnsBookDTO;
+            return UserOwnsBookDTO.from(repositoryService.getUserOwnsBooksRepository().saveAndFlush(entity));
         } catch (RuntimeException e) {
             System.err.println("Error saving UserOwnsBookEntity: " + e.getMessage());
             throw e;
@@ -370,5 +375,314 @@ public class UserController {
                 .stream()
                 .map(entity -> entityToSummaryDTO(entity.getBook()))
                 .toList();
+    }
+
+    @GetMapping("/statistics")
+    public UserStatisticsDTO getStatistics(HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+
+        List<UserOwnsBookEntity> ownedEntities = repositoryService.getUserOwnsBooksRepository()
+                .findAllByUserIdAndStatus(user.getId(), UserOwnsBookStatus.OWNED.name());
+
+        List<UserOwnsBookEntity> wishlistEntities = repositoryService.getUserOwnsBooksRepository()
+                .findAllByUserIdAndStatus(user.getId(), UserOwnsBookStatus.WISHLISTED.name());
+
+        UserStatisticsDTO stats = new UserStatisticsDTO();
+        stats.setTotalOwnedBooks(ownedEntities.size());
+        stats.setTotalWishlistBooks(wishlistEntities.size());
+
+        if (ownedEntities.isEmpty()) {
+            stats.setTotalPages(0);
+            stats.setTotalHeightMeters(0.0);
+            stats.setTotalWeightKg(0.0);
+            stats.setTotalEstimatedValue(0);
+            stats.setHeightComparison("Votre pile est encore vide. Ajoutez vos premiers livres à votre collection !");
+            stats.setWeightComparison("Votre bibliothèque est légère comme une plume !");
+            stats.setCategoryBreakdown(new ArrayList<>());
+            stats.setTotalCountriesCount(0);
+            stats.setCountries(new ArrayList<>());
+            return stats;
+        }
+
+        int totalPages = 0;
+        int totalThicknessMm = 0;
+        int totalWeightG = 0;
+        int totalValue = 0;
+
+        Map<String, Integer> categoryCounts = new LinkedHashMap<>();
+        Map<String, Integer> countryCounts = new HashMap<>();
+        Map<String, Integer> authorCounts = new HashMap<>();
+        Map<String, Integer> publisherCounts = new HashMap<>();
+
+        BookEntity oldestBookEntity = null;
+        BookEntity newestBookEntity = null;
+
+        for (UserOwnsBookEntity uob : ownedEntities) {
+            BookEntity book = uob.getBook();
+            if (book == null) continue;
+
+            String category = "Autre";
+            if (book.getSeries() != null && book.getSeries().getCategory() != null) {
+                category = book.getSeries().getCategory().getName();
+            } else if (book.getType() != null) {
+                category = book.getType();
+            }
+            categoryCounts.put(category, categoryCounts.getOrDefault(category, 0) + 1);
+
+            if (book.getEditor() != null && book.getEditor().getName() != null) {
+                String edName = book.getEditor().getName();
+                publisherCounts.put(edName, publisherCounts.getOrDefault(edName, 0) + 1);
+            }
+
+            int pages = (book.getPageCount() != null && book.getPageCount() > 0)
+                    ? book.getPageCount()
+                    : getDefaultPages(category);
+            totalPages += pages;
+
+            int thickness = (book.getThickness() != null && book.getThickness() > 0)
+                    ? book.getThickness()
+                    : getDefaultThicknessMm(category);
+            totalThicknessMm += thickness;
+
+            int weight = (book.getWeight() != null && book.getWeight() > 0)
+                    ? book.getWeight()
+                    : getDefaultWeightG(category);
+            totalWeightG += weight;
+
+            if (book.getPrice() != null && book.getPrice() > 0) {
+                totalValue += book.getPrice();
+            }
+
+            if (book.getReleaseDate() != null) {
+                if (oldestBookEntity == null || book.getReleaseDate().isBefore(oldestBookEntity.getReleaseDate())) {
+                    oldestBookEntity = book;
+                }
+                if (newestBookEntity == null || book.getReleaseDate().isAfter(newestBookEntity.getReleaseDate())) {
+                    newestBookEntity = book;
+                }
+            }
+
+            if (book.getBookHasAuthors() != null) {
+                for (var bha : book.getBookHasAuthors()) {
+                    if (bha.getAuthor() != null) {
+                        String authorName = (bha.getAuthor().getFirstname() + " " + bha.getAuthor().getLastname()).trim();
+                        authorCounts.put(authorName, authorCounts.getOrDefault(authorName, 0) + 1);
+                    }
+                }
+            }
+
+            String cCode = book.getOriginCountry();
+            if (cCode == null || cCode.isBlank()) {
+                cCode = inferCountry(book, category);
+            }
+            countryCounts.put(cCode.toUpperCase(), countryCounts.getOrDefault(cCode.toUpperCase(), 0) + 1);
+        }
+
+        stats.setTotalPages(totalPages);
+        double heightM = Math.round((totalThicknessMm / 1000.0) * 100.0) / 100.0;
+        double weightKg = Math.round((totalWeightG / 1000.0) * 10.0) / 10.0;
+        stats.setTotalHeightMeters(heightM);
+        stats.setTotalWeightKg(weightKg);
+        stats.setTotalEstimatedValue(totalValue);
+
+        stats.setHeightComparison(computeHeightComparison(heightM));
+        stats.setWeightComparison(computeWeightComparison(weightKg));
+
+        int totalOwned = ownedEntities.size();
+        List<CategoryStatDTO> categoryList = new ArrayList<>();
+        Map<String, String> categoryColors = Map.of(
+            "Comics", "#3b82f6",
+            "Bande dessinée", "#10b981",
+            "Manga", "#f59e0b",
+            "Roman", "#8b5cf6",
+            "Roman Graphique", "#ec4899",
+            "Beau-livre", "#06b6d4"
+        );
+        for (var entry : categoryCounts.entrySet()) {
+            double pct = Math.round((entry.getValue() * 100.0 / totalOwned) * 10.0) / 10.0;
+            String color = categoryColors.getOrDefault(entry.getKey(), "#64748b");
+            categoryList.add(new CategoryStatDTO(entry.getKey(), entry.getValue(), pct, color));
+        }
+        categoryList.sort((a, b) -> Integer.compare(b.getCount(), a.getCount()));
+        stats.setCategoryBreakdown(categoryList);
+
+        List<CountryStatDTO> countryList = new ArrayList<>();
+        for (var entry : countryCounts.entrySet()) {
+            String code = entry.getKey();
+            int count = entry.getValue();
+            double pct = Math.round((count * 100.0 / totalOwned) * 10.0) / 10.0;
+            countryList.add(new CountryStatDTO(code, getCountryName(code), getCountryFlag(code), count, pct));
+        }
+        countryList.sort((a, b) -> Integer.compare(b.getCount(), a.getCount()));
+        stats.setCountries(countryList);
+        stats.setTotalCountriesCount(countryList.size());
+
+        if (!authorCounts.isEmpty()) {
+            var topEntry = authorCounts.entrySet().stream().max(Map.Entry.comparingByValue()).orElse(null);
+            if (topEntry != null) {
+                stats.setTopAuthor(new AuthorHighlightDTO(topEntry.getKey(), topEntry.getValue(), "Auteur"));
+            }
+        }
+
+        if (!publisherCounts.isEmpty()) {
+            var topPub = publisherCounts.entrySet().stream().max(Map.Entry.comparingByValue()).orElse(null);
+            if (topPub != null) {
+                stats.setTopPublisher(topPub.getKey() + " (" + topPub.getValue() + " livres)");
+            }
+        }
+
+        if (oldestBookEntity != null) {
+            String cat = (oldestBookEntity.getSeries() != null && oldestBookEntity.getSeries().getCategory() != null)
+                    ? oldestBookEntity.getSeries().getCategory().getName() : "";
+            stats.setOldestBook(new BookHighlightDTO(
+                oldestBookEntity.getId(),
+                oldestBookEntity.getTitle(),
+                oldestBookEntity.getReleaseDate().toString(),
+                oldestBookEntity.getCoverUrl(),
+                cat
+            ));
+        }
+
+        if (newestBookEntity != null) {
+            String cat = (newestBookEntity.getSeries() != null && newestBookEntity.getSeries().getCategory() != null)
+                    ? newestBookEntity.getSeries().getCategory().getName() : "";
+            stats.setNewestBook(new BookHighlightDTO(
+                newestBookEntity.getId(),
+                newestBookEntity.getTitle(),
+                newestBookEntity.getReleaseDate().toString(),
+                newestBookEntity.getCoverUrl(),
+                cat
+            ));
+        }
+
+        return stats;
+    }
+
+    private int getDefaultPages(String category) {
+        String lower = category.toLowerCase();
+        if (lower.contains("manga")) return 192;
+        if (lower.contains("comics")) return 160;
+        if (lower.contains("bande") || lower.contains("bd")) return 48;
+        if (lower.contains("roman") && !lower.contains("graphique")) return 320;
+        if (lower.contains("graphique")) return 200;
+        return 180;
+    }
+
+    private int getDefaultThicknessMm(String category) {
+        String lower = category.toLowerCase();
+        if (lower.contains("manga")) return 15;
+        if (lower.contains("comics")) return 14;
+        if (lower.contains("bande") || lower.contains("bd")) return 11;
+        if (lower.contains("roman") && !lower.contains("graphique")) return 22;
+        return 16;
+    }
+
+    private int getDefaultWeightG(String category) {
+        String lower = category.toLowerCase();
+        if (lower.contains("manga")) return 190;
+        if (lower.contains("comics")) return 450;
+        if (lower.contains("bande") || lower.contains("bd")) return 520;
+        if (lower.contains("roman")) return 350;
+        return 350;
+    }
+
+    private String inferCountry(BookEntity book, String category) {
+        String lowerCat = category.toLowerCase();
+        if (lowerCat.contains("manga")) return "JP";
+        if (lowerCat.contains("comics")) return "US";
+        if (lowerCat.contains("bande") || lowerCat.contains("bd")) {
+            String title = book.getTitle().toLowerCase();
+            if (title.contains("tintin") || title.contains("spirou") || title.contains("seuls")) return "BE";
+            return "FR";
+        }
+        return "FR";
+    }
+
+    private String getCountryName(String code) {
+        return switch (code) {
+            case "FR" -> "France";
+            case "US" -> "États-Unis";
+            case "JP" -> "Japon";
+            case "GB" -> "Royaume-Uni";
+            case "BE" -> "Belgique";
+            case "DE" -> "Allemagne";
+            case "IT" -> "Italie";
+            case "ES" -> "Espagne";
+            case "CA" -> "Canada";
+            case "KR" -> "Corée du Sud";
+            default -> code;
+        };
+    }
+
+    private String getCountryFlag(String code) {
+        return switch (code) {
+            case "FR" -> "🇫🇷";
+            case "US" -> "🇺🇸";
+            case "JP" -> "🇯🇵";
+            case "GB" -> "🇬🇧";
+            case "BE" -> "🇧🇪";
+            case "DE" -> "🇩🇪";
+            case "IT" -> "🇮🇹";
+            case "ES" -> "🇪🇸";
+            case "CA" -> "🇨🇦";
+            case "KR" -> "🇰🇷";
+            default -> "🌐";
+        };
+    }
+
+    private String computeHeightComparison(double meters) {
+        if (meters < 0.28) {
+            return String.format("Déjà %.2f m : le début d'une grande collection !", meters);
+        } else if (meters < 0.6) {
+            return String.format("Votre pile mesure %.2f m : plus haut qu'une boîte de céréales géante !", meters);
+        } else if (meters < 1.02) {
+            double diff = 1.02 - meters;
+            return String.format("Votre pile mesure %.2f m : encore %.2f m pour atteindre la taille d'un poney Shetland (1.02 m) !", meters, diff);
+        } else if (meters < 1.75) {
+            double diff = 1.75 - meters;
+            return String.format("Votre pile mesure %.2f m : plus que %.2f m pour dépasser la taille moyenne d'un humain (1.75 m) !", meters, diff);
+        } else if (meters < 2.05) {
+            return String.format("Votre pile mesure %.2f m : plus haut que la porte de votre chambre (2.04 m) !", meters);
+        } else if (meters < 5.5) {
+            double diff = 5.5 - meters;
+            return String.format("Votre pile mesure %.2f m : encore %.2f m pour rivaliser avec une girafe mâle adulte (5.50 m) !", meters, diff);
+        } else if (meters < 11.0) {
+            double diff = 11.0 - meters;
+            return String.format("Votre pile mesure %.2f m : encore %.2f m pour arriver à l'envergure d'un Quetzalcoatlus (11 m, le ptérosaure géant) !", meters, diff);
+        } else if (meters < 330.0) {
+            double diff = 330.0 - meters;
+            return String.format("Votre pile mesure %.2f m : encore %.1f m pour dépasser la Tour Eiffel (330 m) !", meters, diff);
+        } else {
+            return String.format("Incroyable ! Votre pile mesure %.2f m : plus haute que la Tour Eiffel !", meters);
+        }
+    }
+
+    private String computeWeightComparison(double kg) {
+        if (kg < 1.0) {
+            return String.format("Votre collection pèse %.2f kg : le poids d'un pigeon voyageur !", kg);
+        } else if (kg < 3.0) {
+            return String.format("Votre collection pèse %.2f kg : le poids d'une belle miche de pain de campagne !", kg);
+        } else if (kg < 6.0) {
+            return String.format("Votre collection pèse %.1f kg : le poids d'un bon gros chat de gouttière (4.5 kg) !", kg);
+        } else if (kg < 15.0) {
+            return String.format("Votre collection pèse %.1f kg : l'équivalent d'un bouledogue français (12 kg) !", kg);
+        } else if (kg < 35.0) {
+            return String.format("Votre collection pèse %.1f kg : le poids d'un Golden Retriever (30 kg) !", kg);
+        } else if (kg < 80.0) {
+            return String.format("Votre collection pèse %.1f kg : le poids moyen d'un être humain adulte !", kg);
+        } else if (kg < 150.0) {
+            return String.format("Votre collection pèse %.1f kg : plus lourd qu'un panda géant (120 kg) !", kg);
+        } else if (kg < 300.0) {
+            return String.format("Votre collection pèse %.1f kg : le poids d'un lion d'Afrique (200 kg) !", kg);
+        } else if (kg < 800.0) {
+            return String.format("Votre collection pèse %.1f kg : le poids d'un cheval de selle (500 kg) !", kg);
+        } else if (kg < 2000.0) {
+            return String.format("Votre collection pèse %.1f kg : le poids d'une citadine automobile !", kg);
+        } else if (kg < 5000.0) {
+            double diff = 5000.0 - kg;
+            return String.format("Votre collection pèse %.1f kg : encore %.0f kg pour atteindre le poids d'un éléphant d'Afrique (5 000 kg) !", kg, diff);
+        } else {
+            return String.format("Votre collection pèse %.1f kg : plus lourde qu'un éléphant d'Afrique ! Vos étagères supplient pitié !", kg);
+        }
     }
 }

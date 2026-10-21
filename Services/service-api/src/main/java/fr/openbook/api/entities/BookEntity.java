@@ -66,6 +66,9 @@ public class BookEntity {
     @Column(name = "type")
     private String type;
 
+    @Column(name = "origin_country")
+    private String originCountry;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.RESTRICT)
     @JoinColumn(name = "series_id", nullable = false)
