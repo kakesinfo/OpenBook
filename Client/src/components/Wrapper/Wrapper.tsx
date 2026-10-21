@@ -1,9 +1,19 @@
 import './Wrapper.scss';
 import LogoutButton from "../LogoutButton.tsx";
-import { IconDefinition, faBookOpen, faMagnifyingGlass, faNewspaper, faBook, faHeart, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
+import {
+    IconDefinition,
+    faBookOpen,
+    faMagnifyingGlass,
+    faNewspaper,
+    faBook,
+    faHeart,
+    faCalendarDays,
+    faGear
+} from "@fortawesome/free-solid-svg-icons";
 import { Link, useLocation } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import useSession from "../../hooks/UseSession.tsx";
+import UserAvatar from "../UserAvatar/UserAvatar.tsx";
 
 export function WrapperAction({ children, icon, callback }: {
     children: React.ReactNode;
@@ -46,6 +56,7 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
 }) {
     const session = useSession();
     const location = useLocation();
+    const isSettingsActive = location.pathname.startsWith('/app/settings');
 
     return (
         <>
@@ -63,10 +74,16 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
                 </nav>
 
                 <footer className="wrapper-navigation__footer">
-                    <div className="wrapper-navigation__user">
-                        <div className="wrapper-navigation__user-avatar">
-                            {(session.user?.username || session.user?.email || "U")[0].toUpperCase()}
-                        </div>
+                    <Link
+                        to="/app/settings"
+                        className={`wrapper-navigation__user ${isSettingsActive ? 'active' : ''}`}
+                        title="Paramètres de votre compte"
+                    >
+                        <UserAvatar
+                            avatar={session.user?.avatar}
+                            name={session.user?.username || session.user?.email}
+                            size="md"
+                        />
                         <div className="wrapper-navigation__user-info">
                             <span className="wrapper-navigation__user-name">
                                 {session.user?.username || "Lecteur"}
@@ -75,7 +92,10 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
                                 {session.user?.email || ""}
                             </span>
                         </div>
-                    </div>
+                        <span className="wrapper-navigation__user-gear">
+                            <FontAwesomeIcon icon={faGear} />
+                        </span>
+                    </Link>
                     <LogoutButton />
                 </footer>
             </aside>
@@ -99,6 +119,17 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
                             <FontAwesomeIcon icon={faMagnifyingGlass} />
                         </button>
                     )}
+                    <Link
+                        to="/app/settings"
+                        className={`wrapper-mobile-header__btn ${isSettingsActive ? 'active' : ''}`}
+                        aria-label="Paramètres"
+                    >
+                        <UserAvatar
+                            avatar={session.user?.avatar}
+                            name={session.user?.username || session.user?.email}
+                            size="sm"
+                        />
+                    </Link>
                     <LogoutButton compact />
                 </div>
             </header>

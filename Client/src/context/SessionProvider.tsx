@@ -40,6 +40,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setUser(parsed.user);
     }, []);
 
+    const updateUser = useCallback((updatedFields: Partial<SessionUser>) => {
+        setUser(prev => prev ? { ...prev, ...updatedFields } : null);
+    }, []);
+
     const clearLocalSession = useCallback(() => {
         updateToken(null);
     }, [updateToken]);
@@ -203,7 +207,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             login,
             register,
             logout,
-            customFetch
+            customFetch,
+            updateToken,
+            updateUser
         }}>
             {children}
         </SessionContext.Provider>

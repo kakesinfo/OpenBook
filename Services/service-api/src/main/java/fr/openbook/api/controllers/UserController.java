@@ -4,24 +4,34 @@ import fr.openbook.api.dtos.BookDTO;
 import fr.openbook.api.dtos.BookSummaryDTO;
 import fr.openbook.api.dtos.UserOwnsBookDTO;
 import fr.openbook.api.dtos.UserProfileDTO;
+import fr.openbook.api.dtos.user.UpdateEmailRequestDTO;
+import fr.openbook.api.dtos.user.UpdatePasswordRequestDTO;
+import fr.openbook.api.dtos.user.UpdateProfileRequestDTO;
 import fr.openbook.api.entities.BookEntity;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
 import fr.openbook.api.entities.UserOwnsBookStatus;
 import fr.openbook.api.repositories.UserOwnsBooksRepository;
+import fr.openbook.api.services.JwtService;
 import fr.openbook.api.services.RepositoryService;
 import jakarta.servlet.http.HttpSession;
 import lombok.AllArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -31,6 +41,8 @@ public class UserController {
 
     private final RepositoryService repositoryService;
     private final UserOwnsBooksRepository userOwnsBooksRepository;
+    private final BCryptPasswordEncoder bCryptPasswordEncoder;
+    private final JwtService jwtService;
 
     private UserEntity getAuthenticatedUser(HttpSession session) {
         if (session != null) {
@@ -63,11 +75,124 @@ public class UserController {
 
         UserProfileDTO userProfileDTO = new UserProfileDTO();
         userProfileDTO.setUsername(user.getRealUsername());
+        userProfileDTO.setEmail(user.getEmail());
+        userProfileDTO.setAvatar(user.getAvatar());
         userProfileDTO.setBooksCount(0);
         userProfileDTO.setBooksToReadCount(0);
         userProfileDTO.setBooksReadThisYearCount(0);
 
         return userProfileDTO;
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@RequestBody UpdateProfileRequestDTO request, HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+
+        if (request.getUsername() != null && !request.getUsername().trim().isEmpty()) {
+            String newUsername = request.getUsername().trim();
+            if (repositoryService.getUserRepository().existsByUsernameAndIdNot(newUsername, user.getId())) {
+                return ResponseEntity.badRequest().body("Ce pseudonyme est déjà utilisé.");
+            }
+            user.setUsername(newUsername);
+        }
+
+        if (request.getAvatar() != null) {
+            user.setAvatar(request.getAvatar().trim());
+        }
+
+        user = repositoryService.getUserRepository().save(user);
+
+        if (session != null) {
+            session.setAttribute("user", user);
+        }
+
+        HashMap<String, Object> claims = new HashMap<>();
+        claims.put("username", user.getRealUsername());
+        claims.put("email", user.getEmail());
+        if (user.getAvatar() != null) {
+            claims.put("avatar", user.getAvatar());
+        }
+
+        String newToken = jwtService.generateToken(claims, user);
+
+        UserProfileDTO profileDTO = new UserProfileDTO();
+        profileDTO.setUsername(user.getRealUsername());
+        profileDTO.setEmail(user.getEmail());
+        profileDTO.setAvatar(user.getAvatar());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("profile", profileDTO);
+        response.put("token", newToken);
+        response.put("message", "Profil mis à jour avec succès.");
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/email")
+    public ResponseEntity<?> updateEmail(@RequestBody UpdateEmailRequestDTO request, HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+
+        if (request.getCurrentPassword() == null || request.getCurrentPassword().isEmpty()) {
+            return ResponseEntity.badRequest().body("Le mot de passe actuel est requis pour confirmer la modification de l'email.");
+        }
+
+        if (!bCryptPasswordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            return ResponseEntity.badRequest().body("Mot de passe actuel incorrect.");
+        }
+
+        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("La nouvelle adresse email est requise.");
+        }
+
+        String newEmail = request.getEmail().trim();
+        if (repositoryService.getUserRepository().existsByEmailAndIdNot(newEmail, user.getId())) {
+            return ResponseEntity.badRequest().body("Cette adresse email est déjà utilisée.");
+        }
+
+        user.setEmail(newEmail);
+        user = repositoryService.getUserRepository().save(user);
+
+        if (session != null) {
+            session.setAttribute("user", user);
+        }
+
+        HashMap<String, Object> claims = new HashMap<>();
+        claims.put("username", user.getRealUsername());
+        claims.put("email", user.getEmail());
+        if (user.getAvatar() != null) {
+            claims.put("avatar", user.getAvatar());
+        }
+
+        String newToken = jwtService.generateToken(claims, user);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Adresse email mise à jour avec succès.");
+        response.put("email", newEmail);
+        response.put("token", newToken);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity<?> updatePassword(@RequestBody UpdatePasswordRequestDTO request, HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+
+        if (request.getCurrentPassword() == null || request.getCurrentPassword().isEmpty()) {
+            return ResponseEntity.badRequest().body("Le mot de passe actuel est requis pour confirmer le changement.");
+        }
+
+        if (!bCryptPasswordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            return ResponseEntity.badRequest().body("Mot de passe actuel incorrect.");
+        }
+
+        if (request.getNewPassword() == null || request.getNewPassword().length() < 6) {
+            return ResponseEntity.badRequest().body("Le nouveau mot de passe doit comporter au moins 6 caractères.");
+        }
+
+        user.setPassword(bCryptPasswordEncoder.encode(request.getNewPassword()));
+        repositoryService.getUserRepository().save(user);
+
+        return ResponseEntity.ok(Map.of("message", "Mot de passe modifié avec succès."));
     }
 
     @PostMapping("/addBook/{id}/{status}")

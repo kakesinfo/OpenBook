@@ -38,6 +38,9 @@ public class UserEntity implements UserDetails {
     @Column(name = "password", nullable = false)
     private String password;
 
+    @Column(name = "avatar")
+    private String avatar;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

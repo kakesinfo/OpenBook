@@ -926,4 +926,11 @@
                 (8, 3, 1, NOW(), NOW());
         </sql>
     </changeSet>
+    <changeSet id="19" author="Axel">
+        <addColumn tableName="user">
+            <column name="avatar" type="text">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>
