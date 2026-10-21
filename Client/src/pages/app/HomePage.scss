@@ -1,88 +1,58 @@
 .newbooks-wrapper {
-	width: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .newbooks-body {
-	display: block;
-	
-	width: 100%;
-
-	overflow-y: auto;
+  width: 100%;
 }
 
-.newbooks-order-button {
-	display: inline-flex;
-	align-items: center;
-	gap: 10px;
-	padding: 8px 16px;
-	min-height: 40px;
+.newbooks-order-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  height: 38px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--radius-full);
+  color: var(--accent-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  transition: all var(--transition-fast);
 
-	background: rgba(65,207,124,0.1); 
-	color: #41CF7C;
-	border: none;
-	border-radius: 40px;
+  &:hover {
+    background: rgba(16, 185, 129, 0.16);
+    border-color: rgba(16, 185, 129, 0.4);
+  }
 
-	font-size: 15px;
-	font-weight: 600;
-	user-select: none;
+  span {
+    white-space: nowrap;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
 
-	&:focus-within {
-		outline: none;
-		box-shadow: none;
-	}
+    @media (max-width: 600px) {
+      display: none;
+    }
+  }
 
-	span {
-		display: inline-block;
-		margin-left: 2px;
-		margin-right: 4px;
-		font-size: 14px;
-		font-weight: 600;
-	}
+  select {
+    background: transparent;
+    color: var(--accent-primary);
+    border: none;
+    outline: none;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    padding-right: 4px;
 
-	select {
-		background: rgba(65,207,124,0.1);
-		color: #41CF7C;
-		padding: 6px 28px 6px 10px;
-		font-size: 14px;
-		font-weight: 600;
-		line-height: 1.1;
-		cursor: pointer;
-		-webkit-appearance: none;
-		appearance: none;
-		outline: none;
-		min-width: 140px;
-		border-radius: 999px;
-		box-shadow: none;
-		border: 1px solid rgba(65,207,124,0.12);
-		position: relative;
-		z-index: 9999;
-		color-scheme: light;
-	}
-
-	select::-ms-expand {
-		display: none;
-	}
-
-	select:hover {
-		background: rgba(65,207,124,0.12);
-	}
-	select:focus, select:focus-visible {
-		background: rgba(65,207,124,0.12);
-		box-shadow: none;
-		border-color: rgba(65,207,124,0.18);
-	}
-
-	select option {
-		color: #06121a;
-		background: #ffffff;
-	}
-
-	&:hover {}
-
-	@media (max-width: 480px) {
-		gap: 6px;
-		padding: 6px 10px;
-		span { font-size: 13px; }
-		select { min-width: 100px; font-size: 13px; }
-	}
+    option {
+      background-color: var(--bg-surface);
+      color: var(--text-primary);
+    }
+  }
 }

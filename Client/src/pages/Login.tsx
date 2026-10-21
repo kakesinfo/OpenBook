@@ -1,10 +1,13 @@
-import {useState} from "react";
+import { useState } from "react";
 import useSession from "../hooks/UseSession.tsx";
-import {Link, useNavigate} from 'react-router';
-import {enqueueSnackbar} from "notistack";
+import { Link, useNavigate } from 'react-router';
+import { enqueueSnackbar } from "notistack";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBookOpen } from "@fortawesome/free-solid-svg-icons";
 
 import Card from "../components/Card/Card.tsx";
 import FormGroup from "../components/Form/FormGroup.tsx";
+import "./Auth.scss";
 
 export default function Login() {
     const [email, setEmail] = useState<string>("");
@@ -20,7 +23,7 @@ export default function Login() {
 
         const trimmedEmail = email.trim();
         if (!trimmedEmail || !password) {
-            return enqueueSnackbar("Email and password are required", {variant: "error"});
+            return enqueueSnackbar("Veuillez saisir votre email et mot de passe", { variant: "error" });
         }
 
         setLoading(true);
@@ -29,62 +32,72 @@ export default function Login() {
 
             if (!result.success) {
                 setPassword("");
-                return enqueueSnackbar(result.error || "Invalid email or password", {variant: "error"});
+                return enqueueSnackbar(result.error || "Email ou mot de passe invalide", { variant: "error" });
             }
 
             navigate('/app');
-            enqueueSnackbar("Bienvenue!", {variant: "success"});
+            enqueueSnackbar("Bienvenue !", { variant: "success" });
         } catch (error) {
             console.error(error);
-            enqueueSnackbar("Une erreur inattendue est survenue", {variant: "error"});
+            enqueueSnackbar("Une erreur inattendue est survenue", { variant: "error" });
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div style={{position: "absolute", width: '500px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'}}>
-            <Card>
-                <form onSubmit={handleLogin}>
-                    <FormGroup>
-                        <label htmlFor="email">Email</label>
-                        <input
-                            id="email"
-                            type="email"
-                            name="email"
-                            autoComplete="email"
-                            placeholder="your@email.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                    </FormGroup>
+        <div className="auth-page">
+            <div className="auth-page__container">
+                <div className="auth-page__header">
+                    <div className="auth-page__logo">
+                        <FontAwesomeIcon icon={faBookOpen} />
+                    </div>
+                    <h1 className="auth-page__title">Yet Another Library</h1>
+                    <p className="auth-page__subtitle">Connectez-vous à votre bibliothèque personnelle</p>
+                </div>
 
-                    <FormGroup>
-                        <label htmlFor="password">Password</label>
-                        <input
-                            id="password"
-                            type="password"
-                            name="password"
-                            autoComplete="current-password"
-                            placeholder="••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                    </FormGroup>
+                <Card>
+                    <form onSubmit={handleLogin}>
+                        <FormGroup>
+                            <label htmlFor="email">Email</label>
+                            <input
+                                id="email"
+                                type="email"
+                                name="email"
+                                autoComplete="email"
+                                placeholder="bruce.wayne@gotham.us"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                            />
+                        </FormGroup>
 
-                    <FormGroup>
-                        <button type="submit" disabled={loading}>
-                            {loading ? "Connexion..." : "Login"}
-                        </button>
-                    </FormGroup>
+                        <FormGroup>
+                            <label htmlFor="password">Mot de passe</label>
+                            <input
+                                id="password"
+                                type="password"
+                                name="password"
+                                autoComplete="current-password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                            />
+                        </FormGroup>
 
-                    <FormGroup>
-                        <Link to={'/register'}>Pas de compte? Inscrivez-vous</Link>
-                    </FormGroup>
-                </form>
-            </Card>
+                        <FormGroup>
+                            <button type="submit" disabled={loading}>
+                                {loading ? "Connexion en cours..." : "Se connecter"}
+                            </button>
+                        </FormGroup>
+
+                        <FormGroup>
+                            <Link to={'/register'}>Pas encore de compte ? Inscrivez-vous</Link>
+                        </FormGroup>
+                    </form>
+                </Card>
+            </div>
         </div>
     );
 }

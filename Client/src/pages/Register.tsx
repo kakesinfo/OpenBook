@@ -1,9 +1,12 @@
-import {useState} from "react";
-import {Link, useNavigate} from 'react-router';
+import { useState } from "react";
+import { Link, useNavigate } from 'react-router';
 import FormGroup from "../components/Form/FormGroup.tsx";
 import Card from "../components/Card/Card.tsx";
-import {enqueueSnackbar} from "notistack";
+import { enqueueSnackbar } from "notistack";
 import useSession from "../hooks/UseSession.tsx";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBookOpen } from "@fortawesome/free-solid-svg-icons";
+import "./Auth.scss";
 
 export default function Register() {
     const [email, setEmail] = useState<string>("");
@@ -22,7 +25,7 @@ export default function Register() {
         const trimmedUsername = username.trim();
 
         if (!trimmedEmail || !password || !trimmedUsername) {
-            return enqueueSnackbar("Email, password, and username are required", {variant: "error"});
+            return enqueueSnackbar("Tous les champs sont requis", { variant: "error" });
         }
 
         setLoading(true);
@@ -30,13 +33,13 @@ export default function Register() {
             const result = await session.register(trimmedUsername, trimmedEmail, password);
 
             if (!result.success) {
-                return enqueueSnackbar(result.error || "Registration failed", {variant: "error"});
+                return enqueueSnackbar(result.error || "Échec de l'inscription", { variant: "error" });
             }
 
-            enqueueSnackbar("Inscription réussie", {variant: "success"});
+            enqueueSnackbar("Inscription réussie ! Connectez-vous.", { variant: "success" });
             navigate("/login");
         } catch (err) {
-            enqueueSnackbar("Requête bloquée ou erreur réseau. Vérifiez que le serveur est accessible.", {variant: "error"});
+            enqueueSnackbar("Requête bloquée ou erreur réseau. Vérifiez que le serveur est accessible.", { variant: "error" });
             console.error(err);
         } finally {
             setLoading(false);
@@ -44,62 +47,72 @@ export default function Register() {
     };
 
     return (
-        <div style={{position: "absolute", width: '500px', left: '50%', top: '50%', transform: 'translate(-50%, -50%)'}}>
-            <Card>
-                <form onSubmit={handleRegister}>
-                    <FormGroup>
-                        <label htmlFor="username">Pseudonyme</label>
-                        <input
-                            id="username"
-                            type="text"
-                            name="username"
-                            autoComplete="username"
-                            placeholder="Batman"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            required
-                        />
-                    </FormGroup>
+        <div className="auth-page">
+            <div className="auth-page__container">
+                <div className="auth-page__header">
+                    <div className="auth-page__logo">
+                        <FontAwesomeIcon icon={faBookOpen} />
+                    </div>
+                    <h1 className="auth-page__title">Créer un compte</h1>
+                    <p className="auth-page__subtitle">Rejoignez Yet Another Library et gérez votre collection</p>
+                </div>
 
-                    <FormGroup>
-                        <label htmlFor="email">Email</label>
-                        <input
-                            id="email"
-                            type="email"
-                            name="email"
-                            autoComplete="email"
-                            placeholder="bruce.wayne@gotham.us"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                    </FormGroup>
+                <Card>
+                    <form onSubmit={handleRegister}>
+                        <FormGroup>
+                            <label htmlFor="username">Pseudonyme</label>
+                            <input
+                                id="username"
+                                type="text"
+                                name="username"
+                                autoComplete="username"
+                                placeholder="Batman"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                required
+                            />
+                        </FormGroup>
 
-                    <FormGroup>
-                        <label htmlFor="password">Password</label>
-                        <input
-                            id="password"
-                            type="password"
-                            name="password"
-                            autoComplete="new-password"
-                            placeholder="••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                    </FormGroup>
+                        <FormGroup>
+                            <label htmlFor="email">Email</label>
+                            <input
+                                id="email"
+                                type="email"
+                                name="email"
+                                autoComplete="email"
+                                placeholder="bruce.wayne@gotham.us"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                            />
+                        </FormGroup>
 
-                    <FormGroup>
-                        <button type="submit" disabled={loading}>
-                            {loading ? "Inscription..." : "S'inscrire"}
-                        </button>
-                    </FormGroup>
+                        <FormGroup>
+                            <label htmlFor="password">Mot de passe</label>
+                            <input
+                                id="password"
+                                type="password"
+                                name="password"
+                                autoComplete="new-password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                            />
+                        </FormGroup>
 
-                    <FormGroup>
-                        <Link to={'/login'}>Déjà un compte? Connectez-vous</Link>
-                    </FormGroup>
-                </form>
-            </Card>
+                        <FormGroup>
+                            <button type="submit" disabled={loading}>
+                                {loading ? "Création du compte..." : "S'inscrire"}
+                            </button>
+                        </FormGroup>
+
+                        <FormGroup>
+                            <Link to={'/login'}>Déjà un compte ? Connectez-vous</Link>
+                        </FormGroup>
+                    </form>
+                </Card>
+            </div>
         </div>
     );
 }
