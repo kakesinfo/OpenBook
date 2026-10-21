@@ -2,7 +2,6 @@ from typing import Dict, Type
 from scrapers.base import BaseScraper
 from scrapers.urban_comics import UrbanComicsScraper
 from scrapers.panini_comics import PaniniComicsScraper
-from scrapers.bubble_bd import BubbleBDScraper
 from scrapers.morgen_bd import MorgenBDScraper
 from scrapers.mangetsu import MangetsuScraper
 from scrapers.label619 import Label619Scraper
@@ -10,7 +9,6 @@ from scrapers.label619 import Label619Scraper
 SCRAPERS: Dict[str, Type[BaseScraper]] = {
     "urban_comics": UrbanComicsScraper,
     "panini": PaniniComicsScraper,
-    "bubble_bd": BubbleBDScraper,
     "morgen_bd": MorgenBDScraper,
     "mangetsu": MangetsuScraper,
     "label619": Label619Scraper,

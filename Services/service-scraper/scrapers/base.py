@@ -55,7 +55,7 @@ class BaseScraper(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
-        """Name of the scraper/source (e.g. 'urban_comics', 'panini', 'bubble_bd', 'morgen_bd', 'mangetsu', 'label619')"""
+        """Name of the scraper/source (e.g. 'urban_comics', 'panini', 'morgen_bd', 'mangetsu', 'label619')"""
         pass
 
     @abstractmethod

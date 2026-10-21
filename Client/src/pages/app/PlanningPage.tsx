@@ -35,28 +35,48 @@ const CATEGORY_FILTERS: CategoryFilterOption[] = [
 
 export default function PlanningPage() {
     const session = useSession();
-    const [books, setBooks] = useState<BookSummaryDTO[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [timeFilter, setTimeFilter] = useState<TimeFilter>("recent");
+    const [upcomingBooks, setUpcomingBooks] = useState<BookSummaryDTO[]>([]);
+    const [recentBooks, setRecentBooks] = useState<BookSummaryDTO[]>([]);
+    const [loadingUpcoming, setLoadingUpcoming] = useState<boolean>(true);
+    const [loadingRecent, setLoadingRecent] = useState<boolean>(true);
+    const [timeFilter, setTimeFilter] = useState<TimeFilter>("upcoming");
     const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
-    const fetchAllBooks = async () => {
-        setLoading(true);
+    const fetchUpcomingBooks = async () => {
+        setLoadingUpcoming(true);
         try {
-            const response = await session.customFetch("/books/newest", { method: "GET" });
+            const response = await session.customFetch("/books/upcoming", { method: "GET" });
             if (response.ok) {
                 const data = await response.json();
-                setBooks(data);
+                setUpcomingBooks(data);
             }
         } catch (err) {
-            console.error("Planning fetch books error:", err);
+            console.error("Planning fetch upcoming books error:", err);
         } finally {
-            setLoading(false);
+            setLoadingUpcoming(false);
+        }
+    };
+
+    const fetchRecentBooks = async () => {
+        setLoadingRecent(true);
+        try {
+            const response = await session.customFetch("/books/recent", { method: "GET" });
+            if (response.ok) {
+                const data = await response.json();
+                setRecentBooks(data);
+            }
+        } catch (err) {
+            console.error("Planning fetch recent books error:", err);
+        } finally {
+            setLoadingRecent(false);
         }
     };
 
     useEffect(() => {
-        fetchAllBooks();
+        // Load upcoming releases first for immediate navigation in "À venir"
+        fetchUpcomingBooks();
+        // Load recent releases in parallel in the background
+        fetchRecentBooks();
     }, [session]);
 
     // Reference dates for time windows
@@ -74,9 +94,12 @@ export default function PlanningPage() {
         };
     }, []);
 
+    const currentBooks = timeFilter === "upcoming" ? upcomingBooks : recentBooks;
+    const isCurrentLoading = timeFilter === "upcoming" ? loadingUpcoming : loadingRecent;
+
     // Filter books by date window
     const timeFilteredBooks = useMemo(() => {
-        return books.filter((b) => {
+        return currentBooks.filter((b) => {
             if (!b.releaseDate) return false;
             const bDate = new Date(b.releaseDate);
             if (isNaN(bDate.getTime())) return false;
@@ -89,7 +112,7 @@ export default function PlanningPage() {
                 return bDate >= startOfTomorrow && bDate <= sixMonthsAhead;
             }
         });
-    }, [books, timeFilter, twoMonthsAgo, endOfToday, startOfTomorrow, sixMonthsAhead]);
+    }, [currentBooks, timeFilter, twoMonthsAgo, endOfToday, startOfTomorrow, sixMonthsAhead]);
 
     // Matching helper for categories
     const matchCategory = (book: BookSummaryDTO, filterId: string): boolean => {
@@ -143,20 +166,20 @@ export default function PlanningPage() {
 
     // Counts for the two main toggles
     const totalRecentCount = useMemo(() => {
-        return books.filter((b) => {
+        return recentBooks.filter((b) => {
             if (!b.releaseDate) return false;
             const d = new Date(b.releaseDate);
             return !isNaN(d.getTime()) && d >= twoMonthsAgo && d <= endOfToday;
         }).length;
-    }, [books, twoMonthsAgo, endOfToday]);
+    }, [recentBooks, twoMonthsAgo, endOfToday]);
 
     const totalUpcomingCount = useMemo(() => {
-        return books.filter((b) => {
+        return upcomingBooks.filter((b) => {
             if (!b.releaseDate) return false;
             const d = new Date(b.releaseDate);
             return !isNaN(d.getTime()) && d >= startOfTomorrow && d <= sixMonthsAhead;
         }).length;
-    }, [books, startOfTomorrow, sixMonthsAhead]);
+    }, [upcomingBooks, startOfTomorrow, sixMonthsAhead]);
 
     // Grouping by Month: "Janvier 2026", "Février 2026", etc.
     const monthGroups = useMemo(() => {
@@ -276,7 +299,7 @@ export default function PlanningPage() {
                                     background: timeFilter === "recent" ? "rgba(255, 255, 255, 0.25)" : "rgba(255, 255, 255, 0.08)",
                                     color: "#ffffff"
                                 }}>
-                                    {totalRecentCount}
+                                    {loadingRecent ? "..." : totalRecentCount}
                                 </span>
                             </button>
 
@@ -310,7 +333,7 @@ export default function PlanningPage() {
                                     background: timeFilter === "upcoming" ? "rgba(255, 255, 255, 0.25)" : "rgba(255, 255, 255, 0.08)",
                                     color: "#ffffff"
                                 }}>
-                                    {totalUpcomingCount}
+                                    {loadingUpcoming ? "..." : totalUpcomingCount}
                                 </span>
                             </button>
                         </div>
@@ -404,14 +427,16 @@ export default function PlanningPage() {
                 </div>
 
                 {/* Loading State */}
-                {loading && (
+                {isCurrentLoading && (
                     <div style={{ textAlign: "center", padding: "40px", color: "var(--text-muted, #9ca3af)" }}>
-                        Chargement des parutions du planning...
+                        {timeFilter === "upcoming"
+                            ? "Chargement des prochaines sorties à venir..."
+                            : "Chargement des parutions récentes..."}
                     </div>
                 )}
 
                 {/* Empty State */}
-                {!loading && monthGroups.length === 0 && (
+                {!isCurrentLoading && monthGroups.length === 0 && (
                     <div style={{
                         background: "var(--card-bg, #1e1e24)",
                         border: "1px dashed var(--border-color, #2a2a32)",
@@ -436,7 +461,7 @@ export default function PlanningPage() {
                 )}
 
                 {/* Grouped Month Sections */}
-                {!loading && monthGroups.map((group) => (
+                {!isCurrentLoading && monthGroups.map((group) => (
                     <section
                         key={group.title}
                         style={{

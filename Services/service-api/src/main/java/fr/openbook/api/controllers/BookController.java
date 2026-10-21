@@ -28,6 +28,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Optional;
@@ -69,6 +74,32 @@ public class BookController {
     @GetMapping("/oldest")
     public List<BookSummaryDTO> getAllOrderedByReleaseDateAsc() {
         return getAllByReleaseDateOrderBy("asc");
+    }
+
+    @GetMapping("/upcoming")
+    public List<BookSummaryDTO> getUpcoming() {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
+        Instant startOfTomorrow = now.toLocalDate().plusDays(1).atStartOfDay(now.getZone()).toInstant();
+        Instant endOfWindow = now.toLocalDate().plusMonths(6).atTime(LocalTime.MAX).atZone(now.getZone()).toInstant();
+
+        return repositoryService.getBookRepository()
+                .findAllByReleaseDateBetweenOrderByReleaseDateAsc(startOfTomorrow, endOfWindow)
+                .stream()
+                .map(this::entityToSummaryDTO)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/recent")
+    public List<BookSummaryDTO> getRecent() {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
+        Instant startOfWindow = now.toLocalDate().minusMonths(2).atStartOfDay(now.getZone()).toInstant();
+        Instant endOfToday = now.toLocalDate().atTime(LocalTime.MAX).atZone(now.getZone()).toInstant();
+
+        return repositoryService.getBookRepository()
+                .findAllByReleaseDateBetweenOrderByReleaseDateDesc(startOfWindow, endOfToday)
+                .stream()
+                .map(this::entityToSummaryDTO)
+                .collect(Collectors.toList());
     }
 
     private List<BookSummaryDTO> getAllByReleaseDateOrderBy(String order) {

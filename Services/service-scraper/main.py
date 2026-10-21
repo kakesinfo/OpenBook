@@ -28,7 +28,7 @@ def parse_args():
         "--source",
         type=str,
         default=None,
-        help="Specific source to scrape (urban_comics, panini, bubble_bd, morgen_bd, mangetsu, label619)"
+        help="Specific source to scrape (urban_comics, panini, morgen_bd, mangetsu, label619)"
     )
     parser.add_argument(
         "--full",

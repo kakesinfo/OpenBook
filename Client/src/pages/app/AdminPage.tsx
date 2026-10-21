@@ -42,7 +42,6 @@ const SCRAPER_API_URL = "http://localhost:5001";
 const PUBLISHERS = [
     { id: "urban_comics", name: "Urban Comics", desc: "Comics DC, Indies, Urban Link", color: "#3b82f6" },
     { id: "panini", name: "Panini Comics", desc: "Marvel, Star Wars, Panini Manga", color: "#ef4444" },
-    { id: "bubble_bd", name: "BubbleBD", desc: "Catalogue BD franco-belge, Indés & Mangas", color: "#10b981" },
     { id: "morgen_bd", name: "Morgen BD", desc: "Boutique & nouveautés indés Morgen", color: "#8b5cf6" },
     { id: "mangetsu", name: "Mangetsu", desc: "Mangas seinen, shonen & nouveautés japonaises", color: "#f59e0b" },
     { id: "label619", name: "Label 619", desc: "Mutafukaz, Rue de Sèvres, BD alternatives", color: "#ec4899" }

@@ -6,7 +6,7 @@ from scrapers.urban_comics import parse_french_date, slug_title
 
 class TestScrapers(unittest.TestCase):
     def test_registry(self):
-        expected = ["urban_comics", "panini", "bubble_bd", "morgen_bd", "mangetsu", "label619"]
+        expected = ["urban_comics", "panini", "morgen_bd", "mangetsu", "label619"]
         for name in expected:
             self.assertIn(name, SCRAPERS)
             scraper = get_scraper(name)

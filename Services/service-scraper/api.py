@@ -8,7 +8,7 @@ from database import db
 
 app = FastAPI(
     title="Yet Another Library - Comics & BD Scraper Service",
-    description="Microservice to scan comic publishers (Urban Comics, Panini Comics, BubbleBD, Morgen BD, Mangetsu, Label 619) daily or on-demand",
+    description="Microservice to scan comic publishers (Urban Comics, Panini Comics, Morgen BD, Mangetsu, Label 619) daily or on-demand",
     version="1.1.0"
 )
 
@@ -53,7 +53,7 @@ def status():
 
 @app.post("/api/scrape")
 def trigger_scrape(
-    source: Optional[str] = Query(None, description="Optional scraper source: urban_comics, panini, bubble_bd, morgen_bd, mangetsu, label619"),
+    source: Optional[str] = Query(None, description="Optional scraper source: urban_comics, panini, morgen_bd, mangetsu, label619"),
     full: bool = Query(False, description="Full catalog scan mode")
 ):
     if source and source not in SCRAPERS:
@@ -66,7 +66,7 @@ def trigger_scrape(
 
 @app.post("/api/scrape/{source}")
 def trigger_scrape_source(
-    source: str = Path(..., description="Scraper source: urban_comics, panini, bubble_bd, morgen_bd, mangetsu, label619"),
+    source: str = Path(..., description="Scraper source: urban_comics, panini, morgen_bd, mangetsu, label619"),
     full: bool = Query(False, description="Full catalog scan mode")
 ):
     if source not in SCRAPERS:
