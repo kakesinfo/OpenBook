@@ -1,6 +1,7 @@
 package fr.openbook.api.controllers;
 
 import fr.openbook.api.dtos.BookDTO;
+import fr.openbook.api.dtos.BookSummaryDTO;
 import fr.openbook.api.dtos.UserOwnsBookDTO;
 import fr.openbook.api.dtos.UserProfileDTO;
 import fr.openbook.api.entities.BookEntity;
@@ -11,6 +12,8 @@ import fr.openbook.api.repositories.UserOwnsBooksRepository;
 import fr.openbook.api.services.RepositoryService;
 import jakarta.servlet.http.HttpSession;
 import lombok.AllArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,12 +32,34 @@ public class UserController {
     private final RepositoryService repositoryService;
     private final UserOwnsBooksRepository userOwnsBooksRepository;
 
+    private UserEntity getAuthenticatedUser(HttpSession session) {
+        if (session != null) {
+            UserEntity user = (UserEntity) session.getAttribute("user");
+            if (user != null) return user;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserEntity user) {
+            return user;
+        }
+        throw new RuntimeException("User not logged in");
+    }
+
+    private BookSummaryDTO entityToSummaryDTO(BookEntity book) {
+        BookSummaryDTO dto = new BookSummaryDTO();
+        dto.setId(book.getId());
+        dto.setTitle(book.getTitle());
+        dto.setVolume(book.getVolume());
+        dto.setPrice(book.getPrice());
+        if (book.getReleaseDate() != null) {
+            dto.setReleaseDate(book.getReleaseDate().toString());
+        }
+        dto.setCoverUrl(book.getCoverUrl());
+        return dto;
+    }
+
     @GetMapping("/profile")
     public UserProfileDTO getProfile(HttpSession session) {
-        UserEntity user = (UserEntity) session.getAttribute("user");
-        if (user == null) {
-            throw new RuntimeException("User not logged in");
-        }
+        UserEntity user = getAuthenticatedUser(session);
 
         UserProfileDTO userProfileDTO = new UserProfileDTO();
         userProfileDTO.setUsername(user.getRealUsername());
@@ -51,10 +76,7 @@ public class UserController {
         @PathVariable Long id,
         @PathVariable String status
     ) {
-        UserEntity user = (UserEntity) session.getAttribute("user");
-        if (user == null) {
-            throw new RuntimeException("User not logged in");
-        }
+        UserEntity user = getAuthenticatedUser(session);
 
         if (!UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(status)
             && !UserOwnsBookStatus.WISHLISTED.name().equalsIgnoreCase(status)) {
@@ -94,10 +116,7 @@ public class UserController {
         HttpSession session,
         @PathVariable Long id
     ) {
-        UserEntity user = (UserEntity) session.getAttribute("user");
-        if (user == null) {
-            throw new RuntimeException("User not logged in");
-        }
+        UserEntity user = getAuthenticatedUser(session);
 
         repositoryService.getUserOwnsBooksRepository()
                 .findByUserIdAndBookId(user.getId(), id)
@@ -105,16 +124,29 @@ public class UserController {
     }
 
     @GetMapping("/books")
-    public List<UserOwnsBookDTO> getUserBooks(HttpSession session) {
-        UserEntity user = (UserEntity) session.getAttribute("user");
-        if (user == null) {
-            throw new RuntimeException("User not logged in");
-        }
+    public List<BookSummaryDTO> getUserBooks(HttpSession session) {
+        return getCollection(session);
+    }
+
+    @GetMapping("/collection")
+    public List<BookSummaryDTO> getCollection(HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
 
         return repositoryService.getUserOwnsBooksRepository()
                 .findAllByUserIdAndStatus(user.getId(), UserOwnsBookStatus.OWNED.name())
                 .stream()
-                .map(UserOwnsBookDTO::from)
+                .map(entity -> entityToSummaryDTO(entity.getBook()))
+                .toList();
+    }
+
+    @GetMapping("/wishlist")
+    public List<BookSummaryDTO> getWishlist(HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+
+        return repositoryService.getUserOwnsBooksRepository()
+                .findAllByUserIdAndStatus(user.getId(), UserOwnsBookStatus.WISHLISTED.name())
+                .stream()
+                .map(entity -> entityToSummaryDTO(entity.getBook()))
                 .toList();
     }
 }

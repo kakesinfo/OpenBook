@@ -16,6 +16,8 @@ import fr.openbook.api.services.SeriesService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,6 +37,18 @@ import java.util.stream.Collectors;
 public class BookController {
 
     private final RepositoryService repositoryService;
+
+    private UserEntity getAuthenticatedUser(HttpSession session) {
+        if (session != null) {
+            UserEntity user = (UserEntity) session.getAttribute("user");
+            if (user != null) return user;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserEntity user) {
+            return user;
+        }
+        return null;
+    }
 
     @GetMapping
     public List<BookSummaryDTO> getAll() {
@@ -77,10 +91,7 @@ public class BookController {
             @RequestParam(required = false, defaultValue = "false") boolean withAuthors,
             @RequestParam(required = false, defaultValue = "false") boolean withStatus
     ) {
-        UserEntity userEntity = (UserEntity) session.getAttribute("user");
-        if (userEntity == null) {
-            throw new RuntimeException("User not logged in");
-        }
+        UserEntity userEntity = getAuthenticatedUser(session);
 
         return repositoryService.getBookRepository()
                 .findById(id)
@@ -115,7 +126,9 @@ public class BookController {
         dto.setTitle(book.getTitle());
         dto.setVolume(book.getVolume());
         dto.setPrice(book.getPrice());
-        dto.setReleaseDate(book.getReleaseDate().toString());
+        if (book.getReleaseDate() != null) {
+            dto.setReleaseDate(book.getReleaseDate().toString());
+        }
         dto.setCoverUrl(book.getCoverUrl());
         return dto;
     }
@@ -134,7 +147,9 @@ public class BookController {
         dto.setTitle(bookEntity.getTitle());
         dto.setVolume(bookEntity.getVolume());
         dto.setPrice(bookEntity.getPrice());
-        dto.setReleaseDate(bookEntity.getReleaseDate().toString());
+        if (bookEntity.getReleaseDate() != null) {
+            dto.setReleaseDate(bookEntity.getReleaseDate().toString());
+        }
         dto.setIsbn(bookEntity.getIsbn());
         dto.setWeight(bookEntity.getWeight());
         dto.setHeight(bookEntity.getHeight());
@@ -171,14 +186,12 @@ public class BookController {
             dto.setAuthors(authorsDTO);
         }
 
-        if (withStatus) {
+        if (withStatus && userEntity != null) {
             dto.setStatus(repositoryService.getUserOwnsBooksRepository()
                     .findByUserIdAndBookId(userEntity.getId(), bookEntity.getId())
                     .map(UserOwnsBookEntity::getStatus)
                     .orElse(null));
         }
-
-        System.out.println(dto);
 
         return dto;
     }
