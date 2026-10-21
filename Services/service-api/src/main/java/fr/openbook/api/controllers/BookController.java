@@ -1,6 +1,7 @@
 package fr.openbook.api.controllers;
 
 import fr.openbook.api.dtos.BookDTO;
+import fr.openbook.api.entities.SeriesHasThemeEntity;
 import fr.openbook.api.dtos.BookHasAuthorDTO;
 import fr.openbook.api.dtos.BookSummaryDTO;
 import fr.openbook.api.entities.AuthorEntity;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -158,6 +160,19 @@ public class BookController {
         dto.setPageCount(bookEntity.getPageCount());
         dto.setDescription(bookEntity.getDescription());
         dto.setCoverUrl(bookEntity.getCoverUrl());
+        dto.setType(bookEntity.getType());
+
+        List<String> themes = new ArrayList<>();
+        if (bookEntity.getSeries() != null && bookEntity.getSeries().getId() != null) {
+            List<SeriesHasThemeEntity> seriesThemes = repositoryService.getSeriesHasThemeRepository()
+                    .findAllBySeriesId(bookEntity.getSeries().getId());
+            for (SeriesHasThemeEntity sht : seriesThemes) {
+                if (sht.getTheme() != null && sht.getTheme().getName() != null) {
+                    themes.add(sht.getTheme().getName());
+                }
+            }
+        }
+        dto.setThemes(themes);
 
         if (withSeries)
             dto.setSeries(SeriesService.entityToDTO(bookEntity.getSeries()));

@@ -17,6 +17,8 @@ export default interface BookDTO {
     length: number;
     thickness: number;
     price: number;
+    type?: string;
+    themes?: string[];
     description: string;
     coverUrl: string;
     releaseDate: string;

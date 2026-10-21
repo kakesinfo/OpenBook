@@ -927,10 +927,147 @@
         </sql>
     </changeSet>
     <changeSet id="19" author="Axel">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="user" columnName="avatar" />
+            </not>
+        </preConditions>
         <addColumn tableName="user">
             <column name="avatar" type="text">
                 <constraints nullable="true" />
             </column>
         </addColumn>
+    </changeSet>
+    <changeSet id="20" author="Axel">
+        <addColumn tableName="book">
+            <column name="type" type="varchar(50)">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="21" author="Axel">
+        <createTable tableName="book_has_theme">
+            <column name="id" type="serial" autoIncrement="true">
+                <constraints primaryKey="true" />
+            </column>
+            <column name="book_id" type="integer">
+                <constraints nullable="false" foreignKeyName="fk_book_has_theme_book_id" references="book(id)" />
+            </column>
+            <column name="theme_id" type="integer">
+                <constraints nullable="false" foreignKeyName="fk_book_has_theme_theme_id" references="theme(id)" />
+            </column>
+            <column name="created_at" type="timestamp" defaultValueComputed="NOW()">
+                <constraints nullable="false" />
+            </column>
+            <column name="updated_at" type="timestamp" defaultValueComputed="NOW()">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="22" author="Axel">
+        <sql>
+            INSERT INTO author_type (name, created_at, updated_at) VALUES
+                ('Colorist', NOW(), NOW())
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO theme (name, created_at, updated_at) VALUES
+                ('Justice', NOW(), NOW()),
+                ('Gotham', NOW(), NOW()),
+                ('Enquête', NOW(), NOW()),
+                ('Aventure', NOW(), NOW()),
+                ('Sci-Fi', NOW(), NOW()),
+                ('Magie', NOW(), NOW()),
+                ('Fantasy', NOW(), NOW()),
+                ('Dystopie', NOW(), NOW())
+            ON CONFLICT DO NOTHING;
+
+            UPDATE book SET 
+                type = 'Relié', 
+                length = 155, height = 235, thickness = 28, weight = 450 
+            WHERE series_id = 1;
+
+            UPDATE book SET 
+                type = 'Poche', 
+                length = 110, height = 178, thickness = 18, weight = 190 
+            WHERE series_id = 2;
+
+            UPDATE book SET 
+                type = 'Relié', 
+                length = 160, height = 240, thickness = 35, weight = 720 
+            WHERE series_id = 3;
+
+            INSERT INTO series_has_theme (series_id, theme_id, created_at, updated_at)
+            SELECT 1, id, NOW(), NOW() FROM theme WHERE name IN ('Magie', 'Aventure', 'Fantasy')
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO series_has_theme (series_id, theme_id, created_at, updated_at)
+            SELECT 2, id, NOW(), NOW() FROM theme WHERE name IN ('Dystopie', 'Sci-Fi')
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO series_has_theme (series_id, theme_id, created_at, updated_at)
+            SELECT 3, id, NOW(), NOW() FROM theme WHERE name IN ('Fantasy', 'Aventure')
+            ON CONFLICT DO NOTHING;
+        </sql>
+    </changeSet>
+
+    <changeSet id="23" author="Axel">
+        <sql>
+            INSERT INTO author (firstname, lastname, created_at, updated_at) VALUES
+                ('Jeph', 'Loeb', NOW(), NOW()),
+                ('Tim', 'Sale', NOW(), NOW()),
+                ('Gregory', 'Wright', NOW(), NOW())
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO series (name, status, category_id, created_at, updated_at) VALUES
+                ('Batman', 'FINISHED', 3, NOW(), NOW())
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO book (title, isbn, volume, page_count, weight, height, length, thickness, price, description, series_id, release_date, created_at, updated_at, cover_url, type)
+            SELECT 
+                'Batman : Un long Halloween', 
+                '9782365771788', 
+                1, 
+                392, 
+                840, 
+                285, 
+                190, 
+                24, 
+                35, 
+                'Une série de meurtres perpétrés lors des jours de fête plonge Gotham City dans la terreur. Batman s''allie au commissaire Gordon et au procureur Harvey Dent pour démasquer le tueur Holiday.', 
+                s.id, 
+                '2013-01-25 00:00:00', 
+                NOW(), 
+                NOW(), 
+                'https://static.fnac-static.com/multimedia/Images/FR/NR/46/79/47/4684102/1507-1/tsp20231019080537/Batman-Un-long-Halloween.jpg',
+                'Cartonné'
+            FROM series s WHERE s.name = 'Batman' LIMIT 1
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO series_has_theme (series_id, theme_id, created_at, updated_at)
+            SELECT s.id, t.id, NOW(), NOW()
+            FROM series s, theme t
+            WHERE s.name = 'Batman' AND t.name IN ('Justice', 'Gotham', 'Enquête', 'Aventure')
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO book_has_author (book_id, author_id, author_type_id, created_at, updated_at)
+            SELECT b.id, a.id, at.id, NOW(), NOW()
+            FROM book b, author a, author_type at
+            WHERE b.isbn = '9782365771788' AND a.lastname = 'Loeb' AND at.name = 'Writer'
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO book_has_author (book_id, author_id, author_type_id, created_at, updated_at)
+            SELECT b.id, a.id, at.id, NOW(), NOW()
+            FROM book b, author a, author_type at
+            WHERE b.isbn = '9782365771788' AND a.lastname = 'Sale' AND at.name = 'Illustrator'
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO book_has_author (book_id, author_id, author_type_id, created_at, updated_at)
+            SELECT b.id, a.id, at.id, NOW(), NOW()
+            FROM book b, author a, author_type at
+            WHERE b.isbn = '9782365771788' AND a.lastname = 'Wright' AND at.name = 'Colorist'
+            ON CONFLICT DO NOTHING;
+        </sql>
     </changeSet>
 </databaseChangeLog>

@@ -282,6 +282,29 @@
     font-weight: 600;
     color: var(--text-primary);
   }
+
+  &__spec-item--themes {
+    grid-column: 1 / -1;
+  }
+
+  &__themes-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  &__theme-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: var(--accent-primary);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
 }
 
 /* Button styles */

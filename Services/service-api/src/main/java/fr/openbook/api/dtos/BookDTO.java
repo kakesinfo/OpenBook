@@ -16,6 +16,7 @@ public class BookDTO extends BookSummaryDTO {
     private Integer length;
     private Integer thickness;
     private String description;
+    private String type;
 
     private String status;
 
@@ -24,4 +25,5 @@ public class BookDTO extends BookSummaryDTO {
     private CollectionDTO collection;
 
     private List<BookHasAuthorDTO> authors = new ArrayList<>();
+    private List<String> themes = new ArrayList<>();
 }

@@ -16,6 +16,11 @@ import {
     faWeightHanging,
     faFileLines,
     faTag,
+    faPenNib,
+    faPalette,
+    faPaintbrush,
+    faBookBookmark,
+    faTags,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -112,6 +117,18 @@ export default function BookPage() {
             setLoading(false);
         });
     }, [id, session]);
+
+    // Author categorization
+    const allAuthors = book?.authors || [];
+    const dessinateurs = allAuthors.filter(
+        (a) => a.type && (a.type.toLowerCase() === "illustrator" || a.type.toLowerCase().includes("dessin") || a.type.toLowerCase().includes("pencil") || a.type.toLowerCase().includes("artist"))
+    );
+    const coloristes = allAuthors.filter(
+        (a) => a.type && (a.type.toLowerCase() === "colorist" || a.type.toLowerCase().includes("color") || a.type.toLowerCase().includes("couleur"))
+    );
+    const scenaristes = allAuthors.filter(
+        (a) => !dessinateurs.includes(a) && !coloristes.includes(a)
+    );
 
     return (
         <div className="book-page">
@@ -232,26 +249,69 @@ export default function BookPage() {
                             <div className="book-page__specs-card">
                                 <h3 className="book-page__specs-title">Détails techniques</h3>
                                 <div className="book-page__specs-list">
+                                    {/* 1. Date de sortie */}
                                     {book.releaseDate && (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
                                                 <FontAwesomeIcon icon={faCalendarDays} /> Date de sortie
                                             </span>
                                             <span className="book-page__spec-value">
-                                                {new Date(book.releaseDate).toLocaleDateString()}
+                                                {new Date(book.releaseDate).toLocaleDateString('fr-FR', {
+                                                    day: 'numeric',
+                                                    month: 'long',
+                                                    year: 'numeric'
+                                                })}
                                             </span>
                                         </div>
                                     )}
 
+                                    {/* 2. Scénariste(s) */}
+                                    {scenaristes.length > 0 && (
+                                        <div className="book-page__spec-item">
+                                            <span className="book-page__spec-label">
+                                                <FontAwesomeIcon icon={faPenNib} /> Scénariste{scenaristes.length > 1 ? "s" : ""}
+                                            </span>
+                                            <span className="book-page__spec-value">
+                                                {scenaristes.map((a: AuthorSummaryDTO) => `${a.firstname} ${a.lastname}`).join(", ")}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* 3. Dessinateur(s) (s'il y en a) */}
+                                    {dessinateurs.length > 0 && (
+                                        <div className="book-page__spec-item">
+                                            <span className="book-page__spec-label">
+                                                <FontAwesomeIcon icon={faPalette} /> Dessinateur{dessinateurs.length > 1 ? "s" : ""}
+                                            </span>
+                                            <span className="book-page__spec-value">
+                                                {dessinateurs.map((a: AuthorSummaryDTO) => `${a.firstname} ${a.lastname}`).join(", ")}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* 4. Coloriste(s) (s'il y en a) */}
+                                    {coloristes.length > 0 && (
+                                        <div className="book-page__spec-item">
+                                            <span className="book-page__spec-label">
+                                                <FontAwesomeIcon icon={faPaintbrush} /> Coloriste{coloristes.length > 1 ? "s" : ""}
+                                            </span>
+                                            <span className="book-page__spec-value">
+                                                {coloristes.map((a: AuthorSummaryDTO) => `${a.firstname} ${a.lastname}`).join(", ")}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* 5. ISBN / EAN */}
                                     {book.isbn && (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faBarcode} /> ISBN
+                                                <FontAwesomeIcon icon={faBarcode} /> ISBN / EAN
                                             </span>
                                             <span className="book-page__spec-value">{book.isbn}</span>
                                         </div>
                                     )}
 
+                                    {/* 6. Dimensions */}
                                     {(book.length || book.height || book.thickness) ? (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
@@ -263,6 +323,7 @@ export default function BookPage() {
                                         </div>
                                     ) : null}
 
+                                    {/* 7. Poids */}
                                     {book.weight ? (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
@@ -272,15 +333,43 @@ export default function BookPage() {
                                         </div>
                                     ) : null}
 
+                                    {/* 8. Pages */}
                                     {book.pageCount ? (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
                                                 <FontAwesomeIcon icon={faFileLines} /> Pages
                                             </span>
-                                            <span className="book-page__spec-value">{book.pageCount}</span>
+                                            <span className="book-page__spec-value">{book.pageCount} pages</span>
                                         </div>
                                     ) : null}
 
+                                    {/* 9. Type (cartonné, relié, souple, etc.) */}
+                                    {book.type && (
+                                        <div className="book-page__spec-item">
+                                            <span className="book-page__spec-label">
+                                                <FontAwesomeIcon icon={faBookBookmark} /> Type
+                                            </span>
+                                            <span className="book-page__spec-value">{book.type}</span>
+                                        </div>
+                                    )}
+
+                                    {/* 10. Thèmes (justice, gotham, enquête, aventure, scifi, etc.) */}
+                                    {book.themes && book.themes.length > 0 && (
+                                        <div className="book-page__spec-item book-page__spec-item--themes">
+                                            <span className="book-page__spec-label">
+                                                <FontAwesomeIcon icon={faTags} /> Thèmes
+                                            </span>
+                                            <div className="book-page__themes-list">
+                                                {book.themes.map((theme: string) => (
+                                                    <span key={theme} className="book-page__theme-pill">
+                                                        {theme}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Prix */}
                                     {book.price ? (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">

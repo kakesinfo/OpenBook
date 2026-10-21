@@ -63,6 +63,9 @@ public class BookEntity {
     @Column(name = "cover_url")
     private String coverUrl;
 
+    @Column(name = "type")
+    private String type;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.RESTRICT)
     @JoinColumn(name = "series_id", nullable = false)
