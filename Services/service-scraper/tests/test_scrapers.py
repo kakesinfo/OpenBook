@@ -1,8 +1,16 @@
 import unittest
 from datetime import datetime
+from bs4 import BeautifulSoup
+
 from scrapers.base import ScrapedBook, ScrapedAuthor, clean_text
 from scrapers import SCRAPERS, get_scraper
-from scrapers.urban_comics import parse_french_date, slug_title
+from scrapers.urban_comics import (
+    parse_french_date,
+    slug_title,
+    parse_authors,
+    parse_description,
+    parse_series_and_volume
+)
 
 class TestScrapers(unittest.TestCase):
     def test_registry(self):
@@ -23,6 +31,12 @@ class TestScrapers(unittest.TestCase):
         self.assertIsNotNone(d2)
         self.assertEqual(d2.month, 5)
 
+        d3 = parse_french_date("02 octobre 2026")
+        self.assertIsNotNone(d3)
+        self.assertEqual(d3.year, 2026)
+        self.assertEqual(d3.month, 10)
+        self.assertEqual(d3.day, 2)
+
     def test_slug_title(self):
         slug = slug_title("Absolute Flash Tome 1")
         self.assertEqual(slug, "absolute-flash-tome-1")
@@ -36,6 +50,56 @@ class TestScrapers(unittest.TestCase):
         # HTML entities fixes
         self.assertEqual(clean_text("Spider-Man &amp; Batman"), "Spider-Man & Batman")
         self.assertEqual(clean_text("L&#x27;aventure"), "L'aventure")
+
+    def test_urban_comics_parse_authors(self):
+        html = """
+        <h5 class="authors">
+            scénariste : <a href="/mattson-tomlin/">Mattson  Tomlin</a><br/>
+            dessinateur : <a href="/bermejo-lee/">Lee Bermejo</a><br/>
+            traducteur : <a href="/yann-graf/">Yann Graf</a>
+        </h5>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        authors = parse_authors(soup)
+        self.assertEqual(len(authors), 3)
+        self.assertEqual(authors[0].firstname, "Mattson")
+        self.assertEqual(authors[0].lastname, "Tomlin")
+        self.assertEqual(authors[0].role, "Writer")
+
+        self.assertEqual(authors[1].firstname, "Lee")
+        self.assertEqual(authors[1].lastname, "Bermejo")
+        self.assertEqual(authors[1].role, "Illustrator")
+
+        self.assertEqual(authors[2].firstname, "Yann")
+        self.assertEqual(authors[2].lastname, "Graf")
+        self.assertEqual(authors[2].role, "Translator")
+
+    def test_urban_comics_parse_authors_filters_navigation_links(self):
+        html = """
+        <h5 class="authors">
+            <a href="/category/auteurs/interviews/">Interviews</a>
+            <a href="/category/auteurs/portfolio-2/">Portfolio</a>
+            scénariste : <a href="/rick-remender/">Rick REMENDER</a>
+        </h5>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        authors = parse_authors(soup)
+        self.assertEqual(len(authors), 1)
+        self.assertEqual(authors[0].firstname, "Rick")
+        self.assertEqual(authors[0].lastname, "Remender")
+        self.assertEqual(authors[0].role, "Writer")
+
+    def test_urban_comics_parse_series_and_volume(self):
+        html = """
+        <div class="eightcol first">
+            <h1 id="titre-album">A Vicious Circle tome 1</h1>
+            <div class="serie_album">Série : <a href="/a-vicious-circle-serie/">A Vicious Circle</a></div>
+        </div>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        series, vol = parse_series_and_volume("A Vicious Circle tome 1", soup)
+        self.assertEqual(series, "A Vicious Circle")
+        self.assertEqual(vol, 1)
 
     def test_scraped_book_model(self):
         book = ScrapedBook(

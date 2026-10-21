@@ -41,7 +41,7 @@ class Database:
             return False
 
     def repair_mojibake(self):
-        """Repairs any existing corrupted double-encoded UTF-8 in the database."""
+        """Repairs any existing corrupted double-encoded UTF-8 and cleans bogus authors in the database."""
         conn = None
         try:
             conn = self.get_connection()
@@ -68,6 +68,18 @@ class Database:
                         cur.execute("DELETE FROM series WHERE id = %s;", (s_id,))
                     else:
                         cur.execute("UPDATE series SET name = %s WHERE id = %s;", (new_name, s_id))
+
+                # 3. Purge bogus scraper authors (e.g. navigation menu items like Interviews, Portfolio)
+                cur.execute("""
+                    DELETE FROM book_has_author 
+                    WHERE author_id IN (
+                        SELECT id FROM author WHERE LOWER(lastname) IN ('interviews', 'portfolio', 'auteurs')
+                    );
+                """)
+                cur.execute("""
+                    DELETE FROM author 
+                    WHERE LOWER(lastname) IN ('interviews', 'portfolio', 'auteurs');
+                """)
 
                 conn.commit()
                 if books or series:
@@ -187,8 +199,7 @@ class Database:
                     # INSERT new book
                     cur.execute(
                         """
-                        INSERT INTO book (
-                            title, isbn, volume, page_count, price, description,
+                        INSERT INTO book (\n                            title, isbn, volume, page_count, price, description,
                             series_id, editor_id, release_date, created_at, updated_at,
                             cover_url, type, weight, height, length, thickness
                         ) VALUES (
