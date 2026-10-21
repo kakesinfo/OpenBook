@@ -132,6 +132,10 @@ public class BookController {
             dto.setReleaseDate(book.getReleaseDate().toString());
         }
         dto.setCoverUrl(book.getCoverUrl());
+        if (book.getSeries() != null && book.getSeries().getCategory() != null) {
+            dto.setCategory(book.getSeries().getCategory().getName());
+        }
+        dto.setType(book.getType());
         return dto;
     }
 
@@ -173,7 +177,6 @@ public class BookController {
             }
         }
         dto.setThemes(themes);
-
         if (withSeries)
             dto.setSeries(SeriesService.entityToDTO(bookEntity.getSeries()));
 

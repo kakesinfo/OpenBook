@@ -6,7 +6,7 @@ import {
     WrapperContent,
     WrapperNavigation
 } from "../components/Wrapper/Wrapper.tsx";
-import { faNewspaper, faBook, faHeart, faCalendarDays, faMagnifyingGlass, faXmark } from '@fortawesome/free-solid-svg-icons';
+import { faNewspaper, faBook, faHeart, faCalendarDays, faMagnifyingGlass, faXmark, faGear } from '@fortawesome/free-solid-svg-icons';
 import { useState } from "react";
 import useSession from "../hooks/UseSession.tsx";
 import { useDebounce } from "../hooks/UseDebounce.tsx";
@@ -83,6 +83,7 @@ export default function App() {
                 <WrapperButton to={'/app/collection'} icon={faBook}>Collection</WrapperButton>
                 <WrapperButton to={'/app/wishlist'} icon={faHeart}>Souhaits</WrapperButton>
                 <WrapperButton to={'/app/planning'} icon={faCalendarDays}>Planning</WrapperButton>
+                <WrapperButton to={'/app/admin'} icon={faGear}>Administration</WrapperButton>
             </WrapperNavigation>
 
             <WrapperContent>

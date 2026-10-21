@@ -7,11 +7,26 @@ up-frontend:
 up-backend:
 	docker compose up --force-recreate --build -d project-backend
 
+up-scraper:
+	docker compose up --force-recreate --build -d project-scraper
+
 up-liquibase:
 	docker compose up --force-recreate --build -d project-liquibase
 
 up-postgres:
 	docker compose up --force-recreate --build -d project-postgres
+
+scrape-now:
+	docker compose exec project-scraper python main.py --now
+
+scrape-full:
+	docker compose exec project-scraper python main.py --now --full
+
+scrape-repair:
+	docker compose exec project-scraper python main.py --repair
+
+scraper-status:
+	curl -s http://localhost:5001/api/status
 
 down:
 	docker compose down
@@ -23,4 +38,4 @@ fclean:
 
 re: down fclean up
 
-.PHONY: up down fclean re
+.PHONY: up up-frontend up-backend up-scraper up-liquibase up-postgres scrape-now scrape-full scrape-repair scraper-status down fclean re

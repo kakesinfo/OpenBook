@@ -15,6 +15,7 @@ import CollectionPage from "./pages/app/CollectionPage.tsx";
 import WishlistPage from "./pages/app/WishlistPage.tsx";
 import PlanningPage from "./pages/app/PlanningPage.tsx";
 import SettingsPage from "./pages/app/SettingsPage.tsx";
+import AdminPage from "./pages/app/AdminPage.tsx";
 
 function ProtectedRoute({ redirectPath = "/login", children }: { redirectPath?: string, children: React.ReactNode }) {
     const session = useSession();
@@ -69,6 +70,7 @@ export default function Routing() {
                 <Route path="collection" element={<CollectionPage key={location.pathname}/>} />
                 <Route path="wishlist" element={<WishlistPage key={location.pathname}/>} />
                 <Route path="planning" element={<PlanningPage key={location.pathname}/>} />
+                <Route path="admin" element={<AdminPage key={location.pathname}/>} />
                 <Route path="settings" element={<SettingsPage key={location.pathname}/>} />
                 <Route path="book/:id" element={ <BookPage key={location.pathname} /> } />
             </Route>
