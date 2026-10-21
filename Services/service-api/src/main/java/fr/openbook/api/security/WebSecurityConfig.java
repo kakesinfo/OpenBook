@@ -3,6 +3,7 @@ package fr.openbook.api.security;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -38,6 +39,8 @@ public class WebSecurityConfig {
                 .requestMatchers("/auth/login").permitAll()
                 .requestMatchers("/auth/logout").permitAll()
                 .requestMatchers("/auth/register").permitAll()
+                .requestMatchers(HttpMethod.GET, "/user/avatar/**").permitAll()
+                .requestMatchers(HttpMethod.HEAD, "/user/avatar/**").permitAll()
                 .anyRequest().authenticated()
             )
             .cors(Customizer.withDefaults())

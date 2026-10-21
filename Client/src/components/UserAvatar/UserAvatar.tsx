@@ -1,3 +1,4 @@
+import { API_URL } from '../../config/api.ts';
 import './UserAvatar.scss';
 
 interface UserAvatarProps {
@@ -8,13 +9,14 @@ interface UserAvatarProps {
 }
 
 export function UserAvatar({ avatar, name, size = 'md', className = '' }: UserAvatarProps) {
-    const isImage = avatar && (avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('data:image'));
+    const isImage = avatar && (avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('data:image') || avatar.startsWith('/'));
+    const imageSrc = avatar?.startsWith('/') ? `${API_URL}${avatar}` : (avatar || '');
     const initial = (name || 'U')[0].toUpperCase();
 
     return (
         <div className={`user-avatar user-avatar--${size} ${className}`}>
             {isImage ? (
-                <img src={avatar} alt={name || 'Avatar'} className="user-avatar__img" />
+                <img src={imageSrc} alt={name || 'Avatar'} className="user-avatar__img" />
             ) : avatar ? (
                 <span className="user-avatar__emoji">{avatar}</span>
             ) : (

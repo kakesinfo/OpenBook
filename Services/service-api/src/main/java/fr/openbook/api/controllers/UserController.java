@@ -33,6 +33,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import fr.openbook.api.services.AvatarService;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @AllArgsConstructor
@@ -43,6 +50,7 @@ public class UserController {
     private final UserOwnsBooksRepository userOwnsBooksRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final JwtService jwtService;
+    private final AvatarService avatarService;
 
     private UserEntity getAuthenticatedUser(HttpSession session) {
         if (session != null) {
@@ -126,6 +134,63 @@ public class UserController {
         response.put("message", "Profil mis à jour avec succès.");
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadAvatar(
+            @RequestParam("file") MultipartFile file,
+            HttpSession session
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+
+        try {
+            String filename = avatarService.saveAvatar(file);
+            String avatarUrl = "/user/avatar/" + filename;
+
+            user.setAvatar(avatarUrl);
+            user = repositoryService.getUserRepository().save(user);
+
+            if (session != null) {
+                session.setAttribute("user", user);
+            }
+
+            HashMap<String, Object> claims = new HashMap<>();
+            claims.put("username", user.getRealUsername());
+            claims.put("email", user.getEmail());
+            claims.put("avatar", user.getAvatar());
+
+            String newToken = jwtService.generateToken(claims, user);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Avatar mis à jour avec succès.");
+            response.put("avatar", avatarUrl);
+            response.put("token", newToken);
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException | SecurityException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erreur serveur lors de l'enregistrement de l'avatar."));
+        }
+    }
+
+    @GetMapping("/avatar/{filename}")
+    public ResponseEntity<Resource> getAvatar(@PathVariable String filename) {
+        Resource resource = avatarService.loadAvatarResource(filename);
+        if (resource == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        MediaType mediaType = filename.toLowerCase().endsWith(".png")
+                ? MediaType.IMAGE_PNG
+                : MediaType.IMAGE_JPEG;
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                .header("X-Content-Type-Options", "nosniff")
+                .body(resource);
     }
 
     @PutMapping("/email")
