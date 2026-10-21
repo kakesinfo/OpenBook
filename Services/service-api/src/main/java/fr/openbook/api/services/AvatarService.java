@@ -140,7 +140,7 @@ public class AvatarService {
     }
 
     public Resource loadAvatarResource(String filename) {
-        if (filename == null || !filename.matches("^[a-zA-Z0-9\\-]+\\.(png|jpg|jpeg)$")) {
+        if (filename == null || !filename.matches("^[a-zA-Z0-9-]+\\.(png|jpg|jpeg)$")) {
             throw new IllegalArgumentException("Nom de fichier d'avatar invalide.");
         }
 
@@ -159,5 +159,17 @@ public class AvatarService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    public void deleteAvatarFile(String avatarUrl) {
+        if (avatarUrl == null || !avatarUrl.startsWith("/user/avatar/")) return;
+        String filename = avatarUrl.substring("/user/avatar/".length());
+        if (!filename.matches("^[a-zA-Z0-9-]+\\.(png|jpg|jpeg)$")) return;
+        try {
+            Path filePath = this.uploadDir.resolve(filename).normalize();
+            if (filePath.startsWith(this.uploadDir)) {
+                Files.deleteIfExists(filePath);
+            }
+        } catch (Exception ignored) {}
     }
 }

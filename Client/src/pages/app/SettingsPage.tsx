@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { enqueueSnackbar } from "notistack";
+import { useNavigate } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faUser,
@@ -7,8 +8,8 @@ import {
     faLock,
     faShieldHalved,
     faCheck,
-    faRotateLeft,
-    faCloudArrowUp,
+    faTrashCan,
+    faCamera,
     faTriangleExclamation,
     faXmark,
     faCircleNotch
@@ -19,25 +20,22 @@ import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import UserAvatar from "../../components/UserAvatar/UserAvatar.tsx";
 import "./SettingsPage.scss";
 
-const PRESET_AVATARS = [
-    "📚", "🧙‍♂️", "🧝‍♀️", "🐉", "🦊", "🐱",
-    "🦉", "🤖", "🕵️‍♂️", "🚀", "☕", "⚔️",
-    "✨", "🪐", "🎨", "👑"
-];
+const REQUIRED_DELETE_PHRASE = "Je veux supprimer mon compte";
 
 export default function SettingsPage() {
     const session = useSession();
+    const navigate = useNavigate();
 
     // Profile state
     const [username, setUsername] = useState("");
     const [avatar, setAvatar] = useState("");
     const [profileSaving, setProfileSaving] = useState(false);
     const [avatarUploading, setAvatarUploading] = useState(false);
-    const [isDragOver, setIsDragOver] = useState(false);
 
     // Modal states for Danger Zone
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     // Email modal fields
     const [newEmail, setNewEmail] = useState("");
@@ -49,6 +47,11 @@ export default function SettingsPage() {
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [passwordSaving, setPasswordSaving] = useState(false);
+
+    // Delete account modal fields
+    const [deletePassword, setDeletePassword] = useState("");
+    const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
+    const [deleteSaving, setDeleteSaving] = useState(false);
 
     // Fetch initial profile
     useEffect(() => {
@@ -72,7 +75,6 @@ export default function SettingsPage() {
 
     // Handle File Upload with Security Analysis
     const handleFileUpload = async (file: File) => {
-        // Client-side pre-checks
         const lowerName = file.name.toLowerCase();
         if (!lowerName.endsWith(".jpg") && !lowerName.endsWith(".jpeg") && !lowerName.endsWith(".png")) {
             enqueueSnackbar("Format non supporté : seuls les fichiers JPG et PNG sont autorisés.", { variant: "error" });
@@ -129,16 +131,16 @@ export default function SettingsPage() {
         }
     };
 
-    // Preset emoji or reset avatar
-    const handleSetEmojiAvatar = async (selectedAvatar: string) => {
-        setAvatar(selectedAvatar);
+    // Remove avatar (reset to initial)
+    const handleRemoveAvatar = async () => {
+        setAvatar("");
         try {
             const response = await session.customFetch("/user/profile", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     username: username.trim() || session.user?.username,
-                    avatar: selectedAvatar
+                    avatar: ""
                 })
             });
 
@@ -147,9 +149,9 @@ export default function SettingsPage() {
                 if (data.token) {
                     session.updateToken(data.token);
                 } else {
-                    session.updateUser({ avatar: selectedAvatar });
+                    session.updateUser({ avatar: "" });
                 }
-                enqueueSnackbar(selectedAvatar ? "Avatar modifié !" : "Avatar réinitialisé avec succès.", { variant: "success" });
+                enqueueSnackbar("Photo de profil supprimée.", { variant: "success" });
             }
         } catch (err) {
             console.error(err);
@@ -314,6 +316,55 @@ export default function SettingsPage() {
         }
     };
 
+    // Submit Account Deletion (Destructive action)
+    const handleConfirmDeleteAccount = async (e: FormEvent) => {
+        e.preventDefault();
+
+        if (!deletePassword) {
+            enqueueSnackbar("Veuillez saisir votre mot de passe pour confirmer la suppression.", { variant: "error" });
+            return;
+        }
+
+        if (deleteConfirmationText !== REQUIRED_DELETE_PHRASE) {
+            enqueueSnackbar(`Vous devez saisir exactement "${REQUIRED_DELETE_PHRASE}".`, { variant: "error" });
+            return;
+        }
+
+        setDeleteSaving(true);
+        try {
+            const response = await session.customFetch("/user/account", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    password: deletePassword,
+                    confirmationText: deleteConfirmationText
+                })
+            });
+
+            if (response.ok) {
+                setIsDeleteModalOpen(false);
+                await session.logout();
+                enqueueSnackbar("Votre compte a été supprimé définitivement.", { variant: "info" });
+                navigate("/login");
+            } else {
+                const errorText = await response.text().catch(() => "");
+                let msg = "Erreur lors de la suppression du compte.";
+                try {
+                    const parsed = JSON.parse(errorText);
+                    msg = parsed.message || parsed.error || errorText;
+                } catch {
+                    if (errorText) msg = errorText;
+                }
+                enqueueSnackbar(msg, { variant: "error" });
+            }
+        } catch (err) {
+            console.error(err);
+            enqueueSnackbar("Erreur lors de la suppression du compte.", { variant: "error" });
+        } finally {
+            setDeleteSaving(false);
+        }
+    };
+
     return (
         <div className="settings-page">
             <WrapperHeader>
@@ -351,90 +402,55 @@ export default function SettingsPage() {
                             <div>
                                 <h3>Profil & Avatar</h3>
                                 <p className="settings-card__header-desc">
-                                    Téléversez une photo de profil ou choisissez un avatar personnalisé
+                                    Gérez votre image de profil et votre pseudonyme
                                 </p>
                             </div>
                         </div>
                     </header>
 
                     <div className="settings-card__body">
-                        {/* Avatar management */}
-                        <div className="avatar-section">
-                            <div className="avatar-section__current">
-                                <UserAvatar avatar={avatar} name={username} size="lg" />
-                                <div className="avatar-section__info">
-                                    <span className="avatar-section__type">
-                                        {avatar ? (avatar.startsWith("/") || avatar.startsWith("http") ? "Photo de profil personnalisée" : `Avatar emoji (${avatar})`) : "Initiales par défaut"}
-                                    </span>
+                        {/* Compact Avatar Upload Section */}
+                        <div className="avatar-compact">
+                            <UserAvatar avatar={avatar} name={username} size="lg" />
+
+                            <div className="avatar-compact__content">
+                                <span className="avatar-compact__title">
+                                    {avatar ? "Photo de profil active" : "Initiales par défaut"}
+                                </span>
+
+                                <div className="avatar-compact__actions">
+                                    <label className="avatar-compact__upload-btn">
+                                        {avatarUploading ? (
+                                            <FontAwesomeIcon icon={faCircleNotch} spin />
+                                        ) : (
+                                            <FontAwesomeIcon icon={faCamera} />
+                                        )}
+                                        <span>{avatarUploading ? "Vérification..." : "Changer la photo"}</span>
+                                        <input
+                                            type="file"
+                                            accept="image/png, image/jpeg, image/jpg"
+                                            onChange={handleFileInputChange}
+                                            disabled={avatarUploading}
+                                        />
+                                    </label>
+
                                     {avatar && (
                                         <button
                                             type="button"
-                                            className="avatar-section__reset-btn"
-                                            onClick={() => handleSetEmojiAvatar("")}
+                                            className="avatar-compact__reset-btn"
+                                            onClick={handleRemoveAvatar}
                                         >
-                                            <FontAwesomeIcon icon={faRotateLeft} style={{ marginRight: 6 }} />
-                                            Supprimer et revenir aux initiales
+                                            <FontAwesomeIcon icon={faTrashCan} />
+                                            <span>Supprimer la photo</span>
                                         </button>
                                     )}
                                 </div>
-                            </div>
 
-                            {/* Image File Upload with Security Analysis */}
-                            <div
-                                className={`avatar-dropzone ${isDragOver ? 'avatar-dropzone--active' : ''}`}
-                                onDragOver={(e) => {
-                                    e.preventDefault();
-                                    setIsDragOver(true);
-                                }}
-                                onDragLeave={() => setIsDragOver(false)}
-                                onDrop={(e) => {
-                                    e.preventDefault();
-                                    setIsDragOver(false);
-                                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                        handleFileUpload(e.dataTransfer.files[0]);
-                                    }
-                                }}
-                            >
-                                <input
-                                    type="file"
-                                    className="avatar-dropzone__input"
-                                    accept="image/png, image/jpeg, image/jpg"
-                                    onChange={handleFileInputChange}
-                                    disabled={avatarUploading}
-                                />
-                                <div className="avatar-dropzone__icon">
-                                    {avatarUploading ? (
-                                        <FontAwesomeIcon icon={faCircleNotch} spin />
-                                    ) : (
-                                        <FontAwesomeIcon icon={faCloudArrowUp} />
-                                    )}
-                                </div>
-                                <span className="avatar-dropzone__label">
-                                    {avatarUploading ? "Analyse de sécurité & téléversement en cours..." : <><span>Cliquez pour parcourir</span> ou glissez-déposez une image</>}
-                                </span>
-                                <span className="avatar-dropzone__hint">
-                                    Fichiers acceptés : <strong>JPG, PNG</strong> (max. 5 Mo).
-                                </span>
-                                <span className="avatar-dropzone__security-badge">
-                                    <FontAwesomeIcon icon={faShieldHalved} /> Analyse antivirus, vérification des octets magiques & assainissement automatique
-                                </span>
-                            </div>
-
-                            {/* Emoji presets */}
-                            <div className="avatar-presets">
-                                <span className="avatar-presets__label">Ou choisissez un avatar emoji :</span>
-                                <div className="avatar-presets__grid">
-                                    {PRESET_AVATARS.map((emoji) => (
-                                        <button
-                                            key={emoji}
-                                            type="button"
-                                            className={`avatar-presets__btn ${avatar === emoji ? 'avatar-presets__btn--selected' : ''}`}
-                                            onClick={() => handleSetEmojiAvatar(emoji)}
-                                            title={`Sélectionner ${emoji}`}
-                                        >
-                                            {emoji}
-                                        </button>
-                                    ))}
+                                <div className="avatar-compact__meta">
+                                    <span>Formats : <strong>JPG, PNG</strong> (max. 5 Mo).</span>
+                                    <span className="avatar-compact__security-tag">
+                                        <FontAwesomeIcon icon={faShieldHalved} /> Analyse de sécurité & assainissement
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -475,13 +491,13 @@ export default function SettingsPage() {
                             <div>
                                 <h3>Zone Danger</h3>
                                 <p className="settings-card__header-desc">
-                                    Actions sensibles modifiant vos identifiants d'accès
+                                    Actions sensibles et destructives nécessitant une confirmation
                                 </p>
                             </div>
                         </div>
                         <div className="settings-card__badge-danger">
                             <FontAwesomeIcon icon={faLock} />
-                            <span>Confirmation par mot de passe requise</span>
+                            <span>Confirmation requise</span>
                         </div>
                     </header>
 
@@ -528,6 +544,30 @@ export default function SettingsPage() {
                             >
                                 <FontAwesomeIcon icon={faLock} />
                                 <span>Changer de mot de passe</span>
+                            </button>
+                        </div>
+
+                        {/* Ligne 3: Suppression de compte */}
+                        <div className="settings-danger-card__item">
+                            <div className="settings-danger-card__item-info">
+                                <span className="settings-danger-card__item-title" style={{ color: "#f87171" }}>
+                                    Supprimer mon compte
+                                </span>
+                                <span className="settings-danger-card__item-desc">
+                                    Supprime définitivement votre compte, vos listes et toutes vos données
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                className="settings-danger-card__btn"
+                                onClick={() => {
+                                    setDeletePassword("");
+                                    setDeleteConfirmationText("");
+                                    setIsDeleteModalOpen(true);
+                                }}
+                            >
+                                <FontAwesomeIcon icon={faTrashCan} />
+                                <span>Supprimer le compte</span>
                             </button>
                         </div>
                     </div>
@@ -695,6 +735,87 @@ export default function SettingsPage() {
                                 >
                                     <FontAwesomeIcon icon={passwordSaving ? faCircleNotch : faCheck} spin={passwordSaving} />
                                     <span>{passwordSaving ? "Modification..." : "Confirmer le changement de mot de passe"}</span>
+                                </button>
+                            </footer>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Popup / Modal 3: Suppression de compte */}
+            {isDeleteModalOpen && (
+                <div className="settings-modal-backdrop" onClick={() => setIsDeleteModalOpen(false)}>
+                    <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
+                        <header className="settings-modal__header">
+                            <div className="settings-modal__title">
+                                <FontAwesomeIcon icon={faTrashCan} />
+                                <span>Supprimer définitivement le compte</span>
+                            </div>
+                            <button
+                                type="button"
+                                className="settings-modal__close"
+                                onClick={() => setIsDeleteModalOpen(false)}
+                                aria-label="Fermer"
+                            >
+                                <FontAwesomeIcon icon={faXmark} />
+                            </button>
+                        </header>
+
+                        <form onSubmit={handleConfirmDeleteAccount}>
+                            <div className="settings-modal__body">
+                                <div className="settings-modal__warning">
+                                    <FontAwesomeIcon icon={faTriangleExclamation} />
+                                    <span>
+                                        Attention : cette action est <strong>irréversible</strong>. Toutes vos données de compte, votre collection et vos souhaits seront supprimés sans possibilité de récupération.
+                                    </span>
+                                </div>
+
+                                <div className="form-group">
+                                    <label>
+                                        Recopiez la phrase suivante pour confirmer :
+                                    </label>
+                                    <div className="modal-confirm-quote">
+                                        {REQUIRED_DELETE_PHRASE}
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder={REQUIRED_DELETE_PHRASE}
+                                        value={deleteConfirmationText}
+                                        onChange={(e) => setDeleteConfirmationText(e.target.value)}
+                                        required
+                                        autoFocus
+                                    />
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label htmlFor="modal-delete-pwd">Mot de passe actuel</label>
+                                    <input
+                                        id="modal-delete-pwd"
+                                        type="password"
+                                        placeholder="Votre mot de passe pour confirmer la suppression"
+                                        value={deletePassword}
+                                        onChange={(e) => setDeletePassword(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <footer className="settings-modal__footer">
+                                <button
+                                    type="button"
+                                    className="settings-btn settings-btn--ghost"
+                                    onClick={() => setIsDeleteModalOpen(false)}
+                                    disabled={deleteSaving}
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="settings-btn settings-btn--danger"
+                                    disabled={deleteSaving || deleteConfirmationText !== REQUIRED_DELETE_PHRASE || !deletePassword}
+                                >
+                                    <FontAwesomeIcon icon={deleteSaving ? faCircleNotch : faTrashCan} spin={deleteSaving} />
+                                    <span>{deleteSaving ? "Suppression en cours..." : "Supprimer définitivement mon compte"}</span>
                                 </button>
                             </footer>
                         </form>

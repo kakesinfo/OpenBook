@@ -7,6 +7,7 @@ import fr.openbook.api.dtos.UserProfileDTO;
 import fr.openbook.api.dtos.user.UpdateEmailRequestDTO;
 import fr.openbook.api.dtos.user.UpdatePasswordRequestDTO;
 import fr.openbook.api.dtos.user.UpdateProfileRequestDTO;
+import fr.openbook.api.dtos.user.DeleteAccountRequestDTO;
 import fr.openbook.api.entities.BookEntity;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
@@ -258,6 +259,37 @@ public class UserController {
         repositoryService.getUserRepository().save(user);
 
         return ResponseEntity.ok(Map.of("message", "Mot de passe modifié avec succès."));
+    }
+
+    @DeleteMapping("/account")
+    public ResponseEntity<?> deleteAccount(@RequestBody DeleteAccountRequestDTO request, HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+
+        if (request.getPassword() == null || request.getPassword().isEmpty()) {
+            return ResponseEntity.badRequest().body("Le mot de passe actuel est requis pour confirmer la suppression.");
+        }
+
+        if (!bCryptPasswordEncoder.matches(request.getPassword(), user.getPassword())) {
+            return ResponseEntity.badRequest().body("Mot de passe incorrect.");
+        }
+
+        if (!"Je veux supprimer mon compte".equals(request.getConfirmationText())) {
+            return ResponseEntity.badRequest().body("La phrase de confirmation est incorrecte. Vous devez saisir exactement : Je veux supprimer mon compte");
+        }
+
+        userOwnsBooksRepository.deleteAllByUserId(user.getId());
+
+        if (user.getAvatar() != null) {
+            avatarService.deleteAvatarFile(user.getAvatar());
+        }
+
+        repositoryService.getUserRepository().delete(user);
+
+        if (session != null) {
+            session.invalidate();
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Votre compte a été supprimé définitivement."));
     }
 
     @PostMapping("/addBook/{id}/{status}")
