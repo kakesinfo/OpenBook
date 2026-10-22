@@ -16,26 +16,37 @@ export default function HomePage() {
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(24);
+    const [totalBooks, setTotalBooks] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
 
     useEffect(() => {
         setLoading(true);
-        session.customFetch(`/books/${order}`, {
+        session.customFetch(`/books/${order}?page=${currentPage}&size=${pageSize}`, {
             method: "GET"
         }).then(async (response) => {
             if (response.ok) {
                 const data = await response.json();
-                setBooks(data);
+                if (data && Array.isArray(data.content)) {
+                    setBooks(data.content);
+                    setTotalBooks(data.totalElements ?? 0);
+                    setTotalPages(data.totalPages ?? 1);
+                } else if (Array.isArray(data)) {
+                    setBooks(data);
+                    setTotalBooks(data.length);
+                    setTotalPages(Math.max(1, Math.ceil(data.length / pageSize)));
+                }
             }
         }).catch((err) => {
             console.error("HomePage fetch error:", err);
         }).finally(() => {
             setLoading(false);
         });
-    }, [order, session]);
+    }, [order, currentPage, pageSize, session]);
 
     const handleOrderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setOrder(e.target.value as "oldest" | "newest");
         setCurrentPage(1);
+        window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     const handlePageChange = (page: number) => {
@@ -49,12 +60,8 @@ export default function HomePage() {
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
-    const totalBooks = books.length;
-    const totalPages = Math.max(1, Math.ceil(totalBooks / pageSize));
-    const safePage = Math.min(currentPage, totalPages);
-    const startIndex = (safePage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalBooks);
-    const paginatedBooks = books.slice(startIndex, endIndex);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + books.length, totalBooks);
 
     return (
         <div className="newbooks-wrapper">
@@ -77,9 +84,9 @@ export default function HomePage() {
                     </div>
                 ) : (
                     <>
-                        <BookList books={paginatedBooks} />
+                        <BookList books={books} />
                         <Pagination
-                            currentPage={safePage}
+                            currentPage={currentPage}
                             totalPages={totalPages}
                             onPageChange={handlePageChange}
                             totalItems={totalBooks}

@@ -1,6 +1,7 @@
 package fr.openbook.api.controllers;
 
 import fr.openbook.api.dtos.BookDTO;
+import fr.openbook.api.dtos.PageDTO;
 import fr.openbook.api.entities.SeriesHasThemeEntity;
 import fr.openbook.api.dtos.BookHasAuthorDTO;
 import fr.openbook.api.dtos.BookSummaryDTO;
@@ -17,6 +18,10 @@ import fr.openbook.api.services.SeriesService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -68,13 +73,19 @@ public class BookController {
     }
 
     @GetMapping("/newest")
-    public List<BookSummaryDTO> getAllOrderedByReleaseDateDesc() {
-        return getAllByReleaseDateOrderBy("desc");
+    public ResponseEntity<?> getAllOrderedByReleaseDateDesc(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false, defaultValue = "24") Integer size
+    ) {
+        return getBooksOrderedByReleaseDate("desc", page, size);
     }
 
     @GetMapping("/oldest")
-    public List<BookSummaryDTO> getAllOrderedByReleaseDateAsc() {
-        return getAllByReleaseDateOrderBy("asc");
+    public ResponseEntity<?> getAllOrderedByReleaseDateAsc(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false, defaultValue = "24") Integer size
+    ) {
+        return getBooksOrderedByReleaseDate("asc", page, size);
     }
 
     @GetMapping("/upcoming")
@@ -103,16 +114,36 @@ public class BookController {
                 .collect(Collectors.toList());
     }
 
-    private List<BookSummaryDTO> getAllByReleaseDateOrderBy(String order) {
+    private ResponseEntity<?> getBooksOrderedByReleaseDate(String order, Integer page, Integer size) {
         final BookRepository repository = repositoryService.getBookRepository();
 
-        List<BookEntity> books = "asc".equalsIgnoreCase(order)
-                ? repository.findAllByOrderByReleaseDateAsc()
-                : repository.findAllByOrderByReleaseDateDesc();
+        if (page == null) {
+            List<BookEntity> books = "asc".equalsIgnoreCase(order)
+                    ? repository.findAllByOrderByReleaseDateAsc()
+                    : repository.findAllByOrderByReleaseDateDesc();
 
-        return books.stream()
-                .map(this::entityToSummaryDTO)
-                .collect(Collectors.toList());
+            return ResponseEntity.ok(books.stream()
+                    .map(this::entityToSummaryDTO)
+                    .collect(Collectors.toList()));
+        }
+
+        int pageIndex = Math.max(0, page - 1);
+        int pageSize = (size != null && size > 0) ? size : 24;
+        Pageable pageable = PageRequest.of(pageIndex, pageSize);
+
+        Page<BookEntity> booksPage = "asc".equalsIgnoreCase(order)
+                ? repository.findAllByOrderByReleaseDateAsc(pageable)
+                : repository.findAllByOrderByReleaseDateDesc(pageable);
+
+        PageDTO<BookSummaryDTO> pageDTO = new PageDTO<>(
+                booksPage.getContent().stream().map(this::entityToSummaryDTO).collect(Collectors.toList()),
+                booksPage.getTotalElements(),
+                booksPage.getTotalPages(),
+                pageIndex + 1,
+                pageSize
+        );
+
+        return ResponseEntity.ok(pageDTO);
     }
 
     @GetMapping("/{id}")
