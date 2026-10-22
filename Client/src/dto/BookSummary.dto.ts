@@ -4,6 +4,7 @@ export default interface BookSummaryDTO {
     volume: number;
     price: number;
     releaseDate: string;
+    createdAt?: string;
     coverUrl: string;
     category?: string;
     type?: string;

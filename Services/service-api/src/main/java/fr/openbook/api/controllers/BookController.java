@@ -76,21 +76,21 @@ public class BookController {
     }
 
     @GetMapping("/newest")
-    public ResponseEntity<?> getAllOrderedByReleaseDateDesc(
+    public ResponseEntity<?> getAllOrderedByCreatedAtDesc(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false, defaultValue = "20") Integer size,
             @RequestParam(required = false, defaultValue = "100") Integer limit
     ) {
-        return getBooksOrderedByReleaseDate("desc", page, size, limit);
+        return getBooksOrderedByCreatedAt("desc", page, size, limit);
     }
 
     @GetMapping("/oldest")
-    public ResponseEntity<?> getAllOrderedByReleaseDateAsc(
+    public ResponseEntity<?> getAllOrderedByCreatedAtAsc(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false, defaultValue = "20") Integer size,
             @RequestParam(required = false, defaultValue = "100") Integer limit
     ) {
-        return getBooksOrderedByReleaseDate("asc", page, size, limit);
+        return getBooksOrderedByCreatedAt("asc", page, size, limit);
     }
 
     @GetMapping("/upcoming")
@@ -119,11 +119,11 @@ public class BookController {
                 .collect(Collectors.toList());
     }
 
-    private ResponseEntity<?> getBooksOrderedByReleaseDate(String order, Integer page, Integer size, Integer limit) {
+    private ResponseEntity<?> getBooksOrderedByCreatedAt(String order, Integer page, Integer size, Integer limit) {
         final BookRepository repository = repositoryService.getBookRepository();
 
         Sort.Direction direction = "asc".equalsIgnoreCase(order) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Sort sort = Sort.by(direction, "releaseDate").and(Sort.by(direction, "id"));
+        Sort sort = Sort.by(direction, "createdAt").and(Sort.by(direction, "id"));
 
         if (page == null) {
             Pageable pageable = (limit != null && limit > 0)
@@ -217,6 +217,9 @@ public class BookController {
         if (book.getReleaseDate() != null) {
             dto.setReleaseDate(book.getReleaseDate().toString());
         }
+        if (book.getCreatedAt() != null) {
+            dto.setCreatedAt(book.getCreatedAt().toString());
+        }
         dto.setCoverUrl(book.getCoverUrl());
         if (book.getSeries() != null) {
             dto.setSeriesName(book.getSeries().getName());
@@ -231,6 +234,7 @@ public class BookController {
                     .map(bha -> ((bha.getAuthor().getFirstname() != null ? bha.getAuthor().getFirstname() : "") + " "
                             + (bha.getAuthor().getLastname() != null ? bha.getAuthor().getLastname() : "")).trim())
                     .filter(s -> !s.isEmpty())
+                    .distinct()
                     .collect(Collectors.joining(", "));
             dto.setAuthor(authorStr);
         }
