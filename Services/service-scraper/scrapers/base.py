@@ -2,7 +2,7 @@ import html
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Callable
 
 def clean_text(text: Optional[str]) -> Optional[str]:
     """
@@ -74,6 +74,11 @@ class BaseScraper(ABC):
         return "#6366f1"
 
     @abstractmethod
-    def scrape(self, max_items: int = 50, full_scan: bool = False) -> List[ScrapedBook]:
+    def scrape(
+        self,
+        max_items: int = 50,
+        full_scan: bool = False,
+        on_book_found: Optional[Callable[[ScrapedBook], None]] = None
+    ) -> List[ScrapedBook]:
         """Scrape books from the source and return a list of ScrapedBook objects."""
         pass

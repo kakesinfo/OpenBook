@@ -10,6 +10,7 @@ from apscheduler.triggers.cron import CronTrigger
 from config import settings
 from database import db
 from scrapers import SCRAPERS, get_scraper
+from scrapers.base import ScrapedBook
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,43 @@ class ScraperManager:
         self.history: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
         self.disabled_sources: set = self._load_disabled_sources()
+        self.live_scan: Dict[str, Any] = {
+            "is_running": False,
+            "job_name": None,
+            "current_source": None,
+            "current_source_name": None,
+            "current_source_color": None,
+            "total_found": 0,
+            "total_saved": 0,
+            "recent_books": [],
+            "started_at": None,
+            "ended_at": None,
+        }
+        self._init_recent_books_from_db()
+
+    def _init_recent_books_from_db(self):
+        try:
+            db_books = db.get_recent_books(limit=10)
+            if db_books:
+                for b in db_books:
+                    self.live_scan["recent_books"].append({
+                        "id": b.get("id"),
+                        "title": b.get("title"),
+                        "series_name": b.get("series_name"),
+                        "volume": b.get("volume"),
+                        "isbn": b.get("isbn"),
+                        "editor_name": b.get("editor_name"),
+                        "cover_url": b.get("cover_url"),
+                        "price": b.get("price"),
+                        "authors": [],
+                        "source_id": None,
+                        "source_name": b.get("editor_name") or "Catalogue",
+                        "source_color": "#6366f1",
+                        "found_at": None
+                    })
+                self.live_scan["total_found"] = len(self.live_scan["recent_books"])
+        except Exception as e:
+            logger.debug("Could not prefill recent books from DB: %s", e)
 
     def _load_disabled_sources(self) -> set:
         try:
@@ -109,13 +147,31 @@ class ScraperManager:
 
             if sources:
                 target_desc = ", ".join(sources)
+                first_src = sources[0]
             elif source:
                 target_desc = source
+                first_src = source.split(",")[0].strip()
             else:
                 target_desc = "all active"
+                active_list = [s for s in SCRAPERS.keys() if s not in self.disabled_sources]
+                first_src = active_list[0] if active_list else None
 
             self.current_job = f"{target_desc}{' (full)' if full_scan else ''}"
             self.last_status = "running"
+
+            first_scr = get_scraper(first_src) if (first_src and first_src in SCRAPERS) else None
+            self.live_scan = {
+                "is_running": True,
+                "job_name": target_desc,
+                "current_source": first_src,
+                "current_source_name": first_scr.display_name if first_scr else target_desc,
+                "current_source_color": first_scr.color if first_scr else "#6366f1",
+                "total_found": 0,
+                "total_saved": 0,
+                "recent_books": [],
+                "started_at": datetime.now().isoformat(),
+                "ended_at": None,
+            }
 
         thread = threading.Thread(
             target=self._execute_scrape,
@@ -169,6 +225,20 @@ class ScraperManager:
             "errors": []
         }
 
+        with self._lock:
+            first_s = sources_to_run[0] if sources_to_run else None
+            first_scraper = get_scraper(first_s) if (first_s and first_s in SCRAPERS) else None
+            self.live_scan["is_running"] = True
+            self.live_scan["job_name"] = ", ".join(sources_to_run) if sources_to_run else (source or "none")
+            self.live_scan["current_source"] = first_s
+            self.live_scan["current_source_name"] = first_scraper.display_name if first_scraper else first_s
+            self.live_scan["current_source_color"] = first_scraper.color if first_scraper else "#6366f1"
+            self.live_scan["total_found"] = 0
+            self.live_scan["total_saved"] = 0
+            self.live_scan["recent_books"] = []
+            self.live_scan["started_at"] = start_time.isoformat()
+            self.live_scan["ended_at"] = None
+
         logger.info("Starting scrape process for sources: %s (full_scan=%s)", sources_to_run, full_scan)
 
         try:
@@ -176,23 +246,68 @@ class ScraperManager:
                 try:
                     logger.info("Running scraper: %s", s_name)
                     scraper = get_scraper(s_name)
-                    limit = 2000 if full_scan else settings.MAX_BOOKS_PER_SOURCE
-                    books = scraper.scrape(max_items=limit, full_scan=full_scan)
+                    with self._lock:
+                        self.live_scan["current_source"] = s_name
+                        self.live_scan["current_source_name"] = scraper.display_name
+                        self.live_scan["current_source_color"] = scraper.color
 
-                    saved_count = 0
-                    for b in books:
+                    limit = 2000 if full_scan else settings.MAX_BOOKS_PER_SOURCE
+                    saved_this_source = [0]
+                    seen_in_callback = set()
+
+                    def on_book_found(b: ScrapedBook):
                         book_id = db.upsert_book(b)
-                        if book_id:
-                            saved_count += 1
+                        is_saved = bool(book_id)
+                        ident = b.isbn or b.title
+                        if is_saved and ident not in seen_in_callback:
+                            seen_in_callback.add(ident)
+                            saved_this_source[0] += 1
+
+                        with self._lock:
+                            self.live_scan["total_found"] += 1
+                            if is_saved:
+                                self.live_scan["total_saved"] += 1
+
+                            book_item = {
+                                "id": book_id,
+                                "title": b.title,
+                                "series_name": b.series_name,
+                                "volume": b.volume,
+                                "isbn": b.isbn,
+                                "editor_name": b.editor_name or scraper.display_name,
+                                "cover_url": b.cover_url,
+                                "price": b.price,
+                                "page_count": b.page_count,
+                                "authors": [f"{a.firstname} {a.lastname}".strip() for a in b.authors if a.lastname],
+                                "source_id": s_name,
+                                "source_name": scraper.display_name,
+                                "source_color": scraper.color,
+                                "found_at": datetime.now().strftime("%H:%M:%S")
+                            }
+                            self.live_scan["recent_books"].insert(0, book_item)
+                            if len(self.live_scan["recent_books"]) > 10:
+                                self.live_scan["recent_books"] = self.live_scan["recent_books"][:10]
+
+                    books = scraper.scrape(
+                        max_items=limit,
+                        full_scan=full_scan,
+                        on_book_found=on_book_found
+                    )
+
+                    # Safeguard: in case any book was not captured via callback
+                    for b in books:
+                        ident = b.isbn or b.title
+                        if ident not in seen_in_callback:
+                            on_book_found(b)
 
                     summary["results"][s_name] = {
                         "scraped": len(books),
-                        "saved": saved_count,
+                        "saved": saved_this_source[0],
                         "status": "success"
                     }
                     summary["total_scraped"] += len(books)
-                    summary["total_saved"] += saved_count
-                    logger.info("Scraper %s finished: %d scraped, %d saved/updated", s_name, len(books), saved_count)
+                    summary["total_saved"] += saved_this_source[0]
+                    logger.info("Scraper %s finished: %d scraped, %d saved/updated", s_name, len(books), saved_this_source[0])
 
                 except Exception as e:
                     err_msg = f"Error in scraper {s_name}: {str(e)}"
@@ -214,6 +329,9 @@ class ScraperManager:
                 self.current_job = None
                 self.last_run = datetime.now()
                 self.last_status = summary["status"]
+                self.live_scan["is_running"] = False
+                self.live_scan["current_source"] = None
+                self.live_scan["ended_at"] = datetime.now().isoformat()
                 self.history.insert(0, summary)
                 if len(self.history) > 20:
                     self.history.pop()
@@ -239,7 +357,8 @@ class ScraperManager:
                 "daily_at": f"{settings.SCHEDULE_HOUR:02d}:{settings.SCHEDULE_MINUTE:02d}",
                 "scrape_on_startup": settings.SCRAPE_ON_STARTUP
             },
-            "recent_history": self.history[:5]
+            "recent_history": self.history[:5],
+            "live_scan": self.live_scan
         }
 
 scraper_manager = ScraperManager()

@@ -4,7 +4,7 @@ import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Optional, Dict, Any, Tuple, Set
+from typing import List, Optional, Dict, Any, Tuple, Set, Callable
 import requests
 from requests.adapters import HTTPAdapter
 from bs4 import BeautifulSoup
@@ -199,7 +199,7 @@ class UrbanComicsScraper(BaseScraper):
         })
         return session
 
-    def scrape(self, max_items: int = 50, full_scan: bool = False) -> List[ScrapedBook]:
+    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None) -> List[ScrapedBook]:
         session = self._create_session()
         targets: Dict[str, Dict[str, Any]] = {}
 
@@ -265,6 +265,11 @@ class UrbanComicsScraper(BaseScraper):
                     book = future.result()
                     if book:
                         books.append(book)
+                        if on_book_found:
+                            try:
+                                on_book_found(book)
+                            except Exception as cb_err:
+                                logger.warning("UrbanComics: on_book_found error: %s", cb_err)
                 except Exception as e:
                     logger.error("UrbanComics: error parsing product %s: %s", url, e)
 

@@ -2,7 +2,7 @@ import re
 import html
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Callable
 import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
@@ -29,7 +29,7 @@ class MorgenBDScraper(BaseScraper):
     def color(self) -> str:
         return "#8b5cf6"
 
-    def scrape(self, max_items: int = 50, full_scan: bool = False) -> List[ScrapedBook]:
+    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None) -> List[ScrapedBook]:
         books: List[ScrapedBook] = []
         base_url = "https://www.morgen-bd.com"
         listing_url = f"{base_url}/nos-albums"
@@ -61,6 +61,11 @@ class MorgenBDScraper(BaseScraper):
                     book = self._scrape_book_page(session, book_url)
                     if book:
                         books.append(book)
+                        if on_book_found:
+                            try:
+                                on_book_found(book)
+                            except Exception as cb_err:
+                                logger.warning("MorgenBD: on_book_found error: %s", cb_err)
                 except Exception as e:
                     logger.error("MorgenBD: error parsing %s: %s", book_url, e)
 

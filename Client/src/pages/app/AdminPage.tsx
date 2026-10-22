@@ -32,6 +32,18 @@ interface JobHistory {
     status: string;
 }
 
+export interface LiveScanStatus {
+    is_running: boolean;
+    job_name?: string | null;
+    current_source?: string | null;
+    current_source_name?: string | null;
+    current_source_color?: string | null;
+    total_found: number;
+    total_saved: number;
+    started_at?: string | null;
+    ended_at?: string | null;
+}
+
 interface ScraperStatus {
     is_running: boolean;
     current_job: string | null;
@@ -47,6 +59,7 @@ interface ScraperStatus {
         scrape_on_startup: boolean;
     };
     recent_history?: JobHistory[];
+    live_scan?: LiveScanStatus;
 }
 
 export default function AdminPage() {
@@ -117,12 +130,23 @@ export default function AdminPage() {
         }
     };
 
+    // Initial load
     useEffect(() => {
         fetchStatus();
         fetchTotalBooks();
-        const interval = setInterval(fetchStatus, 5000);
-        return () => clearInterval(interval);
     }, [session]);
+
+    // Adaptive polling: 1 second during active scan for real-time live updates, 5 seconds when idle
+    useEffect(() => {
+        const intervalMs = status?.is_running ? 1000 : 5000;
+        const interval = setInterval(() => {
+            fetchStatus();
+            if (status?.is_running) {
+                fetchTotalBooks();
+            }
+        }, intervalMs);
+        return () => clearInterval(interval);
+    }, [status?.is_running]);
 
     const handleToggleSelect = (sourceId: string, e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
@@ -204,11 +228,11 @@ export default function AdminPage() {
                 text: data.message || `Scan ${full ? "complet" : "rapide"} lancé pour : ${targetLabel} !`
             });
             await fetchStatus();
-            setTimeout(fetchTotalBooks, 4000);
+            setTimeout(fetchTotalBooks, 2000);
         } catch {
             setTriggerMessage({
                 type: "error",
-                text: "Impossible de joindre le service scraper via le backend."
+                text: "Erreur lors du déclenchement du scraper."
             });
         } finally {
             setLoading(false);
@@ -264,6 +288,9 @@ export default function AdminPage() {
             setLoading(false);
         }
     };
+
+    const liveScan = status?.live_scan;
+    const isScanRunning = Boolean(status?.is_running);
 
     return (
         <div className="admin-page">
@@ -361,22 +388,39 @@ export default function AdminPage() {
                             width: "48px",
                             height: "48px",
                             borderRadius: "12px",
-                            background: status?.is_running ? "rgba(245, 158, 11, 0.15)" : "rgba(16, 185, 129, 0.15)",
-                            color: status?.is_running ? "#f59e0b" : "#10b981",
+                            background: isScanRunning ? "rgba(245, 158, 11, 0.15)" : "rgba(16, 185, 129, 0.15)",
+                            color: isScanRunning ? "#f59e0b" : "#10b981",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             fontSize: "22px"
                         }}>
-                            <FontAwesomeIcon icon={faRotate} spin={status?.is_running || loading} />
+                            <FontAwesomeIcon icon={faRotate} spin={isScanRunning || loading} />
                         </div>
-                        <div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #9ca3af)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
                                 État du robot
                             </div>
-                            <div style={{ fontSize: "1.1rem", fontWeight: 700, color: status?.is_running ? "#f59e0b" : "#10b981" }}>
-                                {status?.is_running ? (status.current_job || "Scan en cours...") : "En veille (Prêt)"}
-                            </div>
+                            {isScanRunning ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "2px" }}>
+                                    <div style={{ fontSize: "1rem", fontWeight: 700, color: "#f59e0b", display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <span>Scan :</span>
+                                        <span style={{
+                                            color: liveScan?.current_source_color || "#f59e0b",
+                                            fontWeight: 800
+                                        }}>
+                                            {liveScan?.current_source_name || liveScan?.current_source || "En cours"}
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: "0.85rem", color: "var(--text-muted, #9ca3af)", fontWeight: 500 }}>
+                                        <strong style={{ color: "#fff", fontWeight: 700 }}>{liveScan?.total_found ?? 0}</strong> {((liveScan?.total_found ?? 0) > 1) ? "livres trouvés" : "livre trouvé"}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#10b981", marginTop: "2px" }}>
+                                    En veille (Prêt)
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -472,7 +516,7 @@ export default function AdminPage() {
                                 type="button"
                                 className="admin-btn admin-btn--quick"
                                 onClick={handleQuickScan}
-                                disabled={loading || status?.is_running || selectedSources.length === 0}
+                                disabled={loading || isScanRunning || selectedSources.length === 0}
                                 title={
                                     selectedSources.length === 0
                                         ? "Cochez au moins une source active dans le tableau pour lancer un scan rapide"
@@ -489,7 +533,7 @@ export default function AdminPage() {
                                 type="button"
                                 className="admin-btn admin-btn--full"
                                 onClick={handleFullScan}
-                                disabled={loading || status?.is_running || (selectedSources.length === 0 && activeCount === 0)}
+                                disabled={loading || isScanRunning || (selectedSources.length === 0 && activeCount === 0)}
                                 title={
                                     selectedSources.length > 0
                                         ? "Lancer un scan complet du catalogue sur les sources cochées"
@@ -506,7 +550,7 @@ export default function AdminPage() {
                                 type="button"
                                 className="admin-btn admin-btn--repair"
                                 onClick={handleRepair}
-                                disabled={loading || status?.is_running}
+                                disabled={loading || isScanRunning}
                                 title="Nettoyer les caractères corrompus UTF-8 et consolider les séries"
                             >
                                 <FontAwesomeIcon icon={faWrench} />
@@ -566,10 +610,6 @@ export default function AdminPage() {
 
                                             <td>
                                                 <div className="source-cell">
-                                                    <span
-                                                        className="source-cell__dot"
-                                                        style={{ backgroundColor: isEnabled ? source.color : "#6b7280" }}
-                                                    />
                                                     <div className="source-cell__info">
                                                         <span className="source-cell__name">{source.name}</span>
                                                         <span className="source-cell__code">{source.id}</span>
@@ -594,7 +634,7 @@ export default function AdminPage() {
                                                         type="checkbox"
                                                         checked={isEnabled}
                                                         onChange={() => handleToggleSource(source.id)}
-                                                        disabled={loading || status?.is_running}
+                                                        disabled={loading || isScanRunning}
                                                     />
                                                     <span className="admin-toggle__slider" />
                                                     <span className={`admin-toggle__label ${isEnabled ? "is-active" : "is-inactive"}`}>
@@ -613,7 +653,7 @@ export default function AdminPage() {
                                                         type="button"
                                                         className="admin-row-btn"
                                                         onClick={() => handleTriggerScrape([source.id], false)}
-                                                        disabled={loading || status?.is_running}
+                                                        disabled={loading || isScanRunning}
                                                         title={`Scanner ${source.name} (scan rapide)`}
                                                     >
                                                         <FontAwesomeIcon icon={faBolt} style={{ color: source.color }} />

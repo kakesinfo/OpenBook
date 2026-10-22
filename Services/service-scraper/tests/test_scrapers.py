@@ -121,5 +121,12 @@ class TestScrapers(unittest.TestCase):
         self.assertEqual(len(book.authors), 2)
         self.assertEqual(book.authors[0].lastname, "Loeb")
 
+    def test_on_book_found_callback_signature(self):
+        from scrapers.base import BaseScraper
+        import inspect
+        for scraper_cls in SCRAPERS.values():
+            sig = inspect.signature(scraper_cls.scrape)
+            self.assertIn('on_book_found', sig.parameters)
+
 if __name__ == "__main__":
     unittest.main()

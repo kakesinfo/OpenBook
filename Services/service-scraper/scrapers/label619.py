@@ -2,7 +2,7 @@ import re
 import html
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Callable
 import requests
 from bs4 import BeautifulSoup
 
@@ -36,7 +36,7 @@ class Label619Scraper(BaseScraper):
     def color(self) -> str:
         return "#ec4899"
 
-    def scrape(self, max_items: int = 50, full_scan: bool = False) -> List[ScrapedBook]:
+    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None) -> List[ScrapedBook]:
         books: List[ScrapedBook] = []
         session = requests.Session()
         session.headers.update({
@@ -93,7 +93,7 @@ class Label619Scraper(BaseScraper):
                         volume = int(vol_m.group(1))
                         series_name = re.sub(r"T(?:ome)?\s*0?\d+.*", "", title, flags=re.I).strip(" -:")
 
-                    books.append(ScrapedBook(
+                    book_obj = ScrapedBook(
                         title=title[:255],
                         series_name=series_name[:255],
                         volume=volume,
@@ -107,7 +107,13 @@ class Label619Scraper(BaseScraper):
                         release_date=datetime.now(),
                         book_type="Comics",
                         source_url="https://label619.com/"
-                    ))
+                    )
+                    books.append(book_obj)
+                    if on_book_found:
+                        try:
+                            on_book_found(book_obj)
+                        except Exception as cb_err:
+                            logger.warning("Label619: on_book_found error: %s", cb_err)
         except Exception as e:
             logger.error("Label619: error scraping label619.com: %s", e)
 
@@ -139,6 +145,11 @@ class Label619Scraper(BaseScraper):
                             if b.isbn:
                                 seen_isbns.add(b.isbn)
                             books.append(b)
+                            if on_book_found:
+                                try:
+                                    on_book_found(b)
+                                except Exception as cb_err:
+                                    logger.warning("Label619: on_book_found error: %s", cb_err)
                     except Exception as e:
                         logger.error("Label619: error scraping %s: %s", book_url, e)
 

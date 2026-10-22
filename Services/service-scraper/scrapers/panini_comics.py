@@ -2,7 +2,7 @@ import re
 import html
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Callable
 import requests
 from bs4 import BeautifulSoup
 
@@ -28,7 +28,7 @@ class PaniniComicsScraper(BaseScraper):
     def color(self) -> str:
         return "#ef4444"
 
-    def scrape(self, max_items: int = 50, full_scan: bool = False) -> List[ScrapedBook]:
+    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None) -> List[ScrapedBook]:
         books: List[ScrapedBook] = []
         urls_to_visit = [
             "https://www.panini.fr/shp_fra_fr/comics.html",
@@ -141,6 +141,11 @@ class PaniniComicsScraper(BaseScraper):
                         source_url=prod_url
                     )
                     books.append(book)
+                    if on_book_found:
+                        try:
+                            on_book_found(book)
+                        except Exception as cb_err:
+                            logger.warning("Panini: on_book_found error: %s", cb_err)
 
             except Exception as e:
                 logger.error("Panini: error scraping %s: %s", list_url, e)
