@@ -669,60 +669,6 @@ export default function AdminPage() {
                     </div>
                 </div>
 
-                {/* History Table */}
-                {status?.recent_history && status.recent_history.length > 0 && (
-                    <div style={{
-                        background: "var(--card-bg, #1e1e24)",
-                        border: "1px solid var(--border-color, #2a2a32)",
-                        borderRadius: "16px",
-                        padding: "24px",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "16px"
-                    }}>
-                        <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700 }}>
-                            Historique récent des exécutions
-                        </h3>
-
-                        <div style={{ overflowX: "auto" }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
-                                <thead>
-                                    <tr style={{ borderBottom: "1px solid var(--border-color, #2a2a32)", color: "var(--text-muted, #9ca3af)", textAlign: "left" }}>
-                                        <th style={{ padding: "10px 12px" }}>Date & Heure</th>
-                                        <th style={{ padding: "10px 12px" }}>Source</th>
-                                        <th style={{ padding: "10px 12px" }}>Scannés</th>
-                                        <th style={{ padding: "10px 12px" }}>Enregistrés</th>
-                                        <th style={{ padding: "10px 12px" }}>Statut</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {status.recent_history.map((job, idx) => (
-                                        <tr key={idx} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.04)" }}>
-                                            <td style={{ padding: "10px 12px", color: "var(--text-muted, #9ca3af)" }}>
-                                                {job.start_time ? new Date(job.start_time).toLocaleString("fr-FR") : "-"}
-                                            </td>
-                                            <td style={{ padding: "10px 12px", fontWeight: 600 }}>{job.source}</td>
-                                            <td style={{ padding: "10px 12px" }}>{job.total_scraped}</td>
-                                            <td style={{ padding: "10px 12px", color: "#10b981", fontWeight: 600 }}>+{job.total_saved}</td>
-                                            <td style={{ padding: "10px 12px" }}>
-                                                <span style={{
-                                                    padding: "3px 8px",
-                                                    borderRadius: "6px",
-                                                    fontSize: "0.75rem",
-                                                    fontWeight: 600,
-                                                    background: job.status === "completed" || job.status === "success" ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                                                    color: job.status === "completed" || job.status === "success" ? "#10b981" : "#ef4444"
-                                                }}>
-                                                    {job.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );
