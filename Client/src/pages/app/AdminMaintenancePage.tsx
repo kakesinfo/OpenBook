@@ -1,10 +1,9 @@
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faWrench,
     faClone,
-    faBroom,
     faCheck,
     faRotate,
     faCircleCheck,
@@ -12,7 +11,8 @@ import {
     faBookOpen,
     faLayerGroup,
     faBuilding,
-    faUsers
+    faUsers,
+    faPlay
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
 import "./AdminMaintenancePage.scss";
@@ -22,6 +22,40 @@ interface MaintenanceStats {
     total_series: number;
     total_editors: number;
     total_authors: number;
+}
+
+interface MaintenanceTaskDef {
+    id: "utf8" | "dedup";
+    title: string;
+    tag: string;
+    desc: string;
+    icon: typeof faWrench;
+    iconClass: string;
+}
+
+const TASKS: MaintenanceTaskDef[] = [
+    {
+        id: "utf8",
+        title: "Réparer l'UTF-8",
+        tag: "Encodage & Typographie",
+        desc: "Détecte et répare les textes corrompus par un double encodage UTF-8 (ex: dÃ©mon -> démon), normalise les tirets Unicode (–, —), nettoie les rôles parasites d'auteurs et consolide les séries corrompues.",
+        icon: faWrench,
+        iconClass: "admin-maintenance__task-icon--utf8"
+    },
+    {
+        id: "dedup",
+        title: "Dédupliquer les albums",
+        tag: "Intégrité du catalogue",
+        desc: "Recherche et fusionne les albums en double d'un même éditeur (même couverture, même ISBN, ou titres quasi-identiques avec variations de tirets ou casse). Réattribue automatiquement vos lectures et possessions vers le tome canonique sans perte de données.",
+        icon: faClone,
+        iconClass: "admin-maintenance__task-icon--dedup"
+    }
+];
+
+interface TaskStatusInfo {
+    state: "idle" | "running" | "success" | "error";
+    message?: string;
+    timestamp?: string;
 }
 
 interface MaintenanceResult {
@@ -35,8 +69,24 @@ export default function AdminMaintenancePage() {
     const session = useSession();
     const [stats, setStats] = useState<MaintenanceStats | null>(null);
     const [serverConnected, setServerConnected] = useState<boolean | null>(null);
-    const [loadingTask, setLoadingTask] = useState<"utf8" | "dedup" | "all" | null>(null);
+    const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
+    const [runningTasks, setRunningTasks] = useState<string[]>([]);
     const [result, setResult] = useState<MaintenanceResult | null>(null);
+    const [taskStatuses, setTaskStatuses] = useState<Record<string, TaskStatusInfo>>({
+        utf8: { state: "idle" },
+        dedup: { state: "idle" }
+    });
+
+    const headerCheckboxRef = useRef<HTMLInputElement>(null);
+
+    const allSelected = selectedTasks.length === TASKS.length;
+    const isIndeterminate = selectedTasks.length > 0 && !allSelected;
+
+    useEffect(() => {
+        if (headerCheckboxRef.current) {
+            headerCheckboxRef.current.indeterminate = isIndeterminate;
+        }
+    }, [isIndeterminate]);
 
     const fetchStats = async () => {
         try {
@@ -50,7 +100,6 @@ export default function AdminMaintenancePage() {
                 }
             }
 
-            // Fallback status check
             const statusResp = await session.customFetch("/admin/scrapers/status", { method: "GET" });
             if (statusResp.ok) {
                 const sData = await statusResp.json();
@@ -72,91 +121,132 @@ export default function AdminMaintenancePage() {
         return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     };
 
-    const handleRepairUtf8 = async () => {
-        setLoadingTask("utf8");
-        setResult(null);
+    const handleToggleSelect = (taskId: string) => {
+        setSelectedTasks(prev =>
+            prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
+        );
+    };
+
+    const handleSelectAll = () => {
+        if (allSelected) {
+            setSelectedTasks([]);
+        } else {
+            setSelectedTasks(TASKS.map(t => t.id));
+        }
+    };
+
+    const runSingleTask = async (taskId: "utf8" | "dedup"): Promise<{ ok: boolean; message: string }> => {
+        const endpoint = taskId === "utf8" ? "/admin/scrapers/repair" : "/admin/scrapers/deduplicate";
+        const taskName = taskId === "utf8" ? "Réparation UTF-8" : "Déduplication";
+
+        setTaskStatuses(prev => ({
+            ...prev,
+            [taskId]: { state: "running" }
+        }));
+
         try {
-            const resp = await session.customFetch("/admin/scrapers/repair", {
-                method: "POST"
-            });
+            const resp = await session.customFetch(endpoint, { method: "POST" });
             const data = await resp.json();
-            setResult({
-                taskName: "Réparation UTF-8",
-                type: "success",
-                message: data.message || "Nettoyage et réparation UTF-8 terminés avec succès !",
-                timestamp: nowFormatted()
-            });
-            await fetchStats();
+            const msg = data.message || `${taskName} effectuée avec succès.`;
+
+            setTaskStatuses(prev => ({
+                ...prev,
+                [taskId]: {
+                    state: "success",
+                    message: msg,
+                    timestamp: nowFormatted()
+                }
+            }));
+            return { ok: true, message: msg };
         } catch (err: any) {
-            setResult({
-                taskName: "Réparation UTF-8",
-                type: "error",
-                message: err?.message || "Erreur lors de l'exécution de la réparation UTF-8.",
-                timestamp: nowFormatted()
-            });
-        } finally {
-            setLoadingTask(null);
+            const errorMsg = err?.message || `Erreur lors de l'exécution de ${taskName}.`;
+            setTaskStatuses(prev => ({
+                ...prev,
+                [taskId]: {
+                    state: "error",
+                    message: errorMsg,
+                    timestamp: nowFormatted()
+                }
+            }));
+            return { ok: false, message: errorMsg };
         }
     };
 
-    const handleDeduplicate = async () => {
-        setLoadingTask("dedup");
+    const handleExecuteTask = async (taskId: "utf8" | "dedup") => {
+        if (runningTasks.length > 0) return;
+        setRunningTasks([taskId]);
         setResult(null);
-        try {
-            const resp = await session.customFetch("/admin/scrapers/deduplicate", {
-                method: "POST"
-            });
-            const data = await resp.json();
-            setResult({
-                taskName: "Déduplication",
-                type: "success",
-                message: data.message || "Déduplication des albums terminée avec succès !",
-                timestamp: nowFormatted()
-            });
-            await fetchStats();
-        } catch (err: any) {
-            setResult({
-                taskName: "Déduplication",
-                type: "error",
-                message: err?.message || "Erreur lors de la déduplication des albums.",
-                timestamp: nowFormatted()
-            });
-        } finally {
-            setLoadingTask(null);
-        }
+
+        const taskDef = TASKS.find(t => t.id === taskId);
+        const res = await runSingleTask(taskId);
+
+        setResult({
+            taskName: taskDef?.title || taskId,
+            type: res.ok ? "success" : "error",
+            message: res.message,
+            timestamp: nowFormatted()
+        });
+
+        await fetchStats();
+        setRunningTasks([]);
     };
 
-    const handleRunAll = async () => {
-        setLoadingTask("all");
+    const handleExecuteSelected = async () => {
+        if (runningTasks.length > 0 || selectedTasks.length === 0) return;
+        const targetIds = selectedTasks as ("utf8" | "dedup")[];
+        setRunningTasks(targetIds);
         setResult(null);
-        try {
-            // 1. Repair UTF8
-            const respRepair = await session.customFetch("/admin/scrapers/repair", { method: "POST" });
-            const dataRepair = await respRepair.json();
 
-            // 2. Deduplicate
-            const respDedup = await session.customFetch("/admin/scrapers/deduplicate", { method: "POST" });
-            const dataDedup = await respDedup.json();
+        const results: string[] = [];
+        let anyError = false;
 
-            const combinedMsg = `${dataRepair.message || "Réparation UTF-8 effectuée."} | ${dataDedup.message || "Déduplication effectuée."}`;
-            setResult({
-                taskName: "Maintenance complète",
-                type: "success",
-                message: combinedMsg,
-                timestamp: nowFormatted()
-            });
-            await fetchStats();
-        } catch (err: any) {
-            setResult({
-                taskName: "Maintenance complète",
-                type: "error",
-                message: err?.message || "Erreur lors de la maintenance complète.",
-                timestamp: nowFormatted()
-            });
-        } finally {
-            setLoadingTask(null);
+        for (const taskId of targetIds) {
+            const res = await runSingleTask(taskId);
+            if (!res.ok) anyError = true;
+            results.push(res.message);
         }
+
+        setResult({
+            taskName: `Sélection (${targetIds.length} tâche${targetIds.length > 1 ? "s" : ""})`,
+            type: anyError ? "error" : "success",
+            message: results.join(" | "),
+            timestamp: nowFormatted()
+        });
+
+        await fetchStats();
+        setRunningTasks([]);
     };
+
+    const handleExecuteAll = async () => {
+        if (runningTasks.length > 0) return;
+        setRunningTasks(["utf8", "dedup"]);
+        setResult(null);
+
+        const results: string[] = [];
+        let anyError = false;
+
+        // 1. Repair UTF-8
+        const resUtf8 = await runSingleTask("utf8");
+        if (!resUtf8.ok) anyError = true;
+        results.push(resUtf8.message);
+
+        // 2. Deduplicate
+        const resDedup = await runSingleTask("dedup");
+        if (!resDedup.ok) anyError = true;
+        results.push(resDedup.message);
+
+        setResult({
+            taskName: "Maintenance complète (Tout)",
+            type: anyError ? "error" : "success",
+            message: results.join(" | "),
+            timestamp: nowFormatted()
+        });
+
+        await fetchStats();
+        setRunningTasks([]);
+    };
+
+    const isRunning = runningTasks.length > 0;
 
     return (
         <div className="admin-maintenance">
@@ -242,96 +332,176 @@ export default function AdminMaintenancePage() {
                     </div>
                 </div>
 
-                {/* Maintenance Tasks Cards */}
-                <div className="admin-maintenance__actions-grid">
-                    {/* Task 1: UTF-8 Mojibake Repair */}
-                    <div className="admin-maintenance__card admin-maintenance__card--utf8">
-                        <div>
-                            <div className="admin-maintenance__card-header">
-                                <div className="admin-maintenance__card-icon admin-maintenance__card-icon--utf8">
-                                    <FontAwesomeIcon icon={faWrench} />
-                                </div>
-                                <div className="admin-maintenance__card-title-group">
-                                    <h3>Réparer l'UTF-8</h3>
-                                    <span>Encodage & Typographie</span>
-                                </div>
+                {/* Maintenance Tasks Panel with 2-Row Selectable Table */}
+                <div className="admin-maintenance__panel">
+                    <div className="admin-maintenance__panel-header">
+                        <div className="admin-maintenance__panel-title-group">
+                            <div className="admin-maintenance__panel-title-row">
+                                <h3>Tâches de maintenance</h3>
+                                <span className="admin-maintenance__badge">
+                                    {TASKS.length} disponibles
+                                </span>
+                                {selectedTasks.length > 0 && (
+                                    <span className="admin-maintenance__badge admin-maintenance__badge--selected">
+                                        {selectedTasks.length} cochée{selectedTasks.length > 1 ? "s" : ""}
+                                    </span>
+                                )}
                             </div>
-                            <p className="admin-maintenance__card-desc" style={{ marginTop: "16px" }}>
-                                Analyse la base pour détecter et réparer les caractères altérés par un double encodage UTF-8 (ex: <em>dÃ©mon</em> &rarr; <em>démon</em>), normalise les tirets Unicode cadratins (–, —), supprime les rôles parasites d'auteurs et consolide les séries corrompues.
+                            <p className="admin-maintenance__panel-subtitle">
+                                Cochez les tâches à exécuter ou lancez une maintenance complète en un clic.
                             </p>
                         </div>
 
-                        <div className="admin-maintenance__card-footer">
+                        <div className="admin-maintenance__panel-actions">
+                            {selectedTasks.length > 0 && (
+                                <button
+                                    type="button"
+                                    className="admin-maintenance__btn-action admin-maintenance__btn-action--execute"
+                                    onClick={handleExecuteSelected}
+                                    disabled={isRunning}
+                                    title="Exécuter les tâches sélectionnées"
+                                >
+                                    <FontAwesomeIcon icon={isRunning ? faRotate : faPlay} spin={isRunning} />
+                                    <span>
+                                        Exécuter la sélection ({selectedTasks.length})
+                                    </span>
+                                </button>
+                            )}
+
                             <button
                                 type="button"
-                                className="admin-maintenance__btn admin-maintenance__btn--indigo"
-                                onClick={handleRepairUtf8}
-                                disabled={loadingTask !== null}
+                                className="admin-maintenance__btn-action admin-maintenance__btn-action--all"
+                                onClick={handleExecuteAll}
+                                disabled={isRunning}
+                                title="Exécuter toutes les tâches de maintenance consécutivement"
                             >
-                                <FontAwesomeIcon icon={loadingTask === "utf8" ? faRotate : faWrench} spin={loadingTask === "utf8"} />
-                                <span>{loadingTask === "utf8" ? "Réparation en cours..." : "Lancer la réparation UTF-8"}</span>
+                                <FontAwesomeIcon icon={isRunning ? faRotate : faPlay} spin={isRunning} />
+                                <span>Tout exécuter</span>
                             </button>
                         </div>
                     </div>
 
-                    {/* Task 2: Deduplication */}
-                    <div className="admin-maintenance__card admin-maintenance__card--dedup">
-                        <div>
-                            <div className="admin-maintenance__card-header">
-                                <div className="admin-maintenance__card-icon admin-maintenance__card-icon--dedup">
-                                    <FontAwesomeIcon icon={faClone} />
-                                </div>
-                                <div className="admin-maintenance__card-title-group">
-                                    <h3>Dédupliquer les albums</h3>
-                                    <span>Intégrité du catalogue</span>
-                                </div>
-                            </div>
-                            <p className="admin-maintenance__card-desc" style={{ marginTop: "16px" }}>
-                                Recherche et fusionne les albums en double d'un même éditeur (ayant une couverture identique, un même ISBN, ou des titres quasi-identiques avec différences de ponctuation/tirets). Réattribue automatiquement vos lectures et possessions vers le tome canonique sans perte de données.
-                            </p>
-                        </div>
+                    <div className="admin-maintenance__table-wrapper">
+                        <table className="admin-maintenance__table">
+                            <thead>
+                                <tr>
+                                    <th style={{ width: "48px", textAlign: "center" }}>
+                                        <input
+                                            ref={headerCheckboxRef}
+                                            type="checkbox"
+                                            className="admin-checkbox"
+                                            checked={allSelected}
+                                            onChange={handleSelectAll}
+                                            disabled={isRunning}
+                                            title={allSelected ? "Tout désélectionner" : "Tout sélectionner"}
+                                        />
+                                    </th>
+                                    <th style={{ width: "260px" }}>Tâche de maintenance</th>
+                                    <th>Description & Action effectuée</th>
+                                    <th style={{ width: "160px", textAlign: "center" }}>État</th>
+                                    <th style={{ width: "130px", textAlign: "right" }}>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {TASKS.map((task) => {
+                                    const isSelected = selectedTasks.includes(task.id);
+                                    const taskRunning = runningTasks.includes(task.id);
+                                    const statusInfo = taskStatuses[task.id] || { state: "idle" };
 
-                        <div className="admin-maintenance__card-footer">
-                            <button
-                                type="button"
-                                className="admin-maintenance__btn admin-maintenance__btn--primary"
-                                onClick={handleDeduplicate}
-                                disabled={loadingTask !== null}
-                            >
-                                <FontAwesomeIcon icon={loadingTask === "dedup" ? faRotate : faClone} spin={loadingTask === "dedup"} />
-                                <span>{loadingTask === "dedup" ? "Déduplication en cours..." : "Lancer la déduplication"}</span>
-                            </button>
-                        </div>
-                    </div>
+                                    return (
+                                        <tr
+                                            key={task.id}
+                                            className={`admin-maintenance__row ${isSelected ? "is-selected" : ""}`}
+                                            onClick={() => handleToggleSelect(task.id)}
+                                        >
+                                            {/* Checkbox column */}
+                                            <td
+                                                style={{ textAlign: "center" }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="admin-checkbox"
+                                                    checked={isSelected}
+                                                    disabled={isRunning}
+                                                    onChange={() => handleToggleSelect(task.id)}
+                                                />
+                                            </td>
 
-                    {/* Task 3: Global Maintenance */}
-                    <div className="admin-maintenance__card admin-maintenance__card--all">
-                        <div>
-                            <div className="admin-maintenance__card-header">
-                                <div className="admin-maintenance__card-icon admin-maintenance__card-icon--all">
-                                    <FontAwesomeIcon icon={faBroom} />
-                                </div>
-                                <div className="admin-maintenance__card-title-group">
-                                    <h3>Maintenance complète</h3>
-                                    <span>Nettoyage global</span>
-                                </div>
-                            </div>
-                            <p className="admin-maintenance__card-desc" style={{ marginTop: "16px" }}>
-                                Lance consécutivement la réparation intégrale de l'encodage UTF-8, la consolidation des séries et la déduplication de tous les albums pour un catalogue 100% propre et optimisé.
-                            </p>
-                        </div>
+                                            {/* Task cell */}
+                                            <td>
+                                                <div className="admin-maintenance__task-cell">
+                                                    <div className={`admin-maintenance__task-icon ${task.iconClass}`}>
+                                                        <FontAwesomeIcon icon={task.icon} />
+                                                    </div>
+                                                    <div className="admin-maintenance__task-info">
+                                                        <span className="admin-maintenance__task-title">{task.title}</span>
+                                                        <span className="admin-maintenance__task-tag">{task.tag}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
 
-                        <div className="admin-maintenance__card-footer">
-                            <button
-                                type="button"
-                                className="admin-maintenance__btn admin-maintenance__btn--amber"
-                                onClick={handleRunAll}
-                                disabled={loadingTask !== null}
-                            >
-                                <FontAwesomeIcon icon={loadingTask === "all" ? faRotate : faBroom} spin={loadingTask === "all"} />
-                                <span>{loadingTask === "all" ? "Maintenance globale..." : "Exécuter tout"}</span>
-                            </button>
-                        </div>
+                                            {/* Description cell */}
+                                            <td>
+                                                <div className="admin-maintenance__task-desc">
+                                                    {task.desc}
+                                                </div>
+                                            </td>
+
+                                            {/* Status cell */}
+                                            <td
+                                                style={{ textAlign: "center" }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                {taskRunning ? (
+                                                    <span className="admin-maintenance__status-badge admin-maintenance__status-badge--running">
+                                                        <FontAwesomeIcon icon={faRotate} spin />
+                                                        <span>En cours...</span>
+                                                    </span>
+                                                ) : statusInfo.state === "success" ? (
+                                                    <span
+                                                        className="admin-maintenance__status-badge admin-maintenance__status-badge--success"
+                                                        title={statusInfo.message}
+                                                    >
+                                                        <FontAwesomeIcon icon={faCheck} />
+                                                        <span>Terminé</span>
+                                                    </span>
+                                                ) : statusInfo.state === "error" ? (
+                                                    <span
+                                                        className="admin-maintenance__status-badge admin-maintenance__status-badge--error"
+                                                        title={statusInfo.message}
+                                                    >
+                                                        <FontAwesomeIcon icon={faTriangleExclamation} />
+                                                        <span>Erreur</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="admin-maintenance__status-badge admin-maintenance__status-badge--idle">
+                                                        <span>Prêt</span>
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            {/* Action cell */}
+                                            <td
+                                                style={{ textAlign: "right" }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    className="admin-maintenance__row-btn"
+                                                    onClick={() => handleExecuteTask(task.id)}
+                                                    disabled={isRunning}
+                                                    title={`Exécuter « ${task.title} »`}
+                                                >
+                                                    <FontAwesomeIcon icon={taskRunning ? faRotate : faPlay} spin={taskRunning} />
+                                                    <span>{taskRunning ? "En cours..." : "Exécuter"}</span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
