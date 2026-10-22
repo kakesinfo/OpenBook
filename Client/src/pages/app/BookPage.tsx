@@ -91,7 +91,7 @@ export default function BookPage() {
 
     const [book, setBook] = useState<BookDTO | null>(null);
     const [bookStatus, setBookStatus] = useState<string | null>(null);
-    const [readingStatus, setReadingStatus] = useState<string | null>(null);
+    const [readingStatus, setReadingStatus] = useState<string>("UNREAD");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -103,7 +103,7 @@ export default function BookPage() {
         setError(null);
         setBook(null);
         setBookStatus(null);
-        setReadingStatus(null);
+        setReadingStatus("UNREAD");
 
         const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=0&withEditor=0&withAuthors=1&withStatus=1`;
         session.customFetch(fetchUrl, {
@@ -113,7 +113,7 @@ export default function BookPage() {
                 const data = await response.json();
                 setBook(data);
                 setBookStatus(data.status);
-                setReadingStatus(data.readingStatus || null);
+                setReadingStatus(data.readingStatus || "UNREAD");
             } else {
                 const errorText = await response.text();
                 setError(`Erreur ${response.status}: ${errorText}`);
@@ -160,7 +160,7 @@ export default function BookPage() {
                     method: "DELETE"
                 });
                 if (response.ok) {
-                    setReadingStatus(null);
+                    setReadingStatus("UNREAD");
                 }
             } else {
                 const response = await session.customFetch(`/user/readingStatus/${encodeURIComponent(id)}/${encodeURIComponent(newStatus)}`, {
@@ -339,14 +339,13 @@ export default function BookPage() {
                                     </ChangeBookStatusButton>
                                 )}
 
-                                <div className={`book-reading-status-selector ${readingStatus ? 'book-reading-status-selector--active' : ''}`}>
+                                <div className={`book-reading-status-selector ${readingStatus && readingStatus.toUpperCase() !== "UNREAD" ? 'book-reading-status-selector--active' : ''}`}>
                                     <FontAwesomeIcon icon={faBookOpen} />
                                     <select
-                                        value={readingStatus ? readingStatus.toUpperCase() : ""}
+                                        value={readingStatus ? readingStatus.toUpperCase() : "UNREAD"}
                                         onChange={handleReadingStatusChange}
                                         aria-label="Statut de lecture"
                                     >
-                                        <option value="">Statut de lecture...</option>
                                         <option value="UNREAD">Non lu</option>
                                         <option value="READING">En cours de lecture</option>
                                         <option value="READ">Lu</option>

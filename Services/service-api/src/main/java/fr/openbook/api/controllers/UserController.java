@@ -402,11 +402,10 @@ public class UserController {
         @PathVariable Long id
     ) {
         UserEntity user = getAuthenticatedUser(session);
-        return repositoryService.getBookStatusRepository()
+        return ResponseEntity.ok(repositoryService.getBookStatusRepository()
                 .findByUserIdAndBookId(user.getId(), id)
                 .map(BookStatusEntity::getStatus)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.noContent().build());
+                .orElse(BookReadingStatus.UNREAD.name()));
     }
 
     @GetMapping("/reading/{status}")

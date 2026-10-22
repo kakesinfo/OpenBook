@@ -364,7 +364,7 @@ public class BookController {
             dto.setReadingStatus(repositoryService.getBookStatusRepository()
                     .findByUserIdAndBookId(userEntity.getId(), bookEntity.getId())
                     .map(BookStatusEntity::getStatus)
-                    .orElse(null));
+                    .orElse("UNREAD"));
         }
 
         return dto;
