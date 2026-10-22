@@ -1,3 +1,4 @@
+import re
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -127,8 +128,150 @@ class Database:
                 cur.close()
                 self.return_connection(conn)
 
+    def deduplicate_books(self, cur=None):
+        """
+        Detects duplicate books (same editor with identical cover_url, same ISBN,
+        or identical normalized title with missing ISBN), merges foreign keys,
+        and deletes redundant duplicate records and any orphaned series.
+        """
+        should_close = False
+        conn = None
+        if cur is None:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            should_close = True
+
+        try:
+            cur.execute("""
+                SELECT b1.id, b2.id, b1.title, b2.title, b1.isbn, b2.isbn, b1.cover_url, b2.cover_url, b1.description, b2.description
+                FROM book b1
+                JOIN book b2 ON b1.id < b2.id AND b1.editor_id = b2.editor_id
+                WHERE (b1.cover_url IS NOT NULL AND b1.cover_url != '' AND b1.cover_url = b2.cover_url)
+                   OR (b1.isbn IS NOT NULL AND b1.isbn != '' AND b1.isbn = b2.isbn)
+                   OR (regexp_replace(lower(b1.title), '[^a-z0-9]', '', 'g') = regexp_replace(lower(b2.title), '[^a-z0-9]', '', 'g'));
+            """)
+            pairs = cur.fetchall()
+            merged_count = 0
+            handled_drops = set()
+
+            bogus_titles = {
+                "nos univers", "bronze books", "universal monsters", "adaptations littéraires",
+                "la philo en bd", "l'école des loisirs en bd", "pierre lemaitre"
+            }
+
+            for id1, id2, t1, t2, isbn1, isbn2, c1, c2, d1, d2 in pairs:
+                if id1 in handled_drops or id2 in handled_drops:
+                    continue
+
+                # Skip distinct volumes/variants with different cover images
+                if c1 != c2 and (isbn1 != isbn2 or not isbn1):
+                    if "nanarland" in t1.lower() or "x-men" in t1.lower():
+                        continue
+
+                t1_bogus = t1.strip().lower() in bogus_titles
+                t2_bogus = t2.strip().lower() in bogus_titles
+
+                if t1_bogus and not t2_bogus:
+                    keep_id, drop_id = id2, id1
+                    keep_t, drop_t = t2, t1
+                    keep_isbn, drop_isbn = isbn2, isbn1
+                    keep_desc, drop_desc = d2, d1
+                elif t2_bogus and not t1_bogus:
+                    keep_id, drop_id = id1, id2
+                    keep_t, drop_t = t1, t2
+                    keep_isbn, drop_isbn = isbn1, isbn2
+                    keep_desc, drop_desc = d1, d2
+                elif isbn1 and not isbn2:
+                    keep_id, drop_id = id1, id2
+                    keep_t, drop_t = t1, t2
+                    keep_isbn, drop_isbn = isbn1, isbn2
+                    keep_desc, drop_desc = d1, d2
+                elif isbn2 and not isbn1:
+                    keep_id, drop_id = id2, id1
+                    keep_t, drop_t = t2, t1
+                    keep_isbn, drop_isbn = isbn2, isbn1
+                    keep_desc, drop_desc = d2, d1
+                elif len(t1) >= len(t2):
+                    keep_id, drop_id = id1, id2
+                    keep_t, drop_t = t1, t2
+                    keep_isbn, drop_isbn = isbn1, isbn2
+                    keep_desc, drop_desc = d1, d2
+                else:
+                    keep_id, drop_id = id2, id1
+                    keep_t, drop_t = t2, t1
+                    keep_isbn, drop_isbn = isbn2, isbn1
+                    keep_desc, drop_desc = d2, d1
+
+                handled_drops.add(drop_id)
+
+                # 1. Enrich canonical book with ISBN or description if missing
+                if not keep_isbn and drop_isbn:
+                    cur.execute("UPDATE book SET isbn = %s WHERE id = %s;", (drop_isbn, keep_id))
+                if not keep_desc and drop_desc:
+                    cur.execute("UPDATE book SET description = %s WHERE id = %s;", (drop_desc, keep_id))
+
+                # 2. Re-point user_owns_book
+                cur.execute("""
+                    DELETE FROM user_owns_book
+                    WHERE book_id = %s
+                      AND user_id IN (SELECT user_id FROM user_owns_book WHERE book_id = %s);
+                """, (drop_id, keep_id))
+                cur.execute("UPDATE user_owns_book SET book_id = %s WHERE book_id = %s;", (keep_id, drop_id))
+
+                # 3. Re-point book_status
+                cur.execute("""
+                    DELETE FROM book_status
+                    WHERE book_id = %s
+                      AND user_id IN (SELECT user_id FROM book_status WHERE book_id = %s);
+                """, (drop_id, keep_id))
+                cur.execute("UPDATE book_status SET book_id = %s WHERE book_id = %s;", (keep_id, drop_id))
+
+                # 4. Re-point reading_session
+                cur.execute("UPDATE reading_session SET book_id = %s WHERE book_id = %s;", (keep_id, drop_id))
+
+                # 5. Re-point book_has_author
+                cur.execute("""
+                    DELETE FROM book_has_author
+                    WHERE book_id = %s
+                      AND author_id IN (SELECT author_id FROM book_has_author WHERE book_id = %s);
+                """, (drop_id, keep_id))
+                cur.execute("UPDATE book_has_author SET book_id = %s WHERE book_id = %s;", (keep_id, drop_id))
+
+                # 6. Re-point book_has_theme
+                cur.execute("""
+                    DELETE FROM book_has_theme
+                    WHERE book_id = %s
+                      AND theme_id IN (SELECT theme_id FROM book_has_theme WHERE book_id = %s);
+                """, (drop_id, keep_id))
+                cur.execute("UPDATE book_has_theme SET book_id = %s WHERE book_id = %s;", (keep_id, drop_id))
+
+                # 7. Re-point book_has_image
+                cur.execute("UPDATE book_has_image SET book_id = %s WHERE book_id = %s;", (keep_id, drop_id))
+
+                # 8. Delete duplicate book
+                cur.execute("DELETE FROM book WHERE id = %s;", (drop_id,))
+                merged_count += 1
+
+            # 9. Purge orphan series created by duplicates
+            cur.execute("DELETE FROM series_has_theme WHERE series_id NOT IN (SELECT DISTINCT series_id FROM book);")
+            cur.execute("DELETE FROM series WHERE id NOT IN (SELECT DISTINCT series_id FROM book);")
+
+            if should_close and conn:
+                conn.commit()
+            if merged_count > 0:
+                logger.info("Deduplicated and merged %d redundant book records.", merged_count)
+        except Exception as e:
+            if should_close and conn:
+                conn.rollback()
+            logger.error("Error deduplicating books in DB: %s", e)
+            raise
+        finally:
+            if should_close and conn:
+                cur.close()
+                self.return_connection(conn)
+
     def repair_mojibake(self):
-        """Repairs any existing corrupted double-encoded UTF-8 and cleans bogus authors in the database."""
+        """Repairs corrupted double-encoded UTF-8, cleans bogus authors, and merges duplicates."""
         conn = None
         try:
             conn = self.get_connection()
@@ -156,7 +299,7 @@ class Database:
                     else:
                         cur.execute("UPDATE series SET name = %s WHERE id = %s;", (new_name, s_id))
 
-                # 3. Purge bogus scraper authors (e.g. navigation menu items like Interviews, Portfolio)
+                # 3. Purge bogus scraper authors
                 cur.execute("""
                     DELETE FROM book_has_author 
                     WHERE author_id IN (
@@ -170,6 +313,9 @@ class Database:
 
                 # 4. Repair & consolidate corrupted author names and relations
                 self.repair_authors(cur)
+
+                # 5. Merge duplicates across all editors
+                self.deduplicate_books(cur)
 
                 conn.commit()
                 if books or series:
@@ -185,6 +331,8 @@ class Database:
     def upsert_book(self, book: ScrapedBook) -> Optional[int]:
         """
         Inserts or updates a book and its related entities (editor, series, category, authors).
+        Uses multi-criteria matching (ISBN, exact cover URL, normalized title, series+volume)
+        to prevent duplicate entries when minor title differences or missing ISBN occur.
         Returns the book ID if successful.
         """
         conn = None
@@ -197,6 +345,12 @@ class Database:
                 clean_editor_name = clean_text(book.editor_name)
                 clean_desc = clean_text(book.description)
                 clean_isbn = book.isbn.strip() if book.isbn else None
+
+                # Extract ISBN from cover URL if missing
+                if not clean_isbn and book.cover_url:
+                    isbn_m = re.search(r"/(?:album|principal|prod|cache/[^/]+/[^/]+)/([0-9]{10,13})", book.cover_url)
+                    if isbn_m:
+                        clean_isbn = isbn_m.group(1)
 
                 # 2. Editor
                 editor_id = None
@@ -241,16 +395,46 @@ class Database:
                     )
                     series_id = cur.fetchone()[0]
 
-                # 5. Check if Book already exists (by ISBN or by Title)
+                # 5. Check if Book already exists (Multi-criteria matching)
                 book_id = None
+
+                # Criterion A: ISBN match
                 if clean_isbn:
                     cur.execute("SELECT id FROM book WHERE isbn = %s;", (clean_isbn,))
                     row = cur.fetchone()
                     if row:
                         book_id = row[0]
 
-                if not book_id:
-                    cur.execute("SELECT id FROM book WHERE LOWER(title) = LOWER(%s);", (clean_title,))
+                # Criterion B: Identical cover URL for same editor
+                if not book_id and book.cover_url and editor_id:
+                    cur.execute(
+                        "SELECT id FROM book WHERE cover_url = %s AND editor_id = %s;",
+                        (book.cover_url, editor_id)
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        book_id = row[0]
+
+                # Criterion C: Normalized title match (ignoring dashes, colons, case, spaces, and punctuation)
+                if not book_id and clean_title and editor_id:
+                    cur.execute(
+                        """
+                        SELECT id FROM book 
+                        WHERE editor_id = %s 
+                          AND regexp_replace(lower(title), '[^a-z0-9]', '', 'g') = regexp_replace(lower(%s), '[^a-z0-9]', '', 'g');
+                        """,
+                        (editor_id, clean_title)
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        book_id = row[0]
+
+                # Criterion D: Exact series + volume match (if volume > 0)
+                if not book_id and series_id and book.volume and book.volume > 0:
+                    cur.execute(
+                        "SELECT id FROM book WHERE series_id = %s AND volume = %s;",
+                        (series_id, book.volume)
+                    )
                     row = cur.fetchone()
                     if row:
                         book_id = row[0]
@@ -284,6 +468,28 @@ class Database:
                             book_id
                         )
                     )
+
+                    # Enrich existing book with ISBN if it was missing
+                    if clean_isbn:
+                        cur.execute(
+                            "UPDATE book SET isbn = %s WHERE id = %s AND (isbn IS NULL OR isbn = '');",
+                            (clean_isbn, book_id)
+                        )
+
+                    # Update title if current title was a generic collection title or shorter stub
+                    cur.execute("SELECT title FROM book WHERE id = %s;", (book_id,))
+                    curr_row = cur.fetchone()
+                    if curr_row and curr_row[0]:
+                        curr_t = curr_row[0]
+                        bogus_titles = {
+                            "nos univers", "bronze books", "universal monsters",
+                            "adaptations littéraires", "la philo en bd", "l'école des loisirs en bd"
+                        }
+                        if curr_t.strip().lower() in bogus_titles or (
+                            len(clean_title) > len(curr_t) and clean_title.strip().lower() not in bogus_titles
+                        ):
+                            cur.execute("UPDATE book SET title = %s WHERE id = %s;", (clean_title, book_id))
+
                     logger.debug("Updated existing book id %s: %s", book_id, clean_title)
                 else:
                     # INSERT new book

@@ -10,7 +10,8 @@ def clean_text(text: Optional[str]) -> Optional[str]:
     Cleans raw scraped text:
     - Decodes HTML entities (e.g. &#x27; -> ')
     - Automatically repairs double-encoded UTF-8 / mojibake (e.g. dÃ©mon -> démon)
-    - Strips leading/trailing spaces and normalizes non-breaking spaces
+    - Normalizes unicode dashes/hyphens (–, —, etc.) to standard ASCII hyphen-minus (-)
+    - Strips leading/trailing spaces and normalizes non-breaking/multiple spaces
     """
     if not text:
         return text
@@ -25,8 +26,13 @@ def clean_text(text: Optional[str]) -> Optional[str]:
     except Exception:
         pass
 
-    # 3. Clean non-breaking spaces and extra whitespace
-    cleaned = cleaned.replace("\xa0", " ").strip()
+    # 3. Normalize unicode dashes and quotes
+    cleaned = re.sub(r"[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]", "-", cleaned)
+    cleaned = re.sub(r"[\u2018\u2019\u201a\u201b]", "'", cleaned)
+    cleaned = re.sub(r"[\u201c\u201d\u201e\u201f]", '"', cleaned)
+
+    # 4. Clean non-breaking spaces and collapse duplicate whitespace
+    cleaned = re.sub(r"[ \t\xa0\u2000-\u200b]+", " ", cleaned).strip()
     return cleaned
 
 
@@ -110,22 +116,20 @@ class BaseScraper(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
-        """Name of the scraper/source (e.g. 'urban_comics', 'panini', 'morgen_bd', 'mangetsu', 'label619')"""
         pass
 
     @property
+    @abstractmethod
     def display_name(self) -> str:
-        """Human-friendly display name"""
-        return self.name.replace("_", " ").title()
+        pass
 
     @property
+    @abstractmethod
     def description(self) -> str:
-        """Publisher/source description"""
-        return ""
+        pass
 
     @property
     def color(self) -> str:
-        """Brand accent color (hex)"""
         return "#6366f1"
 
     @abstractmethod
@@ -136,5 +140,4 @@ class BaseScraper(ABC):
         on_book_found: Optional[Callable[[ScrapedBook], None]] = None,
         is_stopped: Optional[Callable[[], bool]] = None
     ) -> List[ScrapedBook]:
-        """Scrape books from the source and return a list of ScrapedBook objects."""
         pass
