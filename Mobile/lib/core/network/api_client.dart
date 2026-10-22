@@ -126,22 +126,32 @@ class ApiClientNotifier extends Notifier<ApiClientState> {
     state = state.copyWith(host: cleanHost, port: cleanPort);
   }
 
-  Future<bool> testConnection(String hostInput, String portInput) async {
+  Future<({bool reachable, String? warning})> testConnection(String hostInput, String portInput) async {
     final cleanHost = sanitizeHost(hostInput);
     final cleanPort = sanitizePort(portInput);
-    if (cleanHost.isEmpty) return false;
+    if (cleanHost.isEmpty) {
+      return (reachable: false, warning: 'Adresse hôte vide');
+    }
 
     final url = Uri.parse('http://$cleanHost:$cleanPort/auth/login');
     try {
-      final response = await http.get(url).timeout(const Duration(seconds: 4));
-      return response.statusCode > 0;
-    } catch (_) {
-      try {
-        final headResponse = await http.head(url).timeout(const Duration(seconds: 3));
-        return headResponse.statusCode > 0;
-      } catch (_) {
-        return false;
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({}),
+      ).timeout(const Duration(seconds: 4));
+
+      if (response.statusCode == 400) {
+        return (reachable: true, warning: null);
+      } else if (response.statusCode == 404) {
+        return (
+          reachable: false,
+          warning: 'Ce port ($cleanPort) ne répond pas à l\'API. Avez-vous mis le port du client web (3000) au lieu du backend (8080) ?',
+        );
       }
+      return (reachable: response.statusCode > 0, warning: null);
+    } catch (_) {
+      return (reachable: false, warning: 'Impossible de joindre le serveur à http://$cleanHost:$cleanPort');
     }
   }
 
@@ -185,8 +195,22 @@ class ApiClientNotifier extends Notifier<ApiClientState> {
         return (success: true, error: null);
       }
 
+      if (response.statusCode == 404) {
+        return (
+          success: false,
+          error: 'Serveur introuvable ou mauvais port (utilisez le port 8080 du backend et non le port 3000 du client web).',
+        );
+      }
+
+      if (response.statusCode == 400 || response.statusCode == 401) {
+        return (
+          success: false,
+          error: 'Identifiant (email ou pseudo) ou mot de passe incorrect.',
+        );
+      }
+
       final errorBody = response.body;
-      String errorMsg = 'Identifiants invalides';
+      String errorMsg = 'Erreur serveur (${response.statusCode})';
       if (errorBody.isNotEmpty) {
         try {
           final parsed = jsonDecode(errorBody);

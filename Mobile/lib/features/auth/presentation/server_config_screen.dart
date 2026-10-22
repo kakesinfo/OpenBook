@@ -59,16 +59,16 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
     });
 
     final notifier = ref.read(apiClientProvider.notifier);
-    final reachable = await notifier.testConnection(host, port);
+    final result = await notifier.testConnection(host, port);
 
     if (!mounted) return;
 
     setState(() {
       _isTesting = false;
-      _testSuccess = reachable;
-      _testStatus = reachable
-          ? 'Serveur joignable avec succès !'
-          : 'Impossible de contacter le serveur à http://$host:$port';
+      _testSuccess = result.reachable;
+      _testStatus = result.reachable
+          ? 'Serveur API backend joignable avec succès !'
+          : (result.warning ?? 'Impossible de contacter le serveur à http://$host:$port');
     });
   }
 
@@ -154,7 +154,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Entrez l\'adresse IP ou le nom d\'hôte ainsi que le port de votre serveur backend.',
+                      'Entrez l\'adresse IP ainsi que le port de votre serveur backend (port 8080).',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
@@ -194,11 +194,12 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                           TextFormField(
                             controller: _hostController,
                             keyboardType: TextInputType.url,
+                            textCapitalization: TextCapitalization.none,
                             autocorrect: false,
                             textInputAction: TextInputAction.next,
                             style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                             decoration: InputDecoration(
-                              hintText: 'ex: 192.168.1.100 ou localhost',
+                              hintText: 'ex: 192.168.1.161 ou localhost',
                               hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
                               prefixIcon: const Icon(Icons.language_rounded, size: 20, color: AppTheme.textMuted),
                               filled: true,
@@ -226,7 +227,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                           ),
                           const SizedBox(height: 16),
                           const Text(
-                            'Port',
+                            'Port Backend (8080)',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -266,6 +267,9 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                               final portNum = int.tryParse(val.trim());
                               if (portNum == null || portNum <= 0 || portNum > 65535) {
                                 return 'Port invalide (1 - 65535)';
+                              }
+                              if (portNum == 3000) {
+                                return 'Attention: 3000 est le port du client Web. Utilisez le port 8080 pour le backend.';
                               }
                               return null;
                             },

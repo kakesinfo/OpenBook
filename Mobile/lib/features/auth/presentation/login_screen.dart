@@ -163,7 +163,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
                                   ),
                                   Text(
-                                    '${client.host}:${client.port}',
+                                    'http://${client.host}:${client.port}',
                                     style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -248,7 +248,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ],
 
                           const Text(
-                            'Identifiant ou Email',
+                            'Adresse Email ou Pseudo',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -259,11 +259,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           TextFormField(
                             controller: _identifierController,
                             keyboardType: TextInputType.emailAddress,
+                            textCapitalization: TextCapitalization.none,
                             autocorrect: false,
                             textInputAction: TextInputAction.next,
                             style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                             decoration: InputDecoration(
-                              hintText: 'Identifiant ou adresse email',
+                              hintText: 'ex: votre@email.com ou votre_pseudo',
                               hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
                               prefixIcon: const Icon(Icons.person_outline_rounded, size: 20, color: AppTheme.textMuted),
                               filled: true,
@@ -284,7 +285,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                             validator: (val) {
                               if (val == null || val.trim().isEmpty) {
-                                return 'Veuillez saisir votre identifiant ou email';
+                                return 'Veuillez saisir votre email ou pseudo';
                               }
                               return null;
                             },
@@ -302,6 +303,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           TextFormField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
+                            textCapitalization: TextCapitalization.none,
+                            autocorrect: false,
                             textInputAction: TextInputAction.done,
                             onFieldSubmitted: (_) => _handleLogin(),
                             style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
