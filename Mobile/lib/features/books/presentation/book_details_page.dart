@@ -7,7 +7,6 @@ import '../data/book.dart';
 import 'book_reading_history_page.dart';
 import 'book_reading_session_page.dart';
 import 'components/book_cover.dart';
-import 'components/book_form_sheet.dart';
 
 class BookDetailsPage extends ConsumerWidget {
   const BookDetailsPage({
@@ -32,18 +31,6 @@ class BookDetailsPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Détail du livre'),
         actions: [
-          IconButton(
-            tooltip: 'Modifier',
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () async {
-              final draft = await showBookFormSheet(context, existingBook: activeBook);
-              if (draft != null && context.mounted) {
-                await ref
-                    .read(booksControllerProvider.notifier)
-                    .saveBook(existingBook: activeBook, draft: draft);
-              }
-            },
-          ),
           IconButton(
             tooltip: 'Historique des sessions',
             icon: const Icon(Icons.history_rounded),
@@ -198,9 +185,9 @@ class BookDetailsPage extends ConsumerWidget {
                   onPressed: () async {
                     final targetStatus =
                         isWishlisted ? BookStatus.unread : BookStatus.wishlist;
-                    await ref.read(booksControllerProvider.notifier).saveBook(
-                          existingBook: activeBook,
-                          draft: _draftWithStatus(activeBook, targetStatus),
+                    await ref.read(booksControllerProvider.notifier).updateBookStatus(
+                          activeBook,
+                          targetStatus,
                         );
                   },
                 ),
@@ -216,9 +203,9 @@ class BookDetailsPage extends ConsumerWidget {
                   activeBorderColor: AppTheme.accentPrimary.withValues(alpha: 0.3),
                   onPressed: () async {
                     final targetStatus = isOwned ? BookStatus.wishlist : BookStatus.unread;
-                    await ref.read(booksControllerProvider.notifier).saveBook(
-                          existingBook: activeBook,
-                          draft: _draftWithStatus(activeBook, targetStatus),
+                    await ref.read(booksControllerProvider.notifier).updateBookStatus(
+                          activeBook,
+                          targetStatus,
                         );
                   },
                 ),
@@ -231,9 +218,9 @@ class BookDetailsPage extends ConsumerWidget {
           _BookStatusActions(
             book: activeBook,
             onStatusSelected: (status) async {
-              await ref.read(booksControllerProvider.notifier).saveBook(
-                    existingBook: activeBook,
-                    draft: _draftWithStatus(activeBook, status),
+              await ref.read(booksControllerProvider.notifier).updateBookStatus(
+                    activeBook,
+                    status,
                   );
             },
           ),
@@ -669,17 +656,4 @@ bool _canStartReading(BookStatus status) {
       status != BookStatus.wishlist;
 }
 
-BookDraft _draftWithStatus(Book book, BookStatus status) {
-  final draft = BookDraft.fromBook(book);
-  return BookDraft(
-    title: draft.title,
-    author: draft.author,
-    series: draft.series,
-    volume: draft.volume,
-    coverUrl: draft.coverUrl,
-    coverFilePath: draft.coverFilePath,
-    coverSourceType: draft.coverSourceType,
-    totalPages: draft.totalPages,
-    status: status,
-  );
-}
+

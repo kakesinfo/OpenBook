@@ -6,7 +6,7 @@ import '../application/books_providers.dart';
 import '../data/book.dart';
 import 'book_details_page.dart';
 import 'components/app_header.dart';
-import 'components/book_form_sheet.dart';
+import 'components/add_book_sheet.dart';
 import 'components/book_grid_card.dart';
 
 class WishlistPage extends ConsumerWidget {
@@ -30,27 +30,15 @@ class WishlistPage extends ConsumerWidget {
           IconButton(
             tooltip: 'Ajouter un souhait',
             icon: const Icon(Icons.add, color: AppTheme.accentPrimary),
-            onPressed: () async {
-              final draft = await showBookFormSheet(
-                context,
-                initialStatus: BookStatus.wishlist,
-              );
-              if (draft != null && context.mounted) {
-                await ref.read(booksControllerProvider.notifier).saveBook(draft: draft);
-              }
+            onPressed: () {
+              showAddBookSheet(context, initialStatus: BookStatus.wishlist);
             },
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final draft = await showBookFormSheet(
-            context,
-            initialStatus: BookStatus.wishlist,
-          );
-          if (draft != null && context.mounted) {
-            await ref.read(booksControllerProvider.notifier).saveBook(draft: draft);
-          }
+        onPressed: () {
+          showAddBookSheet(context, initialStatus: BookStatus.wishlist);
         },
         icon: const Icon(Icons.favorite_outline),
         label: const Text('Ajouter un souhait'),
@@ -142,16 +130,11 @@ class WishlistPage extends ConsumerWidget {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                           onTap: onExploreCatalogue ??
-                              () async {
-                                final draft = await showBookFormSheet(
+                              () {
+                                showAddBookSheet(
                                   context,
                                   initialStatus: BookStatus.wishlist,
                                 );
-                                if (draft != null && context.mounted) {
-                                  await ref
-                                      .read(booksControllerProvider.notifier)
-                                      .saveBook(draft: draft);
-                                }
                               },
                           child: const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 22),

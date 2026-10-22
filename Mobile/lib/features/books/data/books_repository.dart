@@ -19,6 +19,19 @@ class BooksRepository {
     return list.map((item) => _bookFromSummary(item as Map<String, dynamic>)).toList();
   }
 
+  Future<List<Book>> searchBooks(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return [];
+
+    final response = await _apiClient.get('/books/search/${Uri.encodeComponent(trimmed)}');
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors de la recherche: ${response.statusCode}');
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((item) => _bookFromSummary(item as Map<String, dynamic>)).toList();
+  }
+
   Book _bookFromSummary(Map<String, dynamic> item) {
     var cover = (item['coverUrl'] as String? ?? '').trim();
     if (cover.isNotEmpty && cover.startsWith('/')) {
@@ -74,45 +87,65 @@ class BooksRepository {
     );
   }
 
-  String _statusToPayload(BookStatus status) {
-    switch (status) {
-      case BookStatus.wishlist:
-        return 'WISHLISTED';
-      case BookStatus.lent:
-        return 'LENT';
-      case BookStatus.sold:
-        return 'SOLD';
-      case BookStatus.unread:
-        return 'UNREAD';
-      case BookStatus.reading:
-        return 'READING';
-      case BookStatus.read:
-        return 'READ';
+  Future<void> addBookToUser(int bookId, {BookStatus status = BookStatus.unread}) async {
+    String payloadStatus = 'OWNED';
+    if (status == BookStatus.wishlist) {
+      payloadStatus = 'WISHLISTED';
+    } else if (status == BookStatus.lent) {
+      payloadStatus = 'LENT';
+    } else if (status == BookStatus.sold) {
+      payloadStatus = 'SOLD';
+    }
+
+    final response = await _apiClient.post('/user/addBook/$bookId/$payloadStatus');
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Impossible d\'ajouter le livre: ${response.statusCode}');
+    }
+
+    if (status == BookStatus.reading) {
+      await updateReadingStatus(bookId, 'READING');
+    } else if (status == BookStatus.read) {
+      await updateReadingStatus(bookId, 'READ');
+    } else if (status == BookStatus.unread) {
+      await updateReadingStatus(bookId, 'UNREAD');
     }
   }
 
-  Future<void> saveBook(Book book) async {
-    final payload = <String, dynamic>{
-      'title': book.title,
-      'author': book.author,
-      'series': book.series,
-      'volume': book.volume,
-      'pageCount': book.totalPages,
-      'coverUrl': book.coverUrl,
-      'status': _statusToPayload(book.status),
-    };
-
-    if (book.id == null) {
-      final response = await _apiClient.post('/user/customBook', body: payload);
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Impossible d\'ajouter le livre: ${response.statusCode}');
-      }
-    } else {
-      final response = await _apiClient.put('/user/customBook/${book.id}', body: payload);
-      if (response.statusCode != 200) {
-        throw Exception('Impossible de mettre à jour le livre: ${response.statusCode}');
-      }
+  Future<void> updateBookStatus(int bookId, BookStatus status) async {
+    switch (status) {
+      case BookStatus.wishlist:
+        await _apiClient.post('/user/addBook/$bookId/WISHLISTED');
+        break;
+      case BookStatus.lent:
+        await _apiClient.post('/user/addBook/$bookId/LENT');
+        break;
+      case BookStatus.sold:
+        await _apiClient.post('/user/addBook/$bookId/SOLD');
+        break;
+      case BookStatus.unread:
+        await _apiClient.post('/user/addBook/$bookId/OWNED');
+        await updateReadingStatus(bookId, 'UNREAD');
+        break;
+      case BookStatus.reading:
+        await _apiClient.post('/user/addBook/$bookId/OWNED');
+        await updateReadingStatus(bookId, 'READING');
+        break;
+      case BookStatus.read:
+        await _apiClient.post('/user/addBook/$bookId/OWNED');
+        await updateReadingStatus(bookId, 'READ');
+        break;
     }
+  }
+
+  Future<void> updateReadingStatus(int bookId, String status) async {
+    await _apiClient.post('/user/readingStatus/$bookId/$status');
+  }
+
+  Future<void> saveBook(Book book) async {
+    if (book.id == null) {
+      throw UnsupportedError('La création manuelle de livres a été supprimée.');
+    }
+    await updateBookStatus(book.id!, book.status);
   }
 
   Future<void> deleteBook(int id) async {

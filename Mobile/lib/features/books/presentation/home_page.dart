@@ -8,7 +8,7 @@ import 'book_details_page.dart';
 import 'book_reading_session_page.dart';
 import 'components/app_header.dart';
 import 'components/book_card.dart';
-import 'components/book_form_sheet.dart';
+import 'components/add_book_sheet.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -29,11 +29,8 @@ class HomePage extends ConsumerWidget {
           IconButton(
             tooltip: 'Ajouter un livre',
             icon: const Icon(Icons.add, color: AppTheme.accentPrimary),
-            onPressed: () async {
-              final draft = await showBookFormSheet(context);
-              if (draft != null && context.mounted) {
-                await ref.read(booksControllerProvider.notifier).saveBook(draft: draft);
-              }
+            onPressed: () {
+              showAddBookSheet(context);
             },
           ),
         ],

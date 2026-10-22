@@ -62,5 +62,11 @@ void main() {
       expect(BookStatus.reading.index, 1);
       expect(BookStatus.read.index, 2);
     });
+
+    test('saveBook without id throws UnsupportedError (manual book creation removed)', () {
+      final repo = BooksRepository(ApiClientNotifier());
+      final manualBook = Book(title: 'Manual Book', status: BookStatus.unread);
+      expect(() => repo.saveBook(manualBook), throwsUnsupportedError);
+    });
   });
 }

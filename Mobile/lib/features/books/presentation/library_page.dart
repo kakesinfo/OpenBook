@@ -6,7 +6,7 @@ import '../application/books_providers.dart';
 import '../data/book.dart';
 import 'book_details_page.dart';
 import 'components/app_header.dart';
-import 'components/book_form_sheet.dart';
+import 'components/add_book_sheet.dart';
 import 'components/book_grid_card.dart';
 
 class LibraryPage extends ConsumerWidget {
@@ -26,21 +26,15 @@ class LibraryPage extends ConsumerWidget {
           IconButton(
             tooltip: 'Ajouter un livre',
             icon: const Icon(Icons.add, color: AppTheme.accentPrimary),
-            onPressed: () async {
-              final draft = await showBookFormSheet(context);
-              if (draft != null && context.mounted) {
-                await ref.read(booksControllerProvider.notifier).saveBook(draft: draft);
-              }
+            onPressed: () {
+              showAddBookSheet(context);
             },
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final draft = await showBookFormSheet(context);
-          if (draft != null && context.mounted) {
-            await ref.read(booksControllerProvider.notifier).saveBook(draft: draft);
-          }
+        onPressed: () {
+          showAddBookSheet(context);
         },
         icon: const Icon(Icons.add),
         label: const Text('Ajouter un livre'),
@@ -171,13 +165,8 @@ class LibraryPage extends ConsumerWidget {
                               color: Colors.transparent,
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                                onTap: () async {
-                                  final draft = await showBookFormSheet(context);
-                                  if (draft != null && context.mounted) {
-                                    await ref
-                                        .read(booksControllerProvider.notifier)
-                                        .saveBook(draft: draft);
-                                  }
+                                onTap: () {
+                                  showAddBookSheet(context);
                                 },
                                 child: const Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 24),

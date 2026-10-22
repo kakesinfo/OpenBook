@@ -158,6 +158,18 @@ class BooksController extends AsyncNotifier<List<Book>> {
     }
   }
 
+  Future<void> addBook(int bookId, {BookStatus status = BookStatus.unread}) async {
+    await _repository.addBookToUser(bookId, status: status);
+    await reload();
+  }
+
+  Future<void> updateBookStatus(Book book, BookStatus status) async {
+    final bookId = book.id;
+    if (bookId == null) return;
+    await _repository.updateBookStatus(bookId, status);
+    await reload();
+  }
+
   Future<void> saveBook({Book? existingBook, required BookDraft draft}) async {
     final currentCover = existingBook?.coverUrl ?? '';
     final resolvedCover = await _resolveCoverPath(
@@ -222,13 +234,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
       ),
     );
 
-    final updatedBook = book.copyWith(
-      status: completedBook ? BookStatus.read : BookStatus.reading,
-      finishedAt: completedBook ? DateTime.now() : book.finishedAt,
-      updatedAt: DateTime.now(),
-    );
-
-    await _repository.saveBook(updatedBook);
+    await _repository.updateReadingStatus(bookId, completedBook ? 'READ' : 'READING');
     ref.invalidate(readingProgressByBookProvider);
     ref.invalidate(readingSessionsForBookProvider);
     await reload();
@@ -257,14 +263,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
       ),
     );
 
-    await _repository.saveBook(
-      book.copyWith(
-        status: BookStatus.reading,
-        startedAt: DateTime.now(),
-        finishedAt: null,
-        updatedAt: DateTime.now(),
-      ),
-    );
+    await _repository.updateReadingStatus(bookId, 'READING');
 
     ref.invalidate(readingProgressByBookProvider);
     ref.invalidate(readingSessionsForBookProvider);
@@ -284,15 +283,8 @@ class BooksController extends AsyncNotifier<List<Book>> {
     final remainingSessions = await _repository.getSessionsByBookId(session.bookId);
     if (remainingSessions.isEmpty) {
       final currentBook = _bookById(session.bookId);
-      if (currentBook != null) {
-        await _repository.saveBook(
-          currentBook.copyWith(
-            status: currentBook.status == BookStatus.wishlist ? BookStatus.wishlist : BookStatus.unread,
-            startedAt: null,
-            finishedAt: null,
-            updatedAt: DateTime.now(),
-          ),
-        );
+      if (currentBook != null && currentBook.status != BookStatus.wishlist) {
+        await _repository.updateReadingStatus(session.bookId, 'UNREAD');
       }
     }
 

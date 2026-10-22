@@ -192,7 +192,7 @@ public class BookController {
     @GetMapping("/search/{query}")
     public List<BookSummaryDTO> search(@PathVariable String query) {
         return repositoryService.getBookRepository()
-                .findAllByTitleContainingIgnoreCaseOrIsbn(query, query)
+                .searchByTitleOrIsbnOrAuthor(query)
                 .stream()
                 .map(this::entityToSummaryDTO)
                 .collect(Collectors.toList());
@@ -218,8 +218,21 @@ public class BookController {
             dto.setReleaseDate(book.getReleaseDate().toString());
         }
         dto.setCoverUrl(book.getCoverUrl());
-        if (book.getSeries() != null && book.getSeries().getCategory() != null) {
-            dto.setCategory(book.getSeries().getCategory().getName());
+        if (book.getSeries() != null) {
+            dto.setSeriesName(book.getSeries().getName());
+            if (book.getSeries().getCategory() != null) {
+                dto.setCategory(book.getSeries().getCategory().getName());
+            }
+        }
+        dto.setPageCount(book.getPageCount());
+        if (book.getBookHasAuthors() != null && !book.getBookHasAuthors().isEmpty()) {
+            String authorStr = book.getBookHasAuthors().stream()
+                    .filter(bha -> bha.getAuthor() != null)
+                    .map(bha -> ((bha.getAuthor().getFirstname() != null ? bha.getAuthor().getFirstname() : "") + " "
+                            + (bha.getAuthor().getLastname() != null ? bha.getAuthor().getLastname() : "")).trim())
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.joining(", "));
+            dto.setAuthor(authorStr);
         }
         dto.setType(book.getType());
         return dto;
