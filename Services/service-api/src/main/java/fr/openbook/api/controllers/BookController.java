@@ -63,6 +63,12 @@ public class BookController {
         if (auth != null && auth.getPrincipal() instanceof UserEntity user) {
             return user;
         }
+        if (auth != null && auth.isAuthenticated() && auth.getName() != null) {
+            return repositoryService.getUserRepository()
+                    .findByUsername(auth.getName())
+                    .or(() -> repositoryService.getUserRepository().findByEmail(auth.getName()))
+                    .orElse(null);
+        }
         return null;
     }
 
@@ -94,26 +100,58 @@ public class BookController {
     }
 
     @GetMapping("/upcoming")
-    public List<BookSummaryDTO> getUpcoming() {
+    public List<BookSummaryDTO> getUpcoming(
+            HttpSession session,
+            @RequestParam(required = false, defaultValue = "false") boolean all
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
         Instant startOfTomorrow = now.toLocalDate().plusDays(1).atStartOfDay(now.getZone()).toInstant();
         Instant endOfWindow = now.toLocalDate().plusMonths(6).atTime(LocalTime.MAX).atZone(now.getZone()).toInstant();
 
+        if (all) {
+            return repositoryService.getBookRepository()
+                    .findAllByReleaseDateBetweenOrderByReleaseDateAsc(startOfTomorrow, endOfWindow)
+                    .stream()
+                    .map(this::entityToSummaryDTO)
+                    .collect(Collectors.toList());
+        }
+
+        if (user == null) {
+            return Collections.emptyList();
+        }
+
         return repositoryService.getBookRepository()
-                .findAllByReleaseDateBetweenOrderByReleaseDateAsc(startOfTomorrow, endOfWindow)
+                .findPlanningUpcomingForUser(user.getId(), startOfTomorrow, endOfWindow)
                 .stream()
                 .map(this::entityToSummaryDTO)
                 .collect(Collectors.toList());
     }
 
     @GetMapping("/recent")
-    public List<BookSummaryDTO> getRecent() {
+    public List<BookSummaryDTO> getRecent(
+            HttpSession session,
+            @RequestParam(required = false, defaultValue = "false") boolean all
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
         ZonedDateTime now = ZonedDateTime.now(ZoneId.systemDefault());
         Instant startOfWindow = now.toLocalDate().minusMonths(2).atStartOfDay(now.getZone()).toInstant();
         Instant endOfToday = now.toLocalDate().atTime(LocalTime.MAX).atZone(now.getZone()).toInstant();
 
+        if (all) {
+            return repositoryService.getBookRepository()
+                    .findAllByReleaseDateBetweenOrderByReleaseDateDesc(startOfWindow, endOfToday)
+                    .stream()
+                    .map(this::entityToSummaryDTO)
+                    .collect(Collectors.toList());
+        }
+
+        if (user == null) {
+            return Collections.emptyList();
+        }
+
         return repositoryService.getBookRepository()
-                .findAllByReleaseDateBetweenOrderByReleaseDateDesc(startOfWindow, endOfToday)
+                .findPlanningRecentForUser(user.getId(), startOfWindow, endOfToday)
                 .stream()
                 .map(this::entityToSummaryDTO)
                 .collect(Collectors.toList());

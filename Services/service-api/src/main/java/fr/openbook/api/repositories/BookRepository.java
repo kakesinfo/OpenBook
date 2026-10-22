@@ -51,5 +51,37 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
     List<BookEntity> findAllByReleaseDateBetweenOrderByReleaseDateAsc(Instant start, Instant end);
     List<BookEntity> findAllByReleaseDateBetweenOrderByReleaseDateDesc(Instant start, Instant end);
 
+    @Query("SELECT b FROM book b " +
+           "WHERE b.releaseDate >= :start AND b.releaseDate <= :end " +
+           "AND (" +
+           "  EXISTS (SELECT ufs FROM user_follows_series ufs WHERE ufs.user.id = :userId AND ufs.series.id = b.series.id) " +
+           "  OR (b.editor IS NOT NULL AND EXISTS (SELECT ufe FROM user_follows_editor ufe WHERE ufe.user.id = :userId AND ufe.editor.id = b.editor.id)) " +
+           "  OR (b.collection IS NOT NULL AND EXISTS (SELECT ufc FROM user_follows_collection ufc WHERE ufc.user.id = :userId AND ufc.collection.id = b.collection.id)) " +
+           "  OR EXISTS (SELECT bha FROM book_has_author bha, user_follows_author ufa WHERE bha.book.id = b.id AND ufa.user.id = :userId AND ufa.author.id = bha.author.id) " +
+           "  OR EXISTS (SELECT uob FROM user_owns_book uob WHERE uob.user.id = :userId AND uob.book.series.id = b.series.id AND UPPER(uob.status) IN ('OWNED', 'FOR_SALE', 'LENT'))" +
+           ") " +
+           "ORDER BY b.releaseDate ASC, b.id ASC")
+    List<BookEntity> findPlanningUpcomingForUser(
+        @Param("userId") Long userId,
+        @Param("start") Instant start,
+        @Param("end") Instant end
+    );
+
+    @Query("SELECT b FROM book b " +
+           "WHERE b.releaseDate >= :start AND b.releaseDate <= :end " +
+           "AND (" +
+           "  EXISTS (SELECT ufs FROM user_follows_series ufs WHERE ufs.user.id = :userId AND ufs.series.id = b.series.id) " +
+           "  OR (b.editor IS NOT NULL AND EXISTS (SELECT ufe FROM user_follows_editor ufe WHERE ufe.user.id = :userId AND ufe.editor.id = b.editor.id)) " +
+           "  OR (b.collection IS NOT NULL AND EXISTS (SELECT ufc FROM user_follows_collection ufc WHERE ufc.user.id = :userId AND ufc.collection.id = b.collection.id)) " +
+           "  OR EXISTS (SELECT bha FROM book_has_author bha, user_follows_author ufa WHERE bha.book.id = b.id AND ufa.user.id = :userId AND ufa.author.id = bha.author.id) " +
+           "  OR EXISTS (SELECT uob FROM user_owns_book uob WHERE uob.user.id = :userId AND uob.book.series.id = b.series.id AND UPPER(uob.status) IN ('OWNED', 'FOR_SALE', 'LENT'))" +
+           ") " +
+           "ORDER BY b.releaseDate DESC, b.id DESC")
+    List<BookEntity> findPlanningRecentForUser(
+        @Param("userId") Long userId,
+        @Param("start") Instant start,
+        @Param("end") Instant end
+    );
+
     List<BookEntity> findAllBySeriesId(Integer seriesId);
 }

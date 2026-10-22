@@ -237,6 +237,9 @@ export default function PlanningPage() {
             <WrapperHeader>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                     <h2>Planning des Sorties</h2>
+                    <span style={{ fontSize: "0.85rem", color: "var(--text-muted, #9ca3af)" }}>
+                        Albums de vos séries, éditeurs, auteurs et collections suivis
+                    </span>
                 </div>
             </WrapperHeader>
 
@@ -450,9 +453,9 @@ export default function PlanningPage() {
                             Aucune sortie trouvée
                         </h3>
                         <p style={{ margin: 0, color: "var(--text-muted, #9ca3af)", fontSize: "0.9rem", maxWidth: "480px" }}>
-                            Aucun album ne correspond à la période sélectionnée (
+                            Aucun album ne correspond à vos séries, auteurs, éditeurs ou collections suivis pour cette période (
                             {timeFilter === "recent" ? "2 derniers mois" : "6 prochains mois"}
-                            ) et au filtre {CATEGORY_FILTERS.find(c => c.id === selectedCategory)?.label}.
+                            ){selectedCategory !== "all" ? ` et au filtre ${CATEGORY_FILTERS.find(c => c.id === selectedCategory)?.label}` : ""}.
                         </p>
                     </div>
                 )}
