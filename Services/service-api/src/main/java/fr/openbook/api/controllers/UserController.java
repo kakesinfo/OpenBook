@@ -1,5 +1,9 @@
 package fr.openbook.api.controllers;
 
+import fr.openbook.api.dtos.BookStatusDTO;
+import fr.openbook.api.entities.BookReadingStatus;
+import fr.openbook.api.entities.BookStatusEntity;
+import org.springframework.web.server.ResponseStatusException;
 import fr.openbook.api.dtos.BookDTO;
 import fr.openbook.api.dtos.BookSummaryDTO;
 import fr.openbook.api.dtos.UserOwnsBookDTO;
@@ -350,12 +354,87 @@ public class UserController {
                 .ifPresent(entity -> repositoryService.getUserOwnsBooksRepository().delete(entity));
     }
 
+    @PostMapping("/readingStatus/{id}/{status}")
+    public BookStatusDTO setReadingStatus(
+        HttpSession session,
+        @PathVariable Long id,
+        @PathVariable String status
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        BookReadingStatus readingStatus;
+        try {
+            readingStatus = BookReadingStatus.fromString(status);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid reading status: " + status);
+        }
+
+        final BookEntity book = repositoryService.getBookRepository()
+                .findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found"));
+
+        BookStatusEntity entity = repositoryService.getBookStatusRepository()
+                .findByUserIdAndBookId(user.getId(), id)
+                .orElseGet(() -> {
+                    BookStatusEntity statusEntity = new BookStatusEntity();
+                    statusEntity.setUser(user);
+                    statusEntity.setBook(book);
+                    return statusEntity;
+                });
+
+        entity.setStatus(readingStatus.name());
+        return BookStatusDTO.from(repositoryService.getBookStatusRepository().saveAndFlush(entity));
+    }
+
+    @DeleteMapping("/readingStatus/{id}")
+    public void removeReadingStatus(
+        HttpSession session,
+        @PathVariable Long id
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        repositoryService.getBookStatusRepository()
+                .findByUserIdAndBookId(user.getId(), id)
+                .ifPresent(entity -> repositoryService.getBookStatusRepository().delete(entity));
+    }
+
+    @GetMapping("/readingStatus/{id}")
+    public ResponseEntity<String> getReadingStatus(
+        HttpSession session,
+        @PathVariable Long id
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        return repositoryService.getBookStatusRepository()
+                .findByUserIdAndBookId(user.getId(), id)
+                .map(BookStatusEntity::getStatus)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build());
+    }
+
+    @GetMapping("/reading/{status}")
+    public List<BookSummaryDTO> getBooksByReadingStatus(
+        HttpSession session,
+        @PathVariable String status
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        BookReadingStatus readingStatus;
+        try {
+            readingStatus = BookReadingStatus.fromString(status);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid reading status: " + status);
+        }
+
+        return repositoryService.getBookStatusRepository()
+                .findAllByUserIdAndStatus(user.getId(), readingStatus.name())
+                .stream()
+                .map(entity -> entityToSummaryDTO(entity.getBook()))
+                .toList();
+    }
+
     @GetMapping("/books")
     public List<BookSummaryDTO> getUserBooks(HttpSession session) {
         return getCollection(session);
     }
 
-    @GetMapping("/collection")
+    @GetMapping({"/collection", "/library", "/bibliotheque"})
     public List<BookSummaryDTO> getCollection(HttpSession session) {
         UserEntity user = getAuthenticatedUser(session);
 

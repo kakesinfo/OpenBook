@@ -31,13 +31,13 @@ export default function CollectionPage() {
     return (
         <div className="collection-wrapper" style={{ width: "100%", display: "flex", flexDirection: "column" }}>
             <WrapperHeader>
-                <h2>Ma Collection {books.length > 0 ? `(${books.length})` : ''}</h2>
+                <h2>Ma Bibliothèque {books.length > 0 ? `(${books.length})` : ''}</h2>
             </WrapperHeader>
 
             <div className="collection-body">
                 {loading ? (
                     <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
-                        Chargement de votre collection...
+                        Chargement de votre bibliothèque...
                     </div>
                 ) : books.length > 0 ? (
                     <BookList books={books} />
@@ -67,10 +67,10 @@ export default function CollectionPage() {
                             <FontAwesomeIcon icon={faBook} />
                         </div>
                         <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>
-                            Votre collection est encore vide
+                            Votre bibliothèque est encore vide
                         </h3>
                         <p style={{ fontSize: "0.9375rem", maxWidth: "380px", marginBottom: "24px", lineHeight: 1.6 }}>
-                            Parcourez les nouveautés et ajoutez vos livres favoris à votre collection pour suivre votre bibliothèque.
+                            Parcourez les nouveautés et ajoutez vos livres favoris à votre bibliothèque pour suivre vos lectures.
                         </p>
                         <Link
                             to="/app/home"

@@ -19,6 +19,7 @@ public class BookDTO extends BookSummaryDTO {
     private String type;
 
     private String status;
+    private String readingStatus;
 
     private SeriesDTO series;
     private EditorDTO editor;

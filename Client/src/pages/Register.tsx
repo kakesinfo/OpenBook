@@ -54,7 +54,7 @@ export default function Register() {
                         <FontAwesomeIcon icon={faBookOpen} />
                     </div>
                     <h1 className="auth-page__title">Créer un compte</h1>
-                    <p className="auth-page__subtitle">Rejoignez Yet Another Library et gérez votre collection</p>
+                    <p className="auth-page__subtitle">Rejoignez Yet Another Library et gérez votre bibliothèque</p>
                 </div>
 
                 <Card>

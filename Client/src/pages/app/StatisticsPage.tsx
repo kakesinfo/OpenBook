@@ -111,7 +111,7 @@ export default function StatisticsPage() {
                                 </div>
                                 <div>
                                     <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #9ca3af)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-                                        Dans la collection
+                                        Dans la bibliothèque
                                     </div>
                                     <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--text-primary, #ffffff)" }}>
                                         {stats.totalOwnedBooks}
@@ -242,7 +242,7 @@ export default function StatisticsPage() {
                                             <FontAwesomeIcon icon={faWeightHanging} />
                                         </div>
                                         <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700 }}>
-                                            Poids de la collection
+                                            Poids de la bibliothèque
                                         </h3>
                                     </div>
 
@@ -340,7 +340,7 @@ export default function StatisticsPage() {
                                             fontWeight: 600
                                         }}>
                                             <FontAwesomeIcon icon={faCalendarDays} style={{ color: "#f59e0b" }} />
-                                            <span>Le doyen de la collection</span>
+                                            <span>Le doyen de la bibliothèque</span>
                                         </div>
                                         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
                                             {stats.oldestBook.coverUrl && (

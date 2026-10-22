@@ -766,7 +766,7 @@ export default function SettingsPage() {
                                 <div className="settings-modal__warning">
                                     <FontAwesomeIcon icon={faTriangleExclamation} />
                                     <span>
-                                        Attention : cette action est <strong>irréversible</strong>. Toutes vos données de compte, votre collection et vos souhaits seront supprimés sans possibilité de récupération.
+                                        Attention : cette action est <strong>irréversible</strong>. Toutes vos données de compte, votre bibliothèque et vos souhaits seront supprimés sans possibilité de récupération.
                                     </span>
                                 </div>
 

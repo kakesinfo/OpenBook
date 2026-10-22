@@ -1082,4 +1082,120 @@
             </column>
         </addColumn>
     </changeSet>
+    <changeSet id="25" author="Antigravity">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="book_status" />
+            </not>
+        </preConditions>
+        <createTable tableName="book_status">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+            <column name="user_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="book_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="status" type="varchar(50)">
+                <constraints nullable="false" />
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="book_status" indexName="idx_book_status_user_id">
+            <column name="user_id" />
+        </createIndex>
+
+        <createIndex tableName="book_status" indexName="idx_book_status_book_id">
+            <column name="book_id" />
+        </createIndex>
+
+        <addForeignKeyConstraint
+            constraintName="fk_book_status_user_id"
+            baseTableName="book_status"
+            baseColumnNames="user_id"
+            referencedTableName="user"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"
+        />
+
+        <addForeignKeyConstraint
+            constraintName="fk_book_status_book_id"
+            baseTableName="book_status"
+            baseColumnNames="book_id"
+            referencedTableName="book"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"
+        />
+
+        <addUniqueConstraint
+            constraintName="uk_book_status_user_id_book_id"
+            tableName="book_status"
+            columnNames="user_id, book_id"
+        />
+
+        <createTable tableName="reading_session">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+            <column name="user_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="book_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="current_page" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="minutes_read" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="seconds_read" type="integer" defaultValueNumeric="0">
+                <constraints nullable="false" />
+            </column>
+            <column name="session_type" type="integer" defaultValueNumeric="1">
+                <constraints nullable="false" />
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="reading_session" indexName="idx_reading_session_user_id">
+            <column name="user_id" />
+        </createIndex>
+
+        <createIndex tableName="reading_session" indexName="idx_reading_session_book_id">
+            <column name="book_id" />
+        </createIndex>
+
+        <addForeignKeyConstraint
+            constraintName="fk_reading_session_user_id"
+            baseTableName="reading_session"
+            baseColumnNames="user_id"
+            referencedTableName="user"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"
+        />
+
+        <addForeignKeyConstraint
+            constraintName="fk_reading_session_book_id"
+            baseTableName="reading_session"
+            baseColumnNames="book_id"
+            referencedTableName="book"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"
+        />
+    </changeSet>
 </databaseChangeLog>

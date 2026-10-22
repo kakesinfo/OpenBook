@@ -69,6 +69,7 @@ export default function Routing() {
                 <Route index element={<Navigate replace to="home" />} />
                 <Route path="home" element={<HomePage key={location.pathname}/>} />
                 <Route path="collection" element={<CollectionPage key={location.pathname}/>} />
+                <Route path="bibliotheque" element={<CollectionPage key={location.pathname}/>} />
                 <Route path="wishlist" element={<WishlistPage key={location.pathname}/>} />
                 <Route path="planning" element={<PlanningPage key={location.pathname}/>} />
                 <Route path="statistics" element={<StatisticsPage key={location.pathname}/>} />

@@ -24,6 +24,7 @@ export default interface BookDTO {
     coverUrl: string;
     releaseDate: string;
     status: string;
+    readingStatus?: string | null;
     series: SeriesDTO;
     authors?: AuthorSummaryDTO[];
     previousBookId?: string | number | null;

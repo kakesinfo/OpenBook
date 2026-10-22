@@ -80,7 +80,7 @@ export default function App() {
             <WrapperNavigation title="Yet Another Library" onSearchClick={handleOpen}>
                 <WrapperAction icon={faMagnifyingGlass} callback={handleOpen}>Recherche</WrapperAction>
                 <WrapperButton to={'/app/home'} icon={faNewspaper}>Nouveautés</WrapperButton>
-                <WrapperButton to={'/app/collection'} icon={faBook}>Collection</WrapperButton>
+                <WrapperButton to={'/app/collection'} icon={faBook}>Bibliothèque</WrapperButton>
                 <WrapperButton to={'/app/wishlist'} icon={faHeart}>Souhaits</WrapperButton>
                 <WrapperButton to={'/app/planning'} icon={faCalendarDays}>Planning</WrapperButton>
                 <WrapperButton to={'/app/statistics'} icon={faChartPie}>Statistiques</WrapperButton>

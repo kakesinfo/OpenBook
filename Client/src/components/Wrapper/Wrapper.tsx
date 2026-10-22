@@ -146,10 +146,10 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
                 </Link>
                 <Link
                     to="/app/collection"
-                    className={`wrapper-bottom-nav__item ${location.pathname.includes('/collection') ? 'active' : ''}`}
+                    className={`wrapper-bottom-nav__item ${location.pathname.includes('/collection') || location.pathname.includes('/bibliotheque') ? 'active' : ''}`}
                 >
                     <FontAwesomeIcon icon={faBook} />
-                    <span>Collection</span>
+                    <span>Bibliothèque</span>
                 </Link>
                 <Link
                     to="/app/wishlist"

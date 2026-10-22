@@ -9,6 +9,7 @@ import fr.openbook.api.entities.AuthorEntity;
 import fr.openbook.api.entities.AuthorTypeEntity;
 import fr.openbook.api.entities.BookEntity;
 import fr.openbook.api.entities.UserEntity;
+import fr.openbook.api.entities.BookStatusEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
 import fr.openbook.api.repositories.BookRepository;
 import fr.openbook.api.services.CollectionService;
@@ -358,6 +359,11 @@ public class BookController {
             dto.setStatus(repositoryService.getUserOwnsBooksRepository()
                     .findByUserIdAndBookId(userEntity.getId(), bookEntity.getId())
                     .map(UserOwnsBookEntity::getStatus)
+                    .orElse(null));
+
+            dto.setReadingStatus(repositoryService.getBookStatusRepository()
+                    .findByUserIdAndBookId(userEntity.getId(), bookEntity.getId())
+                    .map(BookStatusEntity::getStatus)
                     .orElse(null));
         }
 
