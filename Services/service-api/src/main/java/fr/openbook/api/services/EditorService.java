@@ -54,7 +54,9 @@ public class EditorService {
     }
 
     public static EditorDTO entityToDTO(EditorEntity entity) {
+        if (entity == null) return null;
         EditorDTO entityDTO = new EditorDTO();
+        entityDTO.setId(entity.getId());
         entityDTO.setName(entity.getName());
         return entityDTO;
     }

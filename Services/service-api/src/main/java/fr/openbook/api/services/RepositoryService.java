@@ -12,6 +12,10 @@ import fr.openbook.api.repositories.ReadingSessionRepository;
 import fr.openbook.api.repositories.SeriesHasThemeRepository;
 import fr.openbook.api.repositories.SeriesRepository;
 import fr.openbook.api.repositories.ThemeRepository;
+import fr.openbook.api.repositories.UserFollowsAuthorRepository;
+import fr.openbook.api.repositories.UserFollowsCollectionRepository;
+import fr.openbook.api.repositories.UserFollowsEditorRepository;
+import fr.openbook.api.repositories.UserFollowsSeriesRepository;
 import fr.openbook.api.repositories.UserOwnsBooksRepository;
 import fr.openbook.api.repositories.UserRepository;
 import lombok.Getter;
@@ -38,4 +42,8 @@ public class RepositoryService
     private final SeriesRepository seriesRepository;
     private final ThemeRepository themeRepository;
     private final UserOwnsBooksRepository userOwnsBooksRepository;
+    private final UserFollowsSeriesRepository userFollowsSeriesRepository;
+    private final UserFollowsAuthorRepository userFollowsAuthorRepository;
+    private final UserFollowsEditorRepository userFollowsEditorRepository;
+    private final UserFollowsCollectionRepository userFollowsCollectionRepository;
 }

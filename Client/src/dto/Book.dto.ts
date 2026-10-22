@@ -1,7 +1,10 @@
 import BookSummaryDTO from "./BookSummary.dto.ts";
 import SeriesDTO from "./Series.dto.ts";
+import EditorDTO from "./Editor.dto.ts";
+import CollectionDTO from "./Collection.dto.ts";
 
 export interface AuthorSummaryDTO {
+    id?: number;
     firstname: string;
     lastname: string;
     type: string;
@@ -26,6 +29,8 @@ export default interface BookDTO {
     status: string;
     readingStatus?: string | null;
     series: SeriesDTO;
+    editor?: EditorDTO | null;
+    collection?: CollectionDTO | null;
     authors?: AuthorSummaryDTO[];
     previousBookId?: string | number | null;
     nextBookId?: string | number | null;

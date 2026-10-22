@@ -365,6 +365,7 @@ public class BookController {
                         AuthorTypeEntity authorType = bookHasAuthor.getAuthorType();
 
                         BookHasAuthorDTO bookHasAuthorDto = new BookHasAuthorDTO();
+                        bookHasAuthorDto.setId(author.getId());
                         bookHasAuthorDto.setFirstname(author.getFirstname());
                         bookHasAuthorDto.setLastname(author.getLastname());
                         bookHasAuthorDto.setType(authorType.getName());

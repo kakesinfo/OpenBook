@@ -8,5 +8,6 @@ import java.io.Serializable;
 @Getter
 @Setter
 public class EditorDTO implements Serializable {
+    private Long id;
     private String name;
 }

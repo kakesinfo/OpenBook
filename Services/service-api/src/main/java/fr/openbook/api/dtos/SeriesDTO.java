@@ -4,6 +4,7 @@ import lombok.Data;
 
 @Data
 public class SeriesDTO {
+    private Integer id;
     private String name;
     private String category;
     private String status;

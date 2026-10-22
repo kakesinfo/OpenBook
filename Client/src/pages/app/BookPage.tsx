@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router";
 import { ReactNode, useEffect, useState } from "react";
-import BookDTO, { AuthorSummaryDTO } from "../../dto/Book.dto";
+import BookDTO from "../../dto/Book.dto";
 import useSession, { SessionContextType } from "../../hooks/UseSession.tsx";
 import { getSeriesStatusLabel } from "../../dto/Series.dto.ts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -24,11 +24,44 @@ import {
     faChevronLeft,
     faChevronRight,
     faBookOpen,
+    faBuilding,
+    faLayerGroup,
+    faBell,
+    faBellSlash,
+    faXmark,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
+import { Dialog } from "@mui/material";
 
 import "./BookPage.scss";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
+
+type FollowType = "series" | "author" | "editor" | "collection";
+
+interface FollowTarget {
+    type: FollowType;
+    id: number | string;
+    name: string;
+    roleOrSubtitle?: string;
+}
+
+function getFollowTypeIcon(type: FollowType) {
+    switch (type) {
+        case "series": return faBook;
+        case "author": return faPenNib;
+        case "editor": return faBuilding;
+        case "collection": return faLayerGroup;
+    }
+}
+
+function getFollowTypeLabel(type: FollowType) {
+    switch (type) {
+        case "series": return "Série";
+        case "author": return "Auteur";
+        case "editor": return "Maison d'édition";
+        case "collection": return "Collection";
+    }
+}
 
 function ChangeBookStatusButton({
     status,
@@ -95,6 +128,11 @@ export default function BookPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Follow system states
+    const [followStates, setFollowStates] = useState<Record<string, boolean>>({});
+    const [followModalTarget, setFollowModalTarget] = useState<FollowTarget | null>(null);
+    const [followProcessing, setFollowProcessing] = useState(false);
+
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
         if (!id) return;
@@ -105,15 +143,51 @@ export default function BookPage() {
         setBookStatus(null);
         setReadingStatus("UNREAD");
 
-        const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=0&withEditor=0&withAuthors=1&withStatus=1`;
+        const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1`;
         session.customFetch(fetchUrl, {
             method: "GET",
         }).then(async (response) => {
             if (response.ok) {
-                const data = await response.json();
+                const data: BookDTO = await response.json();
                 setBook(data);
                 setBookStatus(data.status);
                 setReadingStatus(data.readingStatus || "UNREAD");
+
+                // Fetch batch follow status
+                const params = new URLSearchParams();
+                if (data.series?.id) params.set("seriesId", String(data.series.id));
+                if (data.editor?.id) params.set("editorId", String(data.editor.id));
+                if (data.collection?.id) params.set("collectionId", String(data.collection.id));
+                if (data.authors && data.authors.length > 0) {
+                    const aIds = data.authors.map((a) => a.id).filter(Boolean);
+                    if (aIds.length > 0) params.set("authorIds", aIds.join(","));
+                }
+
+                session.customFetch(`/user/follows/batch?${params.toString()}`, { method: "GET" })
+                    .then(async (followRes) => {
+                        if (followRes.ok) {
+                            const batch = await followRes.json();
+                            const newStates: Record<string, boolean> = {};
+                            if (data.series?.id && batch.series !== undefined) {
+                                newStates[`series_${data.series.id}`] = Boolean(batch.series);
+                            }
+                            if (data.editor?.id && batch.editor !== undefined) {
+                                newStates[`editor_${data.editor.id}`] = Boolean(batch.editor);
+                            }
+                            if (data.collection?.id && batch.collection !== undefined) {
+                                newStates[`collection_${data.collection.id}`] = Boolean(batch.collection);
+                            }
+                            if (batch.authors) {
+                                Object.entries(batch.authors).forEach(([aId, followed]) => {
+                                    newStates[`author_${aId}`] = Boolean(followed);
+                                });
+                            }
+                            setFollowStates(newStates);
+                        }
+                    })
+                    .catch((err) => {
+                        console.error("Batch follow status error:", err);
+                    });
             } else {
                 const errorText = await response.text();
                 setError(`Erreur ${response.status}: ${errorText}`);
@@ -124,6 +198,41 @@ export default function BookPage() {
             setLoading(false);
         });
     }, [id, session]);
+
+    const openFollowModal = (type: FollowType, targetId?: number | string | null, name?: string, roleOrSubtitle?: string) => {
+        if (!targetId || !name) return;
+        setFollowModalTarget({ type, id: targetId, name, roleOrSubtitle });
+    };
+
+    const handleToggleFollow = async () => {
+        if (!followModalTarget || !followModalTarget.id || followProcessing) return;
+        const { type, id: targetId } = followModalTarget;
+        const key = `${type}_${targetId}`;
+        const currentlyFollowing = Boolean(followStates[key]);
+        const newState = !currentlyFollowing;
+
+        setFollowProcessing(true);
+        // Optimistic update
+        setFollowStates(prev => ({ ...prev, [key]: newState }));
+
+        try {
+            const res = await session.customFetch(`/user/follows/${type}/${targetId}/toggle`, {
+                method: "POST"
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setFollowStates(prev => ({ ...prev, [key]: Boolean(data.following) }));
+            } else {
+                // Revert
+                setFollowStates(prev => ({ ...prev, [key]: currentlyFollowing }));
+            }
+        } catch (err) {
+            console.error("Toggle follow error:", err);
+            setFollowStates(prev => ({ ...prev, [key]: currentlyFollowing }));
+        } finally {
+            setFollowProcessing(false);
+        }
+    };
 
     // Author categorization & deduplication helper
     const allAuthors = book?.authors || [];
@@ -136,16 +245,6 @@ export default function BookPage() {
     const scenaristes = allAuthors.filter(
         (a) => !dessinateurs.includes(a) && !coloristes.includes(a)
     );
-
-    const formatAuthorNames = (list: AuthorSummaryDTO[]) => {
-        return Array.from(
-            new Set(
-                list
-                    .map((a: AuthorSummaryDTO) => `${a.firstname || ""} ${a.lastname || ""}`.trim())
-                    .filter(Boolean)
-            )
-        ).join(", ");
-    };
 
     const totalVolumes = book?.series?.totalVolumes
         ? Math.max(book.volume || 1, book.series.totalVolumes)
@@ -303,15 +402,51 @@ export default function BookPage() {
 
                             {/* Titles */}
                             <div className="book-page__headings">
+                                {/* Série cliquable pour Follow */}
                                 {book.series?.name && (
-                                    <h2 className="book-page__series-title">{book.series.name}</h2>
+                                    <h2 className="book-page__series-title">
+                                        <button
+                                            type="button"
+                                            className="book-page__entity-title-btn"
+                                            onClick={() => openFollowModal("series", book.series?.id, book.series.name)}
+                                            title={`Gérer le suivi de la série ${book.series.name}`}
+                                        >
+                                            <span>{book.series.name}</span>
+                                            {book.series?.id && followStates[`series_${book.series.id}`] && (
+                                                <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                            )}
+                                        </button>
+                                    </h2>
                                 )}
                                 <h1 className="book-page__title">{book.title}</h1>
 
+                                {/* Auteurs cliquables pour Follow */}
                                 {book.authors && book.authors.length > 0 && (
-                                    <p className="book-page__authors">
-                                        Par {formatAuthorNames(book.authors)}
-                                    </p>
+                                    <div className="book-page__authors-row">
+                                        <span>Par</span>
+                                        {book.authors.map((author, idx) => {
+                                            const fullName = `${author.firstname || ""} ${author.lastname || ""}`.trim();
+                                            const isFollowed = author.id ? Boolean(followStates[`author_${author.id}`]) : false;
+                                            return (
+                                                <span key={author.id || idx} className="book-page__author-item">
+                                                    <button
+                                                        type="button"
+                                                        className="book-page__entity-inline-btn"
+                                                        onClick={() => openFollowModal("author", author.id, fullName, author.type)}
+                                                        title={`Gérer le suivi de ${fullName}`}
+                                                    >
+                                                        <span>{fullName}</span>
+                                                        {isFollowed && (
+                                                            <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                        )}
+                                                    </button>
+                                                    {idx < (book.authors?.length || 0) - 1 && (
+                                                        <span className="book-page__author-sep">,</span>
+                                                    )}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
                                 )}
                             </div>
 
@@ -383,7 +518,47 @@ export default function BookPage() {
                             <div className="book-page__specs-card">
                                 <h3 className="book-page__specs-title">Détails techniques</h3>
                                 <div className="book-page__specs-list">
-                                    {/* 1. Date de sortie */}
+                                    {/* Maison d'édition (Éditeur) cliquable */}
+                                    {book.editor?.name && (
+                                        <div className="book-page__spec-item">
+                                            <span className="book-page__spec-label">
+                                                <FontAwesomeIcon icon={faBuilding} /> Éditeur
+                                            </span>
+                                            <button
+                                                type="button"
+                                                className="book-page__spec-btn"
+                                                onClick={() => openFollowModal("editor", book.editor?.id, book.editor!.name)}
+                                                title={`Gérer le suivi de l'éditeur ${book.editor.name}`}
+                                            >
+                                                <span>{book.editor.name}</span>
+                                                {book.editor?.id && followStates[`editor_${book.editor.id}`] && (
+                                                    <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Collection cliquable */}
+                                    {book.collection?.name && (
+                                        <div className="book-page__spec-item">
+                                            <span className="book-page__spec-label">
+                                                <FontAwesomeIcon icon={faLayerGroup} /> Collection
+                                            </span>
+                                            <button
+                                                type="button"
+                                                className="book-page__spec-btn"
+                                                onClick={() => openFollowModal("collection", book.collection?.id, book.collection!.name)}
+                                                title={`Gérer le suivi de la collection ${book.collection.name}`}
+                                            >
+                                                <span>{book.collection.name}</span>
+                                                {book.collection?.id && followStates[`collection_${book.collection.id}`] && (
+                                                    <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Date de sortie */}
                                     {book.releaseDate && (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
@@ -399,43 +574,94 @@ export default function BookPage() {
                                         </div>
                                     )}
 
-                                    {/* 2. Scénariste(s) */}
+                                    {/* Scénariste(s) cliquable(s) */}
                                     {scenaristes.length > 0 && (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
                                                 <FontAwesomeIcon icon={faPenNib} /> Scénariste{scenaristes.length > 1 ? "s" : ""}
                                             </span>
-                                            <span className="book-page__spec-value">
-                                                {formatAuthorNames(scenaristes)}
-                                            </span>
+                                            <div className="book-page__spec-authors-list">
+                                                {scenaristes.map((a, i) => {
+                                                    const name = `${a.firstname || ""} ${a.lastname || ""}`.trim();
+                                                    const isFollowed = a.id ? Boolean(followStates[`author_${a.id}`]) : false;
+                                                    return (
+                                                        <button
+                                                            type="button"
+                                                            key={a.id || i}
+                                                            className="book-page__spec-author-chip"
+                                                            onClick={() => openFollowModal("author", a.id, name, "Scénariste")}
+                                                            title={`Gérer le suivi de ${name}`}
+                                                        >
+                                                            <span>{name}</span>
+                                                            {isFollowed && (
+                                                                <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     )}
 
-                                    {/* 3. Dessinateur(s) (s'il y en a) */}
+                                    {/* Dessinateur(s) cliquable(s) */}
                                     {dessinateurs.length > 0 && (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
                                                 <FontAwesomeIcon icon={faPalette} /> Dessinateur{dessinateurs.length > 1 ? "s" : ""}
                                             </span>
-                                            <span className="book-page__spec-value">
-                                                {formatAuthorNames(dessinateurs)}
-                                            </span>
+                                            <div className="book-page__spec-authors-list">
+                                                {dessinateurs.map((a, i) => {
+                                                    const name = `${a.firstname || ""} ${a.lastname || ""}`.trim();
+                                                    const isFollowed = a.id ? Boolean(followStates[`author_${a.id}`]) : false;
+                                                    return (
+                                                        <button
+                                                            type="button"
+                                                            key={a.id || i}
+                                                            className="book-page__spec-author-chip"
+                                                            onClick={() => openFollowModal("author", a.id, name, "Dessinateur")}
+                                                            title={`Gérer le suivi de ${name}`}
+                                                        >
+                                                            <span>{name}</span>
+                                                            {isFollowed && (
+                                                                <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     )}
 
-                                    {/* 4. Coloriste(s) (s'il y en a) */}
+                                    {/* Coloriste(s) cliquable(s) */}
                                     {coloristes.length > 0 && (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
                                                 <FontAwesomeIcon icon={faPaintbrush} /> Coloriste{coloristes.length > 1 ? "s" : ""}
                                             </span>
-                                            <span className="book-page__spec-value">
-                                                {formatAuthorNames(coloristes)}
-                                            </span>
+                                            <div className="book-page__spec-authors-list">
+                                                {coloristes.map((a, i) => {
+                                                    const name = `${a.firstname || ""} ${a.lastname || ""}`.trim();
+                                                    const isFollowed = a.id ? Boolean(followStates[`author_${a.id}`]) : false;
+                                                    return (
+                                                        <button
+                                                            type="button"
+                                                            key={a.id || i}
+                                                            className="book-page__spec-author-chip"
+                                                            onClick={() => openFollowModal("author", a.id, name, "Coloriste")}
+                                                            title={`Gérer le suivi de ${name}`}
+                                                        >
+                                                            <span>{name}</span>
+                                                            {isFollowed && (
+                                                                <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     )}
 
-                                    {/* 5. ISBN / EAN */}
+                                    {/* ISBN / EAN */}
                                     {book.isbn && (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
@@ -445,7 +671,7 @@ export default function BookPage() {
                                         </div>
                                     )}
 
-                                    {/* 6. Dimensions */}
+                                    {/* Dimensions */}
                                     {(book.length || book.height || book.thickness) ? (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
@@ -457,7 +683,7 @@ export default function BookPage() {
                                         </div>
                                     ) : null}
 
-                                    {/* 7. Poids */}
+                                    {/* Poids */}
                                     {book.weight ? (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
@@ -467,7 +693,7 @@ export default function BookPage() {
                                         </div>
                                     ) : null}
 
-                                    {/* 8. Pages */}
+                                    {/* Pages */}
                                     {book.pageCount ? (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
@@ -477,7 +703,7 @@ export default function BookPage() {
                                         </div>
                                     ) : null}
 
-                                    {/* 9. Type (cartonné, relié, souple, etc.) */}
+                                    {/* Type (cartonné, relié, souple, etc.) */}
                                     {book.type && (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
@@ -487,7 +713,7 @@ export default function BookPage() {
                                         </div>
                                     )}
 
-                                    {/* 10. Thèmes (justice, gotham, enquête, aventure, scifi, etc.) */}
+                                    {/* Thèmes (justice, gotham, enquête, aventure, scifi, etc.) */}
                                     {book.themes && book.themes.length > 0 && (
                                         <div className="book-page__spec-item book-page__spec-item--themes">
                                             <span className="book-page__spec-label">
@@ -518,6 +744,76 @@ export default function BookPage() {
                     </div>
                 )}
             </div>
+
+            {/* Follow / Unfollow Dialog Modal */}
+            <Dialog
+                open={Boolean(followModalTarget)}
+                onClose={() => setFollowModalTarget(null)}
+                PaperProps={{
+                    style: {
+                        backgroundColor: "var(--bg-surface, #1e1e24)",
+                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                        borderRadius: "16px",
+                        boxShadow: "0 20px 40px rgba(0, 0, 0, 0.6)",
+                        width: "100%",
+                        maxWidth: "440px",
+                        margin: "16px",
+                        padding: "24px"
+                    }
+                }}
+            >
+                {followModalTarget && (() => {
+                    const key = `${followModalTarget.type}_${followModalTarget.id}`;
+                    const isFollowed = Boolean(followStates[key]);
+                    return (
+                        <div className="follow-dialog">
+                            <div className="follow-dialog__header">
+                                <div className={`follow-dialog__icon-wrapper follow-dialog__icon-wrapper--${followModalTarget.type}`}>
+                                    <FontAwesomeIcon icon={getFollowTypeIcon(followModalTarget.type)} />
+                                </div>
+                                <div className="follow-dialog__header-text">
+                                    <span className="follow-dialog__type-badge">
+                                        {getFollowTypeLabel(followModalTarget.type)}
+                                    </span>
+                                    <h3 className="follow-dialog__title">{followModalTarget.name}</h3>
+                                    {followModalTarget.roleOrSubtitle && (
+                                        <p className="follow-dialog__subtitle">{followModalTarget.roleOrSubtitle}</p>
+                                    )}
+                                </div>
+                                <button
+                                    type="button"
+                                    className="follow-dialog__close-btn"
+                                    onClick={() => setFollowModalTarget(null)}
+                                    aria-label="Fermer"
+                                >
+                                    <FontAwesomeIcon icon={faXmark} />
+                                </button>
+                            </div>
+
+                            <div className="follow-dialog__body">
+                                <p className="follow-dialog__desc">
+                                    {isFollowed
+                                        ? `Vous êtes abonné aux parutions de cet élément. Vous recevrez les actualités et nouveaux albums associés.`
+                                        : `Abonnez-vous à cet élément pour être alerté des futures sorties et facilement le retrouver dans vos suivis.`}
+                                </p>
+
+                                <div className="follow-dialog__actions">
+                                    <button
+                                        type="button"
+                                        className={`follow-dialog__btn ${isFollowed ? "follow-dialog__btn--unfollow" : "follow-dialog__btn--follow"}`}
+                                        onClick={handleToggleFollow}
+                                        disabled={followProcessing}
+                                    >
+                                        <FontAwesomeIcon icon={isFollowed ? faBellSlash : faBell} />
+                                        <span>{isFollowed ? "Ne plus suivre" : "Suivre"}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
+            </Dialog>
         </div>
     );
 }
+
