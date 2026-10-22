@@ -16,6 +16,8 @@ import fr.openbook.api.entities.UserOwnsBookStatus;
 import org.springframework.web.server.ResponseStatusException;
 import fr.openbook.api.dtos.BookDTO;
 import fr.openbook.api.dtos.BookSummaryDTO;
+import fr.openbook.api.dtos.UserSeriesSummaryDTO;
+import java.util.Comparator;
 import fr.openbook.api.dtos.UserOwnsBookDTO;
 import fr.openbook.api.dtos.UserProfileDTO;
 import fr.openbook.api.dtos.UserStatisticsDTO;
@@ -95,7 +97,10 @@ public class UserController {
         }
         dto.setCoverUrl(book.getCoverUrl());
         if (book.getSeries() != null) {
+            dto.setSeriesId(book.getSeries().getId() != null ? book.getSeries().getId().longValue() : null);
             dto.setSeriesName(book.getSeries().getName());
+            dto.setSeriesTotalVolumes(book.getSeries().getTotalVolumes());
+            dto.setSeriesCoverUrl(book.getSeries().getCoverUrl());
             if (book.getSeries().getCategory() != null) {
                 dto.setCategory(book.getSeries().getCategory().getName());
             }
@@ -519,6 +524,57 @@ public class UserController {
                 .stream()
                 .map(entity -> entityToSummaryDTO(entity.getBook()))
                 .toList();
+    }
+
+    @GetMapping({"/collection/series", "/library/series", "/bibliotheque/series"})
+    public List<UserSeriesSummaryDTO> getCollectionGroupedBySeries(HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+
+        List<UserOwnsBookEntity> ownedEntries = repositoryService.getUserOwnsBooksRepository()
+                .findAllByUserIdAndStatus(user.getId(), UserOwnsBookStatus.OWNED.name());
+
+        Map<Long, UserSeriesSummaryDTO> seriesMap = new LinkedHashMap<>();
+
+        for (UserOwnsBookEntity uob : ownedEntries) {
+            BookEntity book = uob.getBook();
+            if (book == null) continue;
+
+            SeriesEntity series = book.getSeries();
+            Long sId = (series != null && series.getId() != null) ? series.getId().longValue() : -book.getId();
+            String sName = (series != null && series.getName() != null) ? series.getName() : book.getTitle();
+            String cat = (series != null && series.getCategory() != null) ? series.getCategory().getName() : (book.getType() != null ? book.getType() : "Comics");
+            String sCover = (series != null && series.getCoverUrl() != null) ? series.getCoverUrl() : book.getCoverUrl();
+            int total = (series != null && series.getTotalVolumes() != null) ? series.getTotalVolumes() : 1;
+
+            UserSeriesSummaryDTO sDto = seriesMap.computeIfAbsent(sId, id -> {
+                UserSeriesSummaryDTO dto = new UserSeriesSummaryDTO();
+                dto.setId(id);
+                dto.setName(sName);
+                dto.setCategory(cat);
+                dto.setCoverUrl(sCover);
+                dto.setTotalVolumes(total);
+                dto.setOwnedCount(0);
+                dto.setBooks(new ArrayList<>());
+                return dto;
+            });
+
+            sDto.getBooks().add(entityToSummaryDTO(book));
+        }
+
+        for (UserSeriesSummaryDTO sDto : seriesMap.values()) {
+            sDto.getBooks().sort(Comparator.comparingInt(b -> b.getVolume() != null ? b.getVolume() : 0));
+            sDto.setOwnedCount(sDto.getBooks().size());
+            if (sDto.getOwnedCount() > sDto.getTotalVolumes()) {
+                sDto.setTotalVolumes(sDto.getOwnedCount());
+            }
+            if (sDto.getCoverUrl() == null && !sDto.getBooks().isEmpty()) {
+                sDto.setCoverUrl(sDto.getBooks().get(0).getCoverUrl());
+            }
+        }
+
+        List<UserSeriesSummaryDTO> result = new ArrayList<>(seriesMap.values());
+        result.sort(Comparator.comparing(UserSeriesSummaryDTO::getName, String.CASE_INSENSITIVE_ORDER));
+        return result;
     }
 
     @GetMapping("/wishlist")

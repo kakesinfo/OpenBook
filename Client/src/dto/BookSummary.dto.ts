@@ -8,4 +8,10 @@ export default interface BookSummaryDTO {
     coverUrl: string;
     category?: string;
     type?: string;
+    author?: string;
+    seriesId?: number;
+    seriesName?: string;
+    seriesTotalVolumes?: number;
+    seriesCoverUrl?: string;
+    readingStatus?: string;
 }

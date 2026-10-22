@@ -8,4 +8,5 @@ public class SeriesDTO {
     private String category;
     private String status;
     private Integer totalVolumes;
+    private String coverUrl;
 }

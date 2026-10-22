@@ -222,7 +222,10 @@ public class BookController {
         }
         dto.setCoverUrl(book.getCoverUrl());
         if (book.getSeries() != null) {
+            dto.setSeriesId(book.getSeries().getId() != null ? book.getSeries().getId().longValue() : null);
             dto.setSeriesName(book.getSeries().getName());
+            dto.setSeriesTotalVolumes(book.getSeries().getTotalVolumes());
+            dto.setSeriesCoverUrl(book.getSeries().getCoverUrl());
             if (book.getSeries().getCategory() != null) {
                 dto.setCategory(book.getSeries().getCategory().getName());
             }

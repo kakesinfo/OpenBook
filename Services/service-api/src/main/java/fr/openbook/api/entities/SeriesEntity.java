@@ -52,6 +52,9 @@ public class SeriesEntity {
     @Formula("(select coalesce(greatest(count(b.id), max(b.volume)), 0) from book b where b.series_id = id)")
     private Integer totalVolumes;
 
+    @Formula("(select b.cover_url from book b where b.series_id = id order by case when b.volume > 0 then b.volume else 999 end asc, b.id asc limit 1)")
+    private String coverUrl;
+
     @PrePersist
     protected void onCreate()
     {

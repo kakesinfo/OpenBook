@@ -14,7 +14,10 @@ public class BookSummaryDTO {
     private String category;
     private String type;
     private String author;
+    private Long seriesId;
     private String seriesName;
+    private Integer seriesTotalVolumes;
+    private String seriesCoverUrl;
     private Integer pageCount;
     private String status;
     private String readingStatus;
