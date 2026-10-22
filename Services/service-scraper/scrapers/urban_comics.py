@@ -189,7 +189,7 @@ class UrbanComicsScraper(BaseScraper):
 
     def _create_session(self) -> requests.Session:
         session = requests.Session()
-        adapter = HTTPAdapter(pool_connections=12, pool_maxsize=12, max_retries=2)
+        adapter = HTTPAdapter(pool_connections=6, pool_maxsize=6, max_retries=1)
         session.mount("https://", adapter)
         session.mount("http://", adapter)
         session.headers.update({
@@ -199,7 +199,13 @@ class UrbanComicsScraper(BaseScraper):
         })
         return session
 
-    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None, is_stopped: Optional[Callable[[], bool]] = None) -> List[ScrapedBook]:
+    def scrape(
+        self,
+        max_items: int = 50,
+        full_scan: bool = False,
+        on_book_found: Optional[Callable[[ScrapedBook], None]] = None,
+        is_stopped: Optional[Callable[[], bool]] = None
+    ) -> List[ScrapedBook]:
         session = self._create_session()
         targets: Dict[str, Dict[str, Any]] = {}
 
@@ -207,7 +213,7 @@ class UrbanComicsScraper(BaseScraper):
 
         # 1. Scrape À paraître (base and month-by-month /a-paraitre/<mois>/<annee>/)
         try:
-            ap_targets = self._crawl_a_paraitre(session, full_scan=full_scan)
+            ap_targets = self._crawl_a_paraitre(session, full_scan=full_scan, is_stopped=is_stopped)
             logger.info("UrbanComics: Found %d items from à paraître", len(ap_targets))
             targets.update(ap_targets)
         except Exception as e:
@@ -216,28 +222,36 @@ class UrbanComicsScraper(BaseScraper):
         if is_stopped and is_stopped():
             return []
 
-        # 2. Scrape Shop (https://www.urban-comics.com/shop/)
+        # 2. Scrape Shop (frontpage in routine scan, all pages in full scan)
         try:
-            shop_links = self._crawl_shop(session)
-            logger.info("UrbanComics: Found %d items from shop frontpage", len(shop_links))
-            for link in shop_links:
+            shop_targets = self._crawl_shop(session, full_scan=full_scan, is_stopped=is_stopped)
+            logger.info("UrbanComics: Found %d items from shop catalogue", len(shop_targets))
+            for link, info in shop_targets.items():
                 if link not in targets:
-                    targets[link] = {}
+                    targets[link] = info
+                else:
+                    for k, v in info.items():
+                        if v and not targets[link].get(k):
+                            targets[link][k] = v
         except Exception as e:
             logger.warning("UrbanComics: error crawling shop: %s", e)
 
         if is_stopped and is_stopped():
             return []
 
-        # 3. Sitemaps discovery to retrieve all catalogue titles
-        # Standard scan uses the recent sitemap (sitemap3), full_scan uses all sitemaps (1, 2, 3)
+        # 3. Sitemaps discovery to retrieve all historic catalogue titles
+        # Discovers all products from sitemaps dynamically with image & title hints
         if full_scan or len(targets) < max_items:
             try:
-                sitemap_links = self._crawl_sitemaps(session, full_scan=full_scan)
-                logger.info("UrbanComics: Found %d items from sitemaps", len(sitemap_links))
-                for link in sitemap_links:
+                sitemap_targets = self._crawl_sitemaps(session, full_scan=full_scan, is_stopped=is_stopped)
+                logger.info("UrbanComics: Found %d items from sitemaps", len(sitemap_targets))
+                for link, info in sitemap_targets.items():
                     if link not in targets:
-                        targets[link] = {}
+                        targets[link] = info
+                    else:
+                        for k, v in info.items():
+                            if v and not targets[link].get(k):
+                                targets[link][k] = v
             except Exception as e:
                 logger.warning("UrbanComics: error crawling sitemaps: %s", e)
 
@@ -247,6 +261,13 @@ class UrbanComicsScraper(BaseScraper):
         total_discovered = len(targets)
         logger.info("UrbanComics: Total unique titles discovered: %d", total_discovered)
 
+        if total_discovered == 0:
+            if is_stopped and is_stopped():
+                return []
+            raise RuntimeError(
+                "Impossible de joindre www.urban-comics.com : le serveur web de l'éditeur est actuellement hors ligne ou inaccessible (connexion refusée / code 521)."
+            )
+
         # Determine target list to scrape
         target_list: List[Tuple[str, Dict[str, Any]]] = list(targets.items())
         if not full_scan:
@@ -255,12 +276,11 @@ class UrbanComicsScraper(BaseScraper):
             other_items = [item for item in target_list if not item[1].get("release_date")]
             remaining_slots = max(0, max_items - len(ap_items))
             target_list = ap_items + other_items[:remaining_slots]
-        elif max_items > 0 and len(target_list) > max_items:
-            target_list = target_list[:max_items]
+        # In full_scan, we do NOT truncate target_list! All discovered items are scraped.
 
-        # 4. Concurrently fetch and parse product pages
+        # 4. Concurrently fetch and parse product pages with gentle concurrency
         books: List[ScrapedBook] = []
-        max_workers = 8
+        max_workers = 4  # Gentle concurrency to prevent server overload and timeouts
         logger.info("UrbanComics: Fetching %d detail pages using %d threads...", len(target_list), max_workers)
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -289,31 +309,30 @@ class UrbanComicsScraper(BaseScraper):
         logger.info("UrbanComics: Completed scrape. Extracted %d books.", len(books))
         return books
 
-    def _crawl_a_paraitre(self, session: requests.Session, full_scan: bool = False) -> Dict[str, Dict[str, Any]]:
+    def _crawl_a_paraitre(
+        self,
+        session: requests.Session,
+        full_scan: bool = False,
+        is_stopped: Optional[Callable[[], bool]] = None
+    ) -> Dict[str, Dict[str, Any]]:
         """
-        Crawls https://www.urban-comics.com/a-paraitre/ and all monthly release archives
-        https://www.urban-comics.com/a-paraitre/<mois>/<annee>/.
+        Crawls https://www.urban-comics.com/a-paraitre/ and all monthly release archives.
+        In full scan, visits all years from 2012 to current_year + 1.
         """
         targets: Dict[str, Dict[str, Any]] = {}
         base_ap_url = "https://www.urban-comics.com/a-paraitre/"
 
         logger.info("UrbanComics: Fetching base à paraître page: %s", base_ap_url)
-        resp = session.get(base_ap_url, timeout=settings.REQUEST_TIMEOUT)
-        if resp.status_code != 200:
-            logger.warning("UrbanComics: Base à paraître returned status %d", resp.status_code)
+        try:
+            resp = session.get(base_ap_url, timeout=15)
+            if resp.status_code == 200:
+                soup_base = BeautifulSoup(resp.content.decode("utf-8", errors="replace"), "html.parser")
+                self._extract_comics_containers(soup_base, targets)
+        except Exception as e:
+            logger.warning("UrbanComics: error fetching base à paraître: %s", e)
+
+        if is_stopped and is_stopped():
             return targets
-
-        soup_base = BeautifulSoup(resp.content.decode("utf-8", errors="replace"), "html.parser")
-        self._extract_comics_containers(soup_base, targets)
-
-        # Discover available years from the selector
-        select_year = soup_base.find("select", id="select-year") or soup_base.find("select", attrs={"name": "select-year"})
-        available_years: List[int] = []
-        if select_year:
-            for opt in select_year.find_all("option"):
-                val = opt.get("value", "").strip()
-                if val.isdigit():
-                    available_years.append(int(val))
 
         now = datetime.now()
         current_year = now.year
@@ -323,7 +342,8 @@ class UrbanComicsScraper(BaseScraper):
         months_to_visit: List[Tuple[str, int]] = []
 
         if full_scan:
-            years = sorted(available_years) if available_years else list(range(2012, current_year + 2))
+            # Full catalogue: all months from inception (2012) to next year
+            years = list(range(2012, current_year + 2))
             for y in years:
                 for m in ALL_MONTH_SLUGS:
                     months_to_visit.append((m, y))
@@ -336,20 +356,28 @@ class UrbanComicsScraper(BaseScraper):
                 m_slug = ALL_MONTH_SLUGS[target_month_index]
                 months_to_visit.append((m_slug, target_year))
 
-        logger.info("UrbanComics: Fetching %d monthly schedule pages concurrently...", len(months_to_visit))
+        logger.info("UrbanComics: Fetching %d monthly schedule pages...", len(months_to_visit))
 
         def fetch_month_page(item: Tuple[str, int]) -> Tuple[Tuple[str, int], Optional[str]]:
+            if is_stopped and is_stopped():
+                return item, None
             m_slug, year = item
             url = f"https://www.urban-comics.com/a-paraitre/{m_slug}/{year}/"
             try:
-                r_month = session.get(url, timeout=15)
+                r_month = session.get(url, timeout=12)
                 if r_month.status_code == 200:
                     return item, r_month.content.decode("utf-8", errors="replace")
+                # Fallback to checklist archive URL for older years
+                url_chk = f"https://www.urban-comics.com/checklist/{m_slug}/{year}/"
+                r_chk = session.get(url_chk, timeout=12)
+                if r_chk.status_code == 200:
+                    return item, r_chk.content.decode("utf-8", errors="replace")
             except Exception as e:
-                logger.warning("UrbanComics: error fetching month page %s: %s", url, e)
+                logger.debug("UrbanComics: error fetching month page %s: %s", url, e)
             return item, None
 
-        with ThreadPoolExecutor(max_workers=6) as executor:
+        workers = 4 if full_scan else 6
+        with ThreadPoolExecutor(max_workers=workers) as executor:
             results = list(executor.map(fetch_month_page, months_to_visit))
 
         for (m_slug, year), page_html in results:
@@ -360,13 +388,13 @@ class UrbanComicsScraper(BaseScraper):
         return targets
 
     def _extract_comics_containers(self, soup: BeautifulSoup, targets: Dict[str, Dict[str, Any]]):
-        """Extracts products from div.comics-container cards on à paraître pages."""
+        """Extracts products from div.comics-container cards on à paraître & checklist pages."""
         for container in soup.find_all("div", class_="comics-container"):
             a_tag = container.find("a", href=True)
             if not a_tag:
                 continue
             url = a_tag["href"].split("?")[0].rstrip("/") + "/"
-            if "urban-comics.com" not in url or any(skip in url for skip in ["/a-paraitre", "/shop", "/category", "/auteurs"]):
+            if "urban-comics.com" not in url or any(skip in url for skip in ["/a-paraitre", "/checklist", "/shop", "/category", "/auteurs"]):
                 continue
 
             # 1. Release date in header (e.g. "02 octobre 2026")
@@ -375,14 +403,14 @@ class UrbanComicsScraper(BaseScraper):
 
             # 2. Cover image
             img = container.find("img")
-            cover_url = img.get("src") if img else None
+            cover_url = img.get("src") or img.get("data-lazy-src") if img else None
 
             # 3. Caption data
             caption = container.find("div", class_="caption")
             caption_title = None
             caption_price = None
             if caption:
-                h3 = caption.find("h3")
+                h3 = caption.find(["h3", "h5"])
                 if h3:
                     caption_title = clean_text(h3.get_text(strip=True))
                 price_b = caption.find("div", class_="caption-prix")
@@ -403,59 +431,191 @@ class UrbanComicsScraper(BaseScraper):
             if caption_price and not targets[url].get("price"):
                 targets[url]["price"] = caption_price
 
-    def _crawl_shop(self, session: requests.Session) -> List[str]:
-        """Fetches product URLs from https://www.urban-comics.com/shop/."""
-        shop_url = "https://www.urban-comics.com/shop/"
-        logger.info("UrbanComics: Fetching shop frontpage: %s", shop_url)
-        try:
-            resp = session.get(shop_url, timeout=20)
-            if resp.status_code != 200:
-                return []
-        except Exception as e:
-            logger.warning("UrbanComics: shop request timed out or failed: %s", e)
-            return []
+    def _crawl_shop(
+        self,
+        session: requests.Session,
+        full_scan: bool = False,
+        is_stopped: Optional[Callable[[], bool]] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Crawls https://www.urban-comics.com/shop/ catalogue pages.
+        In full scan mode, paginates through all available shop pages.
+        """
+        targets: Dict[str, Dict[str, Any]] = {}
+        page = 1
+        max_pages = 200 if full_scan else 1
 
-        links = []
-        soup = BeautifulSoup(resp.content.decode("utf-8", errors="replace"), "html.parser")
+        while page <= max_pages:
+            if is_stopped and is_stopped():
+                break
+
+            url = "https://www.urban-comics.com/shop/" if page == 1 else f"https://www.urban-comics.com/shop/page/{page}/"
+            try:
+                resp = session.get(url, timeout=15)
+                if resp.status_code != 200:
+                    break
+            except Exception as e:
+                logger.debug("UrbanComics: shop page %s request failed: %s", url, e)
+                break
+
+            soup = BeautifulSoup(resp.content.decode("utf-8", errors="replace"), "html.parser")
+            found_count = self._extract_shop_cards(soup, targets)
+            if found_count == 0:
+                break
+
+            # If not full scan, only retrieve frontpage
+            if not full_scan:
+                break
+
+            page += 1
+
+        return targets
+
+    def _extract_shop_cards(self, soup: BeautifulSoup, targets: Dict[str, Dict[str, Any]]) -> int:
+        count = 0
         for tag in soup.find_all(lambda t: t.name in ["li", "div", "article"] and "product" in t.get("class", [])):
             a = tag.find("a", href=True)
-            if a:
-                clean_href = a["href"].split("?")[0].rstrip("/") + "/"
-                if "urban-comics.com" in clean_href and clean_href not in links:
-                    if not any(skip in clean_href for skip in ["/shop", "/category", "/auteurs", "/tag", "/collection"]):
-                        links.append(clean_href)
-        return links
+            if not a:
+                continue
+            clean_href = a["href"].split("?")[0].rstrip("/") + "/"
+            if "urban-comics.com" not in clean_href or any(skip in clean_href for skip in ["/shop", "/category", "/auteurs", "/tag", "/collection"]):
+                continue
 
-    def _crawl_sitemaps(self, session: requests.Session, full_scan: bool = False) -> List[str]:
-        """
-        Crawls Yoast SEO product sitemaps to ensure all titles in Urban Comics catalogue are discovered.
-        - product-sitemap3.xml: Most recent releases & upcoming items
-        - product-sitemap2.xml, product-sitemap.xml: Entire historic catalogue
-        """
-        sitemaps = ["https://www.urban-comics.com/product-sitemap3.xml"]
-        if full_scan:
-            sitemaps.extend([
-                "https://www.urban-comics.com/product-sitemap2.xml",
-                "https://www.urban-comics.com/product-sitemap.xml"
-            ])
+            # Title
+            title_elem = tag.find(class_=re.compile(r"woocommerce-loop-product__title|product-title|title")) or tag.find(["h2", "h3"])
+            title = clean_text(title_elem.get_text(strip=True)) if title_elem else None
 
-        discovered: List[str] = []
-        for sm_url in sitemaps:
+            # Cover
+            img = tag.find("img")
+            cover_url = img.get("src") or img.get("data-lazy-src") or img.get("data-src") if img else None
+
+            # Price
+            price = None
+            price_elem = tag.find(class_=re.compile(r"price|amount"))
+            if price_elem:
+                p_match = re.search(r"(\d+)[,\.](\d+)", price_elem.get_text(strip=True))
+                if p_match:
+                    price = int(p_match.group(1))
+
+            if clean_href not in targets:
+                targets[clean_href] = {}
+            if title and not targets[clean_href].get("title"):
+                targets[clean_href]["title"] = title
+            if cover_url and not targets[clean_href].get("cover_url"):
+                targets[clean_href]["cover_url"] = cover_url
+            if price and not targets[clean_href].get("price"):
+                targets[clean_href]["price"] = price
+            count += 1
+        return count
+
+    def _crawl_sitemaps(
+        self,
+        session: requests.Session,
+        full_scan: bool = False,
+        is_stopped: Optional[Callable[[], bool]] = None
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Crawls Yoast SEO / WordPress XML sitemaps to discover all catalogue items.
+        Extracts loc, image:loc, image:title, and lastmod directly from XML.
+        """
+        targets: Dict[str, Dict[str, Any]] = {}
+        sitemaps_to_crawl: List[str] = []
+
+        # 1. Discover sub-sitemaps from sitemap_index.xml or wp-sitemap.xml
+        for idx_url in ["https://www.urban-comics.com/sitemap_index.xml", "https://www.urban-comics.com/wp-sitemap.xml"]:
+            if is_stopped and is_stopped():
+                break
             try:
-                logger.info("UrbanComics: Fetching sitemap %s", sm_url)
-                r = session.get(sm_url, timeout=settings.REQUEST_TIMEOUT)
+                r = session.get(idx_url, timeout=15)
+                if r.status_code == 200:
+                    root = ET.fromstring(r.content)
+                    for child in root:
+                        tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+                        if tag == "sitemap":
+                            for elem in child:
+                                el_tag = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
+                                if el_tag == "loc" and elem.text:
+                                    loc_text = elem.text.strip()
+                                    if any(k in loc_text for k in ["product", "album", "post", "comic"]):
+                                        if not any(skip in loc_text for skip in ["category", "tag", "author", "collection"]):
+                                            if loc_text not in sitemaps_to_crawl:
+                                                sitemaps_to_crawl.append(loc_text)
+                    if sitemaps_to_crawl:
+                        break
+            except Exception as e:
+                logger.debug("UrbanComics: error parsing sitemap index %s: %s", idx_url, e)
+
+        # Fallback list if sitemap_index failed or in standard scan
+        if not sitemaps_to_crawl:
+            sitemaps_to_crawl = [
+                "https://www.urban-comics.com/product-sitemap3.xml",
+                "https://www.urban-comics.com/product-sitemap2.xml",
+                "https://www.urban-comics.com/product-sitemap1.xml",
+                "https://www.urban-comics.com/product-sitemap.xml",
+                "https://www.urban-comics.com/product-sitemap4.xml",
+                "https://www.urban-comics.com/product-sitemap5.xml",
+                "https://www.urban-comics.com/post-sitemap1.xml",
+                "https://www.urban-comics.com/post-sitemap2.xml",
+                "https://www.urban-comics.com/post-sitemap3.xml"
+            ]
+
+        if not full_scan:
+            # Routine scan: inspect only the most recent product sitemaps
+            sitemaps_to_crawl = [s for s in sitemaps_to_crawl if any(k in s for k in ["sitemap3", "sitemap2"])][:2]
+            if not sitemaps_to_crawl:
+                sitemaps_to_crawl = ["https://www.urban-comics.com/product-sitemap3.xml"]
+
+        logger.info("UrbanComics: Crawling %d XML sitemaps...", len(sitemaps_to_crawl))
+
+        for sm_url in sitemaps_to_crawl:
+            if is_stopped and is_stopped():
+                break
+            try:
+                r = session.get(sm_url, timeout=15)
                 if r.status_code != 200:
                     continue
                 root = ET.fromstring(r.content)
-                for loc in root.findall(".//{http://www.sitemaps.org/schemas/sitemap/0.9}loc"):
-                    if loc.text:
-                        clean_url = loc.text.split("?")[0].rstrip("/") + "/"
-                        if "urban-comics.com" in clean_url and clean_url not in discovered:
-                            discovered.append(clean_url)
-            except Exception as e:
-                logger.warning("UrbanComics: error parsing sitemap %s: %s", sm_url, e)
+                for url_elem in root:
+                    tag = url_elem.tag.split("}")[-1] if "}" in url_elem.tag else url_elem.tag
+                    if tag != "url":
+                        continue
+                    loc, lastmod, img_url, img_title = None, None, None, None
+                    for child in url_elem:
+                        c_tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+                        if c_tag == "loc":
+                            loc = child.text.strip() if child.text else None
+                        elif c_tag == "lastmod":
+                            lastmod = child.text.strip() if child.text else None
+                        elif c_tag == "image":
+                            for img_child in child:
+                                ic_tag = img_child.tag.split("}")[-1] if "}" in img_child.tag else img_child.tag
+                                if ic_tag == "loc":
+                                    img_url = img_child.text.strip() if img_child.text else None
+                                elif ic_tag == "title":
+                                    img_title = img_child.text.strip() if img_child.text else None
 
-        return discovered
+                    if not loc:
+                        continue
+                    clean_url = loc.split("?")[0].rstrip("/") + "/"
+                    if "urban-comics.com" not in clean_url:
+                        continue
+                    if any(skip in clean_url for skip in ["/shop", "/category", "/auteurs", "/tag", "/collection", "/a-paraitre", "/checklist"]):
+                        continue
+
+                    if clean_url not in targets:
+                        targets[clean_url] = {}
+                    if img_title and not targets[clean_url].get("title"):
+                        targets[clean_url]["title"] = img_title
+                    if img_url and not targets[clean_url].get("cover_url"):
+                        targets[clean_url]["cover_url"] = img_url
+                    if lastmod and not targets[clean_url].get("release_date"):
+                        parsed_lm = parse_french_date(lastmod[:10])
+                        if parsed_lm:
+                            targets[clean_url]["release_date"] = parsed_lm
+            except Exception as e:
+                logger.debug("UrbanComics: error parsing sitemap %s: %s", sm_url, e)
+
+        return targets
 
     def _scrape_product_page(
         self,
@@ -464,33 +624,37 @@ class UrbanComicsScraper(BaseScraper):
         hints: Optional[Dict[str, Any]] = None
     ) -> Optional[ScrapedBook]:
         hints = hints or {}
+        resp = None
         try:
-            resp = session.get(url, timeout=settings.REQUEST_TIMEOUT)
+            resp = session.get(url, timeout=12)
         except Exception as e:
-            logger.warning("UrbanComics: request failed for %s: %s", url, e)
-            resp = None
+            logger.debug("UrbanComics: request failed for %s: %s", url, e)
 
         if not resp or resp.status_code != 200:
-            # Fallback to hints from à paraître card if product page fails
-            if hints.get("title") or hints.get("release_date"):
-                fallback_title = hints.get("title") or url.strip("/").split("/")[-1].replace("-", " ").title()
-                return ScrapedBook(
-                    title=clean_text(fallback_title)[:255],
-                    series_name=clean_text(fallback_title)[:255],
-                    volume=1,
-                    isbn=None,
-                    editor_name="Urban Comics",
-                    category_name="Comics",
-                    page_count=0,
-                    price=hints.get("price", 0),
-                    description=None,
-                    cover_url=hints.get("cover_url"),
-                    release_date=hints.get("release_date", datetime.now()),
-                    book_type="Comics",
-                    authors=[],
-                    source_url=url
-                )
-            return None
+            # Fallback to hints if product page times out or fails
+            slug = url.strip("/").split("/")[-1]
+            if any(skip in slug for skip in ["shop", "category", "auteurs", "tag", "collection", "cart", "mon-compte"]):
+                return None
+            fallback_title = hints.get("title") or slug.replace("-", " ").title()
+            if not fallback_title or len(fallback_title) < 2:
+                return None
+            series_name, volume = parse_series_and_volume(fallback_title, BeautifulSoup("", "html.parser"))
+            return ScrapedBook(
+                title=clean_text(fallback_title)[:255],
+                series_name=clean_text(series_name)[:255],
+                volume=volume or 1,
+                isbn=hints.get("isbn"),
+                editor_name="Urban Comics",
+                category_name="Comics",
+                page_count=0,
+                price=hints.get("price", 0) or 0,
+                description=None,
+                cover_url=hints.get("cover_url"),
+                release_date=hints.get("release_date") or datetime.now(),
+                book_type="Comics",
+                authors=[],
+                source_url=url
+            )
 
         page_content = resp.content.decode("utf-8", errors="replace")
         soup = BeautifulSoup(page_content, "html.parser")
@@ -508,7 +672,10 @@ class UrbanComicsScraper(BaseScraper):
             title = hints.get("title")
 
         if not title:
-            return None
+            slug = url.strip("/").split("/")[-1]
+            if any(skip in slug for skip in ["shop", "category", "auteurs", "tag", "collection"]):
+                return None
+            title = slug.replace("-", " ").title()
 
         title = clean_text(re.sub(r"\s+", " ", title).strip())
 
@@ -516,7 +683,7 @@ class UrbanComicsScraper(BaseScraper):
         series_name, volume = parse_series_and_volume(title, soup)
 
         # 3. Metadata from text & lists
-        isbn = None
+        isbn = hints.get("isbn")
         page_count = 0
         price = hints.get("price", 0) or 0
         release_date = hints.get("release_date")
@@ -525,7 +692,7 @@ class UrbanComicsScraper(BaseScraper):
         ean_match = re.search(r"<b>(?:EAN|ISBN)\s*:</b>\s*([0-9]{10,13})", page_content, re.I)
         if ean_match:
             isbn = ean_match.group(1)
-        else:
+        elif not isbn:
             data_ean = soup.find(attrs={"data-ean": True})
             if data_ean:
                 isbn = data_ean["data-ean"]

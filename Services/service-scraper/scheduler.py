@@ -38,6 +38,7 @@ class ScraperManager:
             "recent_books": [],
             "started_at": None,
             "ended_at": None,
+            "last_error": None,
         }
         self._init_recent_books_from_db()
 
@@ -253,6 +254,7 @@ class ScraperManager:
             self.live_scan["recent_books"] = []
             self.live_scan["started_at"] = start_time.isoformat()
             self.live_scan["ended_at"] = None
+            self.live_scan["last_error"] = None
 
         logger.info("Starting scrape process for sources: %s (full_scan=%s)", sources_to_run, full_scan)
 
@@ -270,7 +272,7 @@ class ScraperManager:
                         self.live_scan["current_source_name"] = scraper.display_name
                         self.live_scan["current_source_color"] = scraper.color
 
-                    limit = 2000 if full_scan else settings.MAX_BOOKS_PER_SOURCE
+                    limit = 50000 if full_scan else settings.MAX_BOOKS_PER_SOURCE
                     saved_this_source = [0]
                     seen_in_callback = set()
 
@@ -351,6 +353,8 @@ class ScraperManager:
                         "status": "error",
                         "error": str(e)
                     }
+                    with self._lock:
+                        self.live_scan["last_error"] = str(e)
 
             summary["end_time"] = datetime.now().isoformat()
             summary["status"] = "success" if not summary["errors"] else "completed_with_errors"

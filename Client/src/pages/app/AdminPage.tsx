@@ -43,6 +43,7 @@ export interface LiveScanStatus {
     total_saved: number;
     started_at?: string | null;
     ended_at?: string | null;
+    last_error?: string | null;
 }
 
 interface ScraperStatus {
@@ -438,6 +439,15 @@ export default function AdminPage() {
                                     </div>
                                     <div style={{ fontSize: "0.85rem", color: "var(--text-muted, #9ca3af)", fontWeight: 500 }}>
                                         <strong style={{ color: "#fff", fontWeight: 700 }}>{liveScan?.total_found ?? 0}</strong> {((liveScan?.total_found ?? 0) > 1) ? "livres trouvés" : "livre trouvé"}
+                                    </div>
+                                </div>
+                            ) : liveScan?.last_error ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "2px" }}>
+                                    <div style={{ fontSize: "1rem", fontWeight: 700, color: "#ef4444" }}>
+                                        Erreur
+                                    </div>
+                                    <div style={{ fontSize: "0.75rem", color: "#f87171", fontWeight: 500, lineHeight: 1.2 }}>
+                                        {liveScan.last_error}
                                     </div>
                                 </div>
                             ) : (
