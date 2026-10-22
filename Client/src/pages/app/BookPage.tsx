@@ -21,6 +21,8 @@ import {
     faPaintbrush,
     faBookBookmark,
     faTags,
+    faChevronLeft,
+    faChevronRight,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -92,6 +94,7 @@ export default function BookPage() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
         if (!id) return;
 
         setLoading(true);
@@ -130,6 +133,20 @@ export default function BookPage() {
         (a) => !dessinateurs.includes(a) && !coloristes.includes(a)
     );
 
+    const totalVolumes = book?.series?.totalVolumes
+        ? Math.max(book.volume || 1, book.series.totalVolumes)
+        : book?.volume;
+
+    const hasPrevious = Boolean(book?.previousBookId);
+    const canHavePrevious = Boolean(book?.volume != null && book.volume > 1);
+    const showPrevious = hasPrevious || canHavePrevious;
+
+    const hasNext = Boolean(book?.nextBookId);
+    const canHaveNext = Boolean(
+        book?.volume != null && totalVolumes != null && book.volume < totalVolumes
+    );
+    const showNext = hasNext || canHaveNext;
+
     return (
         <div className="book-page">
             <WrapperHeader>
@@ -156,7 +173,7 @@ export default function BookPage() {
 
                 {book && (
                     <div className="book-page__grid">
-                        {/* Left column: Cover */}
+                        {/* Left column: Cover & Tome Navigation */}
                         <div className="book-page__cover-col">
                             <div className="book-page__cover-wrapper">
                                 {book.coverUrl ? (
@@ -172,6 +189,56 @@ export default function BookPage() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Navigation précédent / suivant le tome dans la série */}
+                            {(showPrevious || showNext) && (
+                                <div className="book-page__volume-nav">
+                                    {showPrevious && (
+                                        hasPrevious ? (
+                                            <Link
+                                                to={`/app/book/${book.previousBookId}`}
+                                                className="book-page__volume-nav-btn book-page__volume-nav-btn--prev"
+                                                title={book.previousBook?.title ? `Tome précédent : ${book.previousBook.title}` : "Tome précédent"}
+                                            >
+                                                <FontAwesomeIcon icon={faChevronLeft} />
+                                                <span>Précédent</span>
+                                            </Link>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                disabled
+                                                className="book-page__volume-nav-btn book-page__volume-nav-btn--disabled book-page__volume-nav-btn--prev"
+                                                title="Tome précédent non disponible dans la bibliothèque"
+                                            >
+                                                <FontAwesomeIcon icon={faChevronLeft} />
+                                                <span>Précédent</span>
+                                            </button>
+                                        )
+                                    )}
+                                    {showNext && (
+                                        hasNext ? (
+                                            <Link
+                                                to={`/app/book/${book.nextBookId}`}
+                                                className="book-page__volume-nav-btn book-page__volume-nav-btn--next"
+                                                title={book.nextBook?.title ? `Tome suivant : ${book.nextBook.title}` : "Tome suivant"}
+                                            >
+                                                <span>Suivant</span>
+                                                <FontAwesomeIcon icon={faChevronRight} />
+                                            </Link>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                disabled
+                                                className="book-page__volume-nav-btn book-page__volume-nav-btn--disabled book-page__volume-nav-btn--next"
+                                                title="Tome suivant non disponible dans la bibliothèque"
+                                            >
+                                                <span>Suivant</span>
+                                                <FontAwesomeIcon icon={faChevronRight} />
+                                            </button>
+                                        )
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Right column: Info & Actions */}
@@ -183,9 +250,9 @@ export default function BookPage() {
                                         {getSeriesStatusLabel(book.series.status)}
                                     </span>
                                 )}
-                                {book.series?.totalVolumes && (
+                                {book.volume != null && (
                                     <span className="book-page__tag book-page__tag--volume">
-                                        Volume {book.volume} sur {book.series.totalVolumes}
+                                        Volume {book.volume} sur {Math.max(book.volume, book.series?.totalVolumes || book.volume)}
                                     </span>
                                 )}
                                 {book.series?.category && (

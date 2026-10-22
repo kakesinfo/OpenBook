@@ -48,8 +48,8 @@ public class SeriesEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    // computed column: number of book rows referencing this series (read-only)
-    @Formula("(select count(b.id) from book b where b.series_id = id)")
+    // computed column: number of book rows or max volume referencing this series (read-only)
+    @Formula("(select coalesce(greatest(count(b.id), max(b.volume)), 0) from book b where b.series_id = id)")
     private Integer totalVolumes;
 
     @PrePersist

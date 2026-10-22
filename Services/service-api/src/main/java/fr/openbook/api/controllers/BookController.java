@@ -35,6 +35,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -208,6 +209,71 @@ public class BookController {
             }
         }
         dto.setThemes(themes);
+
+        // Previous and Next book in the same series
+        if (bookEntity.getSeries() != null && bookEntity.getSeries().getId() != null) {
+            List<BookEntity> seriesBooks = repositoryService.getBookRepository()
+                    .findAllBySeriesId(bookEntity.getSeries().getId());
+
+            if (seriesBooks != null && seriesBooks.size() > 1) {
+                BookEntity prevBook = null;
+                BookEntity nextBook = null;
+
+                if (bookEntity.getVolume() != null) {
+                    int currentVol = bookEntity.getVolume();
+
+                    Optional<Integer> prevVol = seriesBooks.stream()
+                            .map(BookEntity::getVolume)
+                            .filter(v -> v != null && v < currentVol)
+                            .max(Integer::compareTo);
+                    if (prevVol.isPresent()) {
+                        prevBook = seriesBooks.stream()
+                                .filter(b -> b.getVolume() != null && b.getVolume().equals(prevVol.get()))
+                                .min(Comparator.comparing(BookEntity::getId))
+                                .orElse(null);
+                    }
+
+                    Optional<Integer> nextVol = seriesBooks.stream()
+                            .map(BookEntity::getVolume)
+                            .filter(v -> v != null && v > currentVol)
+                            .min(Integer::compareTo);
+                    if (nextVol.isPresent()) {
+                        nextBook = seriesBooks.stream()
+                                .filter(b -> b.getVolume() != null && b.getVolume().equals(nextVol.get()))
+                                .min(Comparator.comparing(BookEntity::getId))
+                                .orElse(null);
+                    }
+                } else {
+                    List<BookEntity> sorted = seriesBooks.stream()
+                            .sorted(Comparator.comparing(BookEntity::getReleaseDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                                    .thenComparing(BookEntity::getId))
+                            .toList();
+                    int idx = -1;
+                    for (int i = 0; i < sorted.size(); i++) {
+                        if (sorted.get(i).getId().equals(bookEntity.getId())) {
+                            idx = i;
+                            break;
+                        }
+                    }
+                    if (idx > 0) {
+                        prevBook = sorted.get(idx - 1);
+                    }
+                    if (idx >= 0 && idx < sorted.size() - 1) {
+                        nextBook = sorted.get(idx + 1);
+                    }
+                }
+
+                if (prevBook != null) {
+                    dto.setPreviousBookId(prevBook.getId());
+                    dto.setPreviousBook(entityToSummaryDTO(prevBook));
+                }
+                if (nextBook != null) {
+                    dto.setNextBookId(nextBook.getId());
+                    dto.setNextBook(entityToSummaryDTO(nextBook));
+                }
+            }
+        }
+
         if (withSeries)
             dto.setSeries(SeriesService.entityToDTO(bookEntity.getSeries()));
 
