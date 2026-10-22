@@ -23,7 +23,8 @@ class BooksRepository {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return [];
 
-    final response = await _apiClient.get('/books/search/${Uri.encodeComponent(trimmed)}');
+    final encoded = Uri.encodeQueryComponent(trimmed);
+    final response = await _apiClient.get('/books/search?query=$encoded');
     if (response.statusCode != 200) {
       throw Exception('Erreur lors de la recherche: ${response.statusCode}');
     }

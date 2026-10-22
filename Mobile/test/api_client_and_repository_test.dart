@@ -63,6 +63,15 @@ void main() {
       expect(BookStatus.read.index, 2);
     });
 
+    test('searchBooks with empty or blank query returns empty list immediately', () async {
+      final repo = BooksRepository(ApiClientNotifier());
+      final emptyResult = await repo.searchBooks('');
+      expect(emptyResult, isEmpty);
+
+      final blankResult = await repo.searchBooks('   ');
+      expect(blankResult, isEmpty);
+    });
+
     test('saveBook without id throws UnsupportedError (manual book creation removed)', () {
       final repo = BooksRepository(ApiClientNotifier());
       final manualBook = Book(title: 'Manual Book', status: BookStatus.unread);

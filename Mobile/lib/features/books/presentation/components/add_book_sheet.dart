@@ -43,6 +43,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   Timer? _debounceTimer;
+  int _searchRequestId = 0;
 
   bool _isSearching = false;
   String? _searchError;
@@ -74,6 +75,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
 
   void _onSearchChanged(String query) {
     _debounceTimer?.cancel();
+    final requestId = ++_searchRequestId;
     final trimmed = query.trim();
 
     if (trimmed.isEmpty) {
@@ -86,6 +88,8 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
     }
 
     _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+      if (requestId != _searchRequestId) return;
+
       setState(() {
         _isSearching = true;
         _searchError = null;
@@ -94,14 +98,14 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
       try {
         final repo = ref.read(booksRepositoryProvider);
         final results = await repo.searchBooks(trimmed);
-        if (mounted) {
+        if (mounted && requestId == _searchRequestId) {
           setState(() {
             _searchResults = results;
             _isSearching = false;
           });
         }
       } catch (e) {
-        if (mounted) {
+        if (mounted && requestId == _searchRequestId) {
           setState(() {
             _searchError = 'Erreur lors de la recherche : $e';
             _isSearching = false;
@@ -111,12 +115,22 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
     });
   }
 
+  String _cleanBarcode(String raw) {
+    var cleaned = raw.trim().replaceAll(RegExp(r'[^0-9Xx]'), '');
+    // If barcode includes an EAN-5 addon (e.g. 18 digits) starting with 978 or 979
+    if (cleaned.length > 13 && (cleaned.startsWith('978') || cleaned.startsWith('979'))) {
+      cleaned = cleaned.substring(0, 13);
+    }
+    return cleaned.isNotEmpty ? cleaned : raw.trim();
+  }
+
   Future<void> _onBarcodeDetected(BarcodeCapture capture) async {
     if (_isProcessingScan) return;
 
     for (final barcode in capture.barcodes) {
-      final code = barcode.rawValue?.trim();
-      if (code != null && code.isNotEmpty) {
+      final raw = barcode.rawValue?.trim();
+      if (raw != null && raw.isNotEmpty) {
+        final code = _cleanBarcode(raw);
         setState(() {
           _isProcessingScan = true;
           _scannedCode = code;
@@ -126,7 +140,10 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
 
         try {
           final repo = ref.read(booksRepositoryProvider);
-          final results = await repo.searchBooks(code);
+          var results = await repo.searchBooks(code);
+          if (results.isEmpty && code != raw) {
+            results = await repo.searchBooks(raw);
+          }
           if (!mounted) return;
 
           if (results.isNotEmpty) {
@@ -721,15 +738,16 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                       foregroundColor: Colors.white,
                     ),
                     onPressed: () {
-                      final code = _scannedCode ?? '';
                       setState(() {
                         _mode = AddBookMode.search;
-                        _searchController.text = code;
+                        _searchController.clear();
+                        _searchResults = [];
+                        _searchError = null;
                       });
-                      _onSearchChanged(code);
+                      _searchFocusNode.requestFocus();
                     },
                     icon: const Icon(Icons.search_rounded, size: 18),
-                    label: const Text('Recherche titre'),
+                    label: const Text('Rechercher par titre'),
                   ),
                 ],
               ),

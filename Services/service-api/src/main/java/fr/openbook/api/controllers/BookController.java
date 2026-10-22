@@ -189,13 +189,76 @@ public class BookController {
                 .orElse(null);
     }
 
+    @GetMapping("/search")
+    public List<BookSummaryDTO> searchWithParam(@RequestParam(name = "query", required = false) String query) {
+        return performSearch(query);
+    }
+
     @GetMapping("/search/{query}")
-    public List<BookSummaryDTO> search(@PathVariable String query) {
+    public List<BookSummaryDTO> searchWithPath(@PathVariable String query) {
+        return performSearch(query);
+    }
+
+    private List<BookSummaryDTO> performSearch(String rawQuery) {
+        if (rawQuery == null || rawQuery.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String trimmed = rawQuery.trim();
+        String queryApos = trimmed.replace('’', '\'');
+
+        String cleanDigits = trimmed.replaceAll("[^0-9Xx]", "");
+        // If 18 digits (e.g. EAN-13 + EAN-5 barcode addon) starting with 978 or 979, extract 13-digit ISBN
+        if (cleanDigits.length() > 13 && (cleanDigits.startsWith("978") || cleanDigits.startsWith("979"))) {
+            cleanDigits = cleanDigits.substring(0, 13);
+        }
+
+        String cleanIsbn = "";
+        String altIsbn = "";
+        if (cleanDigits.length() == 10) {
+            cleanIsbn = cleanDigits.toUpperCase();
+            altIsbn = isbn10ToIsbn13(cleanIsbn);
+        } else if (cleanDigits.length() == 13) {
+            cleanIsbn = cleanDigits;
+            altIsbn = isbn13ToIsbn10(cleanIsbn);
+        } else if (cleanDigits.length() >= 8 && cleanDigits.length() <= 14) {
+            cleanIsbn = cleanDigits;
+        }
+
         return repositoryService.getBookRepository()
-                .searchByTitleOrIsbnOrAuthor(query)
+                .searchBooks(queryApos, trimmed, cleanIsbn, altIsbn)
                 .stream()
                 .map(this::entityToSummaryDTO)
                 .collect(Collectors.toList());
+    }
+
+    private static String isbn10ToIsbn13(String isbn10) {
+        if (isbn10 == null) return "";
+        String clean = isbn10.replaceAll("[^0-9Xx]", "");
+        if (clean.length() != 10) return "";
+        String core = "978" + clean.substring(0, 9);
+        int sum = 0;
+        for (int i = 0; i < 12; i++) {
+            int d = core.charAt(i) - '0';
+            sum += (i % 2 == 0) ? d : d * 3;
+        }
+        int check = (10 - (sum % 10)) % 10;
+        return core + check;
+    }
+
+    private static String isbn13ToIsbn10(String isbn13) {
+        if (isbn13 == null) return "";
+        String clean = isbn13.replaceAll("[^0-9Xx]", "");
+        if (clean.length() != 13 || !clean.startsWith("978")) return "";
+        String core = clean.substring(3, 12);
+        int sum = 0;
+        for (int i = 0; i < 9; i++) {
+            int d = core.charAt(i) - '0';
+            sum += d * (10 - i);
+        }
+        int check = (11 - (sum % 11)) % 11;
+        char checkChar = (check == 10) ? 'X' : (char) ('0' + check);
+        return core + checkChar;
     }
 
     @PostMapping

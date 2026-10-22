@@ -74,7 +74,7 @@ export default function App() {
         }
 
         setSearching(true);
-        session.customFetch(`/books/search/${encodeURIComponent(trimmedValue)}`, {
+        session.customFetch(`/books/search?query=${encodeURIComponent(trimmedValue)}`, {
             method: "GET",
         }).then(async (data) => {
             if (data.ok) {
