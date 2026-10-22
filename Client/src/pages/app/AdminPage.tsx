@@ -73,19 +73,31 @@ export default function AdminPage() {
         }, {});
     });
 
-    // Multiple selection of sources
+    // Multiple selection of sources (only active sources can be selected)
     const [selectedSources, setSelectedSources] = useState<string[]>([]);
     const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
-    const activeCount = PUBLISHERS.filter((p) => enabledSources[p.id] !== false).length;
+    // Filter active publishers
+    const activePublishers = PUBLISHERS.filter((p) => enabledSources[p.id] !== false);
+    const activeCount = activePublishers.length;
 
-    // Manage indeterminate state on header checkbox
+    // Sort publishers: active ones first, inactive ones at the bottom
+    const sortedPublishers = [...PUBLISHERS].sort((a, b) => {
+        const aActive = enabledSources[a.id] !== false;
+        const bActive = enabledSources[b.id] !== false;
+        if (aActive === bActive) return 0;
+        return aActive ? -1 : 1;
+    });
+
+    // Manage select all state based strictly on active publishers
+    const allActiveSelected = activeCount > 0 && activePublishers.every((p) => selectedSources.includes(p.id));
+    const isIndeterminate = selectedSources.length > 0 && !allActiveSelected;
+
     useEffect(() => {
         if (headerCheckboxRef.current) {
-            headerCheckboxRef.current.indeterminate =
-                selectedSources.length > 0 && selectedSources.length < PUBLISHERS.length;
+            headerCheckboxRef.current.indeterminate = isIndeterminate;
         }
-    }, [selectedSources]);
+    }, [isIndeterminate]);
 
     const fetchStatus = async () => {
         try {
@@ -108,6 +120,10 @@ export default function AdminPage() {
                         }
                         return updated;
                     });
+                    // Automatically unselect any disabled source
+                    setSelectedSources((prev) =>
+                        prev.filter((id) => !data.disabled_sources?.includes(id))
+                    );
                 }
             } else {
                 setServerConnected(false);
@@ -138,6 +154,9 @@ export default function AdminPage() {
 
     const handleToggleSelect = (sourceId: string, e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
+        // Do not allow selecting disabled sources
+        if (enabledSources[sourceId] === false) return;
+
         setSelectedSources((prev) =>
             prev.includes(sourceId)
                 ? prev.filter((id) => id !== sourceId)
@@ -146,10 +165,11 @@ export default function AdminPage() {
     };
 
     const handleSelectAll = () => {
-        if (selectedSources.length === PUBLISHERS.length) {
+        if (activeCount === 0) return;
+        if (allActiveSelected) {
             setSelectedSources([]);
         } else {
-            setSelectedSources(PUBLISHERS.map((p) => p.id));
+            setSelectedSources(activePublishers.map((p) => p.id));
         }
     };
 
@@ -158,6 +178,11 @@ export default function AdminPage() {
         const nextState = !enabledSources[sourceId];
         const updated = { ...enabledSources, [sourceId]: nextState };
         setEnabledSources(updated);
+
+        // If deactivating, remove from selection
+        if (!nextState) {
+            setSelectedSources((prev) => prev.filter((id) => id !== sourceId));
+        }
 
         try {
             localStorage.setItem("scraper_enabled_sources", JSON.stringify(updated));
@@ -244,7 +269,7 @@ export default function AdminPage() {
         if (selectedSources.length > 0) {
             handleTriggerScrape(selectedSources, true);
         } else {
-            const activeList = PUBLISHERS.filter((p) => enabledSources[p.id] !== false).map((p) => p.id);
+            const activeList = activePublishers.map((p) => p.id);
             if (activeList.length === 0) {
                 setTriggerMessage({
                     type: "error",
@@ -314,7 +339,7 @@ export default function AdminPage() {
                         fontSize: "0.9rem",
                         fontWeight: 500,
                         background: triggerMessage.type === "success" ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                        border: `1px solid ${triggerMessage.type === "success" ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"}` ,
+                        border: `1px solid ${triggerMessage.type === "success" ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
                         color: triggerMessage.type === "success" ? "#34d399" : "#f87171"
                     }}>
                         <FontAwesomeIcon icon={triggerMessage.type === "success" ? faCheck : faTriangleExclamation} />
@@ -475,7 +500,7 @@ export default function AdminPage() {
                                 )}
                             </div>
                             <p className="admin-sources-panel__subtitle">
-                                Cochez les sources pour un scan ciblé ou activez/désactivez le scraper de chaque éditeur.
+                                Cochez les sources actives pour un scan ciblé ou activez/désactivez le scraper de chaque éditeur.
                             </p>
                         </div>
 
@@ -487,7 +512,7 @@ export default function AdminPage() {
                                 disabled={loading || status?.is_running || selectedSources.length === 0}
                                 title={
                                     selectedSources.length === 0
-                                        ? "Cochez au moins une source dans le tableau pour lancer un scan rapide"
+                                        ? "Cochez au moins une source active dans le tableau pour lancer un scan rapide"
                                         : "Lancer un scan rapide (nouveautés) sur les sources cochées"
                                 }
                             >
@@ -536,9 +561,10 @@ export default function AdminPage() {
                                             ref={headerCheckboxRef}
                                             type="checkbox"
                                             className="admin-checkbox"
-                                            checked={selectedSources.length === PUBLISHERS.length && PUBLISHERS.length > 0}
+                                            checked={allActiveSelected}
+                                            disabled={activeCount === 0}
                                             onChange={handleSelectAll}
-                                            title={selectedSources.length === PUBLISHERS.length ? "Tout désélectionner" : "Tout sélectionner"}
+                                            title={allActiveSelected ? "Tout désélectionner" : "Sélectionner toutes les sources actives"}
                                         />
                                     </th>
                                     <th>Nom de la source / Éditeur</th>
@@ -548,33 +574,38 @@ export default function AdminPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {PUBLISHERS.map((pub) => {
-                                    const isSelected = selectedSources.includes(pub.id);
+                                {sortedPublishers.map((pub) => {
                                     const isEnabled = enabledSources[pub.id] !== false;
+                                    const isSelected = isEnabled && selectedSources.includes(pub.id);
 
                                     return (
                                         <tr
                                             key={pub.id}
                                             className={`admin-sources-table__row ${isSelected ? "is-selected" : ""} ${!isEnabled ? "is-disabled" : ""}`}
-                                            onClick={() => handleToggleSelect(pub.id)}
+                                            onClick={isEnabled ? () => handleToggleSelect(pub.id) : undefined}
                                         >
+                                            {/* Checkbox column: only if enabled */}
                                             <td
                                                 style={{ textAlign: "center" }}
                                                 onClick={(e) => e.stopPropagation()}
                                             >
-                                                <input
-                                                    type="checkbox"
-                                                    className="admin-checkbox"
-                                                    checked={isSelected}
-                                                    onChange={() => handleToggleSelect(pub.id)}
-                                                />
+                                                {isEnabled ? (
+                                                    <input
+                                                        type="checkbox"
+                                                        className="admin-checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => handleToggleSelect(pub.id)}
+                                                    />
+                                                ) : (
+                                                    <span className="admin-sources-table__no-check" title="Scraper désactivé">-</span>
+                                                )}
                                             </td>
 
                                             <td>
                                                 <div className="source-cell">
                                                     <span
                                                         className="source-cell__dot"
-                                                        style={{ backgroundColor: pub.color }}
+                                                        style={{ backgroundColor: isEnabled ? pub.color : "#6b7280" }}
                                                     />
                                                     <div className="source-cell__info">
                                                         <span className="source-cell__name">{pub.name}</span>
@@ -587,6 +618,7 @@ export default function AdminPage() {
                                                 <span className="source-description">{pub.desc}</span>
                                             </td>
 
+                                            {/* Toggle switch: always available to re-enable or disable */}
                                             <td
                                                 style={{ textAlign: "center" }}
                                                 onClick={(e) => e.stopPropagation()}
@@ -608,20 +640,23 @@ export default function AdminPage() {
                                                 </label>
                                             </td>
 
+                                            {/* Action column: scanner button ONLY if enabled */}
                                             <td
                                                 style={{ textAlign: "right" }}
                                                 onClick={(e) => e.stopPropagation()}
                                             >
-                                                <button
-                                                    type="button"
-                                                    className="admin-row-btn"
-                                                    onClick={() => handleTriggerScrape([pub.id], false)}
-                                                    disabled={loading || status?.is_running || !isEnabled}
-                                                    title={`Scanner ${pub.name} (scan rapide)`}
-                                                >
-                                                    <FontAwesomeIcon icon={faBolt} style={{ color: pub.color }} />
-                                                    <span>Scanner</span>
-                                                </button>
+                                                {isEnabled && (
+                                                    <button
+                                                        type="button"
+                                                        className="admin-row-btn"
+                                                        onClick={() => handleTriggerScrape([pub.id], false)}
+                                                        disabled={loading || status?.is_running}
+                                                        title={`Scanner ${pub.name} (scan rapide)`}
+                                                    >
+                                                        <FontAwesomeIcon icon={faBolt} style={{ color: pub.color }} />
+                                                        <span>Scanner</span>
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     );
