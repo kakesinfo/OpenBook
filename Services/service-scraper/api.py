@@ -102,6 +102,10 @@ def trigger_scrape(
     result = scraper_manager.trigger_scrape(source=None, full_scan=full, sources=source_list)
     return result
 
+@app.post("/api/scrape/stop")
+def stop_scrape():
+    return scraper_manager.stop_scan()
+
 @app.post("/api/scrape/{source}")
 def trigger_scrape_source(
     source: str = Path(..., description="Scraper source: urban_comics, panini, morgen_bd, mangetsu, label619"),

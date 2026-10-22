@@ -199,7 +199,7 @@ class UrbanComicsScraper(BaseScraper):
         })
         return session
 
-    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None) -> List[ScrapedBook]:
+    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None, is_stopped: Optional[Callable[[], bool]] = None) -> List[ScrapedBook]:
         session = self._create_session()
         targets: Dict[str, Dict[str, Any]] = {}
 
@@ -213,6 +213,9 @@ class UrbanComicsScraper(BaseScraper):
         except Exception as e:
             logger.warning("UrbanComics: error crawling à paraître: %s", e)
 
+        if is_stopped and is_stopped():
+            return []
+
         # 2. Scrape Shop (https://www.urban-comics.com/shop/)
         try:
             shop_links = self._crawl_shop(session)
@@ -222,6 +225,9 @@ class UrbanComicsScraper(BaseScraper):
                     targets[link] = {}
         except Exception as e:
             logger.warning("UrbanComics: error crawling shop: %s", e)
+
+        if is_stopped and is_stopped():
+            return []
 
         # 3. Sitemaps discovery to retrieve all catalogue titles
         # Standard scan uses the recent sitemap (sitemap3), full_scan uses all sitemaps (1, 2, 3)
@@ -234,6 +240,9 @@ class UrbanComicsScraper(BaseScraper):
                         targets[link] = {}
             except Exception as e:
                 logger.warning("UrbanComics: error crawling sitemaps: %s", e)
+
+        if is_stopped and is_stopped():
+            return []
 
         total_discovered = len(targets)
         logger.info("UrbanComics: Total unique titles discovered: %d", total_discovered)
@@ -260,6 +269,10 @@ class UrbanComicsScraper(BaseScraper):
                 for url, hints in target_list
             }
             for future in as_completed(future_to_url):
+                if is_stopped and is_stopped():
+                    logger.info("UrbanComics: scraping interrupted by stop signal")
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    break
                 url = future_to_url[future]
                 try:
                     book = future.result()

@@ -30,7 +30,7 @@ class MangetsuScraper(BaseScraper):
     def color(self) -> str:
         return "#f59e0b"
 
-    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None) -> List[ScrapedBook]:
+    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None, is_stopped: Optional[Callable[[], bool]] = None) -> List[ScrapedBook]:
         books: List[ScrapedBook] = []
         base_url = "https://mangetsu-manga.fr"
         catalog_urls = [
@@ -55,6 +55,8 @@ class MangetsuScraper(BaseScraper):
         product_links = []
 
         for cat_url in catalog_urls:
+            if is_stopped and is_stopped():
+                break
             if not full_scan and len(product_links) >= max_items:
                 break
             try:
@@ -80,6 +82,8 @@ class MangetsuScraper(BaseScraper):
         logger.info("Mangetsu: Found %d product pages to scrape", len(product_links))
 
         for prod_url in product_links:
+            if is_stopped and is_stopped():
+                break
             try:
                 book = self._scrape_book_page(session, prod_url)
                 if book:

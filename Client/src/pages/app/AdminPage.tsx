@@ -11,7 +11,8 @@ import {
     faWrench,
     faServer,
     faCircleCheck,
-    faTriangleExclamation
+    faTriangleExclamation,
+    faStop
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
 import "./AdminPage.scss";
@@ -266,6 +267,29 @@ export default function AdminPage() {
         }
     };
 
+    const handleStopScan = async () => {
+        setLoading(true);
+        setTriggerMessage(null);
+        try {
+            const resp = await session.customFetch("/admin/scrapers/stop", {
+                method: "POST"
+            });
+            const data = await resp.json();
+            setTriggerMessage({
+                type: "success",
+                text: data.message || "Arrêt du scan demandé."
+            });
+            await fetchStatus();
+        } catch {
+            setTriggerMessage({
+                type: "error",
+                text: "Erreur lors de la demande d'arrêt du scan."
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleRepair = async () => {
         setLoading(true);
         setTriggerMessage(null);
@@ -512,39 +536,54 @@ export default function AdminPage() {
                         </div>
 
                         <div className="admin-sources-panel__actions">
-                            <button
-                                type="button"
-                                className="admin-btn admin-btn--quick"
-                                onClick={handleQuickScan}
-                                disabled={loading || isScanRunning || selectedSources.length === 0}
-                                title={
-                                    selectedSources.length === 0
-                                        ? "Cochez au moins une source active dans le tableau pour lancer un scan rapide"
-                                        : "Lancer un scan rapide (nouveautés) sur les sources cochées"
-                                }
-                            >
-                                <FontAwesomeIcon icon={faBolt} />
-                                <span>
-                                    Scan rapide {selectedSources.length > 0 ? `(${selectedSources.length})` : ""}
-                                </span>
-                            </button>
+                            {!isScanRunning ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        className="admin-btn admin-btn--quick"
+                                        onClick={handleQuickScan}
+                                        disabled={loading || selectedSources.length === 0}
+                                        title={
+                                            selectedSources.length === 0
+                                                ? "Cochez au moins une source active dans le tableau pour lancer un scan rapide"
+                                                : "Lancer un scan rapide (nouveautés) sur les sources cochées"
+                                        }
+                                    >
+                                        <FontAwesomeIcon icon={faBolt} />
+                                        <span>
+                                            Scan rapide {selectedSources.length > 0 ? `(${selectedSources.length})` : ""}
+                                        </span>
+                                    </button>
 
-                            <button
-                                type="button"
-                                className="admin-btn admin-btn--full"
-                                onClick={handleFullScan}
-                                disabled={loading || isScanRunning || (selectedSources.length === 0 && activeCount === 0)}
-                                title={
-                                    selectedSources.length > 0
-                                        ? "Lancer un scan complet du catalogue sur les sources cochées"
-                                        : "Lancer un scan complet du catalogue sur toutes les sources actives"
-                                }
-                            >
-                                <FontAwesomeIcon icon={faLayerGroup} />
-                                <span>
-                                    Scan complet {selectedSources.length > 0 ? `(${selectedSources.length})` : "(actives)"}
-                                </span>
-                            </button>
+                                    <button
+                                        type="button"
+                                        className="admin-btn admin-btn--full"
+                                        onClick={handleFullScan}
+                                        disabled={loading || (selectedSources.length === 0 && activeCount === 0)}
+                                        title={
+                                            selectedSources.length > 0
+                                                ? "Lancer un scan complet du catalogue sur les sources cochées"
+                                                : "Lancer un scan complet du catalogue sur toutes les sources actives"
+                                        }
+                                    >
+                                        <FontAwesomeIcon icon={faLayerGroup} />
+                                        <span>
+                                            Scan complet {selectedSources.length > 0 ? `(${selectedSources.length})` : "(actives)"}
+                                        </span>
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="admin-btn admin-btn--stop"
+                                    onClick={handleStopScan}
+                                    disabled={loading}
+                                    title="Arrêter le scan en cours"
+                                >
+                                    <FontAwesomeIcon icon={faStop} />
+                                    <span>Arrêter de scanner</span>
+                                </button>
+                            )}
 
                             <button
                                 type="button"

@@ -25,6 +25,7 @@ class ScraperManager:
         self.last_status: str = "idle"
         self.history: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
+        self._stop_event = threading.Event()
         self.disabled_sources: set = self._load_disabled_sources()
         self.live_scan: Dict[str, Any] = {
             "is_running": False,
@@ -125,6 +126,19 @@ class ScraperManager:
             settings.SCHEDULE_MINUTE
         )
 
+    def stop_scan(self) -> Dict[str, Any]:
+        with self._lock:
+            if not self.is_running:
+                return {
+                    "status": "not_running",
+                    "message": "Aucun scan n'est actuellement en cours."
+                }
+            self._stop_event.set()
+            return {
+                "status": "stopping",
+                "message": "Arrêt du scan demandé."
+            }
+
     def shutdown(self):
         if self.scheduler.running:
             self.scheduler.shutdown(wait=False)
@@ -144,6 +158,7 @@ class ScraperManager:
                     "message": "A scraping job is already in progress."
                 }
             self.is_running = True
+            self._stop_event.clear()
 
             if sources:
                 target_desc = ", ".join(sources)
@@ -243,6 +258,10 @@ class ScraperManager:
 
         try:
             for s_name in sources_to_run:
+                if self._stop_event.is_set():
+                    logger.info("Scrape halted early by user request before running %s", s_name)
+                    summary["status"] = "cancelled"
+                    break
                 try:
                     logger.info("Running scraper: %s", s_name)
                     scraper = get_scraper(s_name)
@@ -256,6 +275,8 @@ class ScraperManager:
                     seen_in_callback = set()
 
                     def on_book_found(b: ScrapedBook):
+                        if self._stop_event.is_set():
+                            return
                         book_id = db.upsert_book(b)
                         is_saved = bool(book_id)
                         ident = b.isbn or b.title
@@ -291,8 +312,19 @@ class ScraperManager:
                     books = scraper.scrape(
                         max_items=limit,
                         full_scan=full_scan,
-                        on_book_found=on_book_found
+                        on_book_found=on_book_found,
+                        is_stopped=self._stop_event.is_set
                     )
+
+                    if self._stop_event.is_set():
+                        logger.info("Scraper %s stopped early by user request", s_name)
+                        summary["results"][s_name] = {
+                            "scraped": len(books),
+                            "saved": saved_this_source[0],
+                            "status": "cancelled"
+                        }
+                        summary["status"] = "cancelled"
+                        break
 
                     # Safeguard: in case any book was not captured via callback
                     for b in books:

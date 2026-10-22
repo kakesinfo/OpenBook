@@ -129,6 +129,15 @@ public class ScraperService {
         return executeRequest(req, "http://localhost:5001");
     }
 
+    public Map<String, Object> stopScan() {
+        HttpRequest req = HttpRequest.newBuilder(URI.create(getBaseUrl() + "/api/scrape/stop"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .timeout(Duration.ofSeconds(5))
+                .header("Accept", "application/json")
+                .build();
+        return executeRequest(req, "http://localhost:5001");
+    }
+
     public Map<String, Object> repair() {
         HttpRequest req = HttpRequest.newBuilder(URI.create(getBaseUrl() + "/api/repair"))
                 .POST(HttpRequest.BodyPublishers.noBody())

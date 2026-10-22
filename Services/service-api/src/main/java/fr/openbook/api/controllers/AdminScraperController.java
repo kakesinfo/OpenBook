@@ -59,6 +59,11 @@ public class AdminScraperController {
         return ResponseEntity.ok(scraperService.triggerScrape(sources, full));
     }
 
+    @PostMapping("/stop")
+    public ResponseEntity<Map<String, Object>> stopScan() {
+        return ResponseEntity.ok(scraperService.stopScan());
+    }
+
     @PostMapping("/repair")
     public ResponseEntity<Map<String, Object>> repair() {
         return ResponseEntity.ok(scraperService.repair());

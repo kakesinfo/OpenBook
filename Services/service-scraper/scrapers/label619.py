@@ -36,7 +36,7 @@ class Label619Scraper(BaseScraper):
     def color(self) -> str:
         return "#ec4899"
 
-    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None) -> List[ScrapedBook]:
+    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None, is_stopped: Optional[Callable[[], bool]] = None) -> List[ScrapedBook]:
         books: List[ScrapedBook] = []
         session = requests.Session()
         session.headers.update({
@@ -57,6 +57,8 @@ class Label619Scraper(BaseScraper):
                 soup = BeautifulSoup(html_text, "html.parser")
                 cards = soup.find_all("a", class_=lambda x: x and "catalogue-card" in x)
                 for c in cards:
+                    if is_stopped and is_stopped():
+                        break
                     title = clean_text(c.get("title", ""))
                     if not title or title in seen_titles:
                         continue
@@ -136,6 +138,8 @@ class Label619Scraper(BaseScraper):
                 logger.info("Label619: Found %d album pages on Rue de Sèvres", len(rds_book_links))
 
                 for book_url in sorted(rds_book_links):
+                    if is_stopped and is_stopped():
+                        break
                     if not full_scan and len(books) >= max_items:
                         break
                     try:

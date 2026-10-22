@@ -29,7 +29,7 @@ class MorgenBDScraper(BaseScraper):
     def color(self) -> str:
         return "#8b5cf6"
 
-    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None) -> List[ScrapedBook]:
+    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None, is_stopped: Optional[Callable[[], bool]] = None) -> List[ScrapedBook]:
         books: List[ScrapedBook] = []
         base_url = "https://www.morgen-bd.com"
         listing_url = f"{base_url}/nos-albums"
@@ -55,6 +55,8 @@ class MorgenBDScraper(BaseScraper):
             logger.info("MorgenBD: Found %d album links", len(book_urls))
 
             for book_url in book_urls:
+                if is_stopped and is_stopped():
+                    break
                 if not full_scan and len(books) >= max_items:
                     break
                 try:

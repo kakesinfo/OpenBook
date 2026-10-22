@@ -19,7 +19,7 @@ def clean_text(text: Optional[str]) -> Optional[str]:
 
     # 2. Fix mojibake / double-encoded UTF-8
     try:
-        if any(c in cleaned for c in ["Ã", "Â", "â€", "â™"]):
+        if any(c in cleaned for c in ["Ã", "Â", "â€™", "â„¢"]):
             cleaned = cleaned.encode("latin1").decode("utf-8")
     except Exception:
         pass
@@ -78,7 +78,8 @@ class BaseScraper(ABC):
         self,
         max_items: int = 50,
         full_scan: bool = False,
-        on_book_found: Optional[Callable[[ScrapedBook], None]] = None
+        on_book_found: Optional[Callable[[ScrapedBook], None]] = None,
+        is_stopped: Optional[Callable[[], bool]] = None
     ) -> List[ScrapedBook]:
         """Scrape books from the source and return a list of ScrapedBook objects."""
         pass

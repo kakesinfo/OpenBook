@@ -28,7 +28,7 @@ class PaniniComicsScraper(BaseScraper):
     def color(self) -> str:
         return "#ef4444"
 
-    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None) -> List[ScrapedBook]:
+    def scrape(self, max_items: int = 50, full_scan: bool = False, on_book_found: Optional[Callable[[ScrapedBook], None]] = None, is_stopped: Optional[Callable[[], bool]] = None) -> List[ScrapedBook]:
         books: List[ScrapedBook] = []
         urls_to_visit = [
             "https://www.panini.fr/shp_fra_fr/comics.html",
@@ -46,6 +46,8 @@ class PaniniComicsScraper(BaseScraper):
         seen_titles = set()
 
         for list_url in urls_to_visit:
+            if is_stopped and is_stopped():
+                break
             if not full_scan and len(books) >= max_items:
                 break
             logger.info("Panini: Fetching listing %s", list_url)
@@ -62,6 +64,8 @@ class PaniniComicsScraper(BaseScraper):
                     cards = soup.find_all("div", class_=re.compile(r"product-item-info"))
 
                 for card in cards:
+                    if is_stopped and is_stopped():
+                        break
                     if not full_scan and len(books) >= max_items:
                         break
 
