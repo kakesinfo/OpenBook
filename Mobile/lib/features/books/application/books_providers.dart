@@ -2,18 +2,15 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_client.dart';
 import '../data/book.dart';
-import '../data/books_database.dart';
 import '../data/books_repository.dart';
 import '../data/cover_image_service.dart';
 import '../data/reading_session.dart';
 
-final booksDatabaseProvider = FutureProvider((ref) async {
-  return getBooksDatabase();
-});
-
 final booksRepositoryProvider = Provider<BooksRepository>((ref) {
-  return BooksRepository(ref.watch(booksDatabaseProvider.future));
+  final clientNotifier = ref.watch(apiClientProvider.notifier);
+  return BooksRepository(clientNotifier);
 });
 
 final coverImageServiceProvider = Provider<CoverImageService>((ref) {
@@ -130,7 +127,7 @@ class ReadingProgress {
 }
 
 class BooksController extends AsyncNotifier<List<Book>> {
-  static const _loadTimeout = Duration(seconds: 6);
+  static const _loadTimeout = Duration(seconds: 8);
 
   BooksRepository get _repository => ref.read(booksRepositoryProvider);
   CoverImageService get _coverImageService => ref.read(coverImageServiceProvider);
@@ -146,6 +143,10 @@ class BooksController extends AsyncNotifier<List<Book>> {
 
   @override
   Future<List<Book>> build() async {
+    final client = ref.watch(apiClientProvider);
+    if (!client.isInitialized || !client.isAuthenticated) {
+      return const <Book>[];
+    }
     return _loadBooks();
   }
 

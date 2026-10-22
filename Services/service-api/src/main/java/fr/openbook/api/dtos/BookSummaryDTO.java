@@ -12,4 +12,9 @@ public class BookSummaryDTO {
     private String coverUrl;
     private String category;
     private String type;
+    private String author;
+    private String seriesName;
+    private Integer pageCount;
+    private String status;
+    private String readingStatus;
 }

@@ -33,7 +33,7 @@ public class BookEntity {
     @Column(name = "title", nullable = false)
     private String title;
 
-    @Column(name = "isbn", nullable = false)
+    @Column(name = "isbn", nullable = true)
     private String isbn;
 
     @Column(name = "volume")
@@ -76,12 +76,12 @@ public class BookEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.RESTRICT)
-    @JoinColumn(name = "collection_id", nullable = false)
+    @JoinColumn(name = "collection_id", nullable = true)
     private CollectionEntity collection;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.RESTRICT)
-    @JoinColumn(name = "editor_id", nullable = false)
+    @JoinColumn(name = "editor_id", nullable = true)
     private EditorEntity editor;
 
     @OneToMany(mappedBy = "book", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)

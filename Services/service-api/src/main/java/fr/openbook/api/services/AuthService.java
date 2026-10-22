@@ -40,7 +40,11 @@ public class AuthService {
     }
 
     public UserEntity login(@NonNull LoginRequestDTO loginDTO) {
-        Optional<UserEntity> result = repositoryService.getUserRepository().findByEmail(loginDTO.getEmail());
+        String identifier = loginDTO.getEmail();
+        Optional<UserEntity> result = repositoryService.getUserRepository().findByEmail(identifier);
+        if (result.isEmpty()) {
+            result = repositoryService.getUserRepository().findByUsername(identifier);
+        }
 
         if (result.isEmpty())
             return null;
@@ -51,11 +55,11 @@ public class AuthService {
             return null;
 
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-            loginDTO.getEmail(),
+            userEntity.getEmail(),
             loginDTO.getPassword()
         ));
 
-        return result.get();
+        return userEntity;
     }
 
     public void logout(@NonNull HttpSession session, @NonNull HttpServletResponse response) {

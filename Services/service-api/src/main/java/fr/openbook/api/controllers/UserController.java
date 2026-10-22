@@ -1,8 +1,21 @@
 package fr.openbook.api.controllers;
 
 import fr.openbook.api.dtos.BookStatusDTO;
+import fr.openbook.api.dtos.CreateCustomBookDTO;
+import fr.openbook.api.dtos.ReadingSessionDTO;
+import fr.openbook.api.entities.AuthorEntity;
+import fr.openbook.api.entities.AuthorTypeEntity;
+import fr.openbook.api.entities.BookEntity;
+import fr.openbook.api.entities.BookHasAuthorEntity;
 import fr.openbook.api.entities.BookReadingStatus;
 import fr.openbook.api.entities.BookStatusEntity;
+import fr.openbook.api.entities.CategoryEntity;
+import fr.openbook.api.entities.ReadingSessionEntity;
+import fr.openbook.api.entities.SeriesEntity;
+import fr.openbook.api.entities.SeriesStatus;
+import fr.openbook.api.entities.UserEntity;
+import fr.openbook.api.entities.UserOwnsBookEntity;
+import fr.openbook.api.entities.UserOwnsBookStatus;
 import org.springframework.web.server.ResponseStatusException;
 import fr.openbook.api.dtos.BookDTO;
 import fr.openbook.api.dtos.BookSummaryDTO;
@@ -17,10 +30,6 @@ import fr.openbook.api.dtos.user.UpdateEmailRequestDTO;
 import fr.openbook.api.dtos.user.UpdatePasswordRequestDTO;
 import fr.openbook.api.dtos.user.UpdateProfileRequestDTO;
 import fr.openbook.api.dtos.user.DeleteAccountRequestDTO;
-import fr.openbook.api.entities.BookEntity;
-import fr.openbook.api.entities.UserEntity;
-import fr.openbook.api.entities.UserOwnsBookEntity;
-import fr.openbook.api.entities.UserOwnsBookStatus;
 import fr.openbook.api.repositories.UserOwnsBooksRepository;
 import fr.openbook.api.services.JwtService;
 import fr.openbook.api.services.RepositoryService;
@@ -39,12 +48,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import fr.openbook.api.services.AvatarService;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -86,8 +97,21 @@ public class UserController {
             dto.setReleaseDate(book.getReleaseDate().toString());
         }
         dto.setCoverUrl(book.getCoverUrl());
-        if (book.getSeries() != null && book.getSeries().getCategory() != null) {
-            dto.setCategory(book.getSeries().getCategory().getName());
+        if (book.getSeries() != null) {
+            dto.setSeriesName(book.getSeries().getName());
+            if (book.getSeries().getCategory() != null) {
+                dto.setCategory(book.getSeries().getCategory().getName());
+            }
+        }
+        dto.setPageCount(book.getPageCount());
+        if (book.getBookHasAuthors() != null && !book.getBookHasAuthors().isEmpty()) {
+            String authorStr = book.getBookHasAuthors().stream()
+                    .filter(bha -> bha.getAuthor() != null)
+                    .map(bha -> ((bha.getAuthor().getFirstname() != null ? bha.getAuthor().getFirstname() : "") + " "
+                            + (bha.getAuthor().getLastname() != null ? bha.getAuthor().getLastname() : "")).trim())
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.joining(", "));
+            dto.setAuthor(authorStr);
         }
         dto.setType(book.getType());
         return dto;
@@ -315,7 +339,9 @@ public class UserController {
         UserEntity user = getAuthenticatedUser(session);
 
         if (!UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(status)
-            && !UserOwnsBookStatus.WISHLISTED.name().equalsIgnoreCase(status)) {
+            && !UserOwnsBookStatus.WISHLISTED.name().equalsIgnoreCase(status)
+            && !UserOwnsBookStatus.LENT.name().equalsIgnoreCase(status)
+            && !UserOwnsBookStatus.SOLD.name().equalsIgnoreCase(status)) {
             throw new RuntimeException("Invalid status: " + status);
         }
 
@@ -430,7 +456,61 @@ public class UserController {
 
     @GetMapping("/books")
     public List<BookSummaryDTO> getUserBooks(HttpSession session) {
-        return getCollection(session);
+        UserEntity user = getAuthenticatedUser(session);
+        Long userId = user.getId();
+
+        Map<Long, BookSummaryDTO> bookMap = new LinkedHashMap<>();
+
+        // 1. Owned / Wishlisted / Lent / Sold books from user_owns_book
+        List<UserOwnsBookEntity> ownedBooks = repositoryService.getUserOwnsBooksRepository()
+                .findAll().stream().filter(uob -> uob.getUser() != null && uob.getUser().getId().equals(userId)).toList();
+        for (UserOwnsBookEntity uob : ownedBooks) {
+            if (uob.getBook() != null) {
+                BookSummaryDTO dto = entityToSummaryDTO(uob.getBook());
+                dto.setStatus(uob.getStatus());
+                bookMap.put(uob.getBook().getId(), dto);
+            }
+        }
+
+        // 2. Reading statuses from book_status
+        List<BookStatusEntity> readingStatuses = repositoryService.getBookStatusRepository().findAllByUserId(userId);
+        for (BookStatusEntity bse : readingStatuses) {
+            if (bse.getBook() != null) {
+                Long bId = bse.getBook().getId();
+                BookSummaryDTO dto = bookMap.computeIfAbsent(bId, k -> {
+                    BookSummaryDTO d = entityToSummaryDTO(bse.getBook());
+                    d.setStatus("OWNED");
+                    return d;
+                });
+                dto.setReadingStatus(bse.getStatus());
+            }
+        }
+
+        // 3. Books from reading sessions
+        List<ReadingSessionEntity> sessions = repositoryService.getReadingSessionRepository().findAllByUserIdOrderByCreatedAtAsc(userId);
+        for (ReadingSessionEntity rse : sessions) {
+            if (rse.getBook() != null) {
+                Long bId = rse.getBook().getId();
+                bookMap.computeIfAbsent(bId, k -> {
+                    BookSummaryDTO d = entityToSummaryDTO(rse.getBook());
+                    d.setStatus("OWNED");
+                    d.setReadingStatus("READING");
+                    return d;
+                });
+            }
+        }
+
+        // Ensure reading status defaults to UNREAD if not present
+        for (BookSummaryDTO dto : bookMap.values()) {
+            if (dto.getReadingStatus() == null) {
+                dto.setReadingStatus("UNREAD");
+            }
+            if (dto.getStatus() == null) {
+                dto.setStatus("OWNED");
+            }
+        }
+
+        return new ArrayList<>(bookMap.values());
     }
 
     @GetMapping({"/collection", "/library", "/bibliotheque"})
@@ -453,6 +533,235 @@ public class UserController {
                 .stream()
                 .map(entity -> entityToSummaryDTO(entity.getBook()))
                 .toList();
+    }
+
+    // --- Reading Sessions Endpoints ---
+
+    @GetMapping("/readingSessions/{bookId}")
+    public List<ReadingSessionDTO> getReadingSessions(HttpSession session, @PathVariable Long bookId) {
+        UserEntity user = getAuthenticatedUser(session);
+        return repositoryService.getReadingSessionRepository()
+                .findAllByUserIdAndBookIdOrderByCreatedAtAsc(user.getId(), bookId)
+                .stream()
+                .map(ReadingSessionDTO::from)
+                .toList();
+    }
+
+    @GetMapping("/readingSessions")
+    public List<ReadingSessionDTO> getAllReadingSessions(HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+        return repositoryService.getReadingSessionRepository()
+                .findAllByUserIdOrderByCreatedAtAsc(user.getId())
+                .stream()
+                .map(ReadingSessionDTO::from)
+                .toList();
+    }
+
+    @PostMapping("/readingSessions")
+    public ReadingSessionDTO addReadingSession(HttpSession session, @RequestBody ReadingSessionDTO dto) {
+        UserEntity user = getAuthenticatedUser(session);
+        BookEntity book = repositoryService.getBookRepository().findById(dto.getBookId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found"));
+
+        ReadingSessionEntity entity = new ReadingSessionEntity();
+        entity.setUser(user);
+        entity.setBook(book);
+        entity.setCurrentPage(dto.getCurrentPage() != null ? dto.getCurrentPage() : 0);
+        entity.setMinutesRead(dto.getMinutesRead() != null ? dto.getMinutesRead() : 0);
+        entity.setSecondsRead(dto.getSecondsRead() != null ? dto.getSecondsRead() : 0);
+        entity.setSessionType(dto.getSessionType() != null ? dto.getSessionType() : 1);
+        if (dto.getCreatedAt() != null) {
+            entity.setCreatedAt(Instant.ofEpochMilli(dto.getCreatedAt()));
+        } else {
+            entity.setCreatedAt(Instant.now());
+        }
+
+        return ReadingSessionDTO.from(repositoryService.getReadingSessionRepository().save(entity));
+    }
+
+    @DeleteMapping("/readingSessions/{id}")
+    public ResponseEntity<?> deleteReadingSession(HttpSession session, @PathVariable Long id) {
+        UserEntity user = getAuthenticatedUser(session);
+        return repositoryService.getReadingSessionRepository().findById(id).map(entity -> {
+            if (!entity.getUser().getId().equals(user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            repositoryService.getReadingSessionRepository().delete(entity);
+            return ResponseEntity.ok().build();
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // --- Custom / Editable Books Endpoints ---
+
+    @PostMapping("/customBook")
+    public BookSummaryDTO createCustomBook(HttpSession session, @RequestBody CreateCustomBookDTO dto) {
+        UserEntity user = getAuthenticatedUser(session);
+
+        String title = dto.getTitle() != null ? dto.getTitle().trim() : "";
+        if (title.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Title is required");
+        }
+
+        BookEntity book = repositoryService.getBookRepository().findAllByTitleContainingIgnoreCaseOrIsbn(title, title)
+                .stream().filter(b -> b.getTitle().equalsIgnoreCase(title)).findFirst().orElse(null);
+
+        if (book == null) {
+            book = new BookEntity();
+            book.setTitle(title);
+            book.setVolume(dto.getVolume());
+            book.setPageCount(dto.getPageCount());
+            book.setCoverUrl(dto.getCoverUrl() != null ? dto.getCoverUrl() : "");
+            book.setReleaseDate(Instant.now());
+
+            String seriesName = (dto.getSeries() != null && !dto.getSeries().trim().isEmpty())
+                    ? dto.getSeries().trim()
+                    : "Hors-série";
+
+            SeriesEntity series = repositoryService.getSeriesRepository().findByNameIgnoreCase(seriesName).orElse(null);
+            if (series == null) {
+                series = repositoryService.getSeriesRepository().findById(1L).orElse(null);
+            }
+            book.setSeries(series);
+
+            book = repositoryService.getBookRepository().save(book);
+
+            if (dto.getAuthor() != null && !dto.getAuthor().trim().isEmpty()) {
+                String authorName = dto.getAuthor().trim();
+                AuthorEntity author = new AuthorEntity();
+                author.setFirstname("");
+                author.setLastname(authorName);
+                author = repositoryService.getAuthorRepository().save(author);
+
+                AuthorTypeEntity authorType = repositoryService.getAuthorTypeRepository().findById(1L).orElse(null);
+
+                BookHasAuthorEntity bha = new BookHasAuthorEntity();
+                bha.setBook(book);
+                bha.setAuthor(author);
+                bha.setAuthorType(authorType);
+                repositoryService.getBookHasAuthorRepository().save(bha);
+            }
+        } else {
+            if (dto.getVolume() != null) book.setVolume(dto.getVolume());
+            if (dto.getPageCount() != null && dto.getPageCount() > 0) book.setPageCount(dto.getPageCount());
+            if (dto.getCoverUrl() != null && !dto.getCoverUrl().isEmpty()) book.setCoverUrl(dto.getCoverUrl());
+            book = repositoryService.getBookRepository().save(book);
+        }
+
+        String statusStr = dto.getStatus() != null ? dto.getStatus().trim().toUpperCase() : "OWNED";
+        applyBookStatusForUser(user, book, statusStr);
+
+        BookSummaryDTO result = entityToSummaryDTO(book);
+        result.setStatus(resolveOwnershipStatus(statusStr));
+        result.setReadingStatus(resolveReadingStatus(statusStr));
+        return result;
+    }
+
+    @PutMapping("/customBook/{id}")
+    public BookSummaryDTO updateCustomBook(HttpSession session, @PathVariable Long id, @RequestBody CreateCustomBookDTO dto) {
+        UserEntity user = getAuthenticatedUser(session);
+        BookEntity book = repositoryService.getBookRepository().findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found"));
+
+        if (dto.getTitle() != null && !dto.getTitle().trim().isEmpty()) {
+            book.setTitle(dto.getTitle().trim());
+        }
+        if (dto.getVolume() != null) {
+            book.setVolume(dto.getVolume());
+        }
+        if (dto.getPageCount() != null) {
+            book.setPageCount(dto.getPageCount());
+        }
+        if (dto.getCoverUrl() != null) {
+            book.setCoverUrl(dto.getCoverUrl());
+        }
+        book = repositoryService.getBookRepository().save(book);
+
+        if (dto.getStatus() != null) {
+            applyBookStatusForUser(user, book, dto.getStatus().trim().toUpperCase());
+        }
+
+        BookSummaryDTO result = entityToSummaryDTO(book);
+        result.setStatus(resolveOwnershipStatus(dto.getStatus()));
+        result.setReadingStatus(resolveReadingStatus(dto.getStatus()));
+        return result;
+    }
+
+    private void applyBookStatusForUser(UserEntity user, BookEntity book, String statusStr) {
+        if ("WISHLIST".equals(statusStr) || "WISHLISTED".equals(statusStr)) {
+            UserOwnsBookEntity uob = repositoryService.getUserOwnsBooksRepository()
+                    .findByUserIdAndBookId(user.getId(), book.getId())
+                    .orElseGet(() -> {
+                        UserOwnsBookEntity e = new UserOwnsBookEntity();
+                        e.setUser(user);
+                        e.setBook(book);
+                        return e;
+                    });
+            uob.setStatus("WISHLISTED");
+            repositoryService.getUserOwnsBooksRepository().save(uob);
+        } else if ("LENT".equals(statusStr)) {
+            UserOwnsBookEntity uob = repositoryService.getUserOwnsBooksRepository()
+                    .findByUserIdAndBookId(user.getId(), book.getId())
+                    .orElseGet(() -> {
+                        UserOwnsBookEntity e = new UserOwnsBookEntity();
+                        e.setUser(user);
+                        e.setBook(book);
+                        return e;
+                    });
+            uob.setStatus("LENT");
+            repositoryService.getUserOwnsBooksRepository().save(uob);
+        } else if ("SOLD".equals(statusStr)) {
+            UserOwnsBookEntity uob = repositoryService.getUserOwnsBooksRepository()
+                    .findByUserIdAndBookId(user.getId(), book.getId())
+                    .orElseGet(() -> {
+                        UserOwnsBookEntity e = new UserOwnsBookEntity();
+                        e.setUser(user);
+                        e.setBook(book);
+                        return e;
+                    });
+            uob.setStatus("SOLD");
+            repositoryService.getUserOwnsBooksRepository().save(uob);
+        } else {
+            UserOwnsBookEntity uob = repositoryService.getUserOwnsBooksRepository()
+                    .findByUserIdAndBookId(user.getId(), book.getId())
+                    .orElseGet(() -> {
+                        UserOwnsBookEntity e = new UserOwnsBookEntity();
+                        e.setUser(user);
+                        e.setBook(book);
+                        return e;
+                    });
+            uob.setStatus("OWNED");
+            repositoryService.getUserOwnsBooksRepository().save(uob);
+
+            if ("READING".equals(statusStr) || "READ".equals(statusStr) || "UNREAD".equals(statusStr)) {
+                BookStatusEntity bse = repositoryService.getBookStatusRepository()
+                        .findByUserIdAndBookId(user.getId(), book.getId())
+                        .orElseGet(() -> {
+                            BookStatusEntity e = new BookStatusEntity();
+                            e.setUser(user);
+                            e.setBook(book);
+                            return e;
+                        });
+                bse.setStatus(statusStr);
+                repositoryService.getBookStatusRepository().save(bse);
+            }
+        }
+    }
+
+    private String resolveOwnershipStatus(String statusStr) {
+        if (statusStr == null) return "OWNED";
+        String s = statusStr.toUpperCase();
+        if (s.contains("WISH")) return "WISHLISTED";
+        if (s.contains("LENT")) return "LENT";
+        if (s.contains("SOLD")) return "SOLD";
+        return "OWNED";
+    }
+
+    private String resolveReadingStatus(String statusStr) {
+        if (statusStr == null) return "UNREAD";
+        String s = statusStr.toUpperCase();
+        if (s.contains("READING")) return "READING";
+        if (s.equals("READ") || s.contains("LU")) return "READ";
+        return "UNREAD";
     }
 
     @GetMapping("/statistics")

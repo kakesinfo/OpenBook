@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_application_1/app/theme.dart';
 
+import '../../../core/network/api_client.dart';
+import '../../auth/presentation/server_config_screen.dart';
 import 'components/app_header.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final client = ref.watch(apiClientProvider);
+
+    final displayName = (client.userName != null && client.userName!.isNotEmpty)
+        ? client.userName!
+        : 'Lecteur';
+    final displayEmail = (client.userEmail != null && client.userEmail!.isNotEmpty)
+        ? client.userEmail!
+        : 'Yet Another Library • Mobile';
+
     return Scaffold(
       appBar: const AppHeader(
         title: 'Paramètres',
@@ -49,22 +61,22 @@ class SettingsPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Lecteur',
-                        style: TextStyle(
+                        displayName,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.textPrimary,
                         ),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
-                        'Yet Another Library • Mobile',
-                        style: TextStyle(
+                        displayEmail,
+                        style: const TextStyle(
                           fontSize: 12,
                           color: AppTheme.textMuted,
                         ),
@@ -88,8 +100,9 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
+
           const Text(
-            'Stockage & Données',
+            'Serveur & Synchronisation',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -116,36 +129,38 @@ class SettingsPage extends StatelessWidget {
                     ),
                     child: const Center(
                       child: Icon(
-                        Icons.storage_rounded,
+                        Icons.dns_rounded,
                         color: AppTheme.accentSecondary,
                         size: 20,
                       ),
                     ),
                   ),
                   title: const Text(
-                    'Base de données locale',
+                    'Serveur Backend API',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textPrimary,
                     ),
                   ),
-                  subtitle: const Text(
-                    'Stockage SQLite local & hors-ligne',
-                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                  subtitle: Text(
+                    client.hasServerConfig
+                        ? 'http://${client.host}:${client.port}'
+                        : 'Non configuré',
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.accentPrimaryLight,
+                      color: client.isAuthenticated ? AppTheme.accentPrimaryLight : AppTheme.accentRedLight,
                       borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                     ),
-                    child: const Text(
-                      'Actif',
+                    child: Text(
+                      client.isAuthenticated ? 'Connecté' : 'Hors-ligne',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.accentPrimary,
+                        color: client.isAuthenticated ? AppTheme.accentPrimary : AppTheme.accentRed,
                       ),
                     ),
                   ),
@@ -161,14 +176,14 @@ class SettingsPage extends StatelessWidget {
                     ),
                     child: const Center(
                       child: Icon(
-                        Icons.image_outlined,
+                        Icons.settings_ethernet_rounded,
                         color: AppTheme.accentAmber,
                         size: 20,
                       ),
                     ),
                   ),
                   title: const Text(
-                    'Images de couverture',
+                    'Changer de serveur',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -176,14 +191,98 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ),
                   subtitle: const Text(
-                    'Sauvegarde locale et support URL',
+                    'Modifier l\'adresse ou le port du serveur',
                     style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppTheme.textMuted,
+                  ),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (ctx) => ServerConfigScreen(
+                          onConfigSaved: () {
+                            Navigator.of(ctx).pop();
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1, indent: 64),
+                ListTile(
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentRedLight,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.logout_rounded,
+                        color: AppTheme.accentRed,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  title: const Text(
+                    'Déconnexion',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.accentRed,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'Se déconnecter de la session actuelle',
+                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                  ),
+                  onTap: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (dialogCtx) => AlertDialog(
+                        backgroundColor: AppTheme.bgSurface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                          side: const BorderSide(color: AppTheme.borderSubtle),
+                        ),
+                        title: const Text(
+                          'Déconnexion',
+                          style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
+                        ),
+                        content: const Text(
+                          'Voulez-vous vraiment vous déconnecter ?',
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(dialogCtx).pop(false),
+                            child: const Text('Annuler', style: TextStyle(color: AppTheme.textMuted)),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.of(dialogCtx).pop(true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.accentRed,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Déconnexion'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await ref.read(apiClientProvider.notifier).logout();
+                    }
+                  },
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
+
           const Text(
             'Application',
             style: TextStyle(
@@ -265,7 +364,7 @@ class SettingsPage extends StatelessWidget {
                     ),
                   ),
                   subtitle: const Text(
-                    'Yet Another Library Mobile v0.1.0',
+                    'Yet Another Library Mobile v0.2.0 (Backend API)',
                     style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
                 ),

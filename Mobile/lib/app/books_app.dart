@@ -1,9 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../features/books/application/books_providers.dart';
+import '../core/network/api_client.dart';
+import '../features/auth/presentation/login_screen.dart';
+import '../features/auth/presentation/server_config_screen.dart';
 import '../features/books/presentation/components/books_shell.dart';
 import 'theme.dart';
 
@@ -16,55 +16,50 @@ class BooksApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Yet Another Library',
       theme: AppTheme.darkTheme,
-      home: const _StartupGate(),
+      home: const _AppRootGate(),
     );
   }
 }
 
-class _StartupGate extends ConsumerStatefulWidget {
-  const _StartupGate();
+class _AppRootGate extends ConsumerStatefulWidget {
+  const _AppRootGate();
 
   @override
-  ConsumerState<_StartupGate> createState() => _StartupGateState();
+  ConsumerState<_AppRootGate> createState() => _AppRootGateState();
 }
 
-class _StartupGateState extends ConsumerState<_StartupGate> {
-  static const _maxSplashDuration = Duration(seconds: 2);
-
-  Timer? _timeoutTimer;
-  bool _timeoutElapsed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _timeoutTimer = Timer(_maxSplashDuration, () {
-      if (mounted) {
-        setState(() {
-          _timeoutElapsed = true;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _timeoutTimer?.cancel();
-    super.dispose();
-  }
+class _AppRootGateState extends ConsumerState<_AppRootGate> {
+  bool _forceEditServer = false;
 
   @override
   Widget build(BuildContext context) {
-    final databaseAsync = ref.watch(booksDatabaseProvider);
+    final client = ref.watch(apiClientProvider);
 
-    if (databaseAsync.hasError) {
-      return _AppErrorScreen(message: databaseAsync.error.toString());
+    if (!client.isInitialized) {
+      return const AppLoadingScreen();
     }
 
-    if (_timeoutElapsed || databaseAsync.hasValue) {
-      return const BooksShell();
+    if (_forceEditServer || !client.hasServerConfig) {
+      return ServerConfigScreen(
+        onConfigSaved: () {
+          setState(() {
+            _forceEditServer = false;
+          });
+        },
+      );
     }
 
-    return const AppLoadingScreen();
+    if (!client.isAuthenticated) {
+      return LoginScreen(
+        onChangeServer: () {
+          setState(() {
+            _forceEditServer = true;
+          });
+        },
+      );
+    }
+
+    return const BooksShell();
   }
 }
 
@@ -136,7 +131,7 @@ class AppLoadingScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Initialisation de la base SQLite...',
+                    'Connexion au serveur...',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
@@ -150,78 +145,6 @@ class AppLoadingScreen extends StatelessWidget {
                       minHeight: 4,
                       backgroundColor: AppTheme.borderSubtle,
                       valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentPrimary),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AppErrorScreen extends StatelessWidget {
-  const _AppErrorScreen({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.bgPrimary,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Container(
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                color: AppTheme.bgSurface,
-                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                border: Border.all(color: AppTheme.borderSubtle, width: 1),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentRedLight,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppTheme.accentRed.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.error_outline_rounded,
-                        size: 28,
-                        color: AppTheme.accentRed,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'Impossible d’ouvrir la base locale',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textMuted,
                     ),
                   ),
                 ],
