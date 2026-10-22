@@ -4,9 +4,22 @@ import {
     WrapperAction,
     WrapperButton,
     WrapperContent,
-    WrapperNavigation
+    WrapperNavigation,
+    WrapperSubGroup,
+    WrapperSubButton
 } from "../components/Wrapper/Wrapper.tsx";
-import { faNewspaper, faBook, faHeart, faCalendarDays, faMagnifyingGlass, faXmark, faGear, faChartPie } from '@fortawesome/free-solid-svg-icons';
+import {
+    faNewspaper,
+    faBook,
+    faHeart,
+    faCalendarDays,
+    faMagnifyingGlass,
+    faXmark,
+    faGear,
+    faChartPie,
+    faRotate,
+    faWrench
+} from '@fortawesome/free-solid-svg-icons';
 import { useState } from "react";
 import useSession from "../hooks/UseSession.tsx";
 import { useDebounce } from "../hooks/UseDebounce.tsx";
@@ -85,6 +98,10 @@ export default function App() {
                 <WrapperButton to={'/app/planning'} icon={faCalendarDays}>Planning</WrapperButton>
                 <WrapperButton to={'/app/statistics'} icon={faChartPie}>Statistiques</WrapperButton>
                 <WrapperButton to={'/app/admin'} icon={faGear}>Administration</WrapperButton>
+                <WrapperSubGroup>
+                    <WrapperSubButton to={'/app/admin/indexation'} icon={faRotate}>Indexation</WrapperSubButton>
+                    <WrapperSubButton to={'/app/admin/maintenance'} icon={faWrench}>Maintenance</WrapperSubButton>
+                </WrapperSubGroup>
             </WrapperNavigation>
 
             <WrapperContent>
@@ -118,7 +135,7 @@ export default function App() {
                                 border: "none",
                                 color: "var(--text-muted)",
                                 cursor: "pointer",
-                                fontSize: "1.1rem",
+                                fontSize: "16px",
                                 padding: "4px"
                             }}
                             aria-label="Fermer"

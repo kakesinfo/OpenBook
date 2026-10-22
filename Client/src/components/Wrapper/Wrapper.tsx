@@ -50,6 +50,34 @@ export function WrapperButton({ children, to, icon }: { children: React.ReactNod
     );
 }
 
+export function WrapperSubGroup({ children }: { children: React.ReactNode }) {
+    return (
+        <div className="wrapper-navigation__sub-group">
+            {children}
+        </div>
+    );
+}
+
+export function WrapperSubButton({ children, to, icon }: {
+    children: React.ReactNode;
+    to: string;
+    icon?: IconDefinition;
+}) {
+    const location = useLocation();
+    const isActive = location.pathname === to || location.pathname.startsWith(to + '/');
+
+    return (
+        <Link to={to} className={`wrapper-navigation__sub-button ${isActive ? 'active' : ''}`}>
+            {icon && (
+                <span className="wrapper-navigation__sub-icon">
+                    <FontAwesomeIcon icon={icon} />
+                </span>
+            )}
+            <span className="wrapper-navigation__sub-text">{children}</span>
+        </Link>
+    );
+}
+
 export function WrapperNavigation({ title = "Yet Another Library", children, onSearchClick }: {
     title?: string;
     children: React.ReactNode;

@@ -36,6 +36,8 @@ def root():
             "trigger_all": "POST /api/scrape?full=false",
             "trigger_source": "POST /api/scrape/{source}?full=false",
             "repair_mojibake": "POST /api/repair",
+            "deduplicate": "POST /api/deduplicate",
+            "maintenance_stats": "GET /api/maintenance/stats",
             "recent_books": "/api/books"
         },
         "sources": list(SCRAPERS.keys())
@@ -120,8 +122,37 @@ def trigger_scrape_source(
 
 @app.post("/api/repair")
 def repair_database():
-    db.repair_mojibake()
-    return {"status": "success", "message": "Mojibake character repair completed."}
+    res = db.repair_mojibake()
+    msg = "Réparation UTF-8 terminée avec succès."
+    if res:
+        parts = []
+        if res.get("repaired_books", 0) > 0:
+            parts.append(f"{res['repaired_books']} tomes réparés")
+        if res.get("repaired_series", 0) > 0:
+            parts.append(f"{res['repaired_series']} séries réparées")
+        if res.get("merged_duplicates", 0) > 0:
+            parts.append(f"{res['merged_duplicates']} doublons fusionnés")
+        if parts:
+            msg = f"Réparation UTF-8 terminée : {', '.join(parts)}."
+        else:
+            msg = "Vérification UTF-8 terminée : aucun texte corrompu détecté."
+    return {"status": "success", "message": msg, "details": res}
+
+@app.post("/api/deduplicate")
+def deduplicate_database():
+    merged = db.deduplicate_books()
+    if merged > 0:
+        msg = f"Déduplication terminée : {merged} tome(s) doublon(s) fusionné(s) et nettoyé(s)."
+    else:
+        msg = "Aucun tome en double détecté. La base de données est parfaitement propre !"
+    return {"status": "success", "merged_count": merged, "message": msg}
+
+@app.get("/api/maintenance/stats")
+def maintenance_stats():
+    return {
+        "status": "success",
+        "stats": db.get_maintenance_stats()
+    }
 
 @app.get("/api/books")
 def get_books(limit: int = Query(20, ge=1, le=100)):

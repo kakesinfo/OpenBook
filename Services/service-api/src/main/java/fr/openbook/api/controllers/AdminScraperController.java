@@ -68,4 +68,14 @@ public class AdminScraperController {
     public ResponseEntity<Map<String, Object>> repair() {
         return ResponseEntity.ok(scraperService.repair());
     }
+
+    @PostMapping("/deduplicate")
+    public ResponseEntity<Map<String, Object>> deduplicate() {
+        return ResponseEntity.ok(scraperService.deduplicate());
+    }
+
+    @GetMapping("/maintenance/stats")
+    public ResponseEntity<Map<String, Object>> getMaintenanceStats() {
+        return ResponseEntity.ok(scraperService.getMaintenanceStats());
+    }
 }

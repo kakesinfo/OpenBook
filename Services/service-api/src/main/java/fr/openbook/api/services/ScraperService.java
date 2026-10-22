@@ -141,7 +141,25 @@ public class ScraperService {
     public Map<String, Object> repair() {
         HttpRequest req = HttpRequest.newBuilder(URI.create(getBaseUrl() + "/api/repair"))
                 .POST(HttpRequest.BodyPublishers.noBody())
-                .timeout(Duration.ofSeconds(10))
+                .timeout(Duration.ofSeconds(15))
+                .header("Accept", "application/json")
+                .build();
+        return executeRequest(req, "http://localhost:5001");
+    }
+
+    public Map<String, Object> deduplicate() {
+        HttpRequest req = HttpRequest.newBuilder(URI.create(getBaseUrl() + "/api/deduplicate"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .timeout(Duration.ofSeconds(20))
+                .header("Accept", "application/json")
+                .build();
+        return executeRequest(req, "http://localhost:5001");
+    }
+
+    public Map<String, Object> getMaintenanceStats() {
+        HttpRequest req = HttpRequest.newBuilder(URI.create(getBaseUrl() + "/api/maintenance/stats"))
+                .GET()
+                .timeout(Duration.ofSeconds(5))
                 .header("Accept", "application/json")
                 .build();
         return executeRequest(req, "http://localhost:5001");

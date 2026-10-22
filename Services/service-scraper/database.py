@@ -54,70 +54,45 @@ class Database:
             should_close = True
 
         try:
-            cur.execute("""
-                SELECT id, firstname, lastname 
-                FROM author 
-                WHERE firstname ~* '^(par|de|texte|sc[eé]nariste|sc[eé]nario|illustration|dessin|auteur|illustrat|colorist|[\\+:\\-_/])'
-                   OR lastname ~* '^(par\\s+|de\\s+|texte|sc[eé]nariste|sc[eé]nario|illustration|dessin|auteur|illustrat|colorist|\\+)'
-                   OR firstname ~* '(illustrateur|scénariste|auteur|dessinateur)'
-                   OR lastname ~* '(illustrateur|scénariste|auteur|dessinateur)';
-            """)
-            corrupted = cur.fetchall()
-            repaired_count = 0
-            for a_id, first, last in corrupted:
-                full_raw = f"{first or ''} {last or ''}".strip()
-                cleaned_full = clean_author_name(full_raw)
-                if not cleaned_full or cleaned_full == full_raw:
-                    continue
+            cur.execute("SELECT id, firstname, lastname FROM author;")
+            authors = cur.fetchall()
 
-                new_first, new_last = split_author_name(cleaned_full)
-                if not new_last:
-                    continue
+            for a_id, fname, lname in authors:
+                raw_full = f"{fname} {lname}".strip() if fname else lname
+                clean_full = clean_author_name(raw_full)
 
-                # Check if a clean author record already exists
-                cur.execute(
-                    "SELECT id FROM author WHERE LOWER(firstname) = LOWER(%s) AND LOWER(lastname) = LOWER(%s) AND id != %s;",
-                    (new_first, new_last, a_id)
-                )
-                existing = cur.fetchone()
-                if existing:
-                    target_id = existing[0]
-                    # 1. Delete duplicate book_has_author links for books that already have target_id
-                    cur.execute("""
-                        DELETE FROM book_has_author
-                        WHERE author_id = %s
-                          AND book_id IN (
-                              SELECT book_id FROM book_has_author WHERE author_id = %s
-                          );
-                    """, (a_id, target_id))
-                    # 2. Re-point remaining book_has_author links to target_id
+                if clean_full != raw_full:
+                    c_fname, c_lname = split_author_name(clean_full)
                     cur.execute(
-                        "UPDATE book_has_author SET author_id = %s WHERE author_id = %s;",
-                        (target_id, a_id)
+                        "SELECT id FROM author WHERE LOWER(firstname) = LOWER(%s) AND LOWER(lastname) = LOWER(%s) AND id != %s;",
+                        (c_fname, c_lname, a_id)
                     )
-                    # 3. Delete the corrupted author
-                    cur.execute("DELETE FROM author WHERE id = %s;", (a_id,))
-                else:
-                    # No duplicate author exists, update in place
-                    cur.execute(
-                        "UPDATE author SET firstname = %s, lastname = %s, updated_at = NOW() WHERE id = %s;",
-                        (new_first, new_last, a_id)
-                    )
-                repaired_count += 1
+                    existing = cur.fetchone()
 
-            # 4. Remove any duplicate (book_id, author_id) relations in book_has_author
+                    if existing:
+                        target_id = existing[0]
+                        # Re-point book_has_author without creating duplicates
+                        cur.execute("""
+                            DELETE FROM book_has_author
+                            WHERE author_id = %s
+                              AND book_id IN (SELECT book_id FROM book_has_author WHERE author_id = %s);
+                        """, (a_id, target_id))
+                        cur.execute("UPDATE book_has_author SET author_id = %s WHERE author_id = %s;", (target_id, a_id))
+                        cur.execute("DELETE FROM author WHERE id = %s;", (a_id,))
+                    else:
+                        cur.execute("UPDATE author SET firstname = %s, lastname = %s WHERE id = %s;", (c_fname, c_lname, a_id))
+
+            # Deduplicate book_has_author entries with identical book_id, author_id, role
             cur.execute("""
-                DELETE FROM book_has_author a
-                USING book_has_author b
-                WHERE a.id > b.id
+                DELETE FROM book_has_author a USING book_has_author b
+                WHERE a.ctid < b.ctid
                   AND a.book_id = b.book_id
-                  AND a.author_id = b.author_id;
+                  AND a.author_id = b.author_id
+                  AND a.author_type_id = b.author_type_id;
             """)
 
             if should_close and conn:
                 conn.commit()
-            if repaired_count > 0:
-                logger.info("Repaired and consolidated %d corrupted author records.", repaired_count)
         except Exception as e:
             if should_close and conn:
                 conn.rollback()
@@ -128,11 +103,12 @@ class Database:
                 cur.close()
                 self.return_connection(conn)
 
-    def deduplicate_books(self, cur=None):
+    def deduplicate_books(self, cur=None) -> int:
         """
         Detects duplicate books (same editor with identical cover_url, same ISBN,
         or identical normalized title with missing ISBN), merges foreign keys,
         and deletes redundant duplicate records and any orphaned series.
+        Returns the number of merged/purged duplicate books.
         """
         should_close = False
         conn = None
@@ -260,6 +236,7 @@ class Database:
                 conn.commit()
             if merged_count > 0:
                 logger.info("Deduplicated and merged %d redundant book records.", merged_count)
+            return merged_count
         except Exception as e:
             if should_close and conn:
                 conn.rollback()
@@ -270,9 +247,12 @@ class Database:
                 cur.close()
                 self.return_connection(conn)
 
-    def repair_mojibake(self):
+    def repair_mojibake(self) -> Dict[str, Any]:
         """Repairs corrupted double-encoded UTF-8, cleans bogus authors, and merges duplicates."""
         conn = None
+        repaired_books = 0
+        repaired_series = 0
+        merged_duplicates = 0
         try:
             conn = self.get_connection()
             with conn.cursor() as cur:
@@ -283,6 +263,7 @@ class Database:
                     new_title = clean_text(title)
                     new_desc = clean_text(desc)
                     cur.execute("UPDATE book SET title = %s, description = %s WHERE id = %s;", (new_title, new_desc, b_id))
+                repaired_books = len(books)
 
                 # 2. Repair series
                 cur.execute("SELECT id, name FROM series WHERE name ~ '[ÃÂ]';")
@@ -298,6 +279,7 @@ class Database:
                         cur.execute("DELETE FROM series WHERE id = %s;", (s_id,))
                     else:
                         cur.execute("UPDATE series SET name = %s WHERE id = %s;", (new_name, s_id))
+                repaired_series = len(series)
 
                 # 3. Purge bogus scraper authors
                 cur.execute("""
@@ -315,15 +297,48 @@ class Database:
                 self.repair_authors(cur)
 
                 # 5. Merge duplicates across all editors
-                self.deduplicate_books(cur)
+                merged_duplicates = self.deduplicate_books(cur)
 
                 conn.commit()
                 if books or series:
                     logger.info("Repaired %d books and %d series corrupted by mojibake.", len(books), len(series))
+                return {
+                    "repaired_books": repaired_books,
+                    "repaired_series": repaired_series,
+                    "merged_duplicates": merged_duplicates
+                }
         except Exception as e:
             if conn:
                 conn.rollback()
             logger.error("Error repairing mojibake in DB: %s", e)
+            raise
+        finally:
+            if conn:
+                self.return_connection(conn)
+
+    def get_maintenance_stats(self) -> Dict[str, Any]:
+        """Returns entity counts for the admin maintenance page."""
+        conn = None
+        try:
+            conn = self.get_connection()
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM book;")
+                total_books = cur.fetchone()[0]
+                cur.execute("SELECT COUNT(*) FROM series;")
+                total_series = cur.fetchone()[0]
+                cur.execute("SELECT COUNT(*) FROM editor;")
+                total_editors = cur.fetchone()[0]
+                cur.execute("SELECT COUNT(*) FROM author;")
+                total_authors = cur.fetchone()[0]
+                return {
+                    "total_books": total_books,
+                    "total_series": total_series,
+                    "total_editors": total_editors,
+                    "total_authors": total_authors
+                }
+        except Exception as e:
+            logger.error("Error getting maintenance stats: %s", e)
+            return {"total_books": 0, "total_series": 0, "total_editors": 0, "total_authors": 0}
         finally:
             if conn:
                 self.return_connection(conn)
@@ -439,32 +454,25 @@ class Database:
                     if row:
                         book_id = row[0]
 
-                rel_date = book.release_date or datetime.now()
-
                 if book_id:
                     # UPDATE existing book
                     cur.execute(
                         """
                         UPDATE book
-                        SET cover_url = COALESCE(%s, cover_url),
-                            description = COALESCE(%s, description),
-                            price = CASE WHEN %s > 0 THEN %s ELSE price END,
-                            page_count = CASE WHEN %s > 0 THEN %s ELSE page_count END,
+                        SET updated_at = NOW(),
+                            price = COALESCE(NULLIF(%s, 0), price),
+                            page_count = COALESCE(NULLIF(%s, 0), page_count),
                             release_date = COALESCE(%s, release_date),
-                            editor_id = COALESCE(%s, editor_id),
-                            type = COALESCE(%s, type),
-                            updated_at = NOW()
-                        WHERE id = %s
-                        RETURNING id;
+                            description = COALESCE(%s, description),
+                            cover_url = COALESCE(%s, cover_url)
+                        WHERE id = %s;
                         """,
                         (
-                            book.cover_url,
-                            clean_desc,
-                            book.price, book.price,
-                            book.page_count, book.page_count,
+                            book.price or 0,
+                            book.page_count or 0,
                             book.release_date,
-                            editor_id,
-                            book.book_type,
+                            clean_desc,
+                            book.cover_url,
                             book_id
                         )
                     )
@@ -496,102 +504,98 @@ class Database:
                     cur.execute(
                         """
                         INSERT INTO book (
-                            title, isbn, volume, page_count, price, description,
-                            series_id, editor_id, release_date, created_at, updated_at,
-                            cover_url, type, weight, height, length, thickness
+                            title, series_id, editor_id, category_id,
+                            volume, isbn, page_count, price, description,
+                            cover_url, release_date, book_type,
+                            created_at, updated_at
                         ) VALUES (
-                            %s, %s, %s, %s, %s, %s,
-                            %s, %s, %s, NOW(), NOW(),
-                            %s, %s, 0, 0, 0, 0
+                            %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s,
+                            %s, %s, %s,
+                            NOW(), NOW()
                         ) RETURNING id;
                         """,
                         (
                             clean_title,
-                            clean_isbn,
-                            book.volume or 1,
-                            book.page_count or 0,
-                            book.price or 0,
-                            clean_desc or f"{clean_title} - Bande dessinée / Comics",
                             series_id,
                             editor_id,
-                            rel_date,
+                            category_id,
+                            book.volume or 1,
+                            clean_isbn,
+                            book.page_count or 0,
+                            book.price or 0,
+                            clean_desc,
                             book.cover_url,
+                            book.release_date or datetime.now(),
                             book.book_type or "Comics"
                         )
                     )
                     book_id = cur.fetchone()[0]
-                    logger.info("Inserted new book id %s: %s", book_id, clean_title)
+                    logger.debug("Inserted new book id %s: %s", book_id, clean_title)
 
-                # 6. Authors
-                if book.authors and book_id:
-                    for author in book.authors:
-                        full_name = f"{author.firstname or ''} {author.lastname or ''}".strip()
-                        clean_first, clean_last = split_author_name(full_name)
-                        if not clean_last:
+                # 6. Save Authors
+                if book.authors:
+                    for author_data in book.authors:
+                        clean_fn = clean_text(author_data.firstname) or ""
+                        clean_ln = clean_text(author_data.lastname)
+                        if not clean_ln:
                             continue
+
                         cur.execute(
                             "SELECT id FROM author WHERE LOWER(firstname) = LOWER(%s) AND LOWER(lastname) = LOWER(%s);",
-                            (clean_first, clean_last)
+                            (clean_fn, clean_ln)
                         )
-                        a_row = cur.fetchone()
-                        if a_row:
-                            author_id = a_row[0]
+                        row = cur.fetchone()
+                        if row:
+                            author_id = row[0]
                         else:
                             cur.execute(
                                 "INSERT INTO author (firstname, lastname, created_at, updated_at) VALUES (%s, %s, NOW(), NOW()) RETURNING id;",
-                                (clean_first, clean_last)
+                                (clean_fn, clean_ln)
                             )
                             author_id = cur.fetchone()[0]
 
-                        # Author Type
-                        cur.execute("SELECT id FROM author_type WHERE LOWER(name) = LOWER(%s);", (author.role.lower(),))
-                        at_row = cur.fetchone()
-                        if at_row:
-                            author_type_id = at_row[0]
-                        else:
-                            cur.execute("SELECT id FROM author_type LIMIT 1;")
-                            author_type_id = cur.fetchone()[0]
-
-                        # Link book and author
+                        author_type_map = {"writer": 1, "scénariste": 1, "illustrator": 2, "dessinateur": 2, "colorist": 3, "coloriste": 3}
+                        author_type_id = author_type_map.get((author_data.role or "").lower(), 1)
                         cur.execute(
-                            """
-                            INSERT INTO book_has_author (book_id, author_id, author_type_id, created_at, updated_at)
-                            VALUES (%s, %s, %s, NOW(), NOW())
-                            ON CONFLICT DO NOTHING;
-                            """,
+                            "SELECT 1 FROM book_has_author WHERE book_id = %s AND author_id = %s AND author_type_id = %s;",
                             (book_id, author_id, author_type_id)
                         )
+                        if not cur.fetchone():
+                            cur.execute(
+                                "INSERT INTO book_has_author (book_id, author_id, author_type_id, created_at, updated_at) VALUES (%s, %s, %s, NOW(), NOW());",
+                                (book_id, author_id, author_type_id)
+                            )
 
                 conn.commit()
                 return book_id
-
         except Exception as e:
             if conn:
                 conn.rollback()
-            logger.error("Failed to upsert book '%s': %s", book.title, e)
+            logger.error("Error upserting book '%s': %s", book.title, e)
             return None
         finally:
             if conn:
                 self.return_connection(conn)
 
-    def get_recent_books(self, limit: int = 15) -> List[Dict[str, Any]]:
+    def get_recent_books(self, limit: int = 20) -> List[Dict[str, Any]]:
         conn = None
         try:
             conn = self.get_connection()
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
                     """
-                    SELECT b.id, b.title, b.isbn, b.volume, b.price, b.cover_url,
-                           b.release_date, s.name as series_name, e.name as editor_name
+                    SELECT b.id, b.title, b.isbn, b.volume, b.release_date, b.cover_url,
+                           e.name as editor_name, s.name as series_name
                     FROM book b
-                    LEFT JOIN series s ON b.series_id = s.id
                     LEFT JOIN editor e ON b.editor_id = e.id
-                    ORDER BY b.id DESC
+                    LEFT JOIN series s ON b.series_id = s.id
+                    ORDER BY b.created_at DESC
                     LIMIT %s;
                     """,
                     (limit,)
                 )
-                return [dict(r) for r in cur.fetchall()]
+                return [dict(row) for row in cur.fetchall()]
         except Exception as e:
             logger.error("Error fetching recent books: %s", e)
             return []
@@ -599,4 +603,5 @@ class Database:
             if conn:
                 self.return_connection(conn)
 
+# Singleton DB instance
 db = Database(settings.DATABASE_URL)
