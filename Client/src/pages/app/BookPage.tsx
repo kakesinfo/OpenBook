@@ -324,7 +324,7 @@ export default function BookPage() {
 
                             {/* Actions */}
                             <div className="book-page__actions">
-                                {bookStatus !== "OWNED" && (
+                                {bookStatus !== "OWNED" && bookStatus !== "FOR_SALE" && (
                                     <ChangeBookStatusButton
                                         status={bookStatus}
                                         setStatus={setBookStatus}
@@ -337,7 +337,7 @@ export default function BookPage() {
                                     </ChangeBookStatusButton>
                                 )}
 
-                                {bookStatus !== "WISHLISTED" && (
+                                {bookStatus !== "WISHLISTED" && bookStatus !== "FOR_SALE" && (
                                     <ChangeBookStatusButton
                                         status={bookStatus}
                                         setStatus={setBookStatus}
