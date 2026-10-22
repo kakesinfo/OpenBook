@@ -1,5 +1,5 @@
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faRotate,
@@ -30,6 +30,8 @@ interface ScraperStatus {
     last_run: string | null;
     last_status: string;
     available_sources: string[];
+    disabled_sources?: string[];
+    enabled_sources?: string[];
     schedule: {
         daily_at: string;
         scrape_on_startup: boolean;
@@ -55,13 +57,58 @@ export default function AdminPage() {
     const [totalBooks, setTotalBooks] = useState<number>(0);
     const [serverConnected, setServerConnected] = useState<boolean | null>(null);
 
+    // Enabled/Disabled state per scraper source
+    const [enabledSources, setEnabledSources] = useState<Record<string, boolean>>(() => {
+        try {
+            const saved = localStorage.getItem("scraper_enabled_sources");
+            if (saved) {
+                return JSON.parse(saved);
+            }
+        } catch {
+            // fallback
+        }
+        return PUBLISHERS.reduce<Record<string, boolean>>((acc, p) => {
+            acc[p.id] = true;
+            return acc;
+        }, {});
+    });
+
+    // Multiple selection of sources
+    const [selectedSources, setSelectedSources] = useState<string[]>([]);
+    const headerCheckboxRef = useRef<HTMLInputElement>(null);
+
+    const activeCount = PUBLISHERS.filter((p) => enabledSources[p.id] !== false).length;
+
+    // Manage indeterminate state on header checkbox
+    useEffect(() => {
+        if (headerCheckboxRef.current) {
+            headerCheckboxRef.current.indeterminate =
+                selectedSources.length > 0 && selectedSources.length < PUBLISHERS.length;
+        }
+    }, [selectedSources]);
+
     const fetchStatus = async () => {
         try {
             const resp = await fetch(`${SCRAPER_API_URL}/api/status`);
             if (resp.ok) {
-                const data = await resp.json();
+                const data: ScraperStatus = await resp.json();
                 setStatus(data);
                 setServerConnected(true);
+
+                if (Array.isArray(data.disabled_sources)) {
+                    setEnabledSources((prev) => {
+                        const updated = { ...prev };
+                        PUBLISHERS.forEach((p) => {
+                            updated[p.id] = !data.disabled_sources?.includes(p.id);
+                        });
+                        try {
+                            localStorage.setItem("scraper_enabled_sources", JSON.stringify(updated));
+                        } catch {
+                            // ignore
+                        }
+                        return updated;
+                    });
+                }
             } else {
                 setServerConnected(false);
             }
@@ -89,21 +136,84 @@ export default function AdminPage() {
         return () => clearInterval(interval);
     }, [session]);
 
-    const handleTriggerScrape = async (source?: string, full: boolean = false) => {
+    const handleToggleSelect = (sourceId: string, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        setSelectedSources((prev) =>
+            prev.includes(sourceId)
+                ? prev.filter((id) => id !== sourceId)
+                : [...prev, sourceId]
+        );
+    };
+
+    const handleSelectAll = () => {
+        if (selectedSources.length === PUBLISHERS.length) {
+            setSelectedSources([]);
+        } else {
+            setSelectedSources(PUBLISHERS.map((p) => p.id));
+        }
+    };
+
+    const handleToggleSource = async (sourceId: string, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        const nextState = !enabledSources[sourceId];
+        const updated = { ...enabledSources, [sourceId]: nextState };
+        setEnabledSources(updated);
+
+        try {
+            localStorage.setItem("scraper_enabled_sources", JSON.stringify(updated));
+        } catch {
+            // ignore
+        }
+
+        try {
+            const resp = await fetch(`${SCRAPER_API_URL}/api/sources/${sourceId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ enabled: nextState })
+            });
+            if (resp.ok) {
+                const pubName = PUBLISHERS.find((p) => p.id === sourceId)?.name || sourceId;
+                setTriggerMessage({
+                    type: "success",
+                    text: `Scraper pour ${pubName} ${nextState ? "activé" : "désactivé"}.`
+                });
+                await fetchStatus();
+            }
+        } catch {
+            // Keep local state even if remote endpoint fails
+        }
+    };
+
+    const handleTriggerScrape = async (sources?: string[], full: boolean = false) => {
         setLoading(true);
         setTriggerMessage(null);
         try {
-            let url = source
-                ? `${SCRAPER_API_URL}/api/scrape/${source}`
-                : `${SCRAPER_API_URL}/api/scrape`;
-            if (full) {
-                url += `${url.includes("?") ? "&" : "?"}full=true`;
+            let url = `${SCRAPER_API_URL}/api/scrape`;
+            const params = new URLSearchParams();
+            if (sources && sources.length > 0) {
+                params.append("sources", sources.join(","));
             }
+            if (full) {
+                params.append("full", "true");
+            }
+            const qs = params.toString();
+            if (qs) {
+                url += `?${qs}`;
+            }
+
             const resp = await fetch(url, { method: "POST" });
             const data = await resp.json();
+
+            let targetLabel = "toutes les sources actives";
+            if (sources && sources.length > 0) {
+                targetLabel = sources
+                    .map((s) => PUBLISHERS.find((p) => p.id === s)?.name || s)
+                    .join(", ");
+            }
+
             setTriggerMessage({
                 type: "success",
-                text: data.message || `Scan lancé en tâche de fond pour ${source || "tous les éditeurs"} !`
+                text: data.message || `Scan ${full ? "complet" : "rapide"} lancé pour : ${targetLabel} !`
             });
             await fetchStatus();
             setTimeout(fetchTotalBooks, 4000);
@@ -114,6 +224,35 @@ export default function AdminPage() {
             });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleQuickScan = () => {
+        if (selectedSources.length === 0) {
+            setTriggerMessage({
+                type: "error",
+                text: "Veuillez cocher au moins une source dans le tableau pour lancer un scan rapide."
+            });
+            return;
+        }
+        handleTriggerScrape(selectedSources, false);
+    };
+
+    const handleFullScan = () => {
+        // If sources are checked, scan those checked.
+        // Otherwise, scan all active (enabled) sources.
+        if (selectedSources.length > 0) {
+            handleTriggerScrape(selectedSources, true);
+        } else {
+            const activeList = PUBLISHERS.filter((p) => enabledSources[p.id] !== false).map((p) => p.id);
+            if (activeList.length === 0) {
+                setTriggerMessage({
+                    type: "error",
+                    text: "Toutes les sources sont désactivées. Activez au moins une source pour lancer un scan complet."
+                });
+                return;
+            }
+            handleTriggerScrape(undefined, true);
         }
     };
 
@@ -175,7 +314,7 @@ export default function AdminPage() {
                         fontSize: "0.9rem",
                         fontWeight: 500,
                         background: triggerMessage.type === "success" ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                        border: `1px solid ${triggerMessage.type === "success" ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
+                        border: `1px solid ${triggerMessage.type === "success" ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"}` ,
                         color: triggerMessage.type === "success" ? "#34d399" : "#f87171"
                     }}>
                         <FontAwesomeIcon icon={triggerMessage.type === "success" ? faCheck : faTriangleExclamation} />
@@ -309,201 +448,186 @@ export default function AdminPage() {
                         </div>
                         <div>
                             <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #9ca3af)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-                                Éditeurs supportés
+                                Sources configurées
                             </div>
-                            <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text-primary, #fff)" }}>
-                                {PUBLISHERS.length} sources
+                            <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--text-primary, #fff)" }}>
+                                {activeCount} / {PUBLISHERS.length} <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-muted, #9ca3af)" }}>actives</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Global Actions Panel */}
-                <div style={{
-                    background: "var(--card-bg, #1e1e24)",
-                    border: "1px solid var(--border-color, #2a2a32)",
-                    borderRadius: "16px",
-                    padding: "24px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "20px"
-                }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-                        <div>
-                            <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>
-                                Actions Globales de Scan
-                            </h3>
-                            <p style={{ margin: "4px 0 0", color: "var(--text-muted, #9ca3af)", fontSize: "0.85rem" }}>
-                                Déclenchez une synchronisation manuelle sur l'ensemble des éditeurs configurés
+                {/* Sources & Publishers Section (Table with Multi-select and Header Actions) */}
+                <div className="admin-sources-panel">
+                    <div className="admin-sources-panel__header">
+                        <div className="admin-sources-panel__title-group">
+                            <div className="admin-sources-panel__title-row">
+                                <h3 className="admin-sources-panel__title">
+                                    Éditeurs & Sources
+                                </h3>
+                                <span className="admin-sources-panel__badge">
+                                    {activeCount} / {PUBLISHERS.length} actives
+                                </span>
+                                {selectedSources.length > 0 && (
+                                    <span className="admin-sources-panel__badge admin-sources-panel__badge--selected">
+                                        {selectedSources.length} cochée{selectedSources.length > 1 ? "s" : ""}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="admin-sources-panel__subtitle">
+                                Cochez les sources pour un scan ciblé ou activez/désactivez le scraper de chaque éditeur.
                             </p>
                         </div>
 
-                        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                        <div className="admin-sources-panel__actions">
                             <button
-                                onClick={() => handleTriggerScrape(undefined, false)}
-                                disabled={loading || status?.is_running}
-                                style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                    padding: "10px 18px",
-                                    borderRadius: "10px",
-                                    background: status?.is_running ? "#4b5563" : "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-                                    color: "#fff",
-                                    border: "none",
-                                    fontWeight: 600,
-                                    fontSize: "0.9rem",
-                                    cursor: status?.is_running ? "not-allowed" : "pointer",
-                                    boxShadow: "0 2px 10px rgba(99, 102, 241, 0.3)"
-                                }}
+                                type="button"
+                                className="admin-btn admin-btn--quick"
+                                onClick={handleQuickScan}
+                                disabled={loading || status?.is_running || selectedSources.length === 0}
+                                title={
+                                    selectedSources.length === 0
+                                        ? "Cochez au moins une source dans le tableau pour lancer un scan rapide"
+                                        : "Lancer un scan rapide (nouveautés) sur les sources cochées"
+                                }
                             >
                                 <FontAwesomeIcon icon={faBolt} />
-                                <span>Scan Rapide (Nouveautés)</span>
+                                <span>
+                                    Scan rapide {selectedSources.length > 0 ? `(${selectedSources.length})` : ""}
+                                </span>
                             </button>
 
                             <button
-                                onClick={() => handleTriggerScrape(undefined, true)}
-                                disabled={loading || status?.is_running}
-                                style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                    padding: "10px 18px",
-                                    borderRadius: "10px",
-                                    background: status?.is_running ? "#4b5563" : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                                    color: "#fff",
-                                    border: "none",
-                                    fontWeight: 600,
-                                    fontSize: "0.9rem",
-                                    cursor: status?.is_running ? "not-allowed" : "pointer",
-                                    boxShadow: "0 2px 10px rgba(16, 185, 129, 0.3)"
-                                }}
+                                type="button"
+                                className="admin-btn admin-btn--full"
+                                onClick={handleFullScan}
+                                disabled={loading || status?.is_running || (selectedSources.length === 0 && activeCount === 0)}
+                                title={
+                                    selectedSources.length > 0
+                                        ? "Lancer un scan complet du catalogue sur les sources cochées"
+                                        : "Lancer un scan complet du catalogue sur toutes les sources actives"
+                                }
                             >
                                 <FontAwesomeIcon icon={faLayerGroup} />
-                                <span>Scan Complet (Catalogue entier)</span>
+                                <span>
+                                    Scan complet {selectedSources.length > 0 ? `(${selectedSources.length})` : "(actives)"}
+                                </span>
                             </button>
 
                             <button
+                                type="button"
+                                className="admin-btn admin-btn--repair"
                                 onClick={handleRepair}
                                 disabled={loading || status?.is_running}
-                                style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                    padding: "10px 18px",
-                                    borderRadius: "10px",
-                                    background: "rgba(255, 255, 255, 0.08)",
-                                    color: "#e5e7eb",
-                                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                                    fontWeight: 600,
-                                    fontSize: "0.9rem",
-                                    cursor: status?.is_running ? "not-allowed" : "pointer"
-                                }}
                                 title="Nettoyer les caractères corrompus UTF-8 et consolider les séries"
                             >
                                 <FontAwesomeIcon icon={faWrench} />
-                                <span>Réparer Textes UTF-8</span>
+                                <span>Réparer UTF-8</span>
                             </button>
                         </div>
                     </div>
-                </div>
 
-                {/* Individual Publisher Scrapers */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                    <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>
-                        Éditeurs & Sources Individuelles
-                    </h3>
+                    <div className="admin-sources-panel__table-wrapper">
+                        <table className="admin-sources-table">
+                            <thead>
+                                <tr>
+                                    <th style={{ width: "48px", textAlign: "center" }}>
+                                        <input
+                                            ref={headerCheckboxRef}
+                                            type="checkbox"
+                                            className="admin-checkbox"
+                                            checked={selectedSources.length === PUBLISHERS.length && PUBLISHERS.length > 0}
+                                            onChange={handleSelectAll}
+                                            title={selectedSources.length === PUBLISHERS.length ? "Tout désélectionner" : "Tout sélectionner"}
+                                        />
+                                    </th>
+                                    <th>Nom de la source / Éditeur</th>
+                                    <th>Description</th>
+                                    <th style={{ width: "190px", textAlign: "center" }}>État du Scraper</th>
+                                    <th style={{ width: "120px", textAlign: "right" }}>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {PUBLISHERS.map((pub) => {
+                                    const isSelected = selectedSources.includes(pub.id);
+                                    const isEnabled = enabledSources[pub.id] !== false;
 
-                    <div style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-                        gap: "16px"
-                    }}>
-                        {PUBLISHERS.map((pub) => (
-                            <div
-                                key={pub.id}
-                                style={{
-                                    background: "var(--card-bg, #1e1e24)",
-                                    border: "1px solid var(--border-color, #2a2a32)",
-                                    borderRadius: "14px",
-                                    padding: "20px",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "14px",
-                                    position: "relative",
-                                    overflow: "hidden"
-                                }}
-                            >
-                                <div style={{
-                                    position: "absolute",
-                                    top: 0,
-                                    left: 0,
-                                    width: "4px",
-                                    height: "100%",
-                                    backgroundColor: pub.color
-                                }} />
+                                    return (
+                                        <tr
+                                            key={pub.id}
+                                            className={`admin-sources-table__row ${isSelected ? "is-selected" : ""} ${!isEnabled ? "is-disabled" : ""}`}
+                                            onClick={() => handleToggleSelect(pub.id)}
+                                        >
+                                            <td
+                                                style={{ textAlign: "center" }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="admin-checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => handleToggleSelect(pub.id)}
+                                                />
+                                            </td>
 
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                                    <div>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                            <span style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: pub.color }} />
-                                            <h4 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>{pub.name}</h4>
-                                        </div>
-                                        <p style={{ margin: "4px 0 0", fontSize: "0.8rem", color: "var(--text-muted, #9ca3af)" }}>
-                                            {pub.desc}
-                                        </p>
-                                    </div>
-                                </div>
+                                            <td>
+                                                <div className="source-cell">
+                                                    <span
+                                                        className="source-cell__dot"
+                                                        style={{ backgroundColor: pub.color }}
+                                                    />
+                                                    <div className="source-cell__info">
+                                                        <span className="source-cell__name">{pub.name}</span>
+                                                        <span className="source-cell__code">{pub.id}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
 
-                                <div style={{ display: "flex", gap: "8px", marginTop: "auto", paddingTop: "8px" }}>
-                                    <button
-                                        onClick={() => handleTriggerScrape(pub.id, false)}
-                                        disabled={loading || status?.is_running}
-                                        style={{
-                                            flex: 1,
-                                            display: "inline-flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: "6px",
-                                            padding: "8px 12px",
-                                            borderRadius: "8px",
-                                            background: "rgba(255, 255, 255, 0.05)",
-                                            border: "1px solid rgba(255, 255, 255, 0.12)",
-                                            color: "var(--text-primary, #fff)",
-                                            fontSize: "0.8rem",
-                                            fontWeight: 600,
-                                            cursor: status?.is_running ? "not-allowed" : "pointer"
-                                        }}
-                                    >
-                                        <FontAwesomeIcon icon={faBolt} style={{ color: pub.color }} />
-                                        <span>Scan Rapide</span>
-                                    </button>
+                                            <td>
+                                                <span className="source-description">{pub.desc}</span>
+                                            </td>
 
-                                    <button
-                                        onClick={() => handleTriggerScrape(pub.id, true)}
-                                        disabled={loading || status?.is_running}
-                                        style={{
-                                            flex: 1,
-                                            display: "inline-flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: "6px",
-                                            padding: "8px 12px",
-                                            borderRadius: "8px",
-                                            background: "rgba(255, 255, 255, 0.05)",
-                                            border: "1px solid rgba(255, 255, 255, 0.12)",
-                                            color: "var(--text-primary, #fff)",
-                                            fontSize: "0.8rem",
-                                            fontWeight: 600,
-                                            cursor: status?.is_running ? "not-allowed" : "pointer"
-                                        }}
-                                    >
-                                        <FontAwesomeIcon icon={faLayerGroup} style={{ color: pub.color }} />
-                                        <span>Scan Complet</span>
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                                            <td
+                                                style={{ textAlign: "center" }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <label
+                                                    className="admin-toggle"
+                                                    title={isEnabled ? "Désactiver le scraper de cette source" : "Activer le scraper de cette source"}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isEnabled}
+                                                        onChange={() => handleToggleSource(pub.id)}
+                                                        disabled={loading || status?.is_running}
+                                                    />
+                                                    <span className="admin-toggle__slider" />
+                                                    <span className={`admin-toggle__label ${isEnabled ? "is-active" : "is-inactive"}`}>
+                                                        {isEnabled ? "Activé" : "Désactivé"}
+                                                    </span>
+                                                </label>
+                                            </td>
+
+                                            <td
+                                                style={{ textAlign: "right" }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    className="admin-row-btn"
+                                                    onClick={() => handleTriggerScrape([pub.id], false)}
+                                                    disabled={loading || status?.is_running || !isEnabled}
+                                                    title={`Scanner ${pub.name} (scan rapide)`}
+                                                >
+                                                    <FontAwesomeIcon icon={faBolt} style={{ color: pub.color }} />
+                                                    <span>Scanner</span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -548,8 +672,8 @@ export default function AdminPage() {
                                                     borderRadius: "6px",
                                                     fontSize: "0.75rem",
                                                     fontWeight: 600,
-                                                    background: job.status === "completed" ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                                                    color: job.status === "completed" ? "#10b981" : "#ef4444"
+                                                    background: job.status === "completed" || job.status === "success" ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
+                                                    color: job.status === "completed" || job.status === "success" ? "#10b981" : "#ef4444"
                                                 }}>
                                                     {job.status}
                                                 </span>

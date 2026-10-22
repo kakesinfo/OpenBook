@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query, Path
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
+from typing import Optional, List
+from pydantic import BaseModel
 
 from scheduler import scraper_manager
 from scrapers import SCRAPERS
@@ -9,7 +10,7 @@ from database import db
 app = FastAPI(
     title="Yet Another Library - Comics & BD Scraper Service",
     description="Microservice to scan comic publishers (Urban Comics, Panini Comics, Morgen BD, Mangetsu, Label 619) daily or on-demand",
-    version="1.1.0"
+    version="1.2.0"
 )
 
 app.add_middleware(
@@ -20,6 +21,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class SourceToggleRequest(BaseModel):
+    enabled: bool
+
 @app.get("/")
 def root():
     return {
@@ -28,6 +32,7 @@ def root():
         "endpoints": {
             "health": "/api/health",
             "status": "/api/status",
+            "sources": "GET /api/sources, PUT /api/sources/{source}",
             "trigger_all": "POST /api/scrape?full=false",
             "trigger_source": "POST /api/scrape/{source}?full=false",
             "repair_mojibake": "POST /api/repair",
@@ -51,17 +56,51 @@ def health():
 def status():
     return scraper_manager.get_status()
 
-@app.post("/api/scrape")
-def trigger_scrape(
-    source: Optional[str] = Query(None, description="Optional scraper source: urban_comics, panini, morgen_bd, mangetsu, label619"),
-    full: bool = Query(False, description="Full catalog scan mode")
-):
-    if source and source not in SCRAPERS:
+@app.get("/api/sources")
+def get_sources():
+    return {
+        "sources": [
+            {
+                "id": s,
+                "enabled": scraper_manager.is_source_enabled(s)
+            }
+            for s in SCRAPERS.keys()
+        ]
+    }
+
+@app.put("/api/sources/{source}")
+def update_source_status(source: str, body: SourceToggleRequest):
+    if source not in SCRAPERS:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid source '{source}'. Available: {list(SCRAPERS.keys())}"
         )
-    result = scraper_manager.trigger_scrape(source, full_scan=full)
+    scraper_manager.set_source_enabled(source, body.enabled)
+    return {
+        "source": source,
+        "enabled": body.enabled,
+        "message": f"Source {source} {'activée' if body.enabled else 'désactivée'}."
+    }
+
+@app.post("/api/scrape")
+def trigger_scrape(
+    source: Optional[str] = Query(None, description="Optional scraper source: urban_comics, panini, etc. or comma-separated"),
+    sources: Optional[str] = Query(None, description="Comma-separated list of sources"),
+    full: bool = Query(False, description="Full catalog scan mode")
+):
+    selected_raw = sources or source
+    source_list = None
+    if selected_raw:
+        parts = [s.strip() for s in selected_raw.split(",") if s.strip()]
+        for p in parts:
+            if p not in SCRAPERS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid source '{p}'. Available: {list(SCRAPERS.keys())}"
+                )
+        source_list = parts
+
+    result = scraper_manager.trigger_scrape(source=None, full_scan=full, sources=source_list)
     return result
 
 @app.post("/api/scrape/{source}")
