@@ -22,7 +22,7 @@ export default function LogBookCard({ book, onClose }: Props) {
         <li className="logbook-card" onClick={handleClick}>
             <div className="logbook-card__thumbnail">
                 {book.coverUrl ? (
-                    <img src={book.coverUrl} alt={book.title} />
+                    <img src={book.coverUrl} alt={book.title} loading="lazy" decoding="async" />
                 ) : (
                     <FontAwesomeIcon icon={faBook} />
                 )}

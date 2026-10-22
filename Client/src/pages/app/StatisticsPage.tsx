@@ -348,6 +348,8 @@ export default function StatisticsPage() {
                                                     src={stats.oldestBook.coverUrl}
                                                     alt={stats.oldestBook.title}
                                                     style={{ width: "42px", height: "60px", objectFit: "cover", borderRadius: "6px" }}
+                                                    loading="lazy"
+                                                    decoding="async"
                                                 />
                                             )}
                                             <div>
@@ -401,6 +403,8 @@ export default function StatisticsPage() {
                                                     src={stats.newestBook.coverUrl}
                                                     alt={stats.newestBook.title}
                                                     style={{ width: "42px", height: "60px", objectFit: "cover", borderRadius: "6px" }}
+                                                    loading="lazy"
+                                                    decoding="async"
                                                 />
                                             )}
                                             <div>

@@ -28,6 +28,7 @@ export default function BookList({ books }: { books: BookSummaryDTO[] }) {
                                 src={book.coverUrl}
                                 alt={`Couverture de ${book.title}`}
                                 loading="lazy"
+                                decoding="async"
                             />
                         ) : (
                             <div className="booklist-card__cover-fallback">

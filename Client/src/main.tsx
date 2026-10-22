@@ -6,6 +6,10 @@ import './globals.css';
 import Routing from './Routing.tsx';
 import {SnackbarProvider} from "notistack";
 import {SessionProvider} from "./context/SessionProvider.tsx";
+import {registerImageCacheWorker} from "./utils/imageCache.ts";
+
+// Register client-side image cache Service Worker
+registerImageCacheWorker();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>

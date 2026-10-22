@@ -219,6 +219,7 @@ export default function BookPage() {
                                         src={book.coverUrl}
                                         alt={`Couverture de ${book.title}`}
                                         className="book-page__cover"
+                                        decoding="async"
                                     />
                                 ) : (
                                     <div className="book-page__cover-fallback">
