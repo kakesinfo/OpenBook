@@ -504,12 +504,12 @@ class Database:
                     cur.execute(
                         """
                         INSERT INTO book (
-                            title, series_id, editor_id, category_id,
+                            title, series_id, editor_id,
                             volume, isbn, page_count, price, description,
-                            cover_url, release_date, book_type,
+                            cover_url, release_date, type,
                             created_at, updated_at
                         ) VALUES (
-                            %s, %s, %s, %s,
+                            %s, %s, %s,
                             %s, %s, %s, %s, %s,
                             %s, %s, %s,
                             NOW(), NOW()
@@ -519,7 +519,6 @@ class Database:
                             clean_title,
                             series_id,
                             editor_id,
-                            category_id,
                             book.volume or 1,
                             clean_isbn,
                             book.page_count or 0,

@@ -16,6 +16,7 @@ from scrapers.monsieur_toussaint_louverture import (
     OBJET_KEYWORDS,
     EPUB_KEYWORDS
 )
+from scrapers.mangetsu import MangetsuScraper
 
 class TestScrapers(unittest.TestCase):
     def test_registry(self):
@@ -166,6 +167,46 @@ class TestScrapers(unittest.TestCase):
         series, vol = parse_series_and_volume("A Vicious Circle tome 1", soup)
         self.assertEqual(series, "A Vicious Circle")
         self.assertEqual(vol, 1)
+
+    def test_mangetsu_pagination_next_page(self):
+        html_page1 = """
+        <div class="pagination">
+            <nav>
+                <span class="disabled">Previous</span>
+                <span class="current">1</span>
+                <a href="/catalogue/?page=2">2</a>
+                <a href="/catalogue/?page=33">33</a>
+                <a href="/catalogue/?page=2" rel="next">Next</a>
+            </nav>
+        </div>
+        """
+        scraper = MangetsuScraper()
+        soup = BeautifulSoup(html_page1, "html.parser")
+        next_url = scraper._extract_next_page_url(soup, "https://mangetsu-manga.fr/catalogue/", "https://mangetsu-manga.fr", set())
+        self.assertEqual(next_url, "https://mangetsu-manga.fr/catalogue/?page=2")
+
+    def test_mangetsu_pagination_last_page(self):
+        html_last = """
+        <div class="pagination">
+            <nav>
+                <a href="/catalogue/?page=32" rel="prev">Previous</a>
+                <a href="/catalogue/?page=1">1</a>
+                <span class="current">33</span>
+                <span class="disabled">Next</span>
+            </nav>
+        </div>
+        """
+        scraper = MangetsuScraper()
+        soup = BeautifulSoup(html_last, "html.parser")
+        next_url = scraper._extract_next_page_url(soup, "https://mangetsu-manga.fr/catalogue/?page=33", "https://mangetsu-manga.fr", set())
+        self.assertIsNone(next_url)
+
+    def test_mangetsu_pagination_absent(self):
+        html_no_pagi = "<div><p>Pas de pagination ici</p></div>"
+        scraper = MangetsuScraper()
+        soup = BeautifulSoup(html_no_pagi, "html.parser")
+        next_url = scraper._extract_next_page_url(soup, "https://mangetsu-manga.fr/a-paraitre/", "https://mangetsu-manga.fr", set())
+        self.assertIsNone(next_url)
 
     def test_scraped_book_model(self):
         book = ScrapedBook(
