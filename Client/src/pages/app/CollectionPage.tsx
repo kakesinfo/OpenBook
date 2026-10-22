@@ -15,15 +15,27 @@ import {
     faMagnifyingGlass,
     faXmark,
     faList,
-    faBorderAll
+    faBorderAll,
+    faBookBookmark,
+    faTag,
+    faCheck,
+    faBookOpen,
+    faBan
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
 import "./CollectionPage.scss";
 
 type CategoryFilter = "all" | "bd" | "comics" | "manga";
+type TomeStatusFilter = "all" | "toread" | "forsale" | "read" | "unread" | "abandoned";
 
 interface CategoryTab {
     id: CategoryFilter;
+    label: string;
+    icon?: typeof faBook;
+}
+
+interface StatusTab {
+    id: TomeStatusFilter;
     label: string;
     icon?: typeof faBook;
 }
@@ -35,12 +47,51 @@ const CATEGORY_TABS: CategoryTab[] = [
     { id: "manga", label: "Manga", icon: faFire }
 ];
 
+const STATUS_TABS: StatusTab[] = [
+    { id: "all", label: "Tous", icon: faLayerGroup },
+    { id: "toread", label: "Pile à lire", icon: faBookBookmark },
+    { id: "forsale", label: "À vendre", icon: faTag },
+    { id: "read", label: "Lu", icon: faCheck },
+    { id: "unread", label: "Non lu", icon: faBookOpen },
+    { id: "abandoned", label: "Abandonné", icon: faBan }
+];
+
 function normalizeCategory(category?: string | null, type?: string | null): "bd" | "comics" | "manga" {
     const raw = `${category || ""} ${type || ""}`.toLowerCase();
     if (raw.includes("manga")) return "manga";
     if (raw.includes("comic")) return "comics";
     if (raw.includes("bande") || raw.includes("bd") || raw.includes("roman") || raw.includes("cartonné")) return "bd";
     return "comics";
+}
+
+function matchesTomeStatus(book: BookSummaryDTO, filter: TomeStatusFilter): boolean {
+    if (filter === "all") return true;
+
+    const rStatus = (book.readingStatus || "").toUpperCase();
+    const isForSale = book.status === "FOR_SALE";
+
+    if (filter === "forsale") {
+        return isForSale;
+    }
+    if (filter === "toread") {
+        // La Pile à Lire correspond à tous les livres qui ne sont pas encore lus (ni Lu, ni Abandonné)
+        return rStatus !== "READ" && rStatus !== "LU" && rStatus !== "ABANDONED" && rStatus !== "ABANDONNE";
+    }
+    if (filter === "read") {
+        return rStatus === "READ" || rStatus === "LU";
+    }
+    if (filter === "unread") {
+        return (
+            (rStatus === "UNREAD" || rStatus === "NON_LU" || !rStatus) &&
+            rStatus !== "TO_READ" &&
+            rStatus !== "READING" &&
+            rStatus !== "A_LIRE"
+        );
+    }
+    if (filter === "abandoned") {
+        return rStatus === "ABANDONED" || rStatus === "ABANDONNE";
+    }
+    return true;
 }
 
 export default function CollectionPage() {
@@ -50,6 +101,7 @@ export default function CollectionPage() {
     const [loading, setLoading] = useState(true);
 
     const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
+    const [selectedTomeStatus, setSelectedTomeStatus] = useState<TomeStatusFilter>("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<"series" | "books">("series");
 
@@ -120,7 +172,7 @@ export default function CollectionPage() {
             });
     };
 
-    // Filter counts
+    // Filter counts for Series mode
     const categoryCounts = useMemo(() => {
         const counts: Record<CategoryFilter, number> = { all: 0, bd: 0, comics: 0, manga: 0 };
         counts.all = seriesList.length;
@@ -130,6 +182,30 @@ export default function CollectionPage() {
         }
         return counts;
     }, [seriesList]);
+
+    // Filter counts for Tomes mode
+    const statusCounts = useMemo(() => {
+        const counts: Record<TomeStatusFilter, number> = {
+            all: flatBooks.length,
+            toread: 0,
+            forsale: 0,
+            read: 0,
+            unread: 0,
+            abandoned: 0
+        };
+        for (const b of flatBooks) {
+            const rStatus = (b.readingStatus || "UNREAD").toUpperCase();
+            if (b.status === "FOR_SALE") counts.forsale++;
+            // Pile à lire: tout ce qui n'est pas encore lu
+            if (rStatus !== "READ" && rStatus !== "LU" && rStatus !== "ABANDONED" && rStatus !== "ABANDONNE") {
+                counts.toread++;
+            }
+            if (rStatus === "READ" || rStatus === "LU") counts.read++;
+            if (rStatus === "UNREAD" || rStatus === "NON_LU" || !b.readingStatus) counts.unread++;
+            if (rStatus === "ABANDONED" || rStatus === "ABANDONNE") counts.abandoned++;
+        }
+        return counts;
+    }, [flatBooks]);
 
     // Filtered series
     const filteredSeries = useMemo(() => {
@@ -155,17 +231,19 @@ export default function CollectionPage() {
     // Filtered flat books (for flat view toggle)
     const filteredFlatBooks = useMemo(() => {
         return flatBooks.filter((b) => {
-            if (selectedCategory !== "all") {
-                const cat = normalizeCategory(b.category, b.type);
-                if (cat !== selectedCategory) return false;
+            // Status filter in Tomes mode
+            if (selectedTomeStatus !== "all") {
+                if (!matchesTomeStatus(b, selectedTomeStatus)) return false;
             }
+
+            // Search query
             if (searchQuery.trim().length > 0) {
                 const q = searchQuery.toLowerCase().trim();
                 return b.title.toLowerCase().includes(q) || (b.seriesName && b.seriesName.toLowerCase().includes(q));
             }
             return true;
         });
-    }, [flatBooks, selectedCategory, searchQuery]);
+    }, [flatBooks, selectedTomeStatus, searchQuery]);
 
     const totalOwnedTomes = flatBooks.length;
 
@@ -188,31 +266,55 @@ export default function CollectionPage() {
             </WrapperHeader>
 
             <div className="collection-page__content">
-                {/* Controls Bar: Category Filters, Search, View Mode */}
+                {/* Controls Bar: Category Filters / Status Filters, Search, View Mode */}
                 {seriesList.length > 0 && (
                     <div className="collection-page__controls">
-                        {/* Category Filter Pills (BD, Comics, Manga) */}
-                        <div className="collection-page__filters">
-                            {CATEGORY_TABS.map((tab) => {
-                                const isSelected = selectedCategory === tab.id;
-                                const count = categoryCounts[tab.id];
+                        {/* Dynamic Filters depending on viewMode */}
+                        {viewMode === "series" ? (
+                            <div className="collection-page__filters">
+                                {CATEGORY_TABS.map((tab) => {
+                                    const isSelected = selectedCategory === tab.id;
+                                    const count = categoryCounts[tab.id];
 
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        type="button"
-                                        onClick={() => setSelectedCategory(tab.id)}
-                                        className={`collection-page__filter-btn ${isSelected ? "is-active" : ""}`}
-                                    >
-                                        {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
-                                        <span>{tab.label}</span>
-                                        <span className="collection-page__filter-count">
-                                            {count}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                    return (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            onClick={() => setSelectedCategory(tab.id)}
+                                            className={`collection-page__filter-btn ${isSelected ? "is-active" : ""}`}
+                                        >
+                                            {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
+                                            <span>{tab.label}</span>
+                                            <span className="collection-page__filter-count">
+                                                {count}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="collection-page__filters">
+                                {STATUS_TABS.map((tab) => {
+                                    const isSelected = selectedTomeStatus === tab.id;
+                                    const count = statusCounts[tab.id];
+
+                                    return (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            onClick={() => setSelectedTomeStatus(tab.id)}
+                                            className={`collection-page__filter-btn ${isSelected ? "is-active" : ""}`}
+                                        >
+                                            {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
+                                            <span>{tab.label}</span>
+                                            <span className="collection-page__filter-count">
+                                                {count}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
 
                         {/* Search & View Mode Switcher */}
                         <div className="collection-page__right-controls">
@@ -220,7 +322,7 @@ export default function CollectionPage() {
                                 <FontAwesomeIcon icon={faMagnifyingGlass} />
                                 <input
                                     type="text"
-                                    placeholder="Rechercher une série..."
+                                    placeholder={viewMode === "series" ? "Rechercher une série..." : "Rechercher un tome..."}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />

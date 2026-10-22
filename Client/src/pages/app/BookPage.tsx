@@ -350,6 +350,19 @@ export default function BookPage() {
                                     </ChangeBookStatusButton>
                                 )}
 
+                                {bookStatus !== "WISHLISTED" && (
+                                    <ChangeBookStatusButton
+                                        status={bookStatus}
+                                        setStatus={setBookStatus}
+                                        newStatus="FOR_SALE"
+                                        bookId={id}
+                                        session={session}
+                                        icon={faTag}
+                                    >
+                                        {bookStatus === "FOR_SALE" ? "En vente" : "Mettre à vendre"}
+                                    </ChangeBookStatusButton>
+                                )}
+
                                 <div className={`book-reading-status-selector ${readingStatus && readingStatus.toUpperCase() !== "UNREAD" ? 'book-reading-status-selector--active' : ''}`}>
                                     <FontAwesomeIcon icon={faBookOpen} />
                                     <select
@@ -358,6 +371,7 @@ export default function BookPage() {
                                         aria-label="Statut de lecture"
                                     >
                                         <option value="UNREAD">Non lu</option>
+                                        <option value="TO_READ">Pile à lire</option>
                                         <option value="READING">En cours de lecture</option>
                                         <option value="READ">Lu</option>
                                         <option value="ABANDONED">Abandonné</option>

@@ -342,6 +342,7 @@ public class UserController {
 
         if (!UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(status)
             && !UserOwnsBookStatus.WISHLISTED.name().equalsIgnoreCase(status)
+            && !UserOwnsBookStatus.FOR_SALE.name().equalsIgnoreCase(status)
             && !UserOwnsBookStatus.LENT.name().equalsIgnoreCase(status)
             && !UserOwnsBookStatus.SOLD.name().equalsIgnoreCase(status)) {
             throw new RuntimeException("Invalid status: " + status);
@@ -519,10 +520,24 @@ public class UserController {
     public List<BookSummaryDTO> getCollection(HttpSession session) {
         UserEntity user = getAuthenticatedUser(session);
 
-        return repositoryService.getUserOwnsBooksRepository()
-                .findAllByUserIdAndStatus(user.getId(), UserOwnsBookStatus.OWNED.name())
-                .stream()
-                .map(entity -> entityToSummaryDTO(entity.getBook()))
+        List<UserOwnsBookEntity> ownedEntries = repositoryService.getUserOwnsBooksRepository()
+                .findAllByUserId(user.getId()).stream()
+                .filter(uob -> UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(uob.getStatus())
+                            || UserOwnsBookStatus.FOR_SALE.name().equalsIgnoreCase(uob.getStatus()))
+                .toList();
+
+        Map<Long, String> readingStatusMap = repositoryService.getBookStatusRepository()
+                .findAllByUserId(user.getId()).stream()
+                .filter(bse -> bse.getBook() != null)
+                .collect(Collectors.toMap(bse -> bse.getBook().getId(), BookStatusEntity::getStatus, (s1, s2) -> s1));
+
+        return ownedEntries.stream()
+                .map(entity -> {
+                    BookSummaryDTO dto = entityToSummaryDTO(entity.getBook());
+                    dto.setStatus(entity.getStatus());
+                    dto.setReadingStatus(readingStatusMap.getOrDefault(entity.getBook().getId(), "UNREAD"));
+                    return dto;
+                })
                 .toList();
     }
 
@@ -531,7 +546,15 @@ public class UserController {
         UserEntity user = getAuthenticatedUser(session);
 
         List<UserOwnsBookEntity> ownedEntries = repositoryService.getUserOwnsBooksRepository()
-                .findAllByUserIdAndStatus(user.getId(), UserOwnsBookStatus.OWNED.name());
+                .findAllByUserId(user.getId()).stream()
+                .filter(uob -> UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(uob.getStatus())
+                            || UserOwnsBookStatus.FOR_SALE.name().equalsIgnoreCase(uob.getStatus()))
+                .toList();
+
+        Map<Long, String> readingStatusMap = repositoryService.getBookStatusRepository()
+                .findAllByUserId(user.getId()).stream()
+                .filter(bse -> bse.getBook() != null)
+                .collect(Collectors.toMap(bse -> bse.getBook().getId(), BookStatusEntity::getStatus, (s1, s2) -> s1));
 
         Map<Long, UserSeriesSummaryDTO> seriesMap = new LinkedHashMap<>();
 
@@ -558,7 +581,10 @@ public class UserController {
                 return dto;
             });
 
-            sDto.getBooks().add(entityToSummaryDTO(book));
+            BookSummaryDTO bookDto = entityToSummaryDTO(book);
+            bookDto.setStatus(uob.getStatus());
+            bookDto.setReadingStatus(readingStatusMap.getOrDefault(book.getId(), "UNREAD"));
+            sDto.getBooks().add(bookDto);
         }
 
         for (UserSeriesSummaryDTO sDto : seriesMap.values()) {

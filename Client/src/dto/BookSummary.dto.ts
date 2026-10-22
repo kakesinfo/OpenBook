@@ -9,6 +9,7 @@ export default interface BookSummaryDTO {
     category?: string;
     type?: string;
     author?: string;
+    status?: string | null;
     seriesId?: number;
     seriesName?: string;
     seriesTotalVolumes?: number;

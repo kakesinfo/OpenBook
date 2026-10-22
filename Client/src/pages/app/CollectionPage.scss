@@ -19,6 +19,11 @@
       padding: 16px 14px 28px;
       gap: 16px;
     }
+
+    /* Important: Reset BookList internal padding so Tomes mode aligns 100% with Series mode */
+    .booklist {
+      padding: 0;
+    }
   }
 
   /* Controls Header: Filters, Search, View Mode */
@@ -162,7 +167,7 @@
 }
 
 /* =========================================
-   Series Grid & Card
+   Series Grid & Card (Strictly identical in size & aspect ratio to BookList)
    ========================================= */
 .series-grid {
   display: grid;
@@ -334,20 +339,34 @@
     color: var(--text-primary);
     font-size: 0.9375rem;
     font-weight: 600;
+    line-height: 1.35;
     margin: 0;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-height: 2.7em;
     transition: color var(--transition-fast);
+
+    @media (max-width: 600px) {
+      font-size: 0.875rem;
+    }
   }
 
   &__subtitle {
     color: var(--text-muted);
     font-size: 0.8125rem;
+    font-weight: 500;
     margin: 0;
+    line-height: 1.2;
     display: flex;
     align-items: center;
     gap: 6px;
+
+    @media (max-width: 600px) {
+      font-size: 0.75rem;
+    }
 
     &.is-complete {
       color: var(--accent-primary);

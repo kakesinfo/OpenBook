@@ -4,6 +4,26 @@ import { Link } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBook } from "@fortawesome/free-solid-svg-icons";
 
+function getStatusBadge(book: BookSummaryDTO) {
+    if (book.status === "FOR_SALE") {
+        return <span className="booklist-card__status-badge is-for-sale">À vendre</span>;
+    }
+    const rStatus = (book.readingStatus || "").toUpperCase();
+    if (rStatus === "READ" || rStatus === "LU") {
+        return <span className="booklist-card__status-badge is-read">Lu</span>;
+    }
+    if (rStatus === "TO_READ" || rStatus === "A_LIRE" || rStatus === "PILE_A_LIRE") {
+        return <span className="booklist-card__status-badge is-toread">À lire</span>;
+    }
+    if (rStatus === "READING" || rStatus === "EN_COURS") {
+        return <span className="booklist-card__status-badge is-reading">En cours</span>;
+    }
+    if (rStatus === "ABANDONED" || rStatus === "ABANDONNE") {
+        return <span className="booklist-card__status-badge is-abandoned">Abandonné</span>;
+    }
+    return null;
+}
+
 export default function BookList({ books }: { books: BookSummaryDTO[] }) {
     if (!books || books.length === 0) {
         return (
@@ -36,6 +56,11 @@ export default function BookList({ books }: { books: BookSummaryDTO[] }) {
                                 <span>{book.title}</span>
                             </div>
                         )}
+
+                        {/* Status Badge top-left */}
+                        {getStatusBadge(book)}
+
+                        {/* Volume Badge top-right */}
                         <span className="booklist-card__badge">
                             {book.volume > 0 ? `Vol. ${book.volume}` : `Unique`}
                         </span>

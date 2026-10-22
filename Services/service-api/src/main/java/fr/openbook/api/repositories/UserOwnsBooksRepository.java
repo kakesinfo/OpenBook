@@ -10,6 +10,8 @@ import java.util.Optional;
 public interface UserOwnsBooksRepository extends JpaRepository<UserOwnsBookEntity, Long> {
     Optional<UserOwnsBookEntity> findByUserIdAndBookId(Long userId, Long bookId);
 
+    List<UserOwnsBookEntity> findAllByUserId(Long userId);
+
     List<UserOwnsBookEntity> findAllByUserIdAndStatus(Long userId, String status);
 
     @Transactional
