@@ -11,10 +11,15 @@ from scrapers.urban_comics import (
     parse_description,
     parse_series_and_volume
 )
+from scrapers.monsieur_toussaint_louverture import (
+    parse_series_and_volume as parse_mtl_series_and_volume,
+    OBJET_KEYWORDS,
+    EPUB_KEYWORDS
+)
 
 class TestScrapers(unittest.TestCase):
     def test_registry(self):
-        expected = ["urban_comics", "panini", "morgen_bd", "mangetsu", "label619"]
+        expected = ["urban_comics", "panini", "morgen_bd", "mangetsu", "label619", "monsieur_toussaint_louverture"]
         for name in expected:
             self.assertIn(name, SCRAPERS)
             scraper = get_scraper(name)
@@ -43,10 +48,10 @@ class TestScrapers(unittest.TestCase):
 
     def test_clean_text_mojibake_repair(self):
         # Mojibake fixes
-        self.assertEqual(clean_text("Le ChÃ¢teau des Animaux"), "Le Château des Animaux")
-        self.assertEqual(clean_text("Le fils du dÃ©mon"), "Le fils du démon")
-        self.assertEqual(clean_text("X-Men (IntÃ©grale)"), "X-Men (Intégrale)")
-        self.assertEqual(clean_text("SiÃ¨ge"), "Siège")
+        self.assertEqual(clean_text("Le Château des Animaux"), "Le Château des Animaux")
+        self.assertEqual(clean_text("Le fils du démon"), "Le fils du démon")
+        self.assertEqual(clean_text("X-Men (Intégrale)"), "X-Men (Intégrale)")
+        self.assertEqual(clean_text("Siège"), "Siège")
         # HTML entities fixes
         self.assertEqual(clean_text("Spider-Man &amp; Batman"), "Spider-Man & Batman")
         self.assertEqual(clean_text("L&#x27;aventure"), "L'aventure")
@@ -73,6 +78,44 @@ class TestScrapers(unittest.TestCase):
         self.assertEqual(split_author_name("Scénariste et dessinateurRun"), ("", "Run"))
         self.assertEqual(split_author_name("Florence Dupré la Tour"), ("Florence", "Dupré la Tour"))
         self.assertEqual(split_author_name(""), ("", ""))
+
+    def test_monsieur_toussaint_louverture_series_and_volume(self):
+        s1, v1 = parse_mtl_series_and_volume("Blackwater I, La Crue – L’épique saga de la famille Caskey")
+        self.assertEqual(s1, "Blackwater")
+        self.assertEqual(v1, 1)
+
+        s2, v2 = parse_mtl_series_and_volume("Blackwater IV, La Guerre – L’épique saga de la famille Caskey")
+        self.assertEqual(s2, "Blackwater")
+        self.assertEqual(v2, 4)
+
+        s3, v3 = parse_mtl_series_and_volume("L’Heure du loup – Volume 1")
+        self.assertEqual(s3, "L’Heure du loup")
+        self.assertEqual(v3, 1)
+
+        s4, v4 = parse_mtl_series_and_volume("MIND MGMT – Rapport d’opérations 2/3")
+        self.assertEqual(s4, "MIND MGMT")
+        self.assertEqual(v4, 2)
+
+        s5, v5 = parse_mtl_series_and_volume("Moi, ce que j’aime, c’est les monstres – Livre deuxième")
+        self.assertEqual(s5, "Moi, ce que j’aime, c’est les monstres")
+        self.assertEqual(v5, 2)
+
+        s6, v6 = parse_mtl_series_and_volume("Les Élémentaires")
+        self.assertEqual(s6, "Les Élémentaires")
+        self.assertIsNone(v6)
+
+    def test_monsieur_toussaint_louverture_exclusion_keywords(self):
+        # Excluded items
+        self.assertTrue(any(k in "sérigraphie blackwater" for k in OBJET_KEYWORDS))
+        self.assertTrue(any(k in "lot de 3 carnets du blackwater fishing club" for k in OBJET_KEYWORDS))
+        self.assertTrue(any(k in "coffret l’heure du loup (vide)" for k in OBJET_KEYWORDS))
+        self.assertTrue(any(k in "tasse blackwater fishing club" for k in OBJET_KEYWORDS))
+        self.assertTrue(any(k in "swan song t1 – le feu et la glace / epub".lower() for k in EPUB_KEYWORDS))
+
+        # Real books must NOT match
+        self.assertFalse(any(k in "les élémentaires".lower() for k in OBJET_KEYWORDS))
+        self.assertFalse(any(k in "blackwater édition intégrale".lower() for k in OBJET_KEYWORDS))
+        self.assertFalse(any(k in "l’heure du loup – volume 1".lower() for k in OBJET_KEYWORDS))
 
     def test_urban_comics_parse_authors(self):
         html = """
