@@ -125,7 +125,7 @@ export default function BookPage() {
         });
     }, [id, session]);
 
-    // Author categorization
+    // Author categorization & deduplication helper
     const allAuthors = book?.authors || [];
     const dessinateurs = allAuthors.filter(
         (a) => a.type && (a.type.toLowerCase() === "illustrator" || a.type.toLowerCase().includes("dessin") || a.type.toLowerCase().includes("pencil") || a.type.toLowerCase().includes("artist"))
@@ -136,6 +136,16 @@ export default function BookPage() {
     const scenaristes = allAuthors.filter(
         (a) => !dessinateurs.includes(a) && !coloristes.includes(a)
     );
+
+    const formatAuthorNames = (list: AuthorSummaryDTO[]) => {
+        return Array.from(
+            new Set(
+                list
+                    .map((a: AuthorSummaryDTO) => `${a.firstname || ""} ${a.lastname || ""}`.trim())
+                    .filter(Boolean)
+            )
+        ).join(", ");
+    };
 
     const totalVolumes = book?.series?.totalVolumes
         ? Math.max(book.volume || 1, book.series.totalVolumes)
@@ -299,7 +309,7 @@ export default function BookPage() {
 
                                 {book.authors && book.authors.length > 0 && (
                                     <p className="book-page__authors">
-                                        Par {book.authors.map((a: AuthorSummaryDTO) => `${a.firstname} ${a.lastname}`).join(", ")}
+                                        Par {formatAuthorNames(book.authors)}
                                     </p>
                                 )}
                             </div>
@@ -381,7 +391,7 @@ export default function BookPage() {
                                                 <FontAwesomeIcon icon={faPenNib} /> Scénariste{scenaristes.length > 1 ? "s" : ""}
                                             </span>
                                             <span className="book-page__spec-value">
-                                                {scenaristes.map((a: AuthorSummaryDTO) => `${a.firstname} ${a.lastname}`).join(", ")}
+                                                {formatAuthorNames(scenaristes)}
                                             </span>
                                         </div>
                                     )}
@@ -393,7 +403,7 @@ export default function BookPage() {
                                                 <FontAwesomeIcon icon={faPalette} /> Dessinateur{dessinateurs.length > 1 ? "s" : ""}
                                             </span>
                                             <span className="book-page__spec-value">
-                                                {dessinateurs.map((a: AuthorSummaryDTO) => `${a.firstname} ${a.lastname}`).join(", ")}
+                                                {formatAuthorNames(dessinateurs)}
                                             </span>
                                         </div>
                                     )}
@@ -405,7 +415,7 @@ export default function BookPage() {
                                                 <FontAwesomeIcon icon={faPaintbrush} /> Coloriste{coloristes.length > 1 ? "s" : ""}
                                             </span>
                                             <span className="book-page__spec-value">
-                                                {coloristes.map((a: AuthorSummaryDTO) => `${a.firstname} ${a.lastname}`).join(", ")}
+                                                {formatAuthorNames(coloristes)}
                                             </span>
                                         </div>
                                     )}

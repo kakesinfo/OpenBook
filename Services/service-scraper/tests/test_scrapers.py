@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime
 from bs4 import BeautifulSoup
 
-from scrapers.base import ScrapedBook, ScrapedAuthor, clean_text
+from scrapers.base import ScrapedBook, ScrapedAuthor, clean_text, clean_author_name, split_author_name
 from scrapers import SCRAPERS, get_scraper
 from scrapers.urban_comics import (
     parse_french_date,
@@ -50,6 +50,29 @@ class TestScrapers(unittest.TestCase):
         # HTML entities fixes
         self.assertEqual(clean_text("Spider-Man &amp; Batman"), "Spider-Man & Batman")
         self.assertEqual(clean_text("L&#x27;aventure"), "L'aventure")
+
+    def test_clean_author_name_prefixes(self):
+        # Role prefixes concatenated or with separator
+        self.assertEqual(clean_author_name("Auteur + illustrateurMathieu Bablet"), "Mathieu Bablet")
+        self.assertEqual(clean_author_name("Par Auteur + illustrateurMathieu Bablet"), "Mathieu Bablet")
+        self.assertEqual(clean_author_name("IllustrateurFlorent Maudoux"), "Florent Maudoux")
+        self.assertEqual(clean_author_name("Scénariste et dessinateurRun"), "Run")
+        self.assertEqual(clean_author_name("Texte et illustration deBones"), "Bones")
+        self.assertEqual(clean_author_name("AuteurNeyef"), "Neyef")
+        self.assertEqual(clean_author_name("Illustration deRours"), "Rours")
+        self.assertEqual(clean_author_name("Scénario deIsabelle Bauthian"), "Isabelle Bauthian")
+        self.assertEqual(clean_author_name("Par Mathieu Bablet"), "Mathieu Bablet")
+        # Legitimate particles preserved
+        self.assertEqual(clean_author_name("Christian de Metter"), "Christian de Metter")
+        self.assertEqual(clean_author_name("Faustin de Ravignan"), "Faustin de Ravignan")
+
+    def test_split_author_name(self):
+        self.assertEqual(split_author_name("Auteur + illustrateurMathieu Bablet"), ("Mathieu", "Bablet"))
+        self.assertEqual(split_author_name("Mathieu Bablet"), ("Mathieu", "Bablet"))
+        self.assertEqual(split_author_name("RUN"), ("", "RUN"))
+        self.assertEqual(split_author_name("Scénariste et dessinateurRun"), ("", "Run"))
+        self.assertEqual(split_author_name("Florence Dupré la Tour"), ("Florence", "Dupré la Tour"))
+        self.assertEqual(split_author_name(""), ("", ""))
 
     def test_urban_comics_parse_authors(self):
         html = """

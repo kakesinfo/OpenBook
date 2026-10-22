@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
 
 from config import settings
-from scrapers.base import BaseScraper, ScrapedBook, ScrapedAuthor, clean_text
+from scrapers.base import BaseScraper, ScrapedBook, ScrapedAuthor, clean_text, split_author_name
 
 logger = logging.getLogger(__name__)
 
@@ -152,9 +152,9 @@ class MorgenBDScraper(BaseScraper):
         author_m = re.search(r"Black Orion([A-Za-zÀ-ÿ\s]+)prix", full_text)
         if author_m:
             name = author_m.group(1).strip()
-            parts = name.split()
-            if len(parts) >= 2:
-                authors.append(ScrapedAuthor(firstname=parts[0], lastname=" ".join(parts[1:])))
+            fn, ln = split_author_name(name)
+            if ln:
+                authors.append(ScrapedAuthor(firstname=fn, lastname=ln))
 
         # 6. Series & Volume
         series_name = title

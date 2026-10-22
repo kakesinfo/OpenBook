@@ -1,8 +1,9 @@
 import html
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Callable
+from typing import List, Optional, Dict, Any, Callable, Tuple
 
 def clean_text(text: Optional[str]) -> Optional[str]:
     """
@@ -28,11 +29,64 @@ def clean_text(text: Optional[str]) -> Optional[str]:
     cleaned = cleaned.replace("\xa0", " ").strip()
     return cleaned
 
+
+AUTHOR_ROLE_PREFIX_REGEX = re.compile(
+    r"^(?:par\s+|de\s+|d['’]|"
+    r"texte\s+et\s+illustrations?\s+(?:de\s*)?|"
+    r"sc[eé]nariste\s+et\s+dessinateur\s*|"
+    r"sc[eé]nario\s+et\s+dessin\s+(?:de\s*)?|"
+    r"sc[eé]nario\s+(?:de\s*)?|"
+    r"illustrations?\s+(?:de\s*)?|"
+    r"dessins?\s+(?:de\s*)?|"
+    r"auteurs?\s*(?:\+|/|et)\s*illustrat(?:eur|rice)s?\s*|"
+    r"illustrat(?:eur|rice)s?\s*|"
+    r"dessinat(?:eur|rice)s?\s*|"
+    r"sc[eé]naristes?\s*|"
+    r"coloristes?\s*|"
+    r"auteurs?\s*|"
+    r"auteures?\s*|"
+    r"[\+:\-_/]\s*)+",
+    re.IGNORECASE
+)
+
+
+def clean_author_name(name: Optional[str]) -> str:
+    """
+    Cleans raw author name strings by removing role and descriptive prefixes
+    such as 'Auteur + illustrateur', 'Texte et illustration de', 'Illustrateur',
+    'Scénariste', 'Par', etc.
+    """
+    if not name:
+        return ""
+    cleaned = clean_text(name).strip()
+    while True:
+        m = AUTHOR_ROLE_PREFIX_REGEX.sub("", cleaned).strip(" +:-_/")
+        if m == cleaned:
+            break
+        cleaned = m
+    return cleaned
+
+
+def split_author_name(full_name: Optional[str]) -> Tuple[str, str]:
+    """
+    Cleans and splits a full author name into (firstname, lastname).
+    Handles mononyms (e.g. 'RUN', 'Neyef') by returning ('', 'RUN').
+    """
+    cleaned = clean_author_name(full_name)
+    if not cleaned:
+        return ("", "")
+    parts = cleaned.split(None, 1)
+    if len(parts) == 1:
+        return ("", parts[0])
+    return (parts[0], parts[1])
+
+
 @dataclass
 class ScrapedAuthor:
     firstname: str
     lastname: str
     role: str = "Writer"  # 'Writer', 'Illustrator', 'Colorist'
+
 
 @dataclass
 class ScrapedBook:
@@ -50,6 +104,7 @@ class ScrapedBook:
     book_type: Optional[str] = "Comics"
     authors: List[ScrapedAuthor] = field(default_factory=list)
     source_url: Optional[str] = None
+
 
 class BaseScraper(ABC):
     @property

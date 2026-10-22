@@ -6,7 +6,7 @@ from psycopg2.extras import RealDictCursor
 from psycopg2 import pool
 
 from config import settings
-from scrapers.base import ScrapedBook, clean_text
+from scrapers.base import ScrapedBook, clean_text, clean_author_name, split_author_name
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,93 @@ class Database:
         except Exception as e:
             logger.error("Database connection check failed: %s", e)
             return False
+
+    def repair_authors(self, cur=None):
+        """
+        Cleans up any author records that contain role prefixes (e.g. 'Auteur + illustrateurMathieu Bablet',
+        'IllustrateurFlorent Maudoux', etc.), merges them into clean author records, and removes duplicate relations.
+        """
+        should_close = False
+        conn = None
+        if cur is None:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            should_close = True
+
+        try:
+            cur.execute("""
+                SELECT id, firstname, lastname 
+                FROM author 
+                WHERE firstname ~* '^(par|de|texte|sc[eé]nariste|sc[eé]nario|illustration|dessin|auteur|illustrat|colorist|[\\+:\\-_/])'
+                   OR lastname ~* '^(par\\s+|de\\s+|texte|sc[eé]nariste|sc[eé]nario|illustration|dessin|auteur|illustrat|colorist|\\+)'
+                   OR firstname ~* '(illustrateur|scénariste|auteur|dessinateur)'
+                   OR lastname ~* '(illustrateur|scénariste|auteur|dessinateur)';
+            """)
+            corrupted = cur.fetchall()
+            repaired_count = 0
+            for a_id, first, last in corrupted:
+                full_raw = f"{first or ''} {last or ''}".strip()
+                cleaned_full = clean_author_name(full_raw)
+                if not cleaned_full or cleaned_full == full_raw:
+                    continue
+
+                new_first, new_last = split_author_name(cleaned_full)
+                if not new_last:
+                    continue
+
+                # Check if a clean author record already exists
+                cur.execute(
+                    "SELECT id FROM author WHERE LOWER(firstname) = LOWER(%s) AND LOWER(lastname) = LOWER(%s) AND id != %s;",
+                    (new_first, new_last, a_id)
+                )
+                existing = cur.fetchone()
+                if existing:
+                    target_id = existing[0]
+                    # 1. Delete duplicate book_has_author links for books that already have target_id
+                    cur.execute("""
+                        DELETE FROM book_has_author
+                        WHERE author_id = %s
+                          AND book_id IN (
+                              SELECT book_id FROM book_has_author WHERE author_id = %s
+                          );
+                    """, (a_id, target_id))
+                    # 2. Re-point remaining book_has_author links to target_id
+                    cur.execute(
+                        "UPDATE book_has_author SET author_id = %s WHERE author_id = %s;",
+                        (target_id, a_id)
+                    )
+                    # 3. Delete the corrupted author
+                    cur.execute("DELETE FROM author WHERE id = %s;", (a_id,))
+                else:
+                    # No duplicate author exists, update in place
+                    cur.execute(
+                        "UPDATE author SET firstname = %s, lastname = %s, updated_at = NOW() WHERE id = %s;",
+                        (new_first, new_last, a_id)
+                    )
+                repaired_count += 1
+
+            # 4. Remove any duplicate (book_id, author_id) relations in book_has_author
+            cur.execute("""
+                DELETE FROM book_has_author a
+                USING book_has_author b
+                WHERE a.id > b.id
+                  AND a.book_id = b.book_id
+                  AND a.author_id = b.author_id;
+            """)
+
+            if should_close and conn:
+                conn.commit()
+            if repaired_count > 0:
+                logger.info("Repaired and consolidated %d corrupted author records.", repaired_count)
+        except Exception as e:
+            if should_close and conn:
+                conn.rollback()
+            logger.error("Error repairing authors in DB: %s", e)
+            raise
+        finally:
+            if should_close and conn:
+                cur.close()
+                self.return_connection(conn)
 
     def repair_mojibake(self):
         """Repairs any existing corrupted double-encoded UTF-8 and cleans bogus authors in the database."""
@@ -80,6 +167,9 @@ class Database:
                     DELETE FROM author 
                     WHERE LOWER(lastname) IN ('interviews', 'portfolio', 'auteurs');
                 """)
+
+                # 4. Repair & consolidate corrupted author names and relations
+                self.repair_authors(cur)
 
                 conn.commit()
                 if books or series:
@@ -199,7 +289,8 @@ class Database:
                     # INSERT new book
                     cur.execute(
                         """
-                        INSERT INTO book (\n                            title, isbn, volume, page_count, price, description,
+                        INSERT INTO book (
+                            title, isbn, volume, page_count, price, description,
                             series_id, editor_id, release_date, created_at, updated_at,
                             cover_url, type, weight, height, length, thickness
                         ) VALUES (
@@ -228,8 +319,8 @@ class Database:
                 # 6. Authors
                 if book.authors and book_id:
                     for author in book.authors:
-                        clean_first = clean_text(author.firstname) or ""
-                        clean_last = clean_text(author.lastname)
+                        full_name = f"{author.firstname or ''} {author.lastname or ''}".strip()
+                        clean_first, clean_last = split_author_name(full_name)
                         if not clean_last:
                             continue
                         cur.execute(

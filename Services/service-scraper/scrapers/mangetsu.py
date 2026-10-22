@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from dateutil import parser as date_parser
 
 from config import settings
-from scrapers.base import BaseScraper, ScrapedBook, ScrapedAuthor, clean_text
+from scrapers.base import BaseScraper, ScrapedBook, ScrapedAuthor, clean_text, split_author_name
 from scrapers.urban_comics import parse_french_date
 
 logger = logging.getLogger(__name__)
@@ -172,11 +172,9 @@ class MangetsuScraper(BaseScraper):
         author_m = re.search(r"Auteursde l['’]œuvre\s*([A-Za-zÀ-ÿ\s\-]+)Auteur", page_content)
         if author_m:
             a_name = author_m.group(1).strip()
-            parts = a_name.split()
-            if len(parts) >= 2:
-                authors.append(ScrapedAuthor(firstname=parts[0], lastname=" ".join(parts[1:])))
-            elif len(parts) == 1:
-                authors.append(ScrapedAuthor(firstname="", lastname=parts[0]))
+            fn, ln = split_author_name(a_name)
+            if ln:
+                authors.append(ScrapedAuthor(firstname=fn, lastname=ln))
 
         # 8. Series & Volume
         series_name = title
