@@ -175,6 +175,18 @@ class UrbanComicsScraper(BaseScraper):
     def name(self) -> str:
         return "urban_comics"
 
+    @property
+    def display_name(self) -> str:
+        return "Urban Comics"
+
+    @property
+    def description(self) -> str:
+        return "Comics DC, Indies, Urban Link"
+
+    @property
+    def color(self) -> str:
+        return "#3b82f6"
+
     def _create_session(self) -> requests.Session:
         session = requests.Session()
         adapter = HTTPAdapter(pool_connections=12, pool_maxsize=12, max_retries=2)

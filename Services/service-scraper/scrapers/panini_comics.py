@@ -16,6 +16,18 @@ class PaniniComicsScraper(BaseScraper):
     def name(self) -> str:
         return "panini"
 
+    @property
+    def display_name(self) -> str:
+        return "Panini Comics"
+
+    @property
+    def description(self) -> str:
+        return "Marvel, Star Wars, Panini Manga"
+
+    @property
+    def color(self) -> str:
+        return "#ef4444"
+
     def scrape(self, max_items: int = 50, full_scan: bool = False) -> List[ScrapedBook]:
         books: List[ScrapedBook] = []
         urls_to_visit = [

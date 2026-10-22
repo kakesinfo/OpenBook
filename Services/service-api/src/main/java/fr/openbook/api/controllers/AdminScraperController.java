@@ -1,0 +1,66 @@
+package fr.openbook.api.controllers;
+
+import fr.openbook.api.services.ScraperService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/admin/scrapers")
+@RequiredArgsConstructor(onConstructor = @__(@Autowired))
+public class AdminScraperController {
+
+    private final ScraperService scraperService;
+
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> getStatus() {
+        return ResponseEntity.ok(scraperService.getStatus());
+    }
+
+    @GetMapping
+    public ResponseEntity<Map<String, Object>> getSources() {
+        return ResponseEntity.ok(scraperService.getSources());
+    }
+
+    @PutMapping("/{source}")
+    public ResponseEntity<Map<String, Object>> toggleSource(
+            @PathVariable String source,
+            @RequestBody Map<String, Boolean> body
+    ) {
+        boolean enabled = body != null && Boolean.TRUE.equals(body.get("enabled"));
+        return ResponseEntity.ok(scraperService.toggleSource(source, enabled));
+    }
+
+    @PostMapping("/scan")
+    public ResponseEntity<Map<String, Object>> triggerScan(
+            @RequestBody(required = false) Map<String, Object> request
+    ) {
+        List<String> sources = null;
+        boolean full = false;
+
+        if (request != null) {
+            if (request.containsKey("sources") && request.get("sources") instanceof List<?> list) {
+                sources = list.stream().map(Object::toString).toList();
+            }
+            if (request.containsKey("full") && request.get("full") instanceof Boolean b) {
+                full = b;
+            }
+        }
+        return ResponseEntity.ok(scraperService.triggerScrape(sources, full));
+    }
+
+    @PostMapping("/repair")
+    public ResponseEntity<Map<String, Object>> repair() {
+        return ResponseEntity.ok(scraperService.repair());
+    }
+}

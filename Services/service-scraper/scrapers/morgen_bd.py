@@ -17,6 +17,18 @@ class MorgenBDScraper(BaseScraper):
     def name(self) -> str:
         return "morgen_bd"
 
+    @property
+    def display_name(self) -> str:
+        return "Morgen BD"
+
+    @property
+    def description(self) -> str:
+        return "Boutique & nouveautés indés Morgen"
+
+    @property
+    def color(self) -> str:
+        return "#8b5cf6"
+
     def scrape(self, max_items: int = 50, full_scan: bool = False) -> List[ScrapedBook]:
         books: List[ScrapedBook] = []
         base_url = "https://www.morgen-bd.com"

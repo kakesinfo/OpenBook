@@ -16,6 +16,14 @@ import {
 import useSession from "../../hooks/UseSession.tsx";
 import "./AdminPage.scss";
 
+export interface ScraperSource {
+    id: string;
+    name: string;
+    desc: string;
+    color: string;
+    enabled: boolean;
+}
+
 interface JobHistory {
     start_time: string;
     source: string;
@@ -29,68 +37,43 @@ interface ScraperStatus {
     current_job: string | null;
     last_run: string | null;
     last_status: string;
-    available_sources: string[];
+    sources?: ScraperSource[];
+    available_sources?: string[];
     disabled_sources?: string[];
     enabled_sources?: string[];
-    schedule: {
+    connected?: boolean;
+    schedule?: {
         daily_at: string;
         scrape_on_startup: boolean;
     };
     recent_history?: JobHistory[];
 }
 
-const SCRAPER_API_URL = "http://localhost:5001";
-
-const PUBLISHERS = [
-    { id: "urban_comics", name: "Urban Comics", desc: "Comics DC, Indies, Urban Link", color: "#3b82f6" },
-    { id: "panini", name: "Panini Comics", desc: "Marvel, Star Wars, Panini Manga", color: "#ef4444" },
-    { id: "morgen_bd", name: "Morgen BD", desc: "Boutique & nouveautés indés Morgen", color: "#8b5cf6" },
-    { id: "mangetsu", name: "Mangetsu", desc: "Mangas seinen, shonen & nouveautés japonaises", color: "#f59e0b" },
-    { id: "label619", name: "Label 619", desc: "Mutafukaz, Rue de Sèvres, BD alternatives", color: "#ec4899" }
-];
-
 export default function AdminPage() {
     const session = useSession();
     const [status, setStatus] = useState<ScraperStatus | null>(null);
+    const [sources, setSources] = useState<ScraperSource[]>([]);
     const [loading, setLoading] = useState(false);
     const [triggerMessage, setTriggerMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [totalBooks, setTotalBooks] = useState<number>(0);
     const [serverConnected, setServerConnected] = useState<boolean | null>(null);
 
-    // Enabled/Disabled state per scraper source
-    const [enabledSources, setEnabledSources] = useState<Record<string, boolean>>(() => {
-        try {
-            const saved = localStorage.getItem("scraper_enabled_sources");
-            if (saved) {
-                return JSON.parse(saved);
-            }
-        } catch {
-            // fallback
-        }
-        return PUBLISHERS.reduce<Record<string, boolean>>((acc, p) => {
-            acc[p.id] = true;
-            return acc;
-        }, {});
-    });
-
     // Multiple selection of sources (only active sources can be selected)
     const [selectedSources, setSelectedSources] = useState<string[]>([]);
     const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
-    // Filter active publishers
-    const activePublishers = PUBLISHERS.filter((p) => enabledSources[p.id] !== false);
-    const activeCount = activePublishers.length;
+    // Active sources derived from backend data
+    const activeSources = sources.filter((s) => s.enabled);
+    const activeCount = activeSources.length;
 
-    // Sort publishers: active ones first, inactive ones at the bottom
-    const sortedPublishers = [...PUBLISHERS].sort((a, b) => {
-        const aActive = enabledSources[a.id] !== false;
-        const bActive = enabledSources[b.id] !== false;
-        if (aActive === bActive) return 0;
-        return aActive ? -1 : 1;
+    // Sort: active scrapers first, inactive scrapers sorted at the bottom
+    const sortedSources = [...sources].sort((a, b) => {
+        if (a.enabled === b.enabled) return 0;
+        return a.enabled ? -1 : 1;
     });
 
-    // Manage select all state based strictly on active publishers
-    const allActiveSelected = activeCount > 0 && activePublishers.every((p) => selectedSources.includes(p.id));
+    // Checkbox select all state
+    const allActiveSelected = activeCount > 0 && activeSources.every((s) => selectedSources.includes(s.id));
     const isIndeterminate = selectedSources.length > 0 && !allActiveSelected;
 
     useEffect(() => {
@@ -101,28 +84,17 @@ export default function AdminPage() {
 
     const fetchStatus = async () => {
         try {
-            const resp = await fetch(`${SCRAPER_API_URL}/api/status`);
+            const resp = await session.customFetch("/admin/scrapers/status", { method: "GET" });
             if (resp.ok) {
                 const data: ScraperStatus = await resp.json();
                 setStatus(data);
-                setServerConnected(true);
+                setServerConnected(data.connected !== false);
 
-                if (Array.isArray(data.disabled_sources)) {
-                    setEnabledSources((prev) => {
-                        const updated = { ...prev };
-                        PUBLISHERS.forEach((p) => {
-                            updated[p.id] = !data.disabled_sources?.includes(p.id);
-                        });
-                        try {
-                            localStorage.setItem("scraper_enabled_sources", JSON.stringify(updated));
-                        } catch {
-                            // ignore
-                        }
-                        return updated;
-                    });
-                    // Automatically unselect any disabled source
+                if (Array.isArray(data.sources)) {
+                    setSources(data.sources);
+                    // Filter out any selected source that became disabled
                     setSelectedSources((prev) =>
-                        prev.filter((id) => !data.disabled_sources?.includes(id))
+                        prev.filter((id) => data.sources?.find((s) => s.id === id)?.enabled)
                     );
                 }
             } else {
@@ -154,8 +126,8 @@ export default function AdminPage() {
 
     const handleToggleSelect = (sourceId: string, e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
-        // Do not allow selecting disabled sources
-        if (enabledSources[sourceId] === false) return;
+        const src = sources.find((s) => s.id === sourceId);
+        if (!src || !src.enabled) return;
 
         setSelectedSources((prev) =>
             prev.includes(sourceId)
@@ -169,70 +141,61 @@ export default function AdminPage() {
         if (allActiveSelected) {
             setSelectedSources([]);
         } else {
-            setSelectedSources(activePublishers.map((p) => p.id));
+            setSelectedSources(activeSources.map((s) => s.id));
         }
     };
 
     const handleToggleSource = async (sourceId: string, e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
-        const nextState = !enabledSources[sourceId];
-        const updated = { ...enabledSources, [sourceId]: nextState };
-        setEnabledSources(updated);
+        const target = sources.find((s) => s.id === sourceId);
+        if (!target) return;
+        const nextState = !target.enabled;
 
-        // If deactivating, remove from selection
+        // Optimistic UI update
+        setSources((prev) =>
+            prev.map((s) => (s.id === sourceId ? { ...s, enabled: nextState } : s))
+        );
+
         if (!nextState) {
             setSelectedSources((prev) => prev.filter((id) => id !== sourceId));
         }
 
         try {
-            localStorage.setItem("scraper_enabled_sources", JSON.stringify(updated));
-        } catch {
-            // ignore
-        }
-
-        try {
-            const resp = await fetch(`${SCRAPER_API_URL}/api/sources/${sourceId}`, {
+            const resp = await session.customFetch(`/admin/scrapers/${sourceId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ enabled: nextState })
             });
             if (resp.ok) {
-                const pubName = PUBLISHERS.find((p) => p.id === sourceId)?.name || sourceId;
                 setTriggerMessage({
                     type: "success",
-                    text: `Scraper pour ${pubName} ${nextState ? "activé" : "désactivé"}.`
+                    text: `Scraper pour ${target.name} ${nextState ? "activé" : "désactivé"}.`
                 });
                 await fetchStatus();
             }
         } catch {
-            // Keep local state even if remote endpoint fails
+            await fetchStatus();
         }
     };
 
-    const handleTriggerScrape = async (sources?: string[], full: boolean = false) => {
+    const handleTriggerScrape = async (targetSources?: string[], full: boolean = false) => {
         setLoading(true);
         setTriggerMessage(null);
         try {
-            let url = `${SCRAPER_API_URL}/api/scrape`;
-            const params = new URLSearchParams();
-            if (sources && sources.length > 0) {
-                params.append("sources", sources.join(","));
-            }
-            if (full) {
-                params.append("full", "true");
-            }
-            const qs = params.toString();
-            if (qs) {
-                url += `?${qs}`;
-            }
-
-            const resp = await fetch(url, { method: "POST" });
+            const resp = await session.customFetch("/admin/scrapers/scan", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    sources: targetSources && targetSources.length > 0 ? targetSources : null,
+                    full: full
+                })
+            });
             const data = await resp.json();
 
             let targetLabel = "toutes les sources actives";
-            if (sources && sources.length > 0) {
-                targetLabel = sources
-                    .map((s) => PUBLISHERS.find((p) => p.id === s)?.name || s)
+            if (targetSources && targetSources.length > 0) {
+                targetLabel = targetSources
+                    .map((id) => sources.find((s) => s.id === id)?.name || id)
                     .join(", ");
             }
 
@@ -245,7 +208,7 @@ export default function AdminPage() {
         } catch {
             setTriggerMessage({
                 type: "error",
-                text: "Impossible de joindre le microservice scraper sur le port 5001."
+                text: "Impossible de joindre le service scraper via le backend."
             });
         } finally {
             setLoading(false);
@@ -256,7 +219,7 @@ export default function AdminPage() {
         if (selectedSources.length === 0) {
             setTriggerMessage({
                 type: "error",
-                text: "Veuillez cocher au moins une source dans le tableau pour lancer un scan rapide."
+                text: "Veuillez cocher au moins une source active dans le tableau pour lancer un scan rapide."
             });
             return;
         }
@@ -264,12 +227,10 @@ export default function AdminPage() {
     };
 
     const handleFullScan = () => {
-        // If sources are checked, scan those checked.
-        // Otherwise, scan all active (enabled) sources.
         if (selectedSources.length > 0) {
             handleTriggerScrape(selectedSources, true);
         } else {
-            const activeList = activePublishers.map((p) => p.id);
+            const activeList = activeSources.map((s) => s.id);
             if (activeList.length === 0) {
                 setTriggerMessage({
                     type: "error",
@@ -285,7 +246,9 @@ export default function AdminPage() {
         setLoading(true);
         setTriggerMessage(null);
         try {
-            const resp = await fetch(`${SCRAPER_API_URL}/api/repair`, { method: "POST" });
+            const resp = await session.customFetch("/admin/scrapers/repair", {
+                method: "POST"
+            });
             const data = await resp.json();
             setTriggerMessage({
                 type: "success",
@@ -476,7 +439,7 @@ export default function AdminPage() {
                                 Sources configurées
                             </div>
                             <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--text-primary, #fff)" }}>
-                                {activeCount} / {PUBLISHERS.length} <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-muted, #9ca3af)" }}>actives</span>
+                                {activeCount} / {sources.length} <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-muted, #9ca3af)" }}>actives</span>
                             </div>
                         </div>
                     </div>
@@ -491,7 +454,7 @@ export default function AdminPage() {
                                     Éditeurs & Sources
                                 </h3>
                                 <span className="admin-sources-panel__badge">
-                                    {activeCount} / {PUBLISHERS.length} actives
+                                    {activeCount} / {sources.length} actives
                                 </span>
                                 {selectedSources.length > 0 && (
                                     <span className="admin-sources-panel__badge admin-sources-panel__badge--selected">
@@ -574,15 +537,15 @@ export default function AdminPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedPublishers.map((pub) => {
-                                    const isEnabled = enabledSources[pub.id] !== false;
-                                    const isSelected = isEnabled && selectedSources.includes(pub.id);
+                                {sortedSources.map((source) => {
+                                    const isEnabled = source.enabled;
+                                    const isSelected = isEnabled && selectedSources.includes(source.id);
 
                                     return (
                                         <tr
-                                            key={pub.id}
+                                            key={source.id}
                                             className={`admin-sources-table__row ${isSelected ? "is-selected" : ""} ${!isEnabled ? "is-disabled" : ""}`}
-                                            onClick={isEnabled ? () => handleToggleSelect(pub.id) : undefined}
+                                            onClick={isEnabled ? () => handleToggleSelect(source.id) : undefined}
                                         >
                                             {/* Checkbox column: only if enabled */}
                                             <td
@@ -594,7 +557,7 @@ export default function AdminPage() {
                                                         type="checkbox"
                                                         className="admin-checkbox"
                                                         checked={isSelected}
-                                                        onChange={() => handleToggleSelect(pub.id)}
+                                                        onChange={() => handleToggleSelect(source.id)}
                                                     />
                                                 ) : (
                                                     <span className="admin-sources-table__no-check" title="Scraper désactivé">-</span>
@@ -605,17 +568,17 @@ export default function AdminPage() {
                                                 <div className="source-cell">
                                                     <span
                                                         className="source-cell__dot"
-                                                        style={{ backgroundColor: isEnabled ? pub.color : "#6b7280" }}
+                                                        style={{ backgroundColor: isEnabled ? source.color : "#6b7280" }}
                                                     />
                                                     <div className="source-cell__info">
-                                                        <span className="source-cell__name">{pub.name}</span>
-                                                        <span className="source-cell__code">{pub.id}</span>
+                                                        <span className="source-cell__name">{source.name}</span>
+                                                        <span className="source-cell__code">{source.id}</span>
                                                     </div>
                                                 </div>
                                             </td>
 
                                             <td>
-                                                <span className="source-description">{pub.desc}</span>
+                                                <span className="source-description">{source.desc}</span>
                                             </td>
 
                                             {/* Toggle switch: always available to re-enable or disable */}
@@ -630,7 +593,7 @@ export default function AdminPage() {
                                                     <input
                                                         type="checkbox"
                                                         checked={isEnabled}
-                                                        onChange={() => handleToggleSource(pub.id)}
+                                                        onChange={() => handleToggleSource(source.id)}
                                                         disabled={loading || status?.is_running}
                                                     />
                                                     <span className="admin-toggle__slider" />
@@ -649,11 +612,11 @@ export default function AdminPage() {
                                                     <button
                                                         type="button"
                                                         className="admin-row-btn"
-                                                        onClick={() => handleTriggerScrape([pub.id], false)}
+                                                        onClick={() => handleTriggerScrape([source.id], false)}
                                                         disabled={loading || status?.is_running}
-                                                        title={`Scanner ${pub.name} (scan rapide)`}
+                                                        title={`Scanner ${source.name} (scan rapide)`}
                                                     >
-                                                        <FontAwesomeIcon icon={faBolt} style={{ color: pub.color }} />
+                                                        <FontAwesomeIcon icon={faBolt} style={{ color: source.color }} />
                                                         <span>Scanner</span>
                                                     </button>
                                                 )}

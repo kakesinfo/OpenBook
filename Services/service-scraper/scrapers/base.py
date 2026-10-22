@@ -58,6 +58,21 @@ class BaseScraper(ABC):
         """Name of the scraper/source (e.g. 'urban_comics', 'panini', 'morgen_bd', 'mangetsu', 'label619')"""
         pass
 
+    @property
+    def display_name(self) -> str:
+        """Human-friendly display name"""
+        return self.name.replace("_", " ").title()
+
+    @property
+    def description(self) -> str:
+        """Publisher/source description"""
+        return ""
+
+    @property
+    def color(self) -> str:
+        """Brand accent color (hex)"""
+        return "#6366f1"
+
     @abstractmethod
     def scrape(self, max_items: int = 50, full_scan: bool = False) -> List[ScrapedBook]:
         """Scrape books from the source and return a list of ScrapedBook objects."""

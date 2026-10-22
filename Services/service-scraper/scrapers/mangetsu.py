@@ -18,6 +18,18 @@ class MangetsuScraper(BaseScraper):
     def name(self) -> str:
         return "mangetsu"
 
+    @property
+    def display_name(self) -> str:
+        return "Mangetsu"
+
+    @property
+    def description(self) -> str:
+        return "Mangas seinen, shonen & nouveautés japonaises"
+
+    @property
+    def color(self) -> str:
+        return "#f59e0b"
+
     def scrape(self, max_items: int = 50, full_scan: bool = False) -> List[ScrapedBook]:
         books: List[ScrapedBook] = []
         base_url = "https://mangetsu-manga.fr"

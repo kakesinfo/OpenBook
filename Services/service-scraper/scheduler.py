@@ -55,6 +55,19 @@ class ScraperManager:
     def is_source_enabled(self, source: str) -> bool:
         return source not in self.disabled_sources
 
+    def get_sources(self) -> List[Dict[str, Any]]:
+        result = []
+        for s_name, scraper_cls in SCRAPERS.items():
+            scraper = scraper_cls()
+            result.append({
+                "id": scraper.name,
+                "name": scraper.display_name,
+                "desc": scraper.description,
+                "color": scraper.color,
+                "enabled": scraper.name not in self.disabled_sources
+            })
+        return result
+
     def start_scheduler(self):
         trigger = CronTrigger(
             hour=settings.SCHEDULE_HOUR,
@@ -218,6 +231,7 @@ class ScraperManager:
             "current_job": self.current_job,
             "last_run": self.last_run.isoformat() if self.last_run else None,
             "last_status": self.last_status,
+            "sources": self.get_sources(),
             "available_sources": list(SCRAPERS.keys()),
             "disabled_sources": list(self.disabled_sources),
             "enabled_sources": [s for s in SCRAPERS.keys() if s not in self.disabled_sources],

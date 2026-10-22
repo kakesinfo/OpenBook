@@ -24,6 +24,18 @@ class Label619Scraper(BaseScraper):
     def name(self) -> str:
         return "label619"
 
+    @property
+    def display_name(self) -> str:
+        return "Label 619"
+
+    @property
+    def description(self) -> str:
+        return "Mutafukaz, Rue de Sèvres, BD alternatives"
+
+    @property
+    def color(self) -> str:
+        return "#ec4899"
+
     def scrape(self, max_items: int = 50, full_scan: bool = False) -> List[ScrapedBook]:
         books: List[ScrapedBook] = []
         session = requests.Session()

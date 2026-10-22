@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query, Path
+from fastapi import FastAPI, HTTPException, Query, Path, Body
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
 from pydantic import BaseModel
@@ -59,27 +59,26 @@ def status():
 @app.get("/api/sources")
 def get_sources():
     return {
-        "sources": [
-            {
-                "id": s,
-                "enabled": scraper_manager.is_source_enabled(s)
-            }
-            for s in SCRAPERS.keys()
-        ]
+        "sources": scraper_manager.get_sources()
     }
 
 @app.put("/api/sources/{source}")
-def update_source_status(source: str, body: SourceToggleRequest):
+def update_source_status(
+    source: str,
+    body: Optional[SourceToggleRequest] = None,
+    enabled: Optional[bool] = Query(None)
+):
     if source not in SCRAPERS:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid source '{source}'. Available: {list(SCRAPERS.keys())}"
         )
-    scraper_manager.set_source_enabled(source, body.enabled)
+    is_enabled = body.enabled if body is not None else (enabled if enabled is not None else True)
+    scraper_manager.set_source_enabled(source, is_enabled)
     return {
         "source": source,
-        "enabled": body.enabled,
-        "message": f"Source {source} {'activée' if body.enabled else 'désactivée'}."
+        "enabled": is_enabled,
+        "message": f"Source {source} {'activée' if is_enabled else 'désactivée'}."
     }
 
 @app.post("/api/scrape")
