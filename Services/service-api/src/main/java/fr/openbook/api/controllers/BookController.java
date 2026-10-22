@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,6 +41,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -75,17 +77,19 @@ public class BookController {
     @GetMapping("/newest")
     public ResponseEntity<?> getAllOrderedByReleaseDateDesc(
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false, defaultValue = "24") Integer size
+            @RequestParam(required = false, defaultValue = "20") Integer size,
+            @RequestParam(required = false, defaultValue = "100") Integer limit
     ) {
-        return getBooksOrderedByReleaseDate("desc", page, size);
+        return getBooksOrderedByReleaseDate("desc", page, size, limit);
     }
 
     @GetMapping("/oldest")
     public ResponseEntity<?> getAllOrderedByReleaseDateAsc(
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false, defaultValue = "24") Integer size
+            @RequestParam(required = false, defaultValue = "20") Integer size,
+            @RequestParam(required = false, defaultValue = "100") Integer limit
     ) {
-        return getBooksOrderedByReleaseDate("asc", page, size);
+        return getBooksOrderedByReleaseDate("asc", page, size, limit);
     }
 
     @GetMapping("/upcoming")
@@ -114,31 +118,49 @@ public class BookController {
                 .collect(Collectors.toList());
     }
 
-    private ResponseEntity<?> getBooksOrderedByReleaseDate(String order, Integer page, Integer size) {
+    private ResponseEntity<?> getBooksOrderedByReleaseDate(String order, Integer page, Integer size, Integer limit) {
         final BookRepository repository = repositoryService.getBookRepository();
 
-        if (page == null) {
-            List<BookEntity> books = "asc".equalsIgnoreCase(order)
-                    ? repository.findAllByOrderByReleaseDateAsc()
-                    : repository.findAllByOrderByReleaseDateDesc();
+        Sort.Direction direction = "asc".equalsIgnoreCase(order) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sort = Sort.by(direction, "releaseDate").and(Sort.by(direction, "id"));
 
-            return ResponseEntity.ok(books.stream()
+        if (page == null) {
+            Pageable pageable = (limit != null && limit > 0)
+                    ? PageRequest.of(0, limit, sort)
+                    : PageRequest.of(0, 100, sort);
+
+            Page<BookEntity> books = repository.findAll(pageable);
+            return ResponseEntity.ok(books.getContent().stream()
                     .map(this::entityToSummaryDTO)
                     .collect(Collectors.toList()));
         }
 
         int pageIndex = Math.max(0, page - 1);
-        int pageSize = (size != null && size > 0) ? size : 24;
-        Pageable pageable = PageRequest.of(pageIndex, pageSize);
+        int pageSize = (size != null && size > 0) ? size : 20;
+        Pageable pageable = PageRequest.of(pageIndex, pageSize, sort);
 
-        Page<BookEntity> booksPage = "asc".equalsIgnoreCase(order)
-                ? repository.findAllByOrderByReleaseDateAsc(pageable)
-                : repository.findAllByOrderByReleaseDateDesc(pageable);
+        Page<BookEntity> booksPage = repository.findAll(pageable);
+
+        long dbTotal = booksPage.getTotalElements();
+        long effectiveTotal = (limit != null && limit > 0) ? Math.min(limit, dbTotal) : dbTotal;
+        int effectiveTotalPages = (int) Math.max(1, Math.ceil((double) effectiveTotal / pageSize));
+
+        List<BookSummaryDTO> content;
+        long startOffset = (long) pageIndex * pageSize;
+        if (startOffset >= effectiveTotal) {
+            content = Collections.emptyList();
+        } else {
+            long remaining = effectiveTotal - startOffset;
+            int countToTake = (int) Math.min(booksPage.getContent().size(), remaining);
+            content = booksPage.getContent().subList(0, Math.max(0, countToTake)).stream()
+                    .map(this::entityToSummaryDTO)
+                    .collect(Collectors.toList());
+        }
 
         PageDTO<BookSummaryDTO> pageDTO = new PageDTO<>(
-                booksPage.getContent().stream().map(this::entityToSummaryDTO).collect(Collectors.toList()),
-                booksPage.getTotalElements(),
-                booksPage.getTotalPages(),
+                content,
+                effectiveTotal,
+                effectiveTotalPages,
                 pageIndex + 1,
                 pageSize
         );

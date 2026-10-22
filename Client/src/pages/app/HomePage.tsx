@@ -15,13 +15,13 @@ export default function HomePage() {
     const [order, setOrder] = useState<"oldest" | "newest">("newest");
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(24);
+    const [pageSize, setPageSize] = useState(20);
     const [totalBooks, setTotalBooks] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
 
     useEffect(() => {
         setLoading(true);
-        session.customFetch(`/books/${order}?page=${currentPage}&size=${pageSize}`, {
+        session.customFetch(`/books/${order}?page=${currentPage}&size=${pageSize}&limit=100`, {
             method: "GET"
         }).then(async (response) => {
             if (response.ok) {
@@ -31,9 +31,10 @@ export default function HomePage() {
                     setTotalBooks(data.totalElements ?? 0);
                     setTotalPages(data.totalPages ?? 1);
                 } else if (Array.isArray(data)) {
-                    setBooks(data);
-                    setTotalBooks(data.length);
-                    setTotalPages(Math.max(1, Math.ceil(data.length / pageSize)));
+                    const capped = data.slice(0, 100);
+                    setBooks(capped.slice((currentPage - 1) * pageSize, currentPage * pageSize));
+                    setTotalBooks(capped.length);
+                    setTotalPages(Math.max(1, Math.ceil(capped.length / pageSize)));
                 }
             }
         }).catch((err) => {
@@ -94,7 +95,7 @@ export default function HomePage() {
                             endIndex={endIndex}
                             pageSize={pageSize}
                             onPageSizeChange={handlePageSizeChange}
-                            pageSizeOptions={[24, 48, 96]}
+                            pageSizeOptions={[20, 50, 100]}
                         />
                     </>
                 )}

@@ -41,9 +41,9 @@ export default function Pagination({
     endIndex = 0,
     pageSize,
     onPageSizeChange,
-    pageSizeOptions = [24, 48, 96]
+    pageSizeOptions = [20, 50, 100]
 }: PaginationProps) {
-    if (totalPages <= 1 && (!totalItems || totalItems <= (pageSize || 24))) {
+    if (totalPages <= 1 && (!totalItems || totalItems <= (pageSize || 20))) {
         return null;
     }
 
