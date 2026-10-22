@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/app/theme.dart';
 
 import '../../data/book.dart';
 
@@ -10,7 +11,7 @@ class BookCover extends StatelessWidget {
     required this.book,
     this.width = 56,
     this.height = 80,
-    this.borderRadius = 8,
+    this.borderRadius = AppTheme.radiusMd,
   });
 
   final Book book;
@@ -22,55 +23,76 @@ class BookCover extends StatelessWidget {
   Widget build(BuildContext context) {
     final cover = book.coverUrl.trim();
 
-    if (cover.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: cover.startsWith('http://') || cover.startsWith('https://')
-              ? Image.network(
-                  cover,
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  errorBuilder: (context, error, stackTrace) => _fallbackCover(context),
-                )
-              : Image.file(
-                  File(cover),
-                  fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  errorBuilder: (context, error, stackTrace) => _fallbackCover(context),
-                ),
-        ),
-      );
-    }
-
-    return _fallbackCover(context);
-  }
-
-  Widget _fallbackCover(BuildContext context) {
-    final trimmedTitle = book.title.trim();
-    final initials = trimmedTitle.isEmpty ? '?' : trimmedTitle.substring(0, 1).toUpperCase();
-
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF5B8DEF), Color(0xFF1D4ED8)],
-        ),
         borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(color: AppTheme.borderSubtle, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
-      child: Center(
-        child: Text(
-          initials,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-              ),
-        ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: cover.isNotEmpty
+            ? (cover.startsWith('http://') || cover.startsWith('https://')
+                ? Image.network(
+                    cover,
+                    fit: BoxFit.cover,
+                    width: width,
+                    height: height,
+                    gaplessPlayback: true,
+                    errorBuilder: (context, error, stackTrace) => _fallbackCover(context),
+                  )
+                : Image.file(
+                    File(cover),
+                    fit: BoxFit.cover,
+                    width: width,
+                    height: height,
+                    gaplessPlayback: true,
+                    errorBuilder: (context, error, stackTrace) => _fallbackCover(context),
+                  ))
+            : _fallbackCover(context),
+      ),
+    );
+  }
+
+  Widget _fallbackCover(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: const BoxDecoration(
+        gradient: AppTheme.coverFallbackGradient,
+      ),
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.menu_book_rounded,
+            size: 26,
+            color: AppTheme.accentPrimary,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            book.title.isEmpty ? '?' : book.title,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondary,
+              height: 1.2,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/books_providers.dart';
@@ -30,8 +31,12 @@ class BookCard extends ConsumerWidget {
         : DateTime.now().difference(DateTime(startedAt.year, startedAt.month, startedAt.day)).inDays + 1;
 
     final remainingTime = (progress.totalSecondsRead > 0 && totalPages > currentPage && currentPage > 0)
-      ? ((totalPages - currentPage) * (progress.totalSecondsRead / currentPage)).round()
-      : null;
+        ? ((totalPages - currentPage) * (progress.totalSecondsRead / currentPage)).round()
+        : null;
+
+    final seriesText = book.series.isEmpty
+        ? 'Hors série'
+        : (book.volume == null ? book.series : '${book.series} • Tome ${book.volume}');
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -41,25 +46,44 @@ class BookCard extends ConsumerWidget {
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  daysReading <= 0 ? 'Debut non defini' : '$daysReading jours en lecture',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w600,
+                child: Row(
+                  children: [
+                    const Icon(Icons.timer_outlined, size: 14, color: AppTheme.textMuted),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        daysReading <= 0 ? 'Début non défini' : '$daysReading jours en lecture',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textMuted,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                totalPages <= 0
-                    ? 'p. $currentPage'
-                    : 'p. $currentPage / $totalPages',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentPrimaryLight,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                  border: Border.all(
+                    color: AppTheme.accentPrimary.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  totalPages <= 0 ? 'p. $currentPage' : 'p. $currentPage / $totalPages',
+                  style: const TextStyle(
+                    color: AppTheme.accentPrimary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
@@ -67,86 +91,147 @@ class BookCard extends ConsumerWidget {
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: SizedBox(
+          child: Container(
             width: double.infinity,
-            height: 130,
-            child: Card(
-              margin: EdgeInsets.zero,
-              clipBehavior: Clip.none,
+            height: 140,
+            decoration: BoxDecoration(
+              gradient: AppTheme.cardGradient,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              border: Border.all(color: AppTheme.borderSubtle, width: 1),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x66000000),
+                  blurRadius: 16,
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
               child: InkWell(
                 onTap: onEdit,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
+                    // Top Progress Bar
                     Positioned(
                       top: 0,
                       left: 0,
                       right: 0,
                       child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(AppTheme.radiusLg),
+                        ),
                         child: LinearProgressIndicator(
                           value: totalPages <= 0 ? 0.0 : progress.progress,
-                          minHeight: 12,
+                          minHeight: 4,
+                          backgroundColor: AppTheme.borderSubtle,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            AppTheme.accentPrimary,
+                          ),
                         ),
                       ),
                     ),
+                    // Content Info
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(104, 22, 72, 16),
+                      padding: const EdgeInsets.fromLTRB(112, 18, 72, 14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             book.title,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                              letterSpacing: -0.01,
+                            ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          const SizedBox(height: 4),
                           Text(
-                            book.series.isEmpty
-                                ? 'Hors serie'
-                                : (book.volume == null ? book.series : '${book.series} • Tome ${book.volume}'),
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black54),
+                            seriesText,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          Text(
-                            remainingTime == null
-                                ? 'Temps de lecture indéfini'
-                                : '${Duration(seconds: remainingTime).inHours}h ${Duration(seconds: remainingTime).inMinutes.remainder(60)}m restants',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black54),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.access_time_rounded,
+                                size: 13,
+                                color: AppTheme.textMuted,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  remainingTime == null
+                                      ? 'Temps restant indéfini'
+                                      : '${Duration(seconds: remainingTime).inHours}h ${Duration(seconds: remainingTime).inMinutes.remainder(60)}m restants',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.textMuted,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
+                    // Overlapping Book Cover
                     Positioned(
                       left: 14,
-                      bottom: -14,
+                      bottom: -12,
                       child: BookCover(
                         book: book,
-                        width: 76,
-                        height: 112,
-                        borderRadius: 10,
+                        width: 82,
+                        height: 124,
+                        borderRadius: AppTheme.radiusMd,
                       ),
                     ),
+                    // Quick Action Button (log session)
                     if (onRecordSession != null)
                       Positioned(
                         right: 14,
-                        bottom: -14,
-                        child: Material(
-                          elevation: 2,
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: onRecordSession,
-                            child: const SizedBox(
-                              width: 48,
-                              height: 48,
-                              child: Icon(Icons.edit_outlined),
+                        bottom: -10,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.primaryGradient,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.accentPrimary.withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: onRecordSession,
+                              child: const SizedBox(
+                                width: 44,
+                                height: 44,
+                                child: Icon(
+                                  Icons.edit_note_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                              ),
                             ),
                           ),
                         ),

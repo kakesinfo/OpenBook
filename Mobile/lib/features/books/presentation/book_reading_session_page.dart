@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/books_providers.dart';
@@ -79,8 +80,9 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      backgroundColor: AppTheme.bgSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => _DurationBottomSheet(initialDuration: _duration),
     );
@@ -96,8 +98,9 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      backgroundColor: AppTheme.bgSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => _PageWheelBottomSheet(
         totalPages: totalPages,
@@ -141,58 +144,147 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Enregistrer la session de lecture'),
+        title: const Text('Enregistrer la session'),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
         children: [
           Text(
             widget.book.title,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.textPrimary,
+              letterSpacing: -0.02,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Renseignez la durée et la progression de votre session de lecture.',
+            style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
           ),
           const SizedBox(height: 20),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.event_outlined),
-              title: const Text('Date et heure'),
-              subtitle: Text(_formatDateTime(_sessionDateTime)),
-              onTap: _pickDateTime,
-            ),
+          _SessionOptionCard(
+            icon: Icons.event_rounded,
+            title: 'Date et heure',
+            subtitle: _formatDateTime(_sessionDateTime),
+            iconColor: AppTheme.accentPrimary,
+            iconBg: AppTheme.accentPrimaryLight,
+            onTap: _pickDateTime,
           ),
           const SizedBox(height: 12),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.timer_outlined),
-              title: const Text('Temps de lecture'),
-              subtitle: Text(_formatDuration(_duration)),
-              onTap: _editDuration,
-            ),
+          _SessionOptionCard(
+            icon: Icons.timer_rounded,
+            title: 'Temps de lecture',
+            subtitle: _formatDuration(_duration),
+            iconColor: AppTheme.accentAmber,
+            iconBg: AppTheme.accentAmberLight,
+            onTap: _editDuration,
           ),
           const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.menu_book_outlined),
-                    title: const Text('Pages'),
-                    subtitle: Text(currentPageText),
-                    onTap: _editPages,
-                  ),
-                ],
+          _SessionOptionCard(
+            icon: Icons.menu_book_rounded,
+            title: 'Pages lues',
+            subtitle: currentPageText,
+            iconColor: AppTheme.accentSecondary,
+            iconBg: AppTheme.accentSecondaryLight,
+            onTap: _editPages,
+          ),
+          const SizedBox(height: 24),
+          Container(
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x4D10B981),
+                  blurRadius: 14,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                onTap: _saving ? null : _save,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.check_rounded, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      _saving ? 'Enregistrement...' : 'Enregistrer la session',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: _saving ? null : _save,
-            icon: const Icon(Icons.save_outlined),
-            label: Text(_saving ? 'Enregistrement...' : 'Enregistrer la session'),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+class _SessionOptionCard extends StatelessWidget {
+  const _SessionOptionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.iconColor,
+    required this.iconBg,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color iconColor;
+  final Color iconBg;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.bgSurface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.borderSubtle, width: 1),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMd)),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: iconBg,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          ),
+          child: Center(
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
       ),
     );
   }
@@ -216,8 +308,12 @@ class _DurationBottomSheetState extends State<_DurationBottomSheet> {
   void initState() {
     super.initState();
     _hoursController = TextEditingController(text: widget.initialDuration.inHours.toString());
-    _minutesController = TextEditingController(text: widget.initialDuration.inMinutes.remainder(60).toString());
-    _secondsController = TextEditingController(text: widget.initialDuration.inSeconds.remainder(60).toString());
+    _minutesController = TextEditingController(
+      text: widget.initialDuration.inMinutes.remainder(60).toString(),
+    );
+    _secondsController = TextEditingController(
+      text: widget.initialDuration.inSeconds.remainder(60).toString(),
+    );
   }
 
   @override
@@ -243,14 +339,18 @@ class _DurationBottomSheetState extends State<_DurationBottomSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            const Text(
               'Temps de lecture',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -280,7 +380,7 @@ class _DurationBottomSheetState extends State<_DurationBottomSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             FilledButton(
               onPressed: _submit,
               child: const Text('Valider'),
@@ -331,18 +431,22 @@ class _PageWheelBottomSheetState extends State<_PageWheelBottomSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            const Text(
               'Pages lues',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 260,
+              height: 240,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -366,10 +470,11 @@ class _PageWheelBottomSheetState extends State<_PageWheelBottomSheet> {
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                             child: AnimatedDefaultTextStyle(
                               duration: const Duration(milliseconds: 150),
-                              style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-                                    color: selected ? Theme.of(context).colorScheme.primary : Colors.black54,
-                                  ),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                                color: selected ? AppTheme.accentPrimary : AppTheme.textMuted,
+                              ),
                               child: Text(
                                 totalPages <= 0 ? 'p. 0' : 'p. $index / $totalPages',
                                 textAlign: TextAlign.center,
@@ -386,10 +491,10 @@ class _PageWheelBottomSheetState extends State<_PageWheelBottomSheet> {
                       height: 46,
                       margin: const EdgeInsets.symmetric(horizontal: 6),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(18),
+                        color: AppTheme.accentPrimaryLight,
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.28),
+                          color: AppTheme.accentPrimary.withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/books_providers.dart';
@@ -24,6 +25,21 @@ class BookReadingHistoryPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
         children: [
+          Text(
+            book.title,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.textPrimary,
+              letterSpacing: -0.02,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Toutes les sessions de lecture enregistrées pour cet ouvrage.',
+            style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
+          ),
+          const SizedBox(height: 20),
           _ReadingSessionsHistoryCard(sessionsAsync: sessionsAsync),
         ],
       ),
@@ -43,22 +59,32 @@ class _ReadingSessionsHistoryCard extends ConsumerWidget {
       child: sessionsAsync.when(
         loading: () => const SizedBox(
           height: 56,
-          child: Center(child: CircularProgressIndicator()),
+          child: Center(child: CircularProgressIndicator(color: AppTheme.accentPrimary)),
         ),
-        error: (error, stackTrace) => Text(
-          'Impossible de charger les sessions: $error',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.redAccent),
+        error: (error, _) => Text(
+          'Impossible de charger les sessions : $error',
+          style: const TextStyle(color: AppTheme.accentRed),
         ),
         data: (sessions) {
           if (sessions.isEmpty) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Aucune session enregistree pour ce livre.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.black54),
-                ),
-              ],
+            return Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppTheme.bgSurface,
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                border: Border.all(color: AppTheme.borderSubtle, width: 1),
+              ),
+              child: const Column(
+                children: [
+                  Icon(Icons.history_rounded, size: 36, color: AppTheme.textMuted),
+                  SizedBox(height: 12),
+                  Text(
+                    'Aucune session enregistrée pour ce livre.',
+                    style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             );
           }
 
@@ -83,31 +109,35 @@ class _ReadingSessionsHistoryCard extends ConsumerWidget {
                 final durationLabel =
                     '${duration.inHours.toString().padLeft(2, '0')}:${duration.inMinutes.remainder(60).toString().padLeft(2, '0')}:${duration.inSeconds.remainder(60).toString().padLeft(2, '0')}';
 
-                final colorScheme = Theme.of(context).colorScheme;
                 final itemColor = isStart
-                    ? colorScheme.primaryContainer.withValues(alpha: 0.35)
+                    ? AppTheme.accentPrimaryLight
                     : isEnd
-                        ? Colors.green.withValues(alpha: 0.14)
-                        : colorScheme.surfaceContainerLow;
+                        ? const Color(0x1F10B981)
+                        : AppTheme.bgSurface;
+
                 final chipColor = isStart
-                    ? colorScheme.primary.withValues(alpha: 0.14)
+                    ? AppTheme.accentPrimaryLight
                     : isEnd
-                        ? Colors.green.withValues(alpha: 0.18)
-                        : Colors.black.withValues(alpha: 0.05);
+                        ? const Color(0x2810B981)
+                        : const Color(0x1AFFFFFF);
+
                 final chipTextColor = isStart
-                    ? colorScheme.primary
+                    ? AppTheme.accentPrimary
                     : isEnd
-                        ? Colors.green.shade800
-                        : Theme.of(context).textTheme.labelSmall?.color;
+                        ? const Color(0xFF34D399)
+                        : AppTheme.textSecondary;
+
                 final leadingIcon = isStart
                     ? Icons.play_arrow_rounded
                     : isEnd
                         ? Icons.flag_rounded
-                        : Icons.menu_book_outlined;
+                        : Icons.menu_book_rounded;
 
-                final connectsUp = item.inTimeline && index > 0 && timelineSessions[index - 1].inTimeline;
-                final connectsDown =
-                    item.inTimeline && index < timelineSessions.length - 1 && timelineSessions[index + 1].inTimeline;
+                final connectsUp =
+                    item.inTimeline && index > 0 && timelineSessions[index - 1].inTimeline;
+                final connectsDown = item.inTimeline &&
+                    index < timelineSessions.length - 1 &&
+                    timelineSessions[index + 1].inTimeline;
 
                 return IntrinsicHeight(
                   child: Row(
@@ -115,94 +145,120 @@ class _ReadingSessionsHistoryCard extends ConsumerWidget {
                     children: [
                       _TimelineMarker(
                         lineColor: item.inTimeline
-                            ? colorScheme.primary.withValues(alpha: 0.9)
-                            : colorScheme.outline.withValues(alpha: 0.35),
-                        baseLineColor: colorScheme.outline.withValues(alpha: 0.28),
-                        dotColor: item.inTimeline
-                            ? colorScheme.primary
-                            : colorScheme.outline.withValues(alpha: 1),
+                            ? AppTheme.accentPrimary.withValues(alpha: 0.9)
+                            : AppTheme.borderSubtle,
+                        baseLineColor: AppTheme.borderSubtle,
+                        dotColor: item.inTimeline ? AppTheme.accentPrimary : AppTheme.textMuted,
                         drawTop: connectsUp,
                         drawBottom: connectsDown,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.only(bottom: 12),
                           child: Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.fromLTRB(12, 10, 6, 8),
+                            padding: const EdgeInsets.fromLTRB(14, 12, 8, 10),
                             decoration: BoxDecoration(
                               color: itemColor,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                              border: Border.all(color: AppTheme.borderSubtle, width: 1),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     Icon(leadingIcon, size: 18, color: chipTextColor),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        '$day/$month/$year a $hour:$minute',
-                                        style: Theme.of(context).textTheme.bodyMedium,
+                                        '$day/$month/$year à $hour:$minute',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.textPrimary,
+                                        ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: chipColor,
-                                        borderRadius: BorderRadius.circular(999),
+                                        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                                       ),
                                       child: Text(
                                         session.type.label,
-                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                              color: chipTextColor,
-                                              fontWeight: FontWeight.w700,
-                                            ),
+                                        style: TextStyle(
+                                          color: chipTextColor,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 11,
+                                        ),
                                       ),
                                     ),
                                     if (isStart || isEnd)
                                       IconButton(
                                         tooltip: 'Supprimer la session',
-                                        icon: const Icon(Icons.delete_outline, size: 20),
+                                        icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 18,
+                                          color: AppTheme.textMuted,
+                                        ),
                                         onPressed: () async {
-                                          await ref.read(booksControllerProvider.notifier).deleteReadingSession(
+                                          await ref
+                                              .read(booksControllerProvider.notifier)
+                                              .deleteReadingSession(
                                                 session: session,
                                               );
                                         },
                                       ),
                                   ],
                                 ),
-                                if (!isStart && !isEnd) const SizedBox(height: 8),
-                                if (!isStart && !isEnd)
+                                if (!isStart && !isEnd) ...[
+                                  const SizedBox(height: 8),
                                   Row(
                                     children: [
                                       Expanded(
                                         child: Text(
                                           'Page ${session.currentPage}',
-                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black54),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       ),
                                       Text(
                                         durationLabel,
-                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.black54),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppTheme.textMuted,
+                                        ),
                                       ),
                                       IconButton(
                                         tooltip: 'Supprimer la session',
-                                        icon: const Icon(Icons.delete_outline, size: 20),
+                                        icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 18,
+                                          color: AppTheme.textMuted,
+                                        ),
                                         onPressed: () async {
-                                          await ref.read(booksControllerProvider.notifier).deleteReadingSession(
+                                          await ref
+                                              .read(booksControllerProvider.notifier)
+                                              .deleteReadingSession(
                                                 session: session,
                                               );
                                         },
                                       ),
                                     ],
                                   ),
+                                ],
                               ],
                             ),
                           ),

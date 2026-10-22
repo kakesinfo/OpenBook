@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/app/theme.dart';
 
 import '../home_page.dart';
 import '../library_page.dart';
 import '../settings_page.dart';
+import '../wishlist_page.dart';
 
 class BooksShell extends StatefulWidget {
   const BooksShell({super.key});
@@ -14,24 +16,56 @@ class BooksShell extends StatefulWidget {
 class _BooksShellState extends State<BooksShell> {
   int _index = 0;
 
-  final _pages = const [
-    HomePage(),
-    LibraryPage(),
-    SettingsPage(),
-  ];
+  void _goToTab(int index) {
+    setState(() => _index = index);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      const HomePage(),
+      const LibraryPage(),
+      WishlistPage(onExploreCatalogue: () => _goToTab(1)),
+      const SettingsPage(),
+    ];
+
     return Scaffold(
-      body: IndexedStack(index: _index, children: _pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Accueil'),
-          NavigationDestination(icon: Icon(Icons.local_library_outlined), label: 'Bibliothèque'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Paramètres'),
-        ],
+      body: IndexedStack(index: _index, children: pages),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: AppTheme.bgSurface,
+          border: Border(
+            top: BorderSide(color: AppTheme.borderSubtle, width: 1),
+          ),
+        ),
+        child: NavigationBar(
+          selectedIndex: _index,
+          onDestinationSelected: _goToTab,
+          backgroundColor: AppTheme.bgSurface,
+          indicatorColor: AppTheme.accentPrimaryLight,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.newspaper_outlined),
+              selectedIcon: Icon(Icons.newspaper_rounded, color: AppTheme.accentPrimary),
+              label: 'Accueil',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.menu_book_outlined),
+              selectedIcon: Icon(Icons.menu_book_rounded, color: AppTheme.accentPrimary),
+              label: 'Collection',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.favorite_outline_rounded),
+              selectedIcon: Icon(Icons.favorite_rounded, color: AppTheme.accentRose),
+              label: 'Souhaits',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings_rounded, color: AppTheme.accentPrimary),
+              label: 'Paramètres',
+            ),
+          ],
+        ),
       ),
     );
   }

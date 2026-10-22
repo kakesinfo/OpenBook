@@ -84,6 +84,12 @@ final readingBooksProvider = Provider<List<Book>>((ref) {
     ..sort((left, right) => left.title.toLowerCase().compareTo(right.title.toLowerCase()));
 });
 
+final wishlistBooksProvider = Provider<List<Book>>((ref) {
+  final books = ref.watch(booksControllerProvider).value ?? const <Book>[];
+  return books.where((book) => book.status == BookStatus.wishlist).toList()
+    ..sort((left, right) => left.title.toLowerCase().compareTo(right.title.toLowerCase()));
+});
+
 class BookFilterNotifier extends Notifier<BookLibraryFilter> {
   @override
   BookLibraryFilter build() {
