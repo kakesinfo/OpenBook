@@ -36,6 +36,11 @@ def parse_args():
         help="Crawl full catalog across all pages"
     )
     parser.add_argument(
+        "--enrich-bnf",
+        action="store_true",
+        help="Run BNF catalog metadata & ISBN enrichment and exit"
+    )
+    parser.add_argument(
         "--repair",
         action="store_true",
         help="Run database UTF-8 mojibake repair and variant reconciliation and exit"
@@ -74,7 +79,11 @@ def run_server():
 
 if __name__ == "__main__":
     args = parse_args()
-    if args.repair:
+    if args.enrich_bnf:
+        logger.info("Running BNF catalog enrichment...")
+        res = db.enrich_books_from_bnf()
+        logger.info("BNF enrichment completed: %s", res)
+    elif args.repair:
         logger.info("Running database repair (mojibake and variants)...")
         db.repair_mojibake()
         db.reconcile_variants()

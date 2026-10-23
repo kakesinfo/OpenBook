@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faWrench,
     faClone,
+    faBarcode,
     faCheck,
     faRotate,
     faCircleCheck,
@@ -13,7 +14,7 @@ import {
 import useSession from "../../hooks/UseSession.tsx";
 import "./AdminMaintenancePage.scss";
 
-type TaskId = "utf8" | "dedup";
+type TaskId = "utf8" | "dedup" | "bnf";
 
 interface MaintenanceTaskDef {
     id: TaskId;
@@ -40,6 +41,14 @@ const TASKS: MaintenanceTaskDef[] = [
         desc: "Recherche et fusionne les albums en double d'un même éditeur (même couverture, même ISBN, ou titres quasi-identiques avec variations de tirets ou casse). Réattribue automatiquement vos lectures et possessions vers le tome canonique sans perte de données.",
         icon: faClone,
         iconClass: "admin-maintenance__task-icon--dedup"
+    },
+    {
+        id: "bnf",
+        title: "Enrichir via la BnF",
+        tag: "Catalogue & Métadonnées",
+        desc: "Interroge l'API SRU du catalogue de la Bibliothèque nationale de France (BnF) pour retrouver les ISBN/EAN manquants, le nombre de pages, la collection et les auteurs de vos albums.",
+        icon: faBarcode,
+        iconClass: "admin-maintenance__task-icon--bnf"
     }
 ];
 
@@ -64,7 +73,8 @@ export default function AdminMaintenancePage() {
     const [result, setResult] = useState<MaintenanceResult | null>(null);
     const [taskStatuses, setTaskStatuses] = useState<Record<TaskId, TaskStatusInfo>>({
         utf8: { state: "idle" },
-        dedup: { state: "idle" }
+        dedup: { state: "idle" },
+        bnf: { state: "idle" }
     });
 
     const headerCheckboxRef = useRef<HTMLInputElement>(null);
@@ -98,8 +108,15 @@ export default function AdminMaintenancePage() {
     };
 
     const runSingleTask = async (taskId: TaskId): Promise<{ ok: boolean; message: string }> => {
-        const endpoint = taskId === "utf8" ? "/admin/scrapers/repair" : "/admin/scrapers/deduplicate";
-        const taskName = taskId === "utf8" ? "Réparation UTF-8" : "Déduplication";
+        let endpoint = "/admin/scrapers/repair";
+        let taskName = "Réparation UTF-8";
+        if (taskId === "dedup") {
+            endpoint = "/admin/scrapers/deduplicate";
+            taskName = "Déduplication";
+        } else if (taskId === "bnf") {
+            endpoint = "/admin/scrapers/enrich-bnf";
+            taskName = "Enrichissement BnF";
+        }
 
         setTaskStatuses(prev => ({
             ...prev,
@@ -179,7 +196,7 @@ export default function AdminMaintenancePage() {
 
     const handleExecuteAll = async () => {
         if (runningTasks.length > 0) return;
-        setRunningTasks(["utf8", "dedup"]);
+        setRunningTasks(["utf8", "dedup", "bnf"]);
         setResult(null);
 
         const results: string[] = [];
@@ -192,6 +209,10 @@ export default function AdminMaintenancePage() {
         const resDedup = await runSingleTask("dedup");
         if (!resDedup.ok) anyError = true;
         results.push(resDedup.message);
+
+        const resBnf = await runSingleTask("bnf");
+        if (!resBnf.ok) anyError = true;
+        results.push(resBnf.message);
 
         setResult({
             taskName: "Maintenance complète (Tout)",
@@ -321,8 +342,7 @@ export default function AdminMaintenancePage() {
                                     const taskRunning = runningTasks.includes(task.id);
                                     const statusInfo = taskStatuses[task.id] || { state: "idle" };
 
-                                    return (
-                                        <tr
+                                    return (                                        <tr
                                             key={task.id}
                                             className={`admin-maintenance__row ${isSelected ? "is-selected" : ""}`}
                                             onClick={() => handleToggleSelect(task.id)}

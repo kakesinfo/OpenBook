@@ -482,6 +482,42 @@ class Database:
                             parent_book_id = p_id
                             break
 
+                # BNF enrichment if ISBN is missing
+                if not clean_isbn:
+                    try:
+                        from bnf_client import search_bnf_book
+                        bnf_data = search_bnf_book(
+                            title=clean_title,
+                            series_name=clean_series_name,
+                            editor_name=clean_editor_name,
+                            volume=book.volume,
+                            is_variant=incoming_is_variant
+                        )
+                        if bnf_data and bnf_data.get("isbn"):
+                            clean_isbn = bnf_data["isbn"]
+                            book.isbn = clean_isbn
+                            if (not book.page_count or book.page_count == 0) and bnf_data.get("page_count"):
+                                book.page_count = bnf_data["page_count"]
+                            if not collection_id and bnf_data.get("collection_name"):
+                                clean_col_name = clean_text(bnf_data["collection_name"])
+                                cur.execute("SELECT id FROM collection WHERE LOWER(name) = LOWER(%s);", (clean_col_name,))
+                                col_row = cur.fetchone()
+                                if col_row:
+                                    collection_id = col_row[0]
+                                else:
+                                    cur.execute(
+                                        "INSERT INTO collection (name, created_at, updated_at) VALUES (%s, NOW(), NOW()) RETURNING id;",
+                                        (clean_col_name,)
+                                    )
+                                    collection_id = cur.fetchone()[0]
+                            if not book.authors and bnf_data.get("authors"):
+                                book.authors = bnf_data["authors"]
+                            if not book.release_date and bnf_data.get("release_date"):
+                                book.release_date = bnf_data["release_date"]
+                            logger.info("Enriched book '%s' via BNF: ISBN=%s, pages=%s", clean_title, clean_isbn, book.page_count)
+                    except Exception as bnf_err:
+                        logger.warning("Error searching BNF in upsert_book for '%s': %s", clean_title, bnf_err)
+
                 # 5. Check if Book already exists (Multi-criteria matching)
                 book_id = None
 
@@ -569,10 +605,14 @@ class Database:
 
                     # Enrich existing book with ISBN if it was missing
                     if clean_isbn:
-                        cur.execute(
-                            "UPDATE book SET isbn = %s WHERE id = %s AND (isbn IS NULL OR isbn = '');",
-                            (clean_isbn, book_id)
-                        )
+                        cur.execute("SELECT id FROM book WHERE isbn = %s AND id != %s;", (clean_isbn, book_id))
+                        if not cur.fetchone():
+                            cur.execute(
+                                "UPDATE book SET isbn = %s WHERE id = %s AND (isbn IS NULL OR isbn = '');",
+                                (clean_isbn, book_id)
+                            )
+                        else:
+                            logger.warning("ISBN %s already assigned to another book; skipping ISBN update for book %s", clean_isbn, book_id)
 
                     # Update title if current title was a generic collection title or shorter stub
                     cur.execute("SELECT title FROM book WHERE id = %s;", (book_id,))
@@ -593,6 +633,13 @@ class Database:
                     # Guard against self-reference
                     if parent_book_id and parent_book_id == book_id:
                         parent_book_id = None
+
+                    # Prevent unique constraint conflict if clean_isbn is already in database
+                    if clean_isbn:
+                        cur.execute("SELECT id FROM book WHERE isbn = %s;", (clean_isbn,))
+                        if cur.fetchone():
+                            logger.warning("ISBN %s already taken by an existing book; inserting new book without ISBN", clean_isbn)
+                            clean_isbn = None
 
                     # INSERT new book
                     cur.execute(
@@ -959,6 +1006,172 @@ class Database:
             if conn:
                 conn.rollback()
             logger.error("Error during reconcile_variants: %s", e)
+            raise
+        finally:
+            if conn:
+                self.return_connection(conn)
+
+    def enrich_books_from_bnf(self, limit: int = 100) -> Dict[str, Any]:
+        """
+        Maintenance task:
+        Finds books missing ISBN, queries the BNF SRU catalog API,
+        and enriches them with ISBN, page count, collection, and authors.
+        """
+        from bnf_client import search_bnf_book
+
+        conn = None
+        scanned_count = 0
+        enriched_count = 0
+        enriched_details = []
+
+        try:
+            conn = self.get_connection()
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT b.id, b.title, s.name as series_name, b.volume, e.name as editor_name,
+                           b.page_count, b.collection_id, b.cover_url
+                    FROM book b
+                    LEFT JOIN series s ON b.series_id = s.id
+                    LEFT JOIN editor e ON b.editor_id = e.id
+                    WHERE b.isbn IS NULL OR b.isbn = '' OR LENGTH(TRIM(b.isbn)) < 10
+                    ORDER BY b.id DESC
+                    LIMIT %s;
+                    """,
+                    (limit,)
+                )
+                books = cur.fetchall()
+                scanned_count = len(books)
+
+                for b_id, b_title, s_name, b_vol, e_name, p_count, col_id, cov_url in books:
+                    is_var = is_variant_book(b_title, cov_url)
+                    try:
+                        bnf_data = search_bnf_book(
+                            title=b_title,
+                            series_name=s_name,
+                            editor_name=e_name,
+                            volume=b_vol,
+                            is_variant=is_var
+                        )
+                    except Exception as err:
+                        logger.warning("Error querying BNF for book %s ('%s'): %s", b_id, b_title, err)
+                        continue
+
+                    if not bnf_data or not bnf_data.get("isbn"):
+                        continue
+
+                    found_isbn = bnf_data["isbn"]
+                    found_pages = bnf_data.get("page_count")
+                    found_col = bnf_data.get("collection_name")
+                    found_authors = bnf_data.get("authors") or []
+
+                    cur.execute("SAVEPOINT bnf_book_sp;")
+                    try:
+                        new_col_id = col_id
+                        if not new_col_id and found_col:
+                            clean_col = clean_text(found_col)
+                            cur.execute("SELECT id FROM collection WHERE LOWER(name) = LOWER(%s);", (clean_col,))
+                            col_row = cur.fetchone()
+                            if col_row:
+                                new_col_id = col_row[0]
+                            else:
+                                cur.execute(
+                                    "INSERT INTO collection (name, created_at, updated_at) VALUES (%s, NOW(), NOW()) RETURNING id;",
+                                    (clean_col,)
+                                )
+                                new_col_id = cur.fetchone()[0]
+
+                        # Check if ISBN is already held by another book
+                        isbn_to_set = found_isbn
+                        cur.execute("SELECT id FROM book WHERE isbn = %s AND id != %s;", (found_isbn, b_id))
+                        existing_isbn_holder = cur.fetchone()
+                        if existing_isbn_holder:
+                            logger.warning(
+                                "BNF ISBN %s for book %s ('%s') already held by book %s. Skipping ISBN assignment.",
+                                found_isbn, b_id, b_title, existing_isbn_holder[0]
+                            )
+                            isbn_to_set = None
+
+                        if isbn_to_set:
+                            cur.execute(
+                                """
+                                UPDATE book
+                                SET isbn = %s,
+                                    page_count = CASE WHEN page_count IS NULL OR page_count = 0 THEN %s ELSE page_count END,
+                                    collection_id = COALESCE(%s, collection_id),
+                                    updated_at = NOW()
+                                WHERE id = %s;
+                                """,
+                                (isbn_to_set, found_pages or 0, new_col_id, b_id)
+                            )
+                        else:
+                            cur.execute(
+                                """
+                                UPDATE book
+                                SET page_count = CASE WHEN page_count IS NULL OR page_count = 0 THEN %s ELSE page_count END,
+                                    collection_id = COALESCE(%s, collection_id),
+                                    updated_at = NOW()
+                                WHERE id = %s;
+                                """,
+                                (found_pages or 0, new_col_id, b_id)
+                            )
+
+                        # Enrich authors if book has no authors linked
+                        cur.execute("SELECT 1 FROM book_has_author WHERE book_id = %s LIMIT 1;", (b_id,))
+                        has_authors = cur.fetchone() is not None
+                        if not has_authors and found_authors:
+                            for auth in found_authors:
+                                clean_fn = clean_text(auth.firstname) or ""
+                                clean_ln = clean_text(auth.lastname)
+                                if not clean_ln:
+                                    continue
+
+                                cur.execute(
+                                    "SELECT id FROM author WHERE LOWER(firstname) = LOWER(%s) AND LOWER(lastname) = LOWER(%s);",
+                                    (clean_fn, clean_ln)
+                                )
+                                a_row = cur.fetchone()
+                                if a_row:
+                                    a_id = a_row[0]
+                                else:
+                                    cur.execute(
+                                        "INSERT INTO author (firstname, lastname, created_at, updated_at) VALUES (%s, %s, NOW(), NOW()) RETURNING id;",
+                                        (clean_fn, clean_ln)
+                                    )
+                                    a_id = cur.fetchone()[0]
+
+                                type_id = 1 if auth.role == "Writer" else (2 if auth.role == "Illustrator" else 3)
+                                cur.execute(
+                                    "INSERT INTO book_has_author (book_id, author_id, author_type_id, created_at, updated_at) VALUES (%s, %s, %s, NOW(), NOW());",
+                                    (b_id, a_id, type_id)
+                                )
+
+                        cur.execute("RELEASE SAVEPOINT bnf_book_sp;")
+                        enriched_count += 1
+                        enriched_details.append({
+                            "book_id": b_id,
+                            "title": b_title,
+                            "isbn": isbn_to_set or found_isbn,
+                            "isbn_assigned": bool(isbn_to_set),
+                            "page_count": found_pages,
+                            "collection": found_col
+                        })
+                    except Exception as b_err:
+                        cur.execute("ROLLBACK TO SAVEPOINT bnf_book_sp;")
+                        logger.error("Failed to enrich book %s with BNF data: %s", b_id, b_err)
+
+                conn.commit()
+                logger.info("BNF enrichment completed: scanned=%d, enriched=%d", scanned_count, enriched_count)
+                return {
+                    "status": "success",
+                    "scanned": scanned_count,
+                    "enriched": enriched_count,
+                    "details": enriched_details
+                }
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error("Error during enrich_books_from_bnf: %s", e)
             raise
         finally:
             if conn:

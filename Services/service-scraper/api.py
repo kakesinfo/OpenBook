@@ -47,6 +47,7 @@ def root():
             "repair_mojibake": "POST /api/repair",
             "deduplicate": "POST /api/deduplicate",
             "reconcile_variants": "POST /api/maintenance/reconcile-variants",
+            "enrich_bnf": "POST /api/maintenance/enrich-bnf",
             "maintenance_stats": "GET /api/maintenance/stats",
             "recent_books": "/api/books"
         },
@@ -196,6 +197,27 @@ def reconcile_variants_endpoint():
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/maintenance/enrich-bnf")
+@app.post("/api/enrich-bnf")
+def enrich_bnf_endpoint(limit: int = Query(50, ge=1, le=500)):
+    try:
+        res = db.enrich_books_from_bnf(limit=limit)
+        enriched = res.get("enriched", 0)
+        scanned = res.get("scanned", 0)
+        if enriched > 0:
+            msg = f"Enrichissement BNF terminé : {enriched} album(s) enrichi(s) sur {scanned} analysé(s)."
+        elif scanned > 0:
+            msg = f"Enrichissement BNF terminé : {scanned} album(s) analysé(s), aucune correspondance BNF trouvée."
+        else:
+            msg = "Tous les albums possèdent déjà un ISBN valide !"
+        return {
+            "status": "success",
+            "message": msg,
+            "details": res
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/books")
 def get_books(limit: int = Query(20, ge=1, le=100)) :

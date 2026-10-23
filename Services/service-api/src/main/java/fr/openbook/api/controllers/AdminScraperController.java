@@ -74,6 +74,17 @@ public class AdminScraperController {
         return ResponseEntity.ok(scraperService.deduplicate());
     }
 
+    @PostMapping({"/enrich-bnf", "/maintenance/enrich-bnf"})
+    public ResponseEntity<Map<String, Object>> enrichBnf(
+            @RequestBody(required = false) Map<String, Object> request
+    ) {
+        Integer limit = null;
+        if (request != null && request.containsKey("limit") && request.get("limit") instanceof Number n) {
+            limit = n.intValue();
+        }
+        return ResponseEntity.ok(scraperService.enrichFromBnf(limit));
+    }
+
     @GetMapping("/maintenance/conflicts")
     public ResponseEntity<Map<String, Object>> getConflicts() {
         return ResponseEntity.ok(scraperService.getVolumeConflicts());
