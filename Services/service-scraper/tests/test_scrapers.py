@@ -2,7 +2,17 @@ import unittest
 from datetime import datetime
 from bs4 import BeautifulSoup
 
-from scrapers.base import ScrapedBook, ScrapedAuthor, clean_text, clean_author_name, split_author_name
+from scrapers.base import (
+    ScrapedBook,
+    ScrapedAuthor,
+    clean_text,
+    clean_author_name,
+    split_author_name,
+    is_variant_book,
+    is_variant_title,
+    strip_variant_suffix,
+    extract_canonical_series_and_volume
+)
 from scrapers import SCRAPERS, get_scraper
 from scrapers.urban_comics import (
     parse_french_date,
@@ -80,6 +90,48 @@ class TestScrapers(unittest.TestCase):
         self.assertEqual(split_author_name("Scénariste et dessinateurRun"), ("", "Run"))
         self.assertEqual(split_author_name("Florence Dupré la Tour"), ("Florence", "Dupré la Tour"))
         self.assertEqual(split_author_name(""), ("", ""))
+
+    def test_variant_utilities(self):
+        # strip_variant_suffix
+        self.assertEqual(
+            strip_variant_suffix("X-Men - Shadows of Tomorrow N°06 - Edition collector"),
+            "X-Men - Shadows of Tomorrow N°06"
+        )
+        self.assertEqual(
+            strip_variant_suffix("Spider-Man Tome 1 (Variant site)"),
+            "Spider-Man Tome 1"
+        )
+        self.assertEqual(
+            strip_variant_suffix("Batman T01 Édition Prestige"),
+            "Batman T01"
+        )
+        self.assertEqual(
+            strip_variant_suffix("Regular Book"),
+            "Regular Book"
+        )
+
+        # extract_canonical_series_and_volume
+        s, v = extract_canonical_series_and_volume("X-Men - Shadows of Tomorrow N°06 - Edition collector")
+        self.assertEqual(s, "X-Men - Shadows of Tomorrow")
+        self.assertEqual(v, 6)
+
+        s, v = extract_canonical_series_and_volume("X-Men (2026) N° 01")
+        self.assertEqual(s, "X-Men (2026)")
+        self.assertEqual(v, 1)
+
+        s, v = extract_canonical_series_and_volume("Ultimate Spider-Man Tome 3")
+        self.assertEqual(s, "Ultimate Spider-Man")
+        self.assertEqual(v, 3)
+
+        s, v = extract_canonical_series_and_volume("Civil War")
+        self.assertEqual(s, "Civil War")
+        self.assertIsNone(v)
+
+        # is_variant_book / is_variant_title
+        self.assertTrue(is_variant_book("X-Men N°01 - Edition collector", None, None))
+        self.assertTrue(is_variant_book("X-Men N°01", "https://panini.fr/fxm26014v_0.jpg", "FXM26014_FR02"))
+        self.assertTrue(is_variant_book("X-Men N°01", "https://panini.fr/fxm26014_0.jpg", "FXM26014V_FR02"))
+        self.assertFalse(is_variant_book("Star Wars Tome 02", "https://panini.fr/fsw26002_0.jpg", "FSW26002_FR02"))
 
     def test_monsieur_toussaint_louverture_series_and_volume(self):
         s1, v1 = parse_mtl_series_and_volume("Blackwater I, La Crue – L’épique saga de la famille Caskey")
@@ -330,6 +382,48 @@ class TestScrapers(unittest.TestCase):
         self.assertEqual(book.release_date.year, 2026)
         self.assertEqual(book.release_date.month, 10)
         self.assertEqual(book.release_date.day, 20)
+        self.assertFalse(book.is_variant)
+
+    def test_panini_comics_parse_variant_card(self):
+        html = """
+        <li class="item product product-item">
+            <div class="product-item-info">
+                <div class="product photo product-item-photo">
+                    <a class="product link product-item-link" href="https://www.panini.fr/shp_fra_fr/x-men-shadows-of-tomorrow-n-06-edition-collector-fxm26014v-fr02.html">
+                        <img class="product-image-photo" src="https://www.panini.fr/media/catalog/product/f/x/fxm26014v_0.jpg?quality=80" alt="X-Men - Shadows of Tomorrow N°06"/>
+                    </a>
+                </div>
+                <div class="product details product-item-details">
+                    <h3 class="product name product-item-name">
+                        <a class="product-item-link" href="https://www.panini.fr/shp_fra_fr/x-men-shadows-of-tomorrow-n-06-edition-collector-fxm26014v-fr02.html">
+                            X-Men - Shadows of Tomorrow N°06
+                        </a>
+                    </h3>
+                    <div class="product attributes product-item-attributes">
+                        <div class="product attribute type product-item-attribute-release-date">
+                            <small>21/10/26</small>
+                        </div>
+                    </div>
+                    <div class="price-box price-final_price">
+                        <span class="price-wrapper">
+                            <span class="price">20,99 €</span>
+                        </span>
+                    </div>
+                    <form data-product-sku="FXM26014V_FR02"></form>
+                </div>
+            </div>
+        </li>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        card = soup.select_one("li.item.product.product-item")
+        scraper = PaniniComicsScraper()
+        book = scraper._parse_card(card, base_url="https://www.panini.fr/shp_fra_fr/comics/marvel.html")
+        self.assertIsNotNone(book)
+        self.assertTrue(book.is_variant)
+        self.assertEqual(book.title, "X-Men - Shadows of Tomorrow N°06 - Edition collector")
+        self.assertEqual(book.series_name, "X-Men - Shadows of Tomorrow")
+        self.assertEqual(book.volume, 6)
+        self.assertEqual(book.price, 20)
 
     def test_scraped_book_with_collection(self):
         book = ScrapedBook(

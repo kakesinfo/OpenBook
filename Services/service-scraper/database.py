@@ -2,12 +2,22 @@ import re
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from collections import defaultdict
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2 import pool
 
 from config import settings
-from scrapers.base import ScrapedBook, clean_text, clean_author_name, split_author_name, is_variant_title
+from scrapers.base import (
+    ScrapedBook,
+    clean_text,
+    clean_author_name,
+    split_author_name,
+    is_variant_title,
+    is_variant_book,
+    strip_variant_suffix,
+    extract_canonical_series_and_volume
+)
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +151,7 @@ class Database:
 
                 # Skip distinct volumes/variants with different cover images
                 if c1 != c2 and (isbn1 != isbn2 or not isbn1):
-                    if "nanarland" in t1.lower() or "x-men" in t1.lower():
+                    if "nanarland" in t1.lower() or is_variant_title(t1) or is_variant_title(t2):
                         continue
 
                 t1_bogus = t1.strip().lower() in bogus_titles
@@ -347,7 +357,7 @@ class Database:
         """
         Inserts or updates a book and its related entities (editor, series, category, authors).
         Uses multi-criteria matching (ISBN, exact cover URL, normalized title, series+volume)
-        to prevent duplicate entries when minor title differences or missing ISBN occur.
+        to prevent duplicate entries while keeping variants properly separate.
         Returns the book ID if successful.
         """
         conn = None
@@ -410,6 +420,12 @@ class Database:
                         collection_id = cur.fetchone()[0]
 
                 # 5. Series (with automatic qualifier / conflict prevention)
+                canon_sname, canon_vol = extract_canonical_series_and_volume(clean_series_name)
+                if canon_sname:
+                    clean_series_name = canon_sname
+                if not book.volume and canon_vol:
+                    book.volume = canon_vol
+
                 target_series_name = clean_series_name
                 if book.series_qualifier:
                     target_series_name = f"{clean_series_name} ({book.series_qualifier})"
@@ -449,15 +465,22 @@ class Database:
                     series_id = cur.fetchone()[0]
 
                 # Check variant cover linkage
+                incoming_is_variant = is_variant_book(clean_title, book.cover_url) or getattr(book, "is_variant", False)
                 parent_book_id = getattr(book, "parent_book_id", None)
-                if not parent_book_id and is_variant_title(clean_title) and series_id and book.volume:
+                if not parent_book_id and incoming_is_variant and series_id and book.volume:
                     cur.execute(
-                        "SELECT id FROM book WHERE series_id = %s AND volume = %s AND parent_book_id IS NULL ORDER BY id ASC LIMIT 1;",
+                        """
+                        SELECT id, title FROM book 
+                        WHERE series_id = %s AND volume = %s 
+                          AND (parent_book_id IS NULL OR parent_book_id = 0)
+                        ORDER BY id ASC;
+                        """,
                         (series_id, book.volume)
                     )
-                    p_row = cur.fetchone()
-                    if p_row:
-                        parent_book_id = p_row[0]
+                    for p_id, p_title in cur.fetchall():
+                        if not is_variant_book(p_title):
+                            parent_book_id = p_id
+                            break
 
                 # 5. Check if Book already exists (Multi-criteria matching)
                 book_id = None
@@ -494,16 +517,24 @@ class Database:
                         book_id = row[0]
 
                 # Criterion D: Exact series + volume match (if volume > 0)
+                # CRITICAL: A variant must NOT match an existing standard book, and a standard book must NOT match a variant.
                 if not book_id and series_id and book.volume and book.volume > 0:
                     cur.execute(
-                        "SELECT id FROM book WHERE series_id = %s AND volume = %s;",
+                        "SELECT id, title FROM book WHERE series_id = %s AND volume = %s ORDER BY id ASC;",
                         (series_id, book.volume)
                     )
-                    row = cur.fetchone()
-                    if row:
-                        book_id = row[0]
+                    for cand_id, cand_title in cur.fetchall():
+                        cand_is_variant = is_variant_book(cand_title)
+                        if incoming_is_variant == cand_is_variant:
+                            if not incoming_is_variant or clean_text(cand_title).lower() == clean_title.lower():
+                                book_id = cand_id
+                                break
 
                 if book_id:
+                    # Guard against self-reference
+                    if parent_book_id and parent_book_id == book_id:
+                        parent_book_id = None
+
                     # UPDATE existing book
                     cur.execute(
                         """
@@ -515,7 +546,11 @@ class Database:
                             description = COALESCE(%s, description),
                             cover_url = COALESCE(%s, cover_url),
                             collection_id = COALESCE(%s, collection_id),
-                            parent_book_id = COALESCE(%s, parent_book_id)
+                            parent_book_id = CASE
+                                WHEN %s::int IS NOT NULL AND %s::int != id THEN %s::int
+                                WHEN parent_book_id = id THEN NULL
+                                ELSE parent_book_id
+                            END
                         WHERE id = %s;
                         """,
                         (
@@ -525,6 +560,8 @@ class Database:
                             clean_desc,
                             book.cover_url,
                             collection_id,
+                            parent_book_id,
+                            parent_book_id,
                             parent_book_id,
                             book_id
                         )
@@ -553,6 +590,10 @@ class Database:
 
                     logger.debug("Updated existing book id %s: %s", book_id, clean_title)
                 else:
+                    # Guard against self-reference
+                    if parent_book_id and parent_book_id == book_id:
+                        parent_book_id = None
+
                     # INSERT new book
                     cur.execute(
                         """
@@ -650,10 +691,11 @@ class Database:
                     """
                 )
                 conflicts = cur.fetchall()
-                seen_series = set()
+
                 result = []
-                for c in conflicts:
-                    sid, sname, vol, count = c
+                seen_series = set()
+
+                for sid, sname, vol, count in conflicts:
                     if sid in seen_series:
                         continue
                     seen_series.add(sid)
@@ -725,6 +767,198 @@ class Database:
             if conn:
                 conn.rollback()
             logger.error("Error linking books as variant: %s", e)
+            raise
+        finally:
+            if conn:
+                self.return_connection(conn)
+
+    def reconcile_variants(self) -> Dict[str, Any]:
+        """
+        Executes a post-scan reconciliation of variant and collector books:
+        1. Breaks any invalid self-referencing (parent_book_id == id) or dangling parent links.
+        2. Normalizes series for books placed into separate 'variant' or 'volume' series by older scrapes.
+        3. Normalizes titles for variant covers lacking collector suffix and fixes double suffixes.
+        4. Within each series, groups books by volume (and for unnumbered books, by base title)
+           and couples variant books with their corresponding standard edition parent.
+        5. Purges orphaned empty series.
+        """
+        conn = None
+        try:
+            conn = self.get_connection()
+            with conn.cursor() as cur:
+                # 1. Break self-referencing and dangling parent links
+                cur.execute(
+                    """
+                    UPDATE book
+                    SET parent_book_id = NULL, updated_at = NOW()
+                    WHERE parent_book_id = id;
+                    """
+                )
+                self_ref_fixed = cur.rowcount
+
+                cur.execute(
+                    """
+                    UPDATE book
+                    SET parent_book_id = NULL, updated_at = NOW()
+                    WHERE parent_book_id IS NOT NULL
+                      AND parent_book_id NOT IN (SELECT id FROM book);
+                    """
+                )
+                dangling_fixed = cur.rowcount
+
+                # 2. Normalize dirty series (with volume or variant suffixes in series name)
+                cur.execute(
+                    r"""
+                    SELECT id, name, category_id FROM series
+                    WHERE name ~* '(?:T(?:ome)?|Vol(?:ume)?|N°|#)\\s*0?\\d+'
+                       OR name ~* '\\b(?:couverture\\s+variante|variant(?:e)?|couv\\.?\\s*var\\.?|(?:[eé]dition|coffret)\\s+collector|collector|[eé]dition\\s+sp[eé]ciale|[eé]dition\\s+limit[eé]e|[eé]dition\\s+prestige|n&b|noir\\s+et\\s+blanc)\\b';
+                    """
+                )
+                dirty_series = cur.fetchall()
+                series_reassigned = 0
+
+                for s_id, s_name, cat_id in dirty_series:
+                    canon_name, extracted_vol = extract_canonical_series_and_volume(s_name)
+                    if not canon_name or canon_name.lower() == s_name.lower():
+                        continue
+
+                    cur.execute("SELECT id FROM series WHERE LOWER(name) = LOWER(%s);", (canon_name,))
+                    canon_row = cur.fetchone()
+                    if canon_row:
+                        canon_id = canon_row[0]
+                    else:
+                        cur.execute(
+                            "INSERT INTO series (name, status, category_id, created_at, updated_at) VALUES (%s, 'ON_GOING', %s, NOW(), NOW()) RETURNING id;",
+                            (canon_name, cat_id)
+                        )
+                        canon_id = cur.fetchone()[0]
+
+                    if extracted_vol:
+                        cur.execute(
+                            """
+                            UPDATE book
+                            SET series_id = %s,
+                                volume = CASE WHEN volume IS NULL OR volume = 1 THEN %s ELSE volume END,
+                                updated_at = NOW()
+                            WHERE series_id = %s;
+                            """,
+                            (canon_id, extracted_vol, s_id)
+                        )
+                    else:
+                        cur.execute(
+                            "UPDATE book SET series_id = %s, updated_at = NOW() WHERE series_id = %s;",
+                            (canon_id, s_id)
+                        )
+                    series_reassigned += cur.rowcount
+
+                    cur.execute("DELETE FROM series WHERE id = %s AND NOT EXISTS (SELECT 1 FROM book WHERE series_id = series.id);", (s_id,))
+
+                # 3. Clean up double 'Edition collector' repetitions in book titles
+                cur.execute(
+                    r"""
+                    UPDATE book
+                    SET title = regexp_replace(title, '(\s*-\s*Edition collector)+', ' - Edition collector', 'gi')
+                    WHERE title ILIKE '%Edition collector%Edition collector%';
+                    """
+                )
+
+                # 4. If a book has a variant cover (e.g. fxm26014v_0.jpg) but title lacked variant suffix, append it
+                cur.execute(
+                    r"""
+                    SELECT id, title, cover_url FROM book
+                    WHERE cover_url ~* '[a-z0-9]+v_\d+\.(?:jpg|jpeg|png|webp)'
+                      AND NOT (title ~* '\b(?:couverture\s+variante|variant(?:e)?|collector)\b');
+                    """
+                )
+                for b_id, b_title, b_cov in cur.fetchall():
+                    new_title = clean_text(b_title) + " - Edition collector"
+                    cur.execute("UPDATE book SET title = %s, updated_at = NOW() WHERE id = %s;", (new_title, b_id))
+
+                # 5. Group books in series to match and link variants
+                cur.execute(
+                    """
+                    SELECT b.id, b.title, b.volume, b.series_id, b.parent_book_id, b.cover_url, b.price
+                    FROM book b
+                    WHERE b.series_id IN (
+                        SELECT series_id FROM book GROUP BY series_id HAVING COUNT(*) > 1
+                    )
+                    ORDER BY b.series_id, b.volume NULLS LAST, b.id ASC;
+                    """
+                )
+                all_books = cur.fetchall()
+
+                series_groups = defaultdict(list)
+                for row in all_books:
+                    series_groups[row[3]].append({
+                        "id": row[0],
+                        "title": row[1],
+                        "volume": row[2],
+                        "series_id": row[3],
+                        "parent_book_id": row[4],
+                        "cover_url": row[5],
+                        "price": row[6],
+                        "is_variant": is_variant_book(row[1], row[5])
+                    })
+
+                variants_linked = 0
+                for s_id, books_in_series in series_groups.items():
+                    vol_groups = defaultdict(list)
+                    for b in books_in_series:
+                        vol_groups[b["volume"]].append(b)
+
+                    for vol, group in vol_groups.items():
+                        if vol is not None:
+                            standards = [b for b in group if not b["is_variant"]]
+                            variants = [b for b in group if b["is_variant"]]
+
+                            if standards and variants:
+                                parent_id = standards[0]["id"]
+                                for v in variants:
+                                    if v["id"] != parent_id and v["parent_book_id"] != parent_id:
+                                        cur.execute(
+                                            "UPDATE book SET parent_book_id = %s, updated_at = NOW() WHERE id = %s;",
+                                            (parent_id, v["id"])
+                                        )
+                                        variants_linked += cur.rowcount
+                                        v["parent_book_id"] = parent_id
+
+                                if standards[0]["parent_book_id"] is not None:
+                                    cur.execute(
+                                        "UPDATE book SET parent_book_id = NULL, updated_at = NOW() WHERE id = %s;",
+                                        (parent_id,)
+                                    )
+                                    standards[0]["parent_book_id"] = None
+                        else:
+                            for b in group:
+                                if b["is_variant"] and not b["parent_book_id"]:
+                                    base_v = strip_variant_suffix(b["title"]).lower()
+                                    for std in group:
+                                        if not std["is_variant"] and strip_variant_suffix(std["title"]).lower() == base_v:
+                                            if b["id"] != std["id"]:
+                                                cur.execute(
+                                                    "UPDATE book SET parent_book_id = %s, updated_at = NOW() WHERE id = %s;",
+                                                    (std["id"], b["id"])
+                                                )
+                                                variants_linked += cur.rowcount
+                                                b["parent_book_id"] = std["id"]
+                                                break
+
+                conn.commit()
+                logger.info(
+                    "Reconciled variants: self_ref_fixed=%d, dangling_fixed=%d, series_reassigned=%d, variants_linked=%d",
+                    self_ref_fixed, dangling_fixed, series_reassigned, variants_linked
+                )
+                return {
+                    "status": "success",
+                    "self_ref_fixed": self_ref_fixed,
+                    "dangling_fixed": dangling_fixed,
+                    "series_reassigned": series_reassigned,
+                    "variants_linked": variants_linked
+                }
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error("Error during reconcile_variants: %s", e)
             raise
         finally:
             if conn:

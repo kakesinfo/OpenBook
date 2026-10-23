@@ -95,7 +95,12 @@ class ScrapedAuthor:
 
 
 VARIANT_COVER_REGEX = re.compile(
-    r"\b(?:couverture\s+variante|variant(?:e)?(?:\s+panini|\s+exclusive)?|couv\.?\s*var\.?|(?:[eé]dition|coffret)\s+collector|collector|[eé]dition\s+sp[eé]ciale|[eé]dition\s+limit[eé]e|tirage\s+(?:limit[eé]|de\s+t[eê]te)|(?:version|[eé]dition\s+)?noir\s+et\s+blanc|n&b)\b",
+    r"\b(?:couverture\s+variante|variant(?:e)?(?:\s+(?:panini|exclusive|site))?|couv\.?\s*var\.?|(?:[eé]dition|coffret)\s+collector|collector|[eé]dition\s+sp[eé]ciale|[eé]dition\s+limit[eé]e|[eé]dition\s+prestige|tirage\s+(?:limit[eé]|de\s+t[eê]te)|(?:version|[eé]dition\s+)?noir\s+et\s+blanc|n&b)\b",
+    re.IGNORECASE
+)
+
+VARIANT_SUFFIX_REGEX = re.compile(
+    r"(?:\s*[-\u2013\u2014:]\s*|\s+)\(?(?:couverture\s+variante|variant(?:e)?(?:\s+(?:panini|exclusive|site))?|couv\.?\s*var\.?|(?:[eé]dition|coffret)\s+collector|collector|[eé]dition\s+sp[eé]ciale|[eé]dition\s+limit[eé]e|[eé]dition\s+prestige|tirage\s+(?:limit[eé]|de\s+t[eê]te)|(?:version|[eé]dition\s+)?noir\s+et\s+blanc|n&b)\b[^\)]*\)?",
     re.IGNORECASE
 )
 
@@ -103,6 +108,39 @@ def is_variant_title(title: Optional[str]) -> bool:
     if not title:
         return False
     return bool(VARIANT_COVER_REGEX.search(title))
+
+def strip_variant_suffix(text: Optional[str]) -> str:
+    cleaned = clean_text(text) or ""
+    res = VARIANT_SUFFIX_REGEX.sub("", cleaned).strip(" -:")
+    if res.endswith("(") and res.count("(") > res.count(")"):
+        res = res[:-1].strip(" -:")
+    if res.endswith(")") and res.count(")") > res.count("("):
+        res = res[:-1].strip(" -:")
+    return res or cleaned
+
+def is_variant_book(title: Optional[str], cover_url: Optional[str] = None, sku: Optional[str] = None) -> bool:
+    if is_variant_title(title):
+        return True
+    if cover_url and re.search(r"[a-zA-Z0-9]+v_\d+\.(?:jpg|jpeg|png|webp)", cover_url, re.I):
+        return True
+    if sku and re.search(r"[a-zA-Z0-9]+v(?:_[a-zA-Z0-9]+)?$", sku, re.I):
+        return True
+    return False
+
+def extract_canonical_series_and_volume(series_or_title: Optional[str]) -> Tuple[str, Optional[int]]:
+    cleaned = clean_text(series_or_title) or ""
+    vol_m = re.search(r"(?:T(?:ome)?|Vol(?:ume)?|N°|#)\s*0?(\d+)", cleaned, re.I)
+    vol = int(vol_m.group(1)) if vol_m else None
+    
+    base = re.sub(r"(?:T(?:ome)?|Vol(?:ume)?|N°|#)\s*0?\d+.*", "", cleaned, flags=re.I).strip(" -:")
+    if base.endswith("(") and base.count("(") > base.count(")"):
+        base = base[:-1].strip(" -:")
+    if base.endswith(")") and base.count(")") > base.count("("):
+        base = base[:-1].strip(" -:")
+    base = strip_variant_suffix(base)
+    if not base:
+        base = cleaned
+    return clean_text(base), vol
 
 
 @dataclass

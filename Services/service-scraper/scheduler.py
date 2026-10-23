@@ -356,6 +356,15 @@ class ScraperManager:
                     with self._lock:
                         self.live_scan["last_error"] = str(e)
 
+            # Post-scan: reconcile and couple variants across all additions
+            try:
+                logger.info("Executing post-scan variant coupling pass...")
+                rec_res = db.reconcile_variants()
+                summary["variant_reconciliation"] = rec_res
+                logger.info("Variant coupling pass completed: %s", rec_res)
+            except Exception as e:
+                logger.warning("Error during post-scan variant coupling pass: %s", e)
+
             summary["end_time"] = datetime.now().isoformat()
             summary["status"] = "success" if not summary["errors"] else "completed_with_errors"
 

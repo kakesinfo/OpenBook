@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument(
         "--repair",
         action="store_true",
-        help="Run database UTF-8 mojibake repair and exit"
+        help="Run database UTF-8 mojibake repair and variant reconciliation and exit"
     )
     return parser.parse_args()
 
@@ -50,9 +50,10 @@ def run_cli(source=None, full_scan=False):
 def run_server():
     logger.info("Starting Scraper Service on %s:%d...", settings.HOST, settings.PORT)
     
-    # 1. Repair any existing mojibake in DB
+    # 1. Repair any existing mojibake and reconcile variants in DB
     try:
         db.repair_mojibake()
+        db.reconcile_variants()
     except Exception as e:
         logger.warning("Startup DB repair error: %s", e)
 
@@ -74,8 +75,9 @@ def run_server():
 if __name__ == "__main__":
     args = parse_args()
     if args.repair:
-        logger.info("Running database UTF-8 repair...")
+        logger.info("Running database repair (mojibake and variants)...")
         db.repair_mojibake()
+        db.reconcile_variants()
         logger.info("Repair finished.")
     elif args.now:
         run_cli(source=args.source, full_scan=args.full)

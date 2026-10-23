@@ -8,7 +8,14 @@ import requests
 from bs4 import BeautifulSoup
 
 from config import settings
-from scrapers.base import BaseScraper, ScrapedBook, clean_text, is_variant_title
+from scrapers.base import (
+    BaseScraper,
+    ScrapedBook,
+    clean_text,
+    is_variant_title,
+    is_variant_book,
+    extract_canonical_series_and_volume
+)
 
 logger = logging.getLogger(__name__)
 
@@ -147,17 +154,22 @@ class PaniniComicsScraper(BaseScraper):
             if cover_url:
                 cover_url = cover_url.split("?")[0]
 
-        # Series & Volume
-        series_name = clean_title
-        volume = None
-        vol_m = re.search(r"(?:T(?:ome)?|Vol(?:ume)?|N°|#)\s*0?(\d+)", clean_title, re.I)
-        if vol_m:
-            volume = int(vol_m.group(1))
-            series_name = re.sub(r"(?:T(?:ome)?|Vol(?:ume)?|N°|#)\s*0?\d+.*", "", clean_title, flags=re.I).strip(" -:")
-        
+        # SKU
+        sku_el = card.select_one("[data-product-sku]")
+        sku_val = sku_el["data-product-sku"].strip() if sku_el and sku_el.get("data-product-sku") else ""
+
+        # Variant detection (title, SKU ending in V, cover URL with v_0.jpg, or product URL with -v-)
+        is_variant = is_variant_book(clean_title, cover_url=cover_url, sku=sku_val)
+        if not is_variant and prod_url and re.search(r"-[a-zA-Z0-9]+v-[a-zA-Z0-9]+\.html", prod_url, re.I):
+            is_variant = True
+
+        if is_variant and not is_variant_title(clean_title):
+            clean_title = f"{clean_title} - Edition collector"
+
+        # Series & Volume extraction (canonical series without variant tags or volume)
+        series_name, volume = extract_canonical_series_and_volume(clean_title)
         if not series_name:
             series_name = clean_title
-        series_name = clean_text(series_name)
 
         # Release date
         release_date = None
@@ -179,14 +191,10 @@ class PaniniComicsScraper(BaseScraper):
             isbn_m = re.search(r"(97[89]\d{10})", prod_url)
             if isbn_m:
                 isbn = isbn_m.group(1)
-        if not isbn:
-            sku_el = card.select_one("[data-product-sku]")
-            if sku_el and sku_el.get("data-product-sku"):
-                sku_m = re.search(r"(97[89]\d{10})", sku_el["data-product-sku"])
-                if sku_m:
-                    isbn = sku_m.group(1)
-
-        is_variant = is_variant_title(clean_title)
+        if not isbn and sku_val:
+            sku_m = re.search(r"(97[89]\d{10})", sku_val)
+            if sku_m:
+                isbn = sku_m.group(1)
 
         return ScrapedBook(
             title=clean_title[:255],

@@ -46,6 +46,7 @@ def root():
             "trigger_source": "POST /api/scrape/{source}?full=false",
             "repair_mojibake": "POST /api/repair",
             "deduplicate": "POST /api/deduplicate",
+            "reconcile_variants": "POST /api/maintenance/reconcile-variants",
             "maintenance_stats": "GET /api/maintenance/stats",
             "recent_books": "/api/books"
         },
@@ -151,7 +152,7 @@ def repair_database():
 def deduplicate_database():
     merged = db.deduplicate_books()
     if merged > 0:
-        msg = f"Déduplication terminée : {merged} tome(s) doublon(s) fusionné(s) et nettoyé(s)."
+        msg = f"Dédouplication terminée : {merged} tome(s) doublon(s) fusionné(s) et nettoyé(s)."
     else:
         msg = "Aucun tome en double détecté. La base de données est parfaitement propre !"
     return {"status": "success", "merged_count": merged, "message": msg}
@@ -184,8 +185,20 @@ def link_variant_endpoint(req: LinkVariantRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@app.post("/api/maintenance/reconcile-variants")
+def reconcile_variants_endpoint():
+    try:
+        res = db.reconcile_variants()
+        return {
+            "status": "success",
+            "message": "Réconciliation des variantes effectuée avec succès.",
+            "details": res
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @app.get("/api/books")
-def get_books(limit: int = Query(20, ge=1, le=100)):
+def get_books(limit: int = Query(20, ge=1, le=100)) :
     return {
         "count": limit,
         "books": db.get_recent_books(limit=limit)
