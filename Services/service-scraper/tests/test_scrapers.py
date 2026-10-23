@@ -17,6 +17,7 @@ from scrapers.monsieur_toussaint_louverture import (
     EPUB_KEYWORDS
 )
 from scrapers.mangetsu import MangetsuScraper
+from scrapers.panini_comics import PaniniComicsScraper
 
 class TestScrapers(unittest.TestCase):
     def test_registry(self):
@@ -207,6 +208,128 @@ class TestScrapers(unittest.TestCase):
         soup = BeautifulSoup(html_no_pagi, "html.parser")
         next_url = scraper._extract_next_page_url(soup, "https://mangetsu-manga.fr/a-paraitre/", "https://mangetsu-manga.fr", set())
         self.assertIsNone(next_url)
+
+    def test_panini_comics_catalog_urls(self):
+        expected_urls = [
+            "https://www.panini.fr/shp_fra_fr/comics/marvel.html",
+            "https://www.panini.fr/shp_fra_fr/comics/star-wars.html",
+            "https://www.panini.fr/shp_fra_fr/comics/disney.html",
+            "https://www.panini.fr/shp_fra_fr/comics/autres-comics.html"
+        ]
+        self.assertEqual(PaniniComicsScraper.CATALOG_URLS, expected_urls)
+
+    def test_panini_comics_pagination_page_1(self):
+        html = """
+        <div class="pages">
+            <strong class="label pages-label" id="paging-label">Page</strong>
+            <ul class="items pages-items" aria-labelledby="paging-label">
+                <li class="item current">
+                    <strong class="page">
+                        <span class="label">Vous lisez actuellement la page</span>
+                        <span>1</span>
+                    </strong>
+                </li>
+                <li class="item">
+                    <a class="page" href="https://www.panini.fr/shp_fra_fr/comics/disney.html?p=2&amp;pnn_is_not_presale=En+vente&amp;pnn_is_saleable=1">
+                        <span class="label">Page</span>
+                        <span>2</span>
+                    </a>
+                </li>
+                <li class="item pages-item-next">
+                    <a class="action next" href="https://www.panini.fr/shp_fra_fr/comics/disney.html?p=2&amp;pnn_is_not_presale=En+vente&amp;pnn_is_saleable=1" title="Suivant">
+                        <span class="label">Page</span>
+                        <span>Suivant</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        next_url = PaniniComicsScraper.extract_next_page_url(soup, "https://www.panini.fr/shp_fra_fr/comics/disney.html")
+        self.assertEqual(next_url, "https://www.panini.fr/shp_fra_fr/comics/disney.html?p=2&pnn_is_not_presale=En+vente&pnn_is_saleable=1")
+
+    def test_panini_comics_pagination_last_page(self):
+        html = """
+        <div class="pages">
+            <strong class="label pages-label" id="paging-label">Page</strong>
+            <ul class="items pages-items" aria-labelledby="paging-label">
+                <li class="item pages-item-previous">
+                    <a class="action previous" href="https://www.panini.fr/shp_fra_fr/comics/disney.html?pnn_is_not_presale=En+vente&amp;pnn_is_saleable=1" title="Précédent">
+                        <span class="label">Page</span>
+                        <span>Précédent</span>
+                    </a>
+                </li>
+                <li class="item">
+                    <a class="page" href="https://www.panini.fr/shp_fra_fr/comics/disney.html?pnn_is_not_presale=En+vente&amp;pnn_is_saleable=1">
+                        <span class="label">Page</span>
+                        <span>1</span>
+                    </a>
+                </li>
+                <li class="item current">
+                    <strong class="page">
+                        <span class="label">Vous lisez actuellement la page</span>
+                        <span>2</span>
+                    </strong>
+                </li>
+            </ul>
+        </div>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        next_url = PaniniComicsScraper.extract_next_page_url(soup, "https://www.panini.fr/shp_fra_fr/comics/disney.html?p=2")
+        self.assertIsNone(next_url)
+
+    def test_panini_comics_pagination_absent(self):
+        html = "<div><p>Aucun produit</p></div>"
+        soup = BeautifulSoup(html, "html.parser")
+        next_url = PaniniComicsScraper.extract_next_page_url(soup, "https://www.panini.fr/shp_fra_fr/comics/marvel.html")
+        self.assertIsNone(next_url)
+
+    def test_panini_comics_parse_card(self):
+        html = """
+        <li class="item product product-item">
+            <div class="product-item-info">
+                <div class="product photo product-item-photo">
+                    <a class="product link product-item-link" href="https://www.panini.fr/shp_fra_fr/star-wars-tome-02-fsw26002-fr02.html">
+                        <img class="product-image-photo" src="https://www.panini.fr/media/catalog/product/f/s/fsw26002_0.jpg?quality=80" alt="Star Wars Tome 02"/>
+                    </a>
+                </div>
+                <div class="product details product-item-details">
+                    <h3 class="product name product-item-name">
+                        <a class="product-item-link" href="https://www.panini.fr/shp_fra_fr/star-wars-tome-02-fsw26002-fr02.html">
+                            Star Wars Tome 02
+                        </a>
+                    </h3>
+                    <div class="product attributes product-item-attributes">
+                        <div class="product attribute type product-item-attribute-release-date">
+                            <small>20/10/26</small>
+                        </div>
+                    </div>
+                    <div class="price-box price-final_price">
+                        <span class="price-wrapper">
+                            <span class="price">16,99 €</span>
+                        </span>
+                    </div>
+                    <form data-product-sku="9782809499999"></form>
+                </div>
+            </div>
+        </li>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        card = soup.select_one("li.item.product.product-item")
+        scraper = PaniniComicsScraper()
+        book = scraper._parse_card(card, base_url="https://www.panini.fr/shp_fra_fr/comics/star-wars.html")
+        self.assertIsNotNone(book)
+        self.assertEqual(book.title, "Star Wars Tome 02")
+        self.assertEqual(book.series_name, "Star Wars")
+        self.assertEqual(book.volume, 2)
+        self.assertEqual(book.price, 16)
+        self.assertEqual(book.editor_name, "Panini Comics")
+        self.assertEqual(book.category_name, "Comics")
+        self.assertEqual(book.cover_url, "https://www.panini.fr/media/catalog/product/f/s/fsw26002_0.jpg")
+        self.assertEqual(book.isbn, "9782809499999")
+        self.assertEqual(book.release_date.year, 2026)
+        self.assertEqual(book.release_date.month, 10)
+        self.assertEqual(book.release_date.day, 20)
 
     def test_scraped_book_with_collection(self):
         book = ScrapedBook(
