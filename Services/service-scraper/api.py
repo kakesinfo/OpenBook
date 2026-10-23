@@ -48,6 +48,7 @@ def root():
             "deduplicate": "POST /api/deduplicate",
             "reconcile_variants": "POST /api/maintenance/reconcile-variants",
             "enrich_bnf": "POST /api/maintenance/enrich-bnf",
+            "verify_isbn": "POST /api/maintenance/verify-isbn",
             "maintenance_stats": "GET /api/maintenance/stats",
             "recent_books": "/api/books"
         },
@@ -211,6 +212,40 @@ def enrich_bnf_endpoint(limit: int = Query(50, ge=1, le=500)):
             msg = f"Enrichissement BNF terminé : {scanned} album(s) analysé(s), aucune correspondance BNF trouvée."
         else:
             msg = "Tous les albums possèdent déjà un ISBN valide !"
+        return {
+            "status": "success",
+            "message": msg,
+            "details": res
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/maintenance/verify-isbn")
+@app.post("/api/verify-isbn")
+def verify_isbn_endpoint(limit: int = Query(50, ge=1, le=500), force: bool = Query(True)):
+    try:
+        res = db.verify_books_from_bnf(limit=limit, force_update_pages=force)
+        scanned = res.get("scanned", 0)
+        verified = res.get("verified_in_bnf", 0)
+        updated = res.get("updated_count", 0)
+        pages = res.get("pages_corrected", 0)
+        collections = res.get("collections_added", 0)
+        authors = res.get("authors_added", 0)
+
+        parts = []
+        if pages > 0:
+            parts.append(f"{pages} page(s) corrigée(s)")
+        if collections > 0:
+            parts.append(f"{collections} collection(s) rattachée(s)")
+        if authors > 0:
+            parts.append(f"{authors} auteur(s) associé(s)")
+
+        if updated > 0:
+            msg = f"Vérification BnF terminée : {updated} album(s) mis à jour ({', '.join(parts)}) sur {scanned} analysé(s)."
+        elif scanned > 0:
+            msg = f"Vérification BnF terminée : {scanned} album(s) analysé(s) ({verified} trouvés à la BnF), toutes les métadonnées sont déjà exactes !"
+        else:
+            msg = "Aucun album à vérifier."
         return {
             "status": "success",
             "message": msg,

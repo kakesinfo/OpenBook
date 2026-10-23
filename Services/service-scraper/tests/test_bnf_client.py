@@ -8,6 +8,7 @@ from bnf_client import (
     parse_bnf_date,
     extract_bnf_volume,
     search_bnf_book,
+    lookup_bnf_by_isbn,
 )
 
 class TestBnfClient(unittest.TestCase):
@@ -63,6 +64,18 @@ class TestBnfClient(unittest.TestCase):
         self.assertEqual(extract_bnf_volume("Ultimate Fantastic Four. 2"), 2)
         self.assertEqual(extract_bnf_volume("X-Men, Shadows of tomorrow. 04 [Édition collector]"), 4)
 
+
+    def test_lookup_bnf_by_isbn_invalid(self):
+        self.assertIsNone(lookup_bnf_by_isbn(""))
+        self.assertIsNone(lookup_bnf_by_isbn("123"))
+
+    def test_lookup_bnf_by_isbn_sample(self):
+        # Known real BNF record for Ultimate Fantastic Four Vol 2
+        res = lookup_bnf_by_isbn("9791039149013")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["isbn"], "9791039149013")
+        self.assertEqual(res["page_count"], 880)
+        self.assertEqual(res["volume"], 2)
 
 if __name__ == "__main__":
     unittest.main()

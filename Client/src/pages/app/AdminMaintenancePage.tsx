@@ -5,6 +5,7 @@ import {
     faWrench,
     faClone,
     faBarcode,
+    faCheckDouble,
     faCheck,
     faRotate,
     faCircleCheck,
@@ -14,7 +15,7 @@ import {
 import useSession from "../../hooks/UseSession.tsx";
 import "./AdminMaintenancePage.scss";
 
-type TaskId = "utf8" | "dedup" | "bnf";
+type TaskId = "utf8" | "dedup" | "bnf" | "verify_isbn";
 
 interface MaintenanceTaskDef {
     id: TaskId;
@@ -49,6 +50,14 @@ const TASKS: MaintenanceTaskDef[] = [
         desc: "Interroge l'API SRU du catalogue de la Bibliothèque nationale de France (BnF) pour retrouver les ISBN/EAN manquants, le nombre de pages, la collection et les auteurs de vos albums.",
         icon: faBarcode,
         iconClass: "admin-maintenance__task-icon--bnf"
+    },
+    {
+        id: "verify_isbn",
+        title: "Vérifier avec la BnF",
+        tag: "Contrôle & Pages",
+        desc: "Vérifie chaque album ayant un ISBN auprès du catalogue BnF pour corriger le nombre exact de pages, rattacher la collection officielle et compléter les auteurs manquants.",
+        icon: faCheckDouble,
+        iconClass: "admin-maintenance__task-icon--verify"
     }
 ];
 
@@ -74,7 +83,8 @@ export default function AdminMaintenancePage() {
     const [taskStatuses, setTaskStatuses] = useState<Record<TaskId, TaskStatusInfo>>({
         utf8: { state: "idle" },
         dedup: { state: "idle" },
-        bnf: { state: "idle" }
+        bnf: { state: "idle" },
+        verify_isbn: { state: "idle" }
     });
 
     const headerCheckboxRef = useRef<HTMLInputElement>(null);
@@ -116,6 +126,9 @@ export default function AdminMaintenancePage() {
         } else if (taskId === "bnf") {
             endpoint = "/admin/scrapers/enrich-bnf";
             taskName = "Enrichissement BnF";
+        } else if (taskId === "verify_isbn") {
+            endpoint = "/admin/scrapers/verify-isbn";
+            taskName = "Vérification BnF";
         }
 
         setTaskStatuses(prev => ({
@@ -196,7 +209,7 @@ export default function AdminMaintenancePage() {
 
     const handleExecuteAll = async () => {
         if (runningTasks.length > 0) return;
-        setRunningTasks(["utf8", "dedup", "bnf"]);
+        setRunningTasks(["utf8", "dedup", "bnf", "verify_isbn"]);
         setResult(null);
 
         const results: string[] = [];
@@ -213,6 +226,10 @@ export default function AdminMaintenancePage() {
         const resBnf = await runSingleTask("bnf");
         if (!resBnf.ok) anyError = true;
         results.push(resBnf.message);
+
+        const resVerify = await runSingleTask("verify_isbn");
+        if (!resVerify.ok) anyError = true;
+        results.push(resVerify.message);
 
         setResult({
             taskName: "Maintenance complète (Tout)",
@@ -342,7 +359,8 @@ export default function AdminMaintenancePage() {
                                     const taskRunning = runningTasks.includes(task.id);
                                     const statusInfo = taskStatuses[task.id] || { state: "idle" };
 
-                                    return (                                        <tr
+                                    return (
+                                        <tr
                                             key={task.id}
                                             className={`admin-maintenance__row ${isSelected ? "is-selected" : ""}`}
                                             onClick={() => handleToggleSelect(task.id)}

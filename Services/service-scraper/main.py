@@ -41,6 +41,11 @@ def parse_args():
         help="Run BNF catalog metadata & ISBN enrichment and exit"
     )
     parser.add_argument(
+        "--verify-isbn",
+        action="store_true",
+        help="Verify book metadata (pages, collection, authors) with BNF for all ISBNs and exit"
+    )
+    parser.add_argument(
         "--repair",
         action="store_true",
         help="Run database UTF-8 mojibake repair and variant reconciliation and exit"
@@ -79,7 +84,11 @@ def run_server():
 
 if __name__ == "__main__":
     args = parse_args()
-    if args.enrich_bnf:
+    if args.verify_isbn:
+        logger.info("Running BNF ISBN metadata verification...")
+        res = db.verify_books_from_bnf()
+        logger.info("BNF ISBN verification completed: %s", res)
+    elif args.enrich_bnf:
         logger.info("Running BNF catalog enrichment...")
         res = db.enrich_books_from_bnf()
         logger.info("BNF enrichment completed: %s", res)

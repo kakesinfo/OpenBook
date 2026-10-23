@@ -288,3 +288,82 @@ def search_bnf_book(
         return best_candidate
 
     return None
+
+
+def lookup_bnf_by_isbn(isbn: str, timeout: int = 6) -> Optional[Dict[str, Any]]:
+    """
+    Directly looks up a book record in BNF SRU catalog by ISBN (10 or 13 digits).
+    Returns a dict with title, volume, page_count, collection_name, release_date, authors, etc.
+    """
+    if not isbn:
+        return None
+    clean_isbn = re.sub(r'[^0-9Xx]', '', isbn)
+    if len(clean_isbn) not in (10, 13):
+        return None
+
+    query = f'bib.isbn all "{clean_isbn}"'
+    url = (
+        f"{BNF_SRU_BASE_URL}?version=1.2&operation=searchRetrieve&recordSchema=dublincore"
+        f"&maximumRecords=5&query={urllib.parse.quote(query)}"
+    )
+
+    ns = {
+        'srw': 'http://www.loc.gov/zing/srw/',
+        'oai_dc': 'http://www.openarchives.org/OAI/2.0/oai_dc/',
+        'dc': 'http://purl.org/dc/elements/1.1/'
+    }
+
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": BNF_USER_AGENT})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            xml_data = resp.read()
+        root = ET.fromstring(xml_data)
+        records = root.findall('.//srw:record', ns)
+        if not records:
+            return None
+
+        for rec in records:
+            dc = rec.find('.//oai_dc:dc', ns)
+            if dc is None:
+                continue
+
+            bnf_title = clean_text(dc.findtext('dc:title', default='', namespaces=ns))
+            page_count = None
+            for fmt in dc.findall('dc:format', ns):
+                pc = parse_bnf_page_count(fmt.text)
+                if pc:
+                    page_count = pc
+                    break
+
+            collection_name = None
+            for desc in dc.findall('dc:description', ns):
+                col = parse_bnf_collection(desc.text)
+                if col:
+                    collection_name = col
+                    break
+
+            date_el = dc.findtext('dc:date', default=None, namespaces=ns)
+            release_date = parse_bnf_date(date_el)
+
+            authors = []
+            for cr in dc.findall('dc:creator', ns) + dc.findall('dc:contributor', ns):
+                if cr.text:
+                    first, last, role = parse_bnf_creator(cr.text)
+                    if last:
+                        authors.append(ScrapedAuthor(firstname=first, lastname=last, role=role))
+
+            rec_vol = extract_bnf_volume(bnf_title) if bnf_title else None
+
+            return {
+                "isbn": clean_isbn,
+                "title": bnf_title,
+                "volume": rec_vol,
+                "page_count": page_count,
+                "collection_name": collection_name,
+                "release_date": release_date,
+                "authors": authors
+            }
+        return None
+    except Exception as e:
+        logger.warning("BNF ISBN lookup failed for %s: %s", clean_isbn, e)
+        return None

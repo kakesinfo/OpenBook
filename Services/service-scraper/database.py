@@ -1240,6 +1240,182 @@ class Database:
             if conn:
                 self.return_connection(conn)
 
+    def verify_books_from_bnf(self, limit: int = 100, force_update_pages: bool = True) -> Dict[str, Any]:
+        from bnf_client import lookup_bnf_by_isbn
+
+        conn = None
+        scanned_count = 0
+        verified_count = 0
+        updated_count = 0
+        pages_corrected = 0
+        collections_added = 0
+        authors_added = 0
+        details = []
+
+        try:
+            conn = self.get_connection()
+            with conn.cursor() as cur:
+                # Prioritize books with missing pages first, then oldest updated
+                cur.execute(
+                    """
+                    SELECT b.id, b.title, b.isbn, b.page_count, b.collection_id, b.release_date
+                    FROM book b
+                    WHERE b.isbn IS NOT NULL AND LENGTH(TRIM(b.isbn)) >= 10
+                    ORDER BY (CASE WHEN b.page_count IS NULL OR b.page_count = 0 THEN 0 ELSE 1 END), b.updated_at ASC
+                    LIMIT %s;
+                    """,
+                    (limit,)
+                )
+                books = cur.fetchall()
+                scanned_count = len(books)
+
+                for b_id, b_title, b_isbn, b_pages, b_col_id, b_rel_date in books:
+                    clean_isbn = re.sub(r"[^0-9Xx]", "", b_isbn or "")
+                    if len(clean_isbn) not in (10, 13):
+                        continue
+
+                    try:
+                        bnf_meta = lookup_bnf_by_isbn(clean_isbn)
+                    except Exception as err:
+                        logger.warning("BNF lookup error for book %s (ISBN %s): %s", b_id, clean_isbn, err)
+                        continue
+
+                    if not bnf_meta:
+                        continue
+
+                    verified_count += 1
+                    bnf_pages = bnf_meta.get("page_count")
+                    bnf_col = bnf_meta.get("collection_name")
+                    bnf_date = bnf_meta.get("release_date")
+                    bnf_authors = bnf_meta.get("authors") or []
+
+                    book_modified = False
+                    cur.execute("SAVEPOINT verify_isbn_sp;")
+                    try:
+                        # 1. Check page_count
+                        new_pages = b_pages
+                        if bnf_pages:
+                            if b_pages is None or b_pages == 0 or (force_update_pages and b_pages != bnf_pages):
+                                new_pages = bnf_pages
+                                book_modified = True
+                                pages_corrected += 1
+
+                        # 2. Check collection
+                        new_col_id = b_col_id
+                        if not new_col_id and bnf_col:
+                            clean_col = clean_text(bnf_col)
+                            cur.execute("SELECT id FROM collection WHERE LOWER(name) = LOWER(%s);", (clean_col,))
+                            c_row = cur.fetchone()
+                            if c_row:
+                                new_col_id = c_row[0]
+                            else:
+                                cur.execute(
+                                    "INSERT INTO collection (name, created_at, updated_at) VALUES (%s, NOW(), NOW()) RETURNING id;",
+                                    (clean_col,)
+                                )
+                                new_col_id = cur.fetchone()[0]
+                            book_modified = True
+                            collections_added += 1
+
+                        # 3. Check release_date
+                        new_date = b_rel_date
+                        if not new_date and bnf_date:
+                            new_date = bnf_date
+                            book_modified = True
+
+                        if book_modified:
+                            cur.execute(
+                                """
+                                UPDATE book
+                                SET page_count = %s,
+                                    collection_id = %s,
+                                    release_date = COALESCE(release_date, %s),
+                                    updated_at = NOW()
+                                WHERE id = %s;
+                                """,
+                                (new_pages or 0, new_col_id, new_date, b_id)
+                            )
+                        else:
+                            # Touch updated_at so it cycles in the verification queue
+                            cur.execute("UPDATE book SET updated_at = NOW() WHERE id = %s;", (b_id,))
+
+                        # 4. Check authors
+                        auth_added_count = 0
+                        cur.execute("SELECT 1 FROM book_has_author WHERE book_id = %s LIMIT 1;", (b_id,))
+                        has_authors = cur.fetchone() is not None
+                        if not has_authors and bnf_authors:
+                            for auth in bnf_authors:
+                                clean_fn = clean_text(auth.firstname) or ""
+                                clean_ln = clean_text(auth.lastname)
+                                if not clean_ln:
+                                    continue
+                                cur.execute(
+                                    "SELECT id FROM author WHERE LOWER(firstname) = LOWER(%s) AND LOWER(lastname) = LOWER(%s);",
+                                    (clean_fn, clean_ln)
+                                )
+                                a_row = cur.fetchone()
+                                if a_row:
+                                    a_id = a_row[0]
+                                else:
+                                    cur.execute(
+                                        "INSERT INTO author (firstname, lastname, created_at, updated_at) VALUES (%s, %s, NOW(), NOW()) RETURNING id;",
+                                        (clean_fn, clean_ln)
+                                    )
+                                    a_id = cur.fetchone()[0]
+
+                                type_id = 1 if auth.role == "Writer" else (2 if auth.role == "Illustrator" else 3)
+                                cur.execute(
+                                    "INSERT INTO book_has_author (book_id, author_id, author_type_id, created_at, updated_at) VALUES (%s, %s, %s, NOW(), NOW());",
+                                    (b_id, a_id, type_id)
+                                )
+                                auth_added_count += 1
+
+                            if auth_added_count > 0:
+                                book_modified = True
+                                authors_added += auth_added_count
+
+                        cur.execute("RELEASE SAVEPOINT verify_isbn_sp;")
+
+                        if book_modified:
+                            updated_count += 1
+                            details.append({
+                                "book_id": b_id,
+                                "title": b_title,
+                                "isbn": clean_isbn,
+                                "old_pages": b_pages,
+                                "new_pages": new_pages,
+                                "collection": bnf_col if (not b_col_id and new_col_id) else None,
+                                "authors_added": auth_added_count
+                            })
+                    except Exception as err_b:
+                        cur.execute("ROLLBACK TO SAVEPOINT verify_isbn_sp;")
+                        logger.error("Failed to verify/update book %s (ISBN %s): %s", b_id, clean_isbn, err_b)
+
+                conn.commit()
+                logger.info(
+                    "BNF ISBN verification completed: scanned=%d, verified_in_bnf=%d, updated=%d (pages_corrected=%d, collections_added=%d, authors_added=%d)",
+                    scanned_count, verified_count, updated_count, pages_corrected, collections_added, authors_added
+                )
+                return {
+                    "status": "success",
+                    "scanned": scanned_count,
+                    "verified_in_bnf": verified_count,
+                    "updated_count": updated_count,
+                    "pages_corrected": pages_corrected,
+                    "collections_added": collections_added,
+                    "authors_added": authors_added,
+                    "details": details
+                }
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error("Error during verify_books_from_bnf: %s", e)
+            raise
+        finally:
+            if conn:
+                self.return_connection(conn)
+
+
     def get_recent_books(self, limit: int = 20) -> List[Dict[str, Any]]:
         conn = None
         try:

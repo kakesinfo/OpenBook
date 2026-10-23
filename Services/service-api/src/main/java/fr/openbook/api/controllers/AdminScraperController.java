@@ -85,6 +85,17 @@ public class AdminScraperController {
         return ResponseEntity.ok(scraperService.enrichFromBnf(limit));
     }
 
+    @PostMapping({"/verify-isbn", "/maintenance/verify-isbn"})
+    public ResponseEntity<Map<String, Object>> verifyIsbn(
+            @RequestBody(required = false) Map<String, Object> request
+    ) {
+        Integer limit = null;
+        if (request != null && request.containsKey("limit") && request.get("limit") instanceof Number n) {
+            limit = n.intValue();
+        }
+        return ResponseEntity.ok(scraperService.verifyBooksFromBnf(limit));
+    }
+
     @GetMapping("/maintenance/conflicts")
     public ResponseEntity<Map<String, Object>> getConflicts() {
         return ResponseEntity.ok(scraperService.getVolumeConflicts());

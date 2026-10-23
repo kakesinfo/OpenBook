@@ -166,6 +166,16 @@ public class ScraperService {
         return executeRequest(req, "http://localhost:5001");
     }
 
+    public Map<String, Object> verifyBooksFromBnf(Integer limit) {
+        int effectiveLimit = (limit != null && limit > 0) ? limit : 50;
+        HttpRequest req = HttpRequest.newBuilder(URI.create(getBaseUrl() + "/api/maintenance/verify-isbn?limit=" + effectiveLimit))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .timeout(Duration.ofSeconds(120))
+                .header("Accept", "application/json")
+                .build();
+        return executeRequest(req, "http://localhost:5001");
+    }
+
     public Map<String, Object> getVolumeConflicts() {
         HttpRequest req = HttpRequest.newBuilder(URI.create(getBaseUrl() + "/api/maintenance/conflicts"))
                 .GET()
