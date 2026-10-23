@@ -28,6 +28,10 @@ public class BookDTO extends BookSummaryDTO {
     private List<BookHasAuthorDTO> authors = new ArrayList<>();
     private List<String> themes = new ArrayList<>();
 
+    private Long parentBookId;
+    private String parentBookTitle;
+    private List<BookSummaryDTO> variants = new ArrayList<>();
+
     private Long previousBookId;
     private Long nextBookId;
     private BookSummaryDTO previousBook;

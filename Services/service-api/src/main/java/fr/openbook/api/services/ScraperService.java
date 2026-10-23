@@ -181,6 +181,22 @@ public class ScraperService {
         }
     }
 
+    public Map<String, Object> linkVariant(Map<String, Object> payload) {
+        try {
+            String jsonBody = objectMapper.writeValueAsString(payload);
+            HttpRequest req = HttpRequest.newBuilder(URI.create(getBaseUrl() + "/api/maintenance/link-variant"))
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .timeout(Duration.ofSeconds(10))
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .build();
+            return executeRequest(req, "http://localhost:5001");
+        } catch (IOException e) {
+            log.error("Failed to serialize linkVariant payload", e);
+            return Map.of("error", e.getMessage(), "status", "error");
+        }
+    }
+
     public Map<String, Object> getMaintenanceStats() {
         HttpRequest req = HttpRequest.newBuilder(URI.create(getBaseUrl() + "/api/maintenance/stats"))
                 .GET()

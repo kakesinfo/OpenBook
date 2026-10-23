@@ -29,6 +29,7 @@ import {
     faBell,
     faBellSlash,
     faXmark,
+    faClone,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
@@ -398,6 +399,12 @@ export default function BookPage() {
                                         {book.series.category}
                                     </span>
                                 )}
+                                {book.parentBookId && (
+                                    <Link to={`/app/book/${book.parentBookId}`} className="book-page__tag book-page__tag--variant">
+                                        <FontAwesomeIcon icon={faClone} />
+                                        <span>Couverture variante</span>
+                                    </Link>
+                                )}
                             </div>
 
                             {/* Titles */}
@@ -449,6 +456,18 @@ export default function BookPage() {
                                     </div>
                                 )}
                             </div>
+
+                            {book.parentBookId && (
+                                <div className="book-page__variant-banner">
+                                    <FontAwesomeIcon icon={faClone} />
+                                    <span>
+                                        Ceci est une <strong>couverture variante</strong>.{" "}
+                                        <Link to={`/app/book/${book.parentBookId}`}>
+                                            Voir l'édition standard {book.parentBookTitle ? `(« ${book.parentBookTitle} »)` : ""}
+                                        </Link>
+                                    </span>
+                                </div>
+                            )}
 
                             {/* Description */}
                             {book.description && (
@@ -513,6 +532,90 @@ export default function BookPage() {
                                     </select>
                                 </div>
                             </div>
+
+                            {/* Variants / Alternative Covers Section */}
+                            {((book.variants && book.variants.length > 0) || Boolean(book.parentBookId)) && (
+                                <div className="book-page__variants-card">
+                                    <div className="book-page__variants-header">
+                                        <FontAwesomeIcon icon={faClone} />
+                                        <h3>Éditions & Couvertures alternatives ({1 + (book.variants?.length || (book.parentBookId ? 1 : 0))})</h3>
+                                    </div>
+                                    <p className="book-page__variants-desc">
+                                        Sélectionnez une version pour afficher sa couverture dédiée, son ISBN et ses spécifications :
+                                    </p>
+                                    <div className="book-page__variants-grid">
+                                        {/* Standard / Parent Edition */}
+                                        {book.parentBookId ? (
+                                            <Link
+                                                to={`/app/book/${book.parentBookId}`}
+                                                className="book-page__variant-pill"
+                                                title={`Édition standard : ${book.parentBookTitle || ""}`}
+                                            >
+                                                <div className="book-page__variant-pill-thumb">
+                                                    <FontAwesomeIcon icon={faBookOpen} />
+                                                </div>
+                                                <div className="book-page__variant-pill-info">
+                                                    <span className="book-page__variant-pill-badge">Édition standard</span>
+                                                    <span className="book-page__variant-pill-title">{book.parentBookTitle || "Édition standard"}</span>
+                                                </div>
+                                            </Link>
+                                        ) : (
+                                            <div className="book-page__variant-pill book-page__variant-pill--active" title="Édition standard affichée">
+                                                {book.coverUrl ? (
+                                                    <img src={book.coverUrl} alt={book.title} className="book-page__variant-pill-img" />
+                                                ) : (
+                                                    <div className="book-page__variant-pill-fallback"><FontAwesomeIcon icon={faBookOpen} /></div>
+                                                )}
+                                                <div className="book-page__variant-pill-info">
+                                                    <span className="book-page__variant-pill-badge book-page__variant-pill-badge--active">Standard (Actuel)</span>
+                                                    <span className="book-page__variant-pill-title">{book.title}</span>
+                                                    {book.price ? <span className="book-page__variant-pill-price">{book.price} €</span> : null}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Variants list */}
+                                        {book.variants && book.variants.map((v) => {
+                                            const isCurrent = String(v.id) === String(book.id);
+                                            if (isCurrent) {
+                                                return (
+                                                    <div key={v.id} className="book-page__variant-pill book-page__variant-pill--active" title="Variante actuelle affichée">
+                                                        {v.coverUrl ? (
+                                                            <img src={v.coverUrl} alt={v.title} className="book-page__variant-pill-img" />
+                                                        ) : (
+                                                            <div className="book-page__variant-pill-fallback"><FontAwesomeIcon icon={faBookOpen} /></div>
+                                                        )}
+                                                        <div className="book-page__variant-pill-info">
+                                                            <span className="book-page__variant-pill-badge book-page__variant-pill-badge--active">Variante (Actuel)</span>
+                                                            <span className="book-page__variant-pill-title">{v.title}</span>
+                                                            {v.price ? <span className="book-page__variant-pill-price">{v.price} €</span> : null}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            return (
+                                                <Link
+                                                    key={v.id}
+                                                    to={`/app/book/${v.id}`}
+                                                    className="book-page__variant-pill"
+                                                    title={v.title}
+                                                >
+                                                    {v.coverUrl ? (
+                                                        <img src={v.coverUrl} alt={v.title} className="book-page__variant-pill-img" />
+                                                    ) : (
+                                                        <div className="book-page__variant-pill-fallback"><FontAwesomeIcon icon={faBookOpen} /></div>
+                                                    )}
+                                                    <div className="book-page__variant-pill-info">
+                                                        <span className="book-page__variant-pill-badge book-page__variant-pill-badge--alt">Variante</span>
+                                                        <span className="book-page__variant-pill-title">{v.title}</span>
+                                                        {v.price ? <span className="book-page__variant-pill-price">{v.price} €</span> : null}
+                                                    </div>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Technical Details Card */}
                             <div className="book-page__specs-card">

@@ -84,6 +84,13 @@ public class BookEntity {
     @JoinColumn(name = "editor_id", nullable = true)
     private EditorEntity editor;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_book_id", nullable = true)
+    private BookEntity parentBook;
+
+    @OneToMany(mappedBy = "parentBook", fetch = FetchType.LAZY)
+    private List<BookEntity> variants;
+
     @OneToMany(mappedBy = "book", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BookHasAuthorEntity> bookHasAuthors;
 

@@ -21,4 +21,5 @@ public class BookSummaryDTO {
     private Integer pageCount;
     private String status;
     private String readingStatus;
+    private Long parentBookId;
 }

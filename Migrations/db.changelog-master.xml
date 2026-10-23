@@ -1286,4 +1286,26 @@
         />
     </changeSet>
 
+    <changeSet id="25" author="Antigravity">
+        <addColumn tableName="book">
+            <column name="parent_book_id" type="integer">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+
+        <createIndex tableName="book" indexName="idx_book_parent_book_id">
+            <column name="parent_book_id" />
+        </createIndex>
+
+        <addForeignKeyConstraint
+            constraintName="fk_book_parent_book_id"
+            baseTableName="book"
+            baseColumnNames="parent_book_id"
+            referencedTableName="book"
+            referencedColumnNames="id"
+            onDelete="SET NULL"
+            onUpdate="CASCADE"
+        />
+    </changeSet>
+
 </databaseChangeLog>

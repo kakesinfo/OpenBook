@@ -94,6 +94,17 @@ class ScrapedAuthor:
     role: str = "Writer"  # 'Writer', 'Illustrator', 'Colorist'
 
 
+VARIANT_COVER_REGEX = re.compile(
+    r"\b(?:couverture\s+variante|variant(?:e)?(?:\s+panini|\s+exclusive)?|couv\.?\s*var\.?|(?:[eé]dition|coffret)\s+collector|collector|[eé]dition\s+sp[eé]ciale|[eé]dition\s+limit[eé]e|tirage\s+(?:limit[eé]|de\s+t[eê]te)|(?:version|[eé]dition\s+)?noir\s+et\s+blanc|n&b)\b",
+    re.IGNORECASE
+)
+
+def is_variant_title(title: Optional[str]) -> bool:
+    if not title:
+        return False
+    return bool(VARIANT_COVER_REGEX.search(title))
+
+
 @dataclass
 class ScrapedBook:
     title: str
@@ -112,6 +123,8 @@ class ScrapedBook:
     book_type: Optional[str] = "Comics"
     authors: List[ScrapedAuthor] = field(default_factory=list)
     source_url: Optional[str] = None
+    parent_book_id: Optional[int] = None
+    is_variant: bool = False
 
 
 class BaseScraper(ABC):

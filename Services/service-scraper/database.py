@@ -7,7 +7,7 @@ from psycopg2.extras import RealDictCursor
 from psycopg2 import pool
 
 from config import settings
-from scrapers.base import ScrapedBook, clean_text, clean_author_name, split_author_name
+from scrapers.base import ScrapedBook, clean_text, clean_author_name, split_author_name, is_variant_title
 
 logger = logging.getLogger(__name__)
 
@@ -448,6 +448,17 @@ class Database:
                     )
                     series_id = cur.fetchone()[0]
 
+                # Check variant cover linkage
+                parent_book_id = getattr(book, "parent_book_id", None)
+                if not parent_book_id and is_variant_title(clean_title) and series_id and book.volume:
+                    cur.execute(
+                        "SELECT id FROM book WHERE series_id = %s AND volume = %s AND parent_book_id IS NULL ORDER BY id ASC LIMIT 1;",
+                        (series_id, book.volume)
+                    )
+                    p_row = cur.fetchone()
+                    if p_row:
+                        parent_book_id = p_row[0]
+
                 # 5. Check if Book already exists (Multi-criteria matching)
                 book_id = None
 
@@ -503,7 +514,8 @@ class Database:
                             release_date = COALESCE(%s, release_date),
                             description = COALESCE(%s, description),
                             cover_url = COALESCE(%s, cover_url),
-                            collection_id = COALESCE(%s, collection_id)
+                            collection_id = COALESCE(%s, collection_id),
+                            parent_book_id = COALESCE(%s, parent_book_id)
                         WHERE id = %s;
                         """,
                         (
@@ -513,6 +525,7 @@ class Database:
                             clean_desc,
                             book.cover_url,
                             collection_id,
+                            parent_book_id,
                             book_id
                         )
                     )
@@ -546,12 +559,12 @@ class Database:
                         INSERT INTO book (
                             title, series_id, editor_id, collection_id,
                             volume, isbn, page_count, price, description,
-                            cover_url, release_date, type,
+                            cover_url, release_date, type, parent_book_id,
                             created_at, updated_at
                         ) VALUES (
                             %s, %s, %s, %s,
                             %s, %s, %s, %s, %s,
-                            %s, %s, %s,
+                            %s, %s, %s, %s,
                             NOW(), NOW()
                         ) RETURNING id;
                         """,
@@ -567,7 +580,8 @@ class Database:
                             clean_desc,
                             book.cover_url,
                             book.release_date or datetime.now(),
-                            book.book_type or "Comics"
+                            book.book_type or "Comics",
+                            parent_book_id
                         )
                     )
                     book_id = cur.fetchone()[0]
@@ -629,7 +643,7 @@ class Database:
                     SELECT b.series_id, s.name as series_name, b.volume, COUNT(*)
                     FROM book b
                     JOIN series s ON b.series_id = s.id
-                    WHERE b.volume IS NOT NULL
+                    WHERE b.volume IS NOT NULL AND b.parent_book_id IS NULL
                     GROUP BY b.series_id, s.name, b.volume
                     HAVING COUNT(*) > 1
                     ORDER BY s.name, b.volume;
@@ -646,10 +660,11 @@ class Database:
                     cur.execute(
                         """
                         SELECT b.id, b.title, b.volume, b.isbn, b.price, b.page_count, 
-                               b.release_date, b.cover_url, c.name as collection_name
+                               b.release_date, b.cover_url, c.name as collection_name,
+                               b.parent_book_id
                         FROM book b
                         LEFT JOIN collection c ON b.collection_id = c.id
-                        WHERE b.series_id = %s
+                        WHERE b.series_id = %s AND b.parent_book_id IS NULL
                         ORDER BY b.volume, b.release_date, b.id;
                         """,
                         (sid,)
@@ -665,7 +680,8 @@ class Database:
                             "page_count": row[5],
                             "release_date": row[6].strftime("%Y-%m-%d") if row[6] else None,
                             "cover_url": row[7],
-                            "collection_name": row[8]
+                            "collection_name": row[8],
+                            "is_variant_hint": is_variant_title(row[1])
                         })
                     result.append({
                         "series_id": sid,
@@ -677,6 +693,39 @@ class Database:
         except Exception as e:
             logger.error("Error detecting volume conflicts: %s", e)
             return []
+        finally:
+            if conn:
+                self.return_connection(conn)
+
+    def link_as_variant(self, parent_book_id: int, variant_book_ids: List[int]) -> Dict[str, Any]:
+        if not parent_book_id or not variant_book_ids:
+            raise ValueError("parent_book_id and variant_book_ids are required")
+        conn = None
+        try:
+            conn = self.get_connection()
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE book
+                    SET parent_book_id = %s, updated_at = NOW()
+                    WHERE id = ANY(%s) AND id != %s;
+                    """,
+                    (parent_book_id, variant_book_ids, parent_book_id)
+                )
+                count = cur.rowcount
+                conn.commit()
+                logger.info("Linked %d books as variant of book %s", count, parent_book_id)
+                return {
+                    "status": "success",
+                    "linked_count": count,
+                    "parent_book_id": parent_book_id,
+                    "variant_book_ids": variant_book_ids
+                }
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error("Error linking books as variant: %s", e)
+            raise
         finally:
             if conn:
                 self.return_connection(conn)

@@ -29,6 +29,10 @@ class SplitSeriesRequest(BaseModel):
     new_series_name: str
     book_ids: List[int]
 
+class LinkVariantRequest(BaseModel):
+    parent_book_id: int
+    variant_book_ids: List[int]
+
 @app.get("/")
 def root():
     return {
@@ -168,6 +172,14 @@ def get_volume_conflicts():
 def split_series_endpoint(req: SplitSeriesRequest):
     try:
         res = db.split_series(req.source_series_id, req.new_series_name, req.book_ids)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/maintenance/link-variant")
+def link_variant_endpoint(req: LinkVariantRequest):
+    try:
+        res = db.link_as_variant(req.parent_book_id, req.variant_book_ids)
         return res
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

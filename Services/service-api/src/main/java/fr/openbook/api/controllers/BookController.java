@@ -343,6 +343,9 @@ public class BookController {
             dto.setAuthor(authorStr);
         }
         dto.setType(book.getType());
+        if (book.getParentBook() != null) {
+            dto.setParentBookId(book.getParentBook().getId());
+        }
         return dto;
     }
 
@@ -385,12 +388,26 @@ public class BookController {
         }
         dto.setThemes(themes);
 
-        // Previous and Next book in the same series
+        if (bookEntity.getParentBook() != null) {
+            dto.setParentBookId(bookEntity.getParentBook().getId());
+            dto.setParentBookTitle(bookEntity.getParentBook().getTitle());
+            if (bookEntity.getParentBook().getVariants() != null && !bookEntity.getParentBook().getVariants().isEmpty()) {
+                dto.setVariants(bookEntity.getParentBook().getVariants().stream().map(this::entityToSummaryDTO).collect(Collectors.toList()));
+            }
+        } else if (bookEntity.getVariants() != null && !bookEntity.getVariants().isEmpty()) {
+            dto.setVariants(bookEntity.getVariants().stream().map(this::entityToSummaryDTO).collect(Collectors.toList()));
+        }
+
+        // Previous and Next book in the same series (filtering out variants so they do not disrupt sequence)
         if (bookEntity.getSeries() != null && bookEntity.getSeries().getId() != null) {
-            List<BookEntity> seriesBooks = repositoryService.getBookRepository()
+            List<BookEntity> rawBooks = repositoryService.getBookRepository()
                     .findAllBySeriesId(bookEntity.getSeries().getId());
 
-            if (seriesBooks != null && seriesBooks.size() > 1) {
+            List<BookEntity> seriesBooks = (rawBooks != null)
+                    ? rawBooks.stream().filter(b -> b.getParentBook() == null).collect(Collectors.toList())
+                    : Collections.emptyList();
+
+            if (seriesBooks.size() > 1) {
                 BookEntity prevBook = null;
                 BookEntity nextBook = null;
 

@@ -84,6 +84,11 @@ public class AdminScraperController {
         return ResponseEntity.ok(scraperService.splitSeries(payload));
     }
 
+    @PostMapping("/maintenance/link-variant")
+    public ResponseEntity<Map<String, Object>> linkVariant(@RequestBody Map<String, Object> payload) {
+        return ResponseEntity.ok(scraperService.linkVariant(payload));
+    }
+
     @GetMapping("/maintenance/stats")
     public ResponseEntity<Map<String, Object>> getMaintenanceStats() {
         return ResponseEntity.ok(scraperService.getMaintenanceStats());
