@@ -12,7 +12,8 @@ import {
     faChevronUp,
     faTag,
     faClone,
-    faStar
+    faStar,
+    faPlus
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
 import "./AdminConflictsPage.scss";
@@ -51,14 +52,14 @@ export default function AdminConflictsPage() {
     const [result, setResult] = useState<ActionResult | null>(null);
 
     const [expandedSeries, setExpandedSeries] = useState<Record<number, boolean>>({});
-    const [actionModes, setActionModes] = useState<Record<number, "split" | "variant">>({});
+    const [actionModes, setActionModes] = useState<Record<number, "variant" | "split">>({});
 
-    // Split state
-    const [selectedBooksBySeries, setSelectedBooksBySeries] = useState<Record<number, number[]>>({});
+    // Split state: user explicitly selects books and series name
+    const [splitSelections, setSplitSelections] = useState<Record<number, number[]>>({});
     const [newSeriesNames, setNewSeriesNames] = useState<Record<number, string>>({});
     const [splitProcessing, setSplitProcessing] = useState<number | null>(null);
 
-    // Variant linkage state
+    // Variant linkage state: user explicitly selects canonical and variant books
     const [canonicalBooks, setCanonicalBooks] = useState<Record<number, number>>({});
     const [variantSelections, setVariantSelections] = useState<Record<number, number[]>>({});
     const [linkProcessing, setLinkProcessing] = useState<number | null>(null);
@@ -78,54 +79,29 @@ export default function AdminConflictsPage() {
                 setConflicts(list);
                 setServerConnected(true);
 
-                const defaultSelections: Record<number, number[]> = {};
-                const defaultNames: Record<number, string> = {};
                 const defaultExpanded: Record<number, boolean> = {};
-                const defaultModes: Record<number, "split" | "variant"> = {};
+                const defaultModes: Record<number, "variant" | "split"> = {};
                 const defaultCanonicals: Record<number, number> = {};
-                const defaultVariantSelections: Record<number, number[]> = {};
 
                 list.forEach((s) => {
                     defaultExpanded[s.series_id] = true;
+                    // Neutral or hinted mode
+                    defaultModes[s.series_id] = s.books.some(b => b.is_variant_hint) ? "variant" : "split";
 
-                    const hasVariantHint = s.books.some(b => b.is_variant_hint);
-                    defaultModes[s.series_id] = hasVariantHint ? "variant" : "split";
-
-                    // Split defaults
-                    const hasPoche = s.books.some(
-                        b => b.title.toLowerCase().includes("poche") ||
-                        (b.page_count && b.page_count <= 300 && b.price && b.price <= 10)
-                    );
-                    defaultNames[s.series_id] = hasPoche ? `${s.series_name} (Poche)` : `${s.series_name} (Autre édition)`;
-
-                    const toDetach: number[] = [];
-                    s.books.forEach(b => {
-                        if (
-                            b.title.toLowerCase().includes("poche") ||
-                            b.title.toLowerCase().includes("variante") ||
-                            b.title.toLowerCase().includes("collector") ||
-                            (b.page_count && b.page_count <= 300 && b.price && b.price <= 10)
-                        ) {
-                            toDetach.push(b.id);
-                        }
-                    });
-                    defaultSelections[s.series_id] = toDetach.length > 0 ? toDetach : (s.books.length > 1 ? [s.books[1].id] : []);
-
-                    // Variant defaults: canonical is first book without hint, or first book
+                    // Set first book as canonical reference for variant mode
                     const canonical = s.books.find(b => !b.is_variant_hint) || s.books[0];
-                    defaultCanonicals[s.series_id] = canonical.id;
-
-                    // Variants are all books except canonical
-                    const variants = s.books.filter(b => b.id !== canonical.id).map(b => b.id);
-                    defaultVariantSelections[s.series_id] = variants;
+                    if (canonical) {
+                        defaultCanonicals[s.series_id] = canonical.id;
+                    }
                 });
 
-                setSelectedBooksBySeries(defaultSelections);
-                setNewSeriesNames(defaultNames);
+                // Do NOT pre-check selections: let the user choose explicitly!
+                setSplitSelections({});
+                setVariantSelections({});
+                setNewSeriesNames({});
                 setExpandedSeries(defaultExpanded);
                 setActionModes(defaultModes);
                 setCanonicalBooks(defaultCanonicals);
-                setVariantSelections(defaultVariantSelections);
             } else {
                 setServerConnected(false);
             }
@@ -140,8 +116,9 @@ export default function AdminConflictsPage() {
         fetchConflicts();
     }, []);
 
-    const toggleBookSelection = (seriesId: number, bookId: number) => {
-        setSelectedBooksBySeries(prev => {
+    // Split handlers
+    const toggleSplitSelection = (seriesId: number, bookId: number) => {
+        setSplitSelections(prev => {
             const current = prev[seriesId] || [];
             const next = current.includes(bookId)
                 ? current.filter(id => id !== bookId)
@@ -150,16 +127,28 @@ export default function AdminConflictsPage() {
         });
     };
 
+    const selectAllForSplit = (series: SeriesConflict) => {
+        setSplitSelections(prev => ({
+            ...prev,
+            [series.series_id]: series.books.map(b => b.id)
+        }));
+    };
+
+    const clearSplitSelections = (seriesId: number) => {
+        setSplitSelections(prev => ({ ...prev, [seriesId]: [] }));
+    };
+
+    // Variant handlers
     const setCanonicalBook = (seriesId: number, bookId: number) => {
         setCanonicalBooks(prev => ({ ...prev, [seriesId]: bookId }));
-        // If this book was selected as variant, remove it
+        // Ensure this book is not in variant selections
         setVariantSelections(prev => {
             const current = prev[seriesId] || [];
             return { ...prev, [seriesId]: current.filter(id => id !== bookId) };
         });
     };
 
-    const toggleVariantBookSelection = (seriesId: number, bookId: number) => {
+    const toggleVariantSelection = (seriesId: number, bookId: number) => {
         setVariantSelections(prev => {
             const current = prev[seriesId] || [];
             const next = current.includes(bookId)
@@ -169,12 +158,22 @@ export default function AdminConflictsPage() {
         });
     };
 
+    const selectAllOthersAsVariants = (series: SeriesConflict) => {
+        const canonicalId = canonicalBooks[series.series_id] || series.books[0]?.id;
+        const others = series.books.filter(b => b.id !== canonicalId).map(b => b.id);
+        setVariantSelections(prev => ({ ...prev, [series.series_id]: others }));
+    };
+
+    const clearVariantSelections = (seriesId: number) => {
+        setVariantSelections(prev => ({ ...prev, [seriesId]: [] }));
+    };
+
     const handleSplitSeries = async (series: SeriesConflict) => {
-        const booksToMove = selectedBooksBySeries[series.series_id] || [];
+        const booksToMove = splitSelections[series.series_id] || [];
         const newName = (newSeriesNames[series.series_id] || "").trim();
 
         if (booksToMove.length === 0) {
-            alert("Veuillez sélectionner au moins un tome à détacher.");
+            alert("Veuillez sélectionner au moins un album à déplacer dans la nouvelle série.");
             return;
         }
         if (!newName) {
@@ -197,7 +196,7 @@ export default function AdminConflictsPage() {
             if (resp.ok) {
                 setResult({
                     type: "success",
-                    message: `${booksToMove.length} tome(s) déplacés avec succès vers la nouvelle série « ${newName} ».`,
+                    message: `${booksToMove.length} album(s) déplacés avec succès vers la nouvelle série « ${newName} ».`,
                     timestamp: nowFormatted()
                 });
                 await fetchConflicts();
@@ -226,11 +225,11 @@ export default function AdminConflictsPage() {
         const variantIds = allVariants.filter(id => id !== parentId);
 
         if (!parentId) {
-            alert("Veuillez désigner le tome principal.");
+            alert("Veuillez désigner l'album principal.");
             return;
         }
         if (variantIds.length === 0) {
-            alert("Veuillez cocher au moins une couverture variante à rattacher au tome principal.");
+            alert("Veuillez cocher au moins un album à lier en tant que couverture variante.");
             return;
         }
 
@@ -248,7 +247,7 @@ export default function AdminConflictsPage() {
             if (resp.ok) {
                 setResult({
                     type: "success",
-                    message: `${variantIds.length} tome(s) lié(s) comme variante(s) de couverture avec succès.`,
+                    message: `${variantIds.length} album(s) lié(s) comme couverture variante avec succès.`,
                     timestamp: nowFormatted()
                 });
                 await fetchConflicts();
@@ -276,7 +275,7 @@ export default function AdminConflictsPage() {
             <WrapperHeader>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
                     <div className="admin-conflicts__header-title">
-                        <h2>Conflits & Variantes</h2>
+                        <h2>Gestion des Conflits & Variantes</h2>
                     </div>
 
                     <div style={{
@@ -316,13 +315,13 @@ export default function AdminConflictsPage() {
                     <div className="admin-conflicts__panel-header">
                         <div className="admin-conflicts__panel-title-group">
                             <div className="admin-conflicts__panel-title-row">
-                                <h3>Gestion des conflits de tomes & Couvertures variantes</h3>
+                                <h3>Résolution des conflits de tomes</h3>
                                 <span className={`admin-conflicts__badge ${conflicts.length > 0 ? "admin-conflicts__badge--warning" : "admin-conflicts__badge--clean"}`}>
                                     {loading ? "Analyse..." : `${conflicts.length} série(s) en conflit`}
                                 </span>
                             </div>
                             <p className="admin-conflicts__panel-subtitle">
-                                Détectez les doublons de tomes au sein d'une même série et choisissez soit de les scinder en séries distinctes (ex: rééditions poche), soit de les lier comme couvertures variantes (Approche 2).
+                                Pour chaque série présentant des doublons de volume, choisissez vous-même l'action appropriée : rattacher des couvertures alternatives au tome principal ou scinder les albums vers une nouvelle série indépendante.
                             </p>
                         </div>
 
@@ -353,18 +352,18 @@ export default function AdminConflictsPage() {
                         <div className="admin-conflicts__list">
                             {conflicts.map((series) => {
                                 const isExpanded = Boolean(expandedSeries[series.series_id]);
-                                const mode = actionModes[series.series_id] || "split";
-                                const hasVariantHint = series.books.some(b => b.is_variant_hint);
+                                const mode = actionModes[series.series_id] || "variant";
 
                                 // Split variables
-                                const selectedBookIds = selectedBooksBySeries[series.series_id] || [];
+                                const selectedSplitIds = splitSelections[series.series_id] || [];
                                 const newName = newSeriesNames[series.series_id] || "";
                                 const isSplitting = splitProcessing === series.series_id;
 
                                 // Variant variables
-                                const canonicalId = canonicalBooks[series.series_id];
-                                const currentVariants = (variantSelections[series.series_id] || []).filter(id => id !== canonicalId);
+                                const canonicalId = canonicalBooks[series.series_id] || series.books[0]?.id;
+                                const selectedVariantIds = (variantSelections[series.series_id] || []).filter(id => id !== canonicalId);
                                 const isLinking = linkProcessing === series.series_id;
+                                const canonicalBook = series.books.find(b => b.id === canonicalId) || series.books[0];
 
                                 return (
                                     <div key={series.series_id} className="admin-conflicts__card">
@@ -378,13 +377,8 @@ export default function AdminConflictsPage() {
                                                     Conflit Volume {series.conflicting_volume}
                                                 </span>
                                                 <span className="admin-conflicts__count-badge">
-                                                    {series.books.length} tomes
+                                                    {series.books.length} tomes au total
                                                 </span>
-                                                {hasVariantHint && (
-                                                    <span className="admin-conflicts__hint-tag">
-                                                        <FontAwesomeIcon icon={faClone} /> Variante détectée
-                                                    </span>
-                                                )}
                                             </div>
 
                                             <div className="admin-conflicts__toggle-icon">
@@ -394,52 +388,94 @@ export default function AdminConflictsPage() {
 
                                         {isExpanded && (
                                             <div className="admin-conflicts__card-body">
-                                                {/* Action Mode Switcher */}
-                                                <div className="admin-conflicts__mode-tabs">
-                                                    <button
-                                                        type="button"
-                                                        className={`admin-conflicts__mode-tab ${mode === "variant" ? "admin-conflicts__mode-tab--active" : ""}`}
-                                                        onClick={() => setActionModes(prev => ({ ...prev, [series.series_id]: "variant" }))}
-                                                    >
-                                                        <FontAwesomeIcon icon={faClone} />
-                                                        <span>Lier comme couverture variante</span>
-                                                        {hasVariantHint && (
-                                                            <span className="admin-conflicts__tab-badge">Suggéré</span>
-                                                        )}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className={`admin-conflicts__mode-tab ${mode === "split" ? "admin-conflicts__mode-tab--active" : ""}`}
-                                                        onClick={() => setActionModes(prev => ({ ...prev, [series.series_id]: "split" }))}
-                                                    >
-                                                        <FontAwesomeIcon icon={faCodeBranch} />
-                                                        <span>Scinder en nouvelle série</span>
-                                                    </button>
+                                                {/* Action Choice Pills */}
+                                                <div className="admin-conflicts__choice-section">
+                                                    <span className="admin-conflicts__choice-title">
+                                                        Que souhaitez-vous faire pour cette série ?
+                                                    </span>
+
+                                                    <div className="admin-conflicts__mode-pills">
+                                                        <button
+                                                            type="button"
+                                                            className={`admin-conflicts__mode-pill ${mode === "variant" ? "admin-conflicts__mode-pill--active-variant" : ""}`}
+                                                            onClick={() => setActionModes(prev => ({ ...prev, [series.series_id]: "variant" }))}
+                                                        >
+                                                            <div className="admin-conflicts__mode-pill-icon">
+                                                                <FontAwesomeIcon icon={faClone} />
+                                                            </div>
+                                                            <div className="admin-conflicts__mode-pill-content">
+                                                                <div className="admin-conflicts__mode-pill-heading">
+                                                                    <strong>Lier des couvertures variantes</strong>
+                                                                    {series.books.some(b => b.is_variant_hint) && (
+                                                                        <span className="admin-conflicts__pill-hint-tag">Suggéré</span>
+                                                                    )}
+                                                                </div>
+                                                                <p>Associer des éditions variantes, collectors ou N&B à un album principal de référence.</p>
+                                                            </div>
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            className={`admin-conflicts__mode-pill ${mode === "split" ? "admin-conflicts__mode-pill--active-split" : ""}`}
+                                                            onClick={() => setActionModes(prev => ({ ...prev, [series.series_id]: "split" }))}
+                                                        >
+                                                            <div className="admin-conflicts__mode-pill-icon">
+                                                                <FontAwesomeIcon icon={faCodeBranch} />
+                                                            </div>
+                                                            <div className="admin-conflicts__mode-pill-content">
+                                                                <div className="admin-conflicts__mode-pill-heading">
+                                                                    <strong>Scinder en nouvelle série</strong>
+                                                                </div>
+                                                                <p>Déplacer des albums (ex: édition poche, réédition intégrale) vers une série distincte.</p>
+                                                            </div>
+                                                        </button>
+                                                    </div>
                                                 </div>
 
-                                                {mode === "variant" ? (
-                                                    <div>
-                                                        <p className="admin-conflicts__hint">
-                                                            Désignez l'<strong>édition standard / principale</strong> (radio) et cochez les <strong>couvertures variantes ou collectors</strong> à lui rattacher :
-                                                        </p>
+                                                {/* Mode 1: Lier comme couvertures variantes */}
+                                                {mode === "variant" && (
+                                                    <div className="admin-conflicts__mode-view">
+                                                        <div className="admin-conflicts__instructions-bar">
+                                                            <p className="admin-conflicts__hint">
+                                                                1. Choisissez l'<strong>album principal</strong> (bouton radio) — 2. Cochez les <strong>couvertures variantes</strong> à lui rattacher :
+                                                            </p>
+                                                            <div className="admin-conflicts__quick-actions">
+                                                                <button
+                                                                    type="button"
+                                                                    className="admin-conflicts__btn-text"
+                                                                    onClick={() => selectAllOthersAsVariants(series)}
+                                                                >
+                                                                    Cocher toutes les autres
+                                                                </button>
+                                                                <span className="admin-conflicts__quick-sep">•</span>
+                                                                <button
+                                                                    type="button"
+                                                                    className="admin-conflicts__btn-text"
+                                                                    onClick={() => clearVariantSelections(series.series_id)}
+                                                                >
+                                                                    Tout décocher
+                                                                </button>
+                                                            </div>
+                                                        </div>
 
                                                         <div className="admin-conflicts__books-grid">
                                                             {series.books.map((b) => {
                                                                 const isCanonical = b.id === canonicalId;
-                                                                const isVariantSelected = currentVariants.includes(b.id);
+                                                                const isVariantChecked = selectedVariantIds.includes(b.id);
+                                                                const isConflictVol = b.volume === series.conflicting_volume;
 
                                                                 return (
                                                                     <div
                                                                         key={b.id}
-                                                                        className={`admin-conflicts__book-item ${isCanonical ? "is-canonical" : isVariantSelected ? "is-selected" : ""}`}
+                                                                        className={`admin-conflicts__book-item ${isCanonical ? "is-canonical" : isVariantChecked ? "is-variant-checked" : ""}`}
                                                                         onClick={() => {
                                                                             if (!isCanonical) {
-                                                                                toggleVariantBookSelection(series.series_id, b.id);
+                                                                                toggleVariantSelection(series.series_id, b.id);
                                                                             }
                                                                         }}
                                                                     >
-                                                                        <div className="admin-conflicts__book-select-action" onClick={(e) => e.stopPropagation()}>
-                                                                            <label className="admin-conflicts__radio-label" title="Désigner comme édition principale">
+                                                                        <div className="admin-conflicts__book-controls" onClick={(e) => e.stopPropagation()}>
+                                                                            <label className="admin-conflicts__choice-radio" title="Définir comme édition de référence (Album principal)">
                                                                                 <input
                                                                                     type="radio"
                                                                                     name={`canonical_${series.series_id}`}
@@ -450,11 +486,11 @@ export default function AdminConflictsPage() {
                                                                             </label>
 
                                                                             {!isCanonical && (
-                                                                                <label className="admin-conflicts__check-label" title="Cocher comme variante à rattacher">
+                                                                                <label className="admin-conflicts__choice-check" title="Cocher pour lier comme couverture variante de l'album principal">
                                                                                     <input
                                                                                         type="checkbox"
-                                                                                        checked={isVariantSelected}
-                                                                                        onChange={() => toggleVariantBookSelection(series.series_id, b.id)}
+                                                                                        checked={isVariantChecked}
+                                                                                        onChange={() => toggleVariantSelection(series.series_id, b.id)}
                                                                                     />
                                                                                     <span>Variante</span>
                                                                                 </label>
@@ -477,17 +513,22 @@ export default function AdminConflictsPage() {
                                                                             <div className="admin-conflicts__badges-row">
                                                                                 {isCanonical && (
                                                                                     <span className="admin-conflicts__role-badge admin-conflicts__role-badge--canonical">
-                                                                                        <FontAwesomeIcon icon={faStar} /> Édition standard
+                                                                                        <FontAwesomeIcon icon={faStar} /> Album Principal
                                                                                     </span>
                                                                                 )}
-                                                                                {!isCanonical && isVariantSelected && (
+                                                                                {!isCanonical && isVariantChecked && (
                                                                                     <span className="admin-conflicts__role-badge admin-conflicts__role-badge--variant">
                                                                                         <FontAwesomeIcon icon={faClone} /> Variante
                                                                                     </span>
                                                                                 )}
+                                                                                {isConflictVol && (
+                                                                                    <span className="admin-conflicts__role-badge admin-conflicts__role-badge--conflict">
+                                                                                        Vol. {b.volume} en doublon
+                                                                                    </span>
+                                                                                )}
                                                                                 {b.is_variant_hint && (
                                                                                     <span className="admin-conflicts__role-badge admin-conflicts__role-badge--hint">
-                                                                                        Indice détecté
+                                                                                        Mot-clé détecté
                                                                                     </span>
                                                                                 )}
                                                                             </div>
@@ -509,47 +550,80 @@ export default function AdminConflictsPage() {
                                                             })}
                                                         </div>
 
-                                                        <div className="admin-conflicts__variant-bar">
-                                                            <div className="admin-conflicts__variant-summary">
-                                                                <span>Édition standard : <strong>{series.books.find(b => b.id === canonicalId)?.title}</strong></span>
-                                                                <span>• {currentVariants.length} variante(s) sélectionnée(s)</span>
+                                                        <div className="admin-conflicts__action-bar admin-conflicts__action-bar--variant">
+                                                            <div className="admin-conflicts__action-summary">
+                                                                <span>
+                                                                    Album standard : <strong>{canonicalBook?.title}</strong>
+                                                                </span>
+                                                                <span className="admin-conflicts__dot-sep">•</span>
+                                                                <span>
+                                                                    <strong>{selectedVariantIds.length}</strong> variante(s) sélectionnée(s) à lui rattacher
+                                                                </span>
                                                             </div>
 
                                                             <button
                                                                 type="button"
                                                                 className="admin-conflicts__btn-variant"
                                                                 onClick={() => handleLinkVariant(series)}
-                                                                disabled={isLinking || currentVariants.length === 0}
+                                                                disabled={isLinking || selectedVariantIds.length === 0}
                                                             >
                                                                 <FontAwesomeIcon icon={isLinking ? faRotate : faClone} spin={isLinking} />
                                                                 <span>
-                                                                    {isLinking ? "Liaison..." : `Lier comme couverture variante (${currentVariants.length})`}
+                                                                    {isLinking ? "Liaison en cours..." : `Lier comme couverture variante (${selectedVariantIds.length})`}
                                                                 </span>
                                                             </button>
                                                         </div>
                                                     </div>
-                                                ) : (
-                                                    <div>
-                                                        <p className="admin-conflicts__hint">
-                                                            Sélectionnez les tomes à détacher vers une nouvelle série (ex: réédition poche, intégrale, coffret) :
-                                                        </p>
+                                                )}
+
+                                                {/* Mode 2: Scinder en nouvelle série */}
+                                                {mode === "split" && (
+                                                    <div className="admin-conflicts__mode-view">
+                                                        <div className="admin-conflicts__instructions-bar">
+                                                            <p className="admin-conflicts__hint">
+                                                                Cochez les albums que vous souhaitez <strong>déplacer dans une nouvelle série</strong> :
+                                                            </p>
+                                                            <div className="admin-conflicts__quick-actions">
+                                                                <button
+                                                                    type="button"
+                                                                    className="admin-conflicts__btn-text"
+                                                                    onClick={() => selectAllForSplit(series)}
+                                                                >
+                                                                    Tout cocher
+                                                                </button>
+                                                                <span className="admin-conflicts__quick-sep">•</span>
+                                                                <button
+                                                                    type="button"
+                                                                    className="admin-conflicts__btn-text"
+                                                                    onClick={() => clearSplitSelections(series.series_id)}
+                                                                >
+                                                                    Tout décocher
+                                                                </button>
+                                                            </div>
+                                                        </div>
 
                                                         <div className="admin-conflicts__books-grid">
                                                             {series.books.map((b) => {
-                                                                const isChecked = selectedBookIds.includes(b.id);
+                                                                const isChecked = selectedSplitIds.includes(b.id);
+                                                                const isConflictVol = b.volume === series.conflicting_volume;
+
                                                                 return (
                                                                     <div
                                                                         key={b.id}
-                                                                        className={`admin-conflicts__book-item ${isChecked ? "is-selected" : ""}`}
-                                                                        onClick={() => toggleBookSelection(series.series_id, b.id)}
+                                                                        className={`admin-conflicts__book-item ${isChecked ? "is-split-checked" : ""}`}
+                                                                        onClick={() => toggleSplitSelection(series.series_id, b.id)}
                                                                     >
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            className="admin-checkbox"
-                                                                            checked={isChecked}
-                                                                            onChange={() => toggleBookSelection(series.series_id, b.id)}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                        />
+                                                                        <div className="admin-conflicts__book-controls" onClick={(e) => e.stopPropagation()}>
+                                                                            <label className="admin-conflicts__choice-check" title="Cocher pour déplacer dans la nouvelle série">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={isChecked}
+                                                                                    onChange={() => toggleSplitSelection(series.series_id, b.id)}
+                                                                                />
+                                                                                <span>Déplacer</span>
+                                                                            </label>
+                                                                        </div>
+
                                                                         {b.cover_url ? (
                                                                             <img src={b.cover_url} alt={b.title} className="admin-conflicts__book-cover" />
                                                                         ) : (
@@ -557,10 +631,25 @@ export default function AdminConflictsPage() {
                                                                                 <FontAwesomeIcon icon={faBookOpen} />
                                                                             </div>
                                                                         )}
+
                                                                         <div className="admin-conflicts__book-info">
                                                                             <div className="admin-conflicts__book-title" title={b.title}>
                                                                                 {b.title}
                                                                             </div>
+
+                                                                            <div className="admin-conflicts__badges-row">
+                                                                                {isChecked && (
+                                                                                    <span className="admin-conflicts__role-badge admin-conflicts__role-badge--split">
+                                                                                        <FontAwesomeIcon icon={faCodeBranch} /> À déplacer
+                                                                                    </span>
+                                                                                )}
+                                                                                {isConflictVol && (
+                                                                                    <span className="admin-conflicts__role-badge admin-conflicts__role-badge--conflict">
+                                                                                        Vol. {b.volume} en doublon
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+
                                                                             <div className="admin-conflicts__book-meta">
                                                                                 <span className="admin-conflicts__book-vol">Vol. {b.volume || 1}</span>
                                                                                 {b.price ? <span>{b.price} €</span> : null}
@@ -578,8 +667,8 @@ export default function AdminConflictsPage() {
                                                             })}
                                                         </div>
 
-                                                        <div className="admin-conflicts__split-bar">
-                                                            <div className="admin-conflicts__split-input-group">
+                                                        <div className="admin-conflicts__split-config">
+                                                            <div className="admin-conflicts__split-input-wrapper">
                                                                 <label htmlFor={`new-series-${series.series_id}`}>
                                                                     Nom de la nouvelle série :
                                                                 </label>
@@ -589,19 +678,65 @@ export default function AdminConflictsPage() {
                                                                     className="admin-conflicts__split-input"
                                                                     value={newName}
                                                                     onChange={(e) => setNewSeriesNames(prev => ({ ...prev, [series.series_id]: e.target.value }))}
-                                                                    placeholder="Ex: Tomie (Poche)"
+                                                                    placeholder={`Ex: ${series.series_name} (Poche)`}
                                                                 />
+                                                            </div>
+
+                                                            {/* Suggestions pills */}
+                                                            <div className="admin-conflicts__suggestions">
+                                                                <span className="admin-conflicts__suggestions-label">Suggestions :</span>
+                                                                <button
+                                                                    type="button"
+                                                                    className="admin-conflicts__suggestion-pill"
+                                                                    onClick={() => setNewSeriesNames(prev => ({ ...prev, [series.series_id]: `${series.series_name} (Poche)` }))}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faPlus} /> {series.series_name} (Poche)
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="admin-conflicts__suggestion-pill"
+                                                                    onClick={() => setNewSeriesNames(prev => ({ ...prev, [series.series_id]: `${series.series_name} (Autre édition)` }))}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faPlus} /> {series.series_name} (Autre édition)
+                                                                </button>
+                                                                {series.books.filter(b => selectedSplitIds.includes(b.id)).map(b => (
+                                                                    <button
+                                                                        key={b.id}
+                                                                        type="button"
+                                                                        className="admin-conflicts__suggestion-pill"
+                                                                        onClick={() => setNewSeriesNames(prev => ({ ...prev, [series.series_id]: b.title }))}
+                                                                        title={`Utiliser : ${b.title}`}
+                                                                    >
+                                                                        <FontAwesomeIcon icon={faPlus} /> {b.title.slice(0, 30)}{b.title.length > 30 ? "..." : ""}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="admin-conflicts__action-bar admin-conflicts__action-bar--split">
+                                                            <div className="admin-conflicts__action-summary">
+                                                                <span>
+                                                                    <strong>{selectedSplitIds.length}</strong> album(s) sélectionné(s)
+                                                                </span>
+                                                                {newName.trim() && (
+                                                                    <>
+                                                                        <span className="admin-conflicts__dot-sep">•</span>
+                                                                        <span>
+                                                                            Vers « <strong>{newName.trim()}</strong> »
+                                                                        </span>
+                                                                    </>
+                                                                )}
                                                             </div>
 
                                                             <button
                                                                 type="button"
                                                                 className="admin-conflicts__btn-split"
                                                                 onClick={() => handleSplitSeries(series)}
-                                                                disabled={isSplitting || selectedBookIds.length === 0 || !newName.trim()}
+                                                                disabled={isSplitting || selectedSplitIds.length === 0 || !newName.trim()}
                                                             >
                                                                 <FontAwesomeIcon icon={isSplitting ? faRotate : faCodeBranch} spin={isSplitting} />
                                                                 <span>
-                                                                    {isSplitting ? "Scission en cours..." : `Scinder la série (${selectedBookIds.length} tome${selectedBookIds.length > 1 ? "s" : ""})`}
+                                                                    {isSplitting ? "Scission en cours..." : `Scinder la série (${selectedSplitIds.length} album${selectedSplitIds.length > 1 ? "s" : ""})`}
                                                                 </span>
                                                             </button>
                                                         </div>
