@@ -8,24 +8,15 @@ import {
     faRotate,
     faCircleCheck,
     faTriangleExclamation,
-    faBookOpen,
-    faLayerGroup,
-    faBuilding,
-    faUsers,
     faPlay
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
 import "./AdminMaintenancePage.scss";
 
-interface MaintenanceStats {
-    total_books: number;
-    total_series: number;
-    total_editors: number;
-    total_authors: number;
-}
+type TaskId = "utf8" | "dedup";
 
 interface MaintenanceTaskDef {
-    id: "utf8" | "dedup";
+    id: TaskId;
     title: string;
     tag: string;
     desc: string;
@@ -44,7 +35,7 @@ const TASKS: MaintenanceTaskDef[] = [
     },
     {
         id: "dedup",
-        title: "Dédupliquer les albums",
+        title: "Dédoupliquer les albums",
         tag: "Intégrité du catalogue",
         desc: "Recherche et fusionne les albums en double d'un même éditeur (même couverture, même ISBN, ou titres quasi-identiques avec variations de tirets ou casse). Réattribue automatiquement vos lectures et possessions vers le tome canonique sans perte de données.",
         icon: faClone,
@@ -67,12 +58,11 @@ interface MaintenanceResult {
 
 export default function AdminMaintenancePage() {
     const session = useSession();
-    const [stats, setStats] = useState<MaintenanceStats | null>(null);
-    const [serverConnected, setServerConnected] = useState<boolean | null>(null);
-    const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
-    const [runningTasks, setRunningTasks] = useState<string[]>([]);
+    const [serverConnected] = useState<boolean | null>(null);
+    const [selectedTasks, setSelectedTasks] = useState<TaskId[]>([]);
+    const [runningTasks, setRunningTasks] = useState<TaskId[]>([]);
     const [result, setResult] = useState<MaintenanceResult | null>(null);
-    const [taskStatuses, setTaskStatuses] = useState<Record<string, TaskStatusInfo>>({
+    const [taskStatuses, setTaskStatuses] = useState<Record<TaskId, TaskStatusInfo>>({
         utf8: { state: "idle" },
         dedup: { state: "idle" }
     });
@@ -88,40 +78,12 @@ export default function AdminMaintenancePage() {
         }
     }, [isIndeterminate]);
 
-    const fetchStats = async () => {
-        try {
-            const resp = await session.customFetch("/admin/scrapers/maintenance/stats", { method: "GET" });
-            if (resp.ok) {
-                const data = await resp.json();
-                if (data.stats) {
-                    setStats(data.stats);
-                    setServerConnected(true);
-                    return;
-                }
-            }
-
-            const statusResp = await session.customFetch("/admin/scrapers/status", { method: "GET" });
-            if (statusResp.ok) {
-                const sData = await statusResp.json();
-                setServerConnected(sData.connected !== false);
-            } else {
-                setServerConnected(false);
-            }
-        } catch {
-            setServerConnected(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchStats();
-    }, []);
-
     const nowFormatted = () => {
         const d = new Date();
         return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     };
 
-    const handleToggleSelect = (taskId: string) => {
+    const handleToggleSelect = (taskId: TaskId) => {
         setSelectedTasks(prev =>
             prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
         );
@@ -135,7 +97,7 @@ export default function AdminMaintenancePage() {
         }
     };
 
-    const runSingleTask = async (taskId: "utf8" | "dedup"): Promise<{ ok: boolean; message: string }> => {
+    const runSingleTask = async (taskId: TaskId): Promise<{ ok: boolean; message: string }> => {
         const endpoint = taskId === "utf8" ? "/admin/scrapers/repair" : "/admin/scrapers/deduplicate";
         const taskName = taskId === "utf8" ? "Réparation UTF-8" : "Déduplication";
 
@@ -172,7 +134,7 @@ export default function AdminMaintenancePage() {
         }
     };
 
-    const handleExecuteTask = async (taskId: "utf8" | "dedup") => {
+    const handleExecuteTask = async (taskId: TaskId) => {
         if (runningTasks.length > 0) return;
         setRunningTasks([taskId]);
         setResult(null);
@@ -187,13 +149,12 @@ export default function AdminMaintenancePage() {
             timestamp: nowFormatted()
         });
 
-        await fetchStats();
         setRunningTasks([]);
     };
 
     const handleExecuteSelected = async () => {
         if (runningTasks.length > 0 || selectedTasks.length === 0) return;
-        const targetIds = selectedTasks as ("utf8" | "dedup")[];
+        const targetIds = selectedTasks;
         setRunningTasks(targetIds);
         setResult(null);
 
@@ -213,7 +174,6 @@ export default function AdminMaintenancePage() {
             timestamp: nowFormatted()
         });
 
-        await fetchStats();
         setRunningTasks([]);
     };
 
@@ -225,12 +185,10 @@ export default function AdminMaintenancePage() {
         const results: string[] = [];
         let anyError = false;
 
-        // 1. Repair UTF-8
         const resUtf8 = await runSingleTask("utf8");
         if (!resUtf8.ok) anyError = true;
         results.push(resUtf8.message);
 
-        // 2. Deduplicate
         const resDedup = await runSingleTask("dedup");
         if (!resDedup.ok) anyError = true;
         results.push(resDedup.message);
@@ -242,7 +200,6 @@ export default function AdminMaintenancePage() {
             timestamp: nowFormatted()
         });
 
-        await fetchStats();
         setRunningTasks([]);
     };
 
@@ -254,7 +211,6 @@ export default function AdminMaintenancePage() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
                     <div className="admin-maintenance__header-title">
                         <h2>Maintenance</h2>
-                        <p>Administration / Maintenance</p>
                     </div>
 
                     <div style={{
@@ -289,50 +245,7 @@ export default function AdminMaintenancePage() {
                     </div>
                 )}
 
-                {/* Metrics */}
-                <div className="admin-maintenance__metrics">
-                    <div className="admin-maintenance__metric-card">
-                        <div className="admin-maintenance__metric-icon admin-maintenance__metric-icon--books">
-                            <FontAwesomeIcon icon={faBookOpen} />
-                        </div>
-                        <div className="admin-maintenance__metric-info">
-                            <span className="admin-maintenance__metric-label">Tomes en base</span>
-                            <span className="admin-maintenance__metric-value">{stats ? stats.total_books.toLocaleString() : "..."}</span>
-                        </div>
-                    </div>
-
-                    <div className="admin-maintenance__metric-card">
-                        <div className="admin-maintenance__metric-icon admin-maintenance__metric-icon--series">
-                            <FontAwesomeIcon icon={faLayerGroup} />
-                        </div>
-                        <div className="admin-maintenance__metric-info">
-                            <span className="admin-maintenance__metric-label">Séries créées</span>
-                            <span className="admin-maintenance__metric-value">{stats ? stats.total_series.toLocaleString() : "..."}</span>
-                        </div>
-                    </div>
-
-                    <div className="admin-maintenance__metric-card">
-                        <div className="admin-maintenance__metric-icon admin-maintenance__metric-icon--editors">
-                            <FontAwesomeIcon icon={faBuilding} />
-                        </div>
-                        <div className="admin-maintenance__metric-info">
-                            <span className="admin-maintenance__metric-label">Éditeurs</span>
-                            <span className="admin-maintenance__metric-value">{stats ? stats.total_editors.toLocaleString() : "..."}</span>
-                        </div>
-                    </div>
-
-                    <div className="admin-maintenance__metric-card">
-                        <div className="admin-maintenance__metric-icon admin-maintenance__metric-icon--authors">
-                            <FontAwesomeIcon icon={faUsers} />
-                        </div>
-                        <div className="admin-maintenance__metric-info">
-                            <span className="admin-maintenance__metric-label">Auteurs</span>
-                            <span className="admin-maintenance__metric-value">{stats ? stats.total_authors.toLocaleString() : "..."}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Maintenance Tasks Panel with 2-Row Selectable Table */}
+                {/* Maintenance Tasks Panel */}
                 <div className="admin-maintenance__panel">
                     <div className="admin-maintenance__panel-header">
                         <div className="admin-maintenance__panel-title-group">

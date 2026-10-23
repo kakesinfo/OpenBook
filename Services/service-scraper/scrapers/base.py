@@ -98,9 +98,11 @@ class ScrapedAuthor:
 class ScrapedBook:
     title: str
     series_name: Optional[str] = None
+    series_qualifier: Optional[str] = None
     volume: Optional[int] = None
     isbn: Optional[str] = None
     editor_name: Optional[str] = None
+    collection_name: Optional[str] = None
     category_name: str = "Comics"
     page_count: Optional[int] = 0
     price: Optional[int] = 0

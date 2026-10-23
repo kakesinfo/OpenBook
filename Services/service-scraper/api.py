@@ -24,6 +24,11 @@ app.add_middleware(
 class SourceToggleRequest(BaseModel):
     enabled: bool
 
+class SplitSeriesRequest(BaseModel):
+    source_series_id: int
+    new_series_name: str
+    book_ids: List[int]
+
 @app.get("/")
 def root():
     return {
@@ -153,6 +158,19 @@ def maintenance_stats():
         "status": "success",
         "stats": db.get_maintenance_stats()
     }
+
+@app.get("/api/maintenance/conflicts")
+def get_volume_conflicts():
+    conflicts = db.detect_volume_conflicts()
+    return {"status": "success", "count": len(conflicts), "conflicts": conflicts}
+
+@app.post("/api/maintenance/split")
+def split_series_endpoint(req: SplitSeriesRequest):
+    try:
+        res = db.split_series(req.source_series_id, req.new_series_name, req.book_ids)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/api/books")
 def get_books(limit: int = Query(20, ge=1, le=100)):

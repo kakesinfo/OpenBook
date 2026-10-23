@@ -394,8 +394,46 @@ class Database:
                     if fallback:
                         category_id = fallback[0]
 
-                # 4. Series
-                cur.execute("SELECT id FROM series WHERE LOWER(name) = LOWER(%s);", (clean_series_name,))
+                # 4. Collection
+                collection_id = None
+                clean_col_name = clean_text(book.collection_name)
+                if clean_col_name:
+                    cur.execute("SELECT id FROM collection WHERE LOWER(name) = LOWER(%s);", (clean_col_name,))
+                    col_row = cur.fetchone()
+                    if col_row:
+                        collection_id = col_row[0]
+                    else:
+                        cur.execute(
+                            "INSERT INTO collection (name, created_at, updated_at) VALUES (%s, NOW(), NOW()) RETURNING id;",
+                            (clean_col_name,)
+                        )
+                        collection_id = cur.fetchone()[0]
+
+                # 5. Series (with automatic qualifier / conflict prevention)
+                target_series_name = clean_series_name
+                if book.series_qualifier:
+                    target_series_name = f"{clean_series_name} ({book.series_qualifier})"
+                elif clean_series_name and book.volume:
+                    # Check if candidate series exists and has volume conflicts with different format
+                    cur.execute("SELECT id FROM series WHERE LOWER(name) = LOWER(%s);", (clean_series_name,))
+                    s_row = cur.fetchone()
+                    if s_row:
+                        cand_id = s_row[0]
+                        cur.execute(
+                            "SELECT id, page_count, price, title FROM book WHERE series_id = %s AND volume = %s;",
+                            (cand_id, book.volume)
+                        )
+                        conflicts = cur.fetchall()
+                        for c_id, c_pages, c_price, c_title in conflicts:
+                            if (
+                                (c_pages and book.page_count and c_pages >= 500 and book.page_count <= 350)
+                                or (c_price and book.price and c_price >= 20 and book.price <= 10)
+                                or ("poche" in (book.title or "").lower())
+                            ):
+                                target_series_name = f"{clean_series_name} (Poche)"
+                                break
+
+                cur.execute("SELECT id FROM series WHERE LOWER(name) = LOWER(%s);", (target_series_name,))
                 row = cur.fetchone()
                 if row:
                     series_id = row[0]
@@ -406,7 +444,7 @@ class Database:
                         VALUES (%s, 'ON_GOING', %s, NOW(), NOW())
                         RETURNING id;
                         """,
-                        (clean_series_name, category_id)
+                        (target_series_name, category_id)
                     )
                     series_id = cur.fetchone()[0]
 
@@ -464,7 +502,8 @@ class Database:
                             page_count = COALESCE(NULLIF(%s, 0), page_count),
                             release_date = COALESCE(%s, release_date),
                             description = COALESCE(%s, description),
-                            cover_url = COALESCE(%s, cover_url)
+                            cover_url = COALESCE(%s, cover_url),
+                            collection_id = COALESCE(%s, collection_id)
                         WHERE id = %s;
                         """,
                         (
@@ -473,6 +512,7 @@ class Database:
                             book.release_date,
                             clean_desc,
                             book.cover_url,
+                            collection_id,
                             book_id
                         )
                     )
@@ -504,12 +544,12 @@ class Database:
                     cur.execute(
                         """
                         INSERT INTO book (
-                            title, series_id, editor_id,
+                            title, series_id, editor_id, collection_id,
                             volume, isbn, page_count, price, description,
                             cover_url, release_date, type,
                             created_at, updated_at
                         ) VALUES (
-                            %s, %s, %s,
+                            %s, %s, %s, %s,
                             %s, %s, %s, %s, %s,
                             %s, %s, %s,
                             NOW(), NOW()
@@ -519,6 +559,7 @@ class Database:
                             clean_title,
                             series_id,
                             editor_id,
+                            collection_id,
                             book.volume or 1,
                             clean_isbn,
                             book.page_count or 0,
@@ -573,6 +614,132 @@ class Database:
                 conn.rollback()
             logger.error("Error upserting book '%s': %s", book.title, e)
             return None
+        finally:
+            if conn:
+                self.return_connection(conn)
+
+
+    def detect_volume_conflicts(self) -> List[Dict[str, Any]]:
+        conn = None
+        try:
+            conn = self.get_connection()
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT b.series_id, s.name as series_name, b.volume, COUNT(*)
+                    FROM book b
+                    JOIN series s ON b.series_id = s.id
+                    WHERE b.volume IS NOT NULL
+                    GROUP BY b.series_id, s.name, b.volume
+                    HAVING COUNT(*) > 1
+                    ORDER BY s.name, b.volume;
+                    """
+                )
+                conflicts = cur.fetchall()
+                seen_series = set()
+                result = []
+                for c in conflicts:
+                    sid, sname, vol, count = c
+                    if sid in seen_series:
+                        continue
+                    seen_series.add(sid)
+                    cur.execute(
+                        """
+                        SELECT b.id, b.title, b.volume, b.isbn, b.price, b.page_count, 
+                               b.release_date, b.cover_url, c.name as collection_name
+                        FROM book b
+                        LEFT JOIN collection c ON b.collection_id = c.id
+                        WHERE b.series_id = %s
+                        ORDER BY b.volume, b.release_date, b.id;
+                        """,
+                        (sid,)
+                    )
+                    books = []
+                    for row in cur.fetchall():
+                        books.append({
+                            "id": row[0],
+                            "title": row[1],
+                            "volume": row[2],
+                            "isbn": row[3],
+                            "price": row[4],
+                            "page_count": row[5],
+                            "release_date": row[6].strftime("%Y-%m-%d") if row[6] else None,
+                            "cover_url": row[7],
+                            "collection_name": row[8]
+                        })
+                    result.append({
+                        "series_id": sid,
+                        "series_name": sname,
+                        "conflicting_volume": vol,
+                        "books": books
+                    })
+                return result
+        except Exception as e:
+            logger.error("Error detecting volume conflicts: %s", e)
+            return []
+        finally:
+            if conn:
+                self.return_connection(conn)
+
+    def split_series(self, source_series_id: int, new_series_name: str, book_ids: List[int]) -> Dict[str, Any]:
+        if not new_series_name or not book_ids:
+            raise ValueError("new_series_name and book_ids are required")
+        clean_new_name = clean_text(new_series_name)
+        conn = None
+        try:
+            conn = self.get_connection()
+            with conn.cursor() as cur:
+                # Check source series
+                cur.execute("SELECT category_id, status FROM series WHERE id = %s;", (source_series_id,))
+                src = cur.fetchone()
+                if not src:
+                    raise ValueError(f"Series with id {source_series_id} not found")
+                category_id, status = src
+
+                # Find or create new series
+                cur.execute("SELECT id FROM series WHERE LOWER(name) = LOWER(%s);", (clean_new_name,))
+                row = cur.fetchone()
+                if row:
+                    new_series_id = row[0]
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO series (name, status, category_id, created_at, updated_at)
+                        VALUES (%s, %s, %s, NOW(), NOW())
+                        RETURNING id;
+                        """,
+                        (clean_new_name, status, category_id)
+                    )
+                    new_series_id = cur.fetchone()[0]
+
+                # Move books
+                cur.execute(
+                    """
+                    UPDATE book
+                    SET series_id = %s, updated_at = NOW()
+                    WHERE id = ANY(%s) AND series_id = %s;
+                    """,
+                    (new_series_id, book_ids, source_series_id)
+                )
+                moved_count = cur.rowcount
+                conn.commit()
+
+                logger.info(
+                    "Split series %s -> %s (%s): moved %d books",
+                    source_series_id, new_series_id, clean_new_name, moved_count
+                )
+                return {
+                    "status": "success",
+                    "moved_count": moved_count,
+                    "source_series_id": source_series_id,
+                    "new_series_id": new_series_id,
+                    "new_series_name": clean_new_name
+                }
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            logger.error("Error splitting series: %s", e)
+            raise
         finally:
             if conn:
                 self.return_connection(conn)

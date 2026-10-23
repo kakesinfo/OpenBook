@@ -300,7 +300,9 @@ export default function AdminIndexationPage() {
             <WrapperHeader>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
                     <div>
-                        <div><h2>Indexation des catalogues</h2><p style={{ margin: "4px 0 0 0", fontSize: "0.85rem", color: "var(--text-muted, #9ca3af)" }}>Administration / Indexation</p></div>
+                        <div>
+							<h2>Indexation des catalogues</h2>
+						</div>
                     </div>
 
                     <div style={{

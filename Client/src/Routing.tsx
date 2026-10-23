@@ -17,6 +17,7 @@ import PlanningPage from "./pages/app/PlanningPage.tsx";
 import SettingsPage from "./pages/app/SettingsPage.tsx";
 import AdminIndexationPage from "./pages/app/AdminIndexationPage.tsx";
 import AdminMaintenancePage from "./pages/app/AdminMaintenancePage.tsx";
+import AdminConflictsPage from "./pages/app/AdminConflictsPage.tsx";
 import StatisticsPage from "./pages/app/StatisticsPage.tsx";
 
 function ProtectedRoute({ redirectPath = "/login", children }: { redirectPath?: string, children: React.ReactNode }) {
@@ -77,6 +78,7 @@ export default function Routing() {
                 <Route path="admin" element={<Navigate replace to="/app/admin/indexation" />} />
                 <Route path="admin/indexation" element={<AdminIndexationPage key={location.pathname}/>} />
                 <Route path="admin/maintenance" element={<AdminMaintenancePage key={location.pathname}/>} />
+                <Route path="admin/conflicts" element={<AdminConflictsPage key={location.pathname}/>} />
                 <Route path="settings" element={<SettingsPage key={location.pathname}/>} />
                 <Route path="book/:id" element={ <BookPage key={location.pathname} /> } />
             </Route>

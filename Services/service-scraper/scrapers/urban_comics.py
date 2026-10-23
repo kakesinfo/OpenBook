@@ -743,12 +743,19 @@ class UrbanComicsScraper(BaseScraper):
         # 6. Authors
         authors = parse_authors(soup)
 
+        # 7. Collection
+        collection_name = None
+        col_m = re.search(r"<b>Collection\s*:</b>\s*([^<]+)", page_content, re.I)
+        if col_m:
+            collection_name = clean_text(col_m.group(1))
+
         return ScrapedBook(
             title=title[:255],
             series_name=series_name[:255],
             volume=volume,
             isbn=isbn,
             editor_name="Urban Comics",
+            collection_name=collection_name,
             category_name="Comics",
             page_count=page_count,
             price=price,

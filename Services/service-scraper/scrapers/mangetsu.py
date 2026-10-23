@@ -326,12 +326,30 @@ class MangetsuScraper(BaseScraper):
             volume = int(vol_m.group(1))
             series_name = re.sub(r"T(?:ome)?\s*0?\d+.*", "", title, flags=re.I).strip(" -:")
 
+        # 10. Collection & Format Qualification
+        collection_name = None
+        for info in soup.select(".book__info"):
+            lbl = info.select_one(".book__info__label")
+            if lbl and "collection" in lbl.get_text().lower():
+                collection_name = clean_text(info.get_text().replace(lbl.get_text(), "").strip())
+                break
+
+        series_qualifier = None
+        if (
+            (collection_name and "junji ito" in collection_name.lower() and vol_m and page_count and page_count <= 350 and price <= 10)
+            or "poche" in title.lower()
+            or (hint and "poche" in (hint.get("tome") or "").lower())
+        ):
+            series_qualifier = "Poche"
+
         return ScrapedBook(
             title=title[:255],
             series_name=series_name[:255],
+            series_qualifier=series_qualifier,
             volume=volume,
             isbn=isbn,
             editor_name="Mangetsu",
+            collection_name=collection_name,
             category_name="Manga",
             page_count=page_count,
             price=price,

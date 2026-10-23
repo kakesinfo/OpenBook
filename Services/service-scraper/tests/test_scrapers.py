@@ -208,6 +208,21 @@ class TestScrapers(unittest.TestCase):
         next_url = scraper._extract_next_page_url(soup, "https://mangetsu-manga.fr/a-paraitre/", "https://mangetsu-manga.fr", set())
         self.assertIsNone(next_url)
 
+    def test_scraped_book_with_collection(self):
+        book = ScrapedBook(
+            title="Tomie T01",
+            series_name="Tomie",
+            series_qualifier="Poche",
+            volume=1,
+            isbn="9782382816967",
+            editor_name="Mangetsu",
+            collection_name="Junji Ito",
+            page_count=240,
+            price=8
+        )
+        self.assertEqual(book.collection_name, "Junji Ito")
+        self.assertEqual(book.series_qualifier, "Poche")
+
     def test_scraped_book_model(self):
         book = ScrapedBook(
             title=clean_text("Batman : Un long Halloween"),

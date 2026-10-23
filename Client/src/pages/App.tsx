@@ -18,7 +18,8 @@ import {
     faGear,
     faChartPie,
     faRotate,
-    faWrench
+    faWrench,
+    faCodeBranch
 } from '@fortawesome/free-solid-svg-icons';
 import { useState } from "react";
 import useSession from "../hooks/UseSession.tsx";
@@ -101,6 +102,7 @@ export default function App() {
                 <WrapperSubGroup>
                     <WrapperSubButton to={'/app/admin/indexation'} icon={faRotate}>Indexation</WrapperSubButton>
                     <WrapperSubButton to={'/app/admin/maintenance'} icon={faWrench}>Maintenance</WrapperSubButton>
+                    <WrapperSubButton to={'/app/admin/conflicts'} icon={faCodeBranch}>Conflits</WrapperSubButton>
                 </WrapperSubGroup>
             </WrapperNavigation>
 
