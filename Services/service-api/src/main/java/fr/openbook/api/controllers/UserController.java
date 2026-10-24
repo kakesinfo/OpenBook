@@ -748,9 +748,25 @@ public class UserController {
         @PathVariable Long bookId
     ) {
         UserEntity user = getAuthenticatedUser(session);
+        final BookEntity book = repositoryService.getBookRepository().findById(bookId).orElse(null);
+
         repositoryService.getUserSellsBookRepository()
                 .findByUserIdAndBookId(user.getId(), bookId)
                 .ifPresent(repositoryService.getUserSellsBookRepository()::delete);
+
+        if (book != null) {
+            UserOwnsBookEntity entity = repositoryService.getUserOwnsBooksRepository()
+                    .findByUserIdAndBookId(user.getId(), bookId)
+                    .orElseGet(() -> {
+                        UserOwnsBookEntity u = new UserOwnsBookEntity();
+                        u.setUser(user);
+                        u.setBook(book);
+                        return u;
+                    });
+            entity.setStatus(UserOwnsBookStatus.OWNED.name());
+            repositoryService.getUserOwnsBooksRepository().saveAndFlush(entity);
+        }
+
         return ResponseEntity.noContent().build();
     }
 

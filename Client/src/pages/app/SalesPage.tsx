@@ -192,7 +192,7 @@ export default function SalesPage() {
             });
             if (res.ok) {
                 setBooks((prev) => prev.filter((b) => b.id !== bookId));
-                enqueueSnackbar("Album retiré de vos ventes", { variant: "success" });
+                enqueueSnackbar("Album retiré des ventes et remis dans vos albums", { variant: "success" });
             } else {
                 enqueueSnackbar("Erreur lors du retrait de l'album", { variant: "error" });
             }
@@ -537,7 +537,7 @@ export default function SalesPage() {
                                                             disabled={isActionLoading}
                                                             onClick={(e) => handleRemoveFromSales(e, book.id, book.title)}
                                                             className="sales-card__btn sales-card__btn--delete"
-                                                            title="Retirer de mes ventes"
+                                                            title="Retirer de mes ventes (remettre dans mes albums)"
                                                         >
                                                             <FontAwesomeIcon icon={faTrashCan} />
                                                         </button>
@@ -668,7 +668,7 @@ export default function SalesPage() {
                                                     disabled={isActionLoading}
                                                     onClick={(e) => handleRemoveFromSales(e, book.id, book.title)}
                                                     className="sales-row__action-btn sales-row__action-btn--delete"
-                                                    title="Retirer de mes ventes"
+                                                    title="Retirer de mes ventes (remettre dans mes albums)"
                                                 >
                                                     <FontAwesomeIcon icon={faTrashCan} />
                                                 </button>

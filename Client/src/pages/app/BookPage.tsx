@@ -93,10 +93,17 @@ function ChangeBookStatusButton({
         setProcessing(true);
         try {
             if (isCurrent) {
-                // Retirer le livre
-                const url = `/user/removeBook/${encodeURIComponent(bookId)}`;
-                const response = await session.customFetch(url, { method: "DELETE" });
-                if (response.ok) setStatus(null);
+                if (newStatus === "FOR_SALE") {
+                    // Retirer de la vente -> retourne dans nos albums (OWNED)
+                    const url = `/user/sales/${encodeURIComponent(bookId)}`;
+                    const response = await session.customFetch(url, { method: "DELETE" });
+                    if (response.ok) setStatus("OWNED");
+                } else {
+                    // Retirer le livre
+                    const url = `/user/removeBook/${encodeURIComponent(bookId)}`;
+                    const response = await session.customFetch(url, { method: "DELETE" });
+                    if (response.ok) setStatus(null);
+                }
             } else {
                 // Ajouter / changer le statut
                 const url = `/user/addBook/${encodeURIComponent(bookId)}/${encodeURIComponent(newStatus)}`;
