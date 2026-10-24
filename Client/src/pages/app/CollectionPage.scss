@@ -200,7 +200,7 @@
 }
 
 /* ===================================================
-   Ultra-Compact Table List Mode (No margins, Cover on hover only)
+   Ultra-Compact Table List Mode (No margins, Table header)
    =================================================== */
 .collection-list {
   display: flex;
@@ -211,7 +211,6 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  overflow: visible; // Crucial so floating cover preview can render outside rows cleanly
 
   /* Table Header */
   &__header {
@@ -235,7 +234,7 @@
     &--title {
       flex: 1;
       min-width: 0;
-      padding-left: 24px; // Align past the book icon
+      padding-left: 24px;
     }
 
     &--series {
@@ -287,7 +286,7 @@
   }
 }
 
-/* Individual Row: Zero margins, 36px height, pure hover preview */
+/* Individual Row: Zero margins, 36px height */
 .collection-row {
   display: flex;
   align-items: center;
@@ -299,7 +298,6 @@
   background: transparent;
   text-decoration: none;
   color: var(--text-primary);
-  position: relative;
   transition: background var(--transition-fast);
 
   &:last-child {
@@ -310,7 +308,6 @@
 
   &:hover {
     background: rgba(255, 255, 255, 0.04);
-    z-index: 30; // Brings row above siblings so cover preview is never clipped
 
     .collection-row__title {
       color: var(--accent-primary);
@@ -319,44 +316,6 @@
     .collection-row__chevron {
       color: var(--accent-primary);
       transform: translateX(2px);
-    }
-
-    .collection-row__cover-preview {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(-50%) scale(1);
-    }
-  }
-
-  /* Cover Popup Preview: only visible on hover */
-  &__cover-preview {
-    position: absolute;
-    left: 14px;
-    top: 50%;
-    transform: translateY(-50%) scale(0.92);
-    width: 84px;
-    height: 122px;
-    border-radius: 6px;
-    overflow: hidden;
-    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.22);
-    z-index: 100;
-    pointer-events: none; // Lets mouse click through row
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.16s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.16s cubic-bezier(0.16, 1, 0.3, 1),
-                visibility 0.16s;
-    background: #0d1117;
-
-    @media (hover: none) {
-      display: none;
-    }
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
     }
   }
 
@@ -369,6 +328,7 @@
       flex: 1;
       min-width: 0;
       gap: 10px;
+      cursor: pointer;
     }
 
     &--series {
@@ -503,6 +463,45 @@
     font-size: 0.7rem;
     opacity: 0.5;
     transition: all var(--transition-fast);
+  }
+}
+
+/* ===================================================
+   Floating Cursor-Following Cover Preview
+   =================================================== */
+.collection-cursor-preview {
+  position: fixed;
+  width: 96px;
+  height: 140px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  z-index: 9999;
+  background: #0d1117;
+  animation: cursorPreviewIn 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: left, top;
+
+  @media (hover: none) {
+    display: none;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+@keyframes cursorPreviewIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

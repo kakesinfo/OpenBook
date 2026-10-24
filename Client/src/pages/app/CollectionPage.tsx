@@ -40,6 +40,13 @@ interface StatusTab {
     icon?: typeof faBook;
 }
 
+interface HoveredCoverState {
+    url: string;
+    title: string;
+    x: number;
+    y: number;
+}
+
 const CATEGORY_TABS: CategoryTab[] = [
     { id: "all", label: "Toutes catégories", icon: faLayerGroup },
     { id: "bd", label: "BD", icon: faBook },
@@ -158,8 +165,32 @@ export default function CollectionPage() {
         }
     });
 
+    // Floating cover preview on cursor hover
+    const [hoveredCover, setHoveredCover] = useState<HoveredCoverState | null>(null);
+
+    const handleMouseEnterTitle = (e: React.MouseEvent, coverUrl?: string, title?: string) => {
+        if (!coverUrl) return;
+        setHoveredCover({
+            url: coverUrl,
+            title: title || "",
+            x: e.clientX,
+            y: e.clientY
+        });
+    };
+
+    const handleMouseMoveTitle = (e: React.MouseEvent) => {
+        if (hoveredCover) {
+            setHoveredCover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : null));
+        }
+    };
+
+    const handleMouseLeaveTitle = () => {
+        setHoveredCover(null);
+    };
+
     const handleSetDisplayMode = (mode: DisplayMode) => {
         setDisplayMode(mode);
+        setHoveredCover(null);
         try {
             localStorage.setItem("collection_display_mode", mode);
         } catch (_) {}
@@ -234,6 +265,29 @@ export default function CollectionPage() {
     }, [books, selectedStatus, selectedCategory, searchQuery]);
 
     const totalOwned = books.length;
+
+    // Helper to position cursor preview nicely next to the cursor
+    const getCursorPreviewStyle = (x: number, y: number) => {
+        const cardW = 96;
+        const cardH = 140;
+        const offset = 16;
+
+        let left = x + offset;
+        if (left + cardW > window.innerWidth - 10) {
+            left = x - cardW - offset;
+        }
+
+        let top = y - cardH / 2;
+        if (top < 10) top = 10;
+        if (top + cardH > window.innerHeight - 10) {
+            top = window.innerHeight - cardH - 10;
+        }
+
+        return {
+            left: `${left}px`,
+            top: `${top}px`
+        };
+    };
 
     return (
         <div className="collection-page">
@@ -412,7 +466,7 @@ export default function CollectionPage() {
                     /* Galerie Mode */
                     <BookList books={filteredBooks} />
                 ) : (
-                    /* Compact Table/List Mode (0 margins between rows, cover only on hover) */
+                    /* Compact Table/List Mode (0 margins between rows, cover follows cursor on title hover) */
                     <div className="collection-list">
                         <div className="collection-list__header">
                             <span className="collection-list__th collection-list__th--title">Titre</span>
@@ -428,21 +482,14 @@ export default function CollectionPage() {
                             const cat = book.category || book.type;
                             return (
                                 <Link to={`/app/book/${book.id}`} className="collection-row" key={book.id}>
-                                    {/* Cover preview ONLY on hover (floats seamlessly) */}
-                                    {book.coverUrl && (
-                                        <div className="collection-row__cover-preview">
-                                            <img
-                                                src={book.coverUrl}
-                                                alt={`Couverture de ${book.title}`}
-                                                loading="lazy"
-                                                decoding="async"
-                                            />
-                                        </div>
-                                    )}
-
-                                    {/* Title column */}
-                                    <div className="collection-row__col collection-row__col--title">
-                                        <FontAwesomeIcon icon={faBook} className="collection-row__icon" />
+                                    {/* Title column with hover tracking for cursor preview */}
+                                    <div
+                                        className="collection-row__col collection-row__col--title"
+                                        onMouseEnter={(e) => handleMouseEnterTitle(e, book.coverUrl, book.title)}
+                                        onMouseMove={handleMouseMoveTitle}
+                                        onMouseLeave={handleMouseLeaveTitle}
+                                    >
+                                        <FontAwesomeIcon icon={faBook} className="collection-row__book-icon" />
                                         <span className="collection-row__title" title={book.title}>
                                             {book.title}
                                         </span>
@@ -510,6 +557,20 @@ export default function CollectionPage() {
                     </div>
                 )}
             </div>
+
+            {/* Floating Cover Preview right at mouse cursor on title hover */}
+            {hoveredCover && (
+                <div
+                    className="collection-cursor-preview"
+                    style={getCursorPreviewStyle(hoveredCover.x, hoveredCover.y)}
+                >
+                    <img
+                        src={hoveredCover.url}
+                        alt={`Couverture de ${hoveredCover.title}`}
+                        decoding="async"
+                    />
+                </div>
+            )}
         </div>
     );
 }
