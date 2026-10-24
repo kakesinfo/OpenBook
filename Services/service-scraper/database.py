@@ -5,6 +5,7 @@ import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2 import pool
@@ -32,7 +33,7 @@ def optimize_cover_to_media_service(remote_url: Optional[str]) -> Optional[str]:
         if res.status_code == 201:
             img_id = res.json().get("id")
             if img_id:
-                up_res = requests.post(f"{media_url}/images/{img_id}", json={"url": remote_url}, timeout=8)
+                up_res = requests.post(f"{media_url}/images/{img_id}", json={"url": remote_url}, timeout=30)
                 if up_res.status_code == 200:
                     return img_id
     except Exception as e:
@@ -357,18 +358,122 @@ class Database:
                 total_editors = cur.fetchone()[0]
                 cur.execute("SELECT COUNT(*) FROM author;")
                 total_authors = cur.fetchone()[0]
+                cur.execute("SELECT COUNT(*) FROM book WHERE cover_url ~* '^https?://';")
+                url_covers = cur.fetchone()[0]
                 return {
                     "total_books": total_books,
                     "total_series": total_series,
                     "total_editors": total_editors,
-                    "total_authors": total_authors
+                    "total_authors": total_authors,
+                    "url_covers": url_covers
                 }
         except Exception as e:
             logger.error("Error getting maintenance stats: %s", e)
-            return {"total_books": 0, "total_series": 0, "total_editors": 0, "total_authors": 0}
+            return {"total_books": 0, "total_series": 0, "total_editors": 0, "total_authors": 0, "url_covers": 0}
         finally:
             if conn:
                 self.return_connection(conn)
+
+    def migrate_covers_to_uuid(self, limit: Optional[int] = None, max_workers: int = 8) -> Dict[str, Any]:
+        """
+        Scans books with external HTTP(S) cover_urls, optimizes them via service-media,
+        and saves the resulting UUID in book.cover_url.
+        """
+        conn = None
+        candidates = []
+        try:
+            conn = self.get_connection()
+            with conn.cursor() as cur:
+                query = "SELECT id, title, cover_url FROM book WHERE cover_url ~* '^https?://' ORDER BY id ASC"
+                if limit and limit > 0:
+                    query += f" LIMIT {int(limit)}"
+                cur.execute(query)
+                candidates = cur.fetchall()
+        except Exception as e:
+            logger.error("Error fetching books with URL covers: %s", e)
+            return {"status": "error", "message": str(e), "total": 0, "migrated": 0, "errors": 0}
+        finally:
+            if conn:
+                self.return_connection(conn)
+
+        if not candidates:
+            return {
+                "status": "success",                "message": "Toutes les couvertures sont déjà sous forme d'UUID ! Aucune URL externe à migrer.",                "total": 0,                "migrated": 0,                "errors": 0,                "remaining": 0            }
+
+        logger.info("Migrating %d book cover URLs to UUIDs...", len(candidates))
+        migrated_count = 0
+        error_count = 0
+        updates = []
+
+        def _convert(book_id: int, title: str, cover_url: str):
+            uuid_val = optimize_cover_to_media_service(cover_url)
+            if uuid_val and uuid_val != cover_url and not uuid_val.startswith("http"):
+                return book_id, uuid_val, True
+            return book_id, cover_url, False
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_book = {
+                executor.submit(_convert, b_id, title, url): (b_id, title)
+                for b_id, title, url in candidates
+            }
+            for future in as_completed(future_to_book):
+                try:
+                    b_id, result_cover, success = future.result()
+                    if success:
+                        updates.append((result_cover, b_id))
+                        migrated_count += 1
+                    else:
+                        error_count += 1
+                except Exception as e:
+                    logger.debug("Exception converting cover: %s", e)
+                    error_count += 1
+
+        if updates:
+            conn = None
+            try:
+                conn = self.get_connection()
+                with conn.cursor() as cur:
+                    cur.executemany(
+                        "UPDATE book SET cover_url = %s, updated_at = NOW() WHERE id = %s;",
+                        updates
+                    )
+                conn.commit()
+            except Exception as e:
+                if conn:
+                    conn.rollback()
+                logger.error("Error updating book cover_urls: %s", e)
+                raise
+            finally:
+                if conn:
+                    self.return_connection(conn)
+
+        remaining = 0
+        conn = None
+        try:
+            conn = self.get_connection()
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) FROM book WHERE cover_url ~* '^https?://';")
+                remaining = cur.fetchone()[0]
+        except Exception:
+            pass
+        finally:
+            if conn:
+                self.return_connection(conn)
+
+        msg = f"Migration terminée : {migrated_count} couverture(s) migrée(s) en UUID."
+        if error_count > 0:
+            msg += f" ({error_count} erreur(s) ou image(s) inaccessible(s))"
+        if remaining > 0:
+            msg += f" - {remaining} restante(s)."
+
+        return {
+            "status": "success",
+            "message": msg,
+            "total": len(candidates),
+            "migrated": migrated_count,
+            "errors": error_count,
+            "remaining": remaining
+        }
 
     def upsert_book(self, book: ScrapedBook) -> Optional[int]:
         """

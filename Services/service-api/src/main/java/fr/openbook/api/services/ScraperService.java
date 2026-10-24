@@ -225,4 +225,17 @@ public class ScraperService {
                 .build();
         return executeRequest(req, "http://localhost:5001");
     }
+
+    public Map<String, Object> migrateCovers(Integer limit) {
+        StringBuilder query = new StringBuilder();
+        if (limit != null && limit > 0) {
+            query.append("?limit=").append(limit);
+        }
+        HttpRequest req = HttpRequest.newBuilder(URI.create(getBaseUrl() + "/api/maintenance/migrate-covers" + query))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .timeout(Duration.ofMinutes(15))
+                .header("Accept", "application/json")
+                .build();
+        return executeRequest(req, "http://localhost:5001");
+    }
 }

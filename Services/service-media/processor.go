@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 
+	_ "github.com/gen2brain/avif"
 	"github.com/chai2010/webp"
 	"github.com/disintegration/imaging"
 )

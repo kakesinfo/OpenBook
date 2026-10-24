@@ -111,6 +111,17 @@ public class AdminScraperController {
         return ResponseEntity.ok(scraperService.linkVariant(payload));
     }
 
+    @PostMapping({"/migrate-covers", "/maintenance/migrate-covers"})
+    public ResponseEntity<Map<String, Object>> migrateCovers(
+            @RequestBody(required = false) Map<String, Object> request
+    ) {
+        Integer limit = null;
+        if (request != null && request.containsKey("limit") && request.get("limit") instanceof Number n) {
+            limit = n.intValue();
+        }
+        return ResponseEntity.ok(scraperService.migrateCovers(limit));
+    }
+
     @GetMapping("/maintenance/stats")
     public ResponseEntity<Map<String, Object>> getMaintenanceStats() {
         return ResponseEntity.ok(scraperService.getMaintenanceStats());

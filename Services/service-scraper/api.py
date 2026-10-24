@@ -49,6 +49,7 @@ def root():
             "reconcile_variants": "POST /api/maintenance/reconcile-variants",
             "enrich_bnf": "POST /api/maintenance/enrich-bnf",
             "verify_isbn": "POST /api/maintenance/verify-isbn",
+            "migrate_covers": "POST /api/maintenance/migrate-covers",
             "maintenance_stats": "GET /api/maintenance/stats",
             "recent_books": "/api/books"
         },
@@ -251,6 +252,15 @@ def verify_isbn_endpoint(limit: int = Query(50, ge=1, le=500), force: bool = Que
             "message": msg,
             "details": res
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/maintenance/migrate-covers")
+@app.post("/api/migrate-covers")
+def migrate_covers_endpoint(limit: Optional[int] = Query(None, ge=1, le=2000)):
+    try:
+        res = db.migrate_covers_to_uuid(limit=limit)
+        return res
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

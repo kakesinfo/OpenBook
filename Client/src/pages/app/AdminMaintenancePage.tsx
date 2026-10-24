@@ -10,12 +10,13 @@ import {
     faRotate,
     faCircleCheck,
     faTriangleExclamation,
-    faPlay
+    faPlay,
+    faImage
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
 import "./AdminMaintenancePage.scss";
 
-type TaskId = "utf8" | "dedup" | "bnf" | "verify_isbn";
+type TaskId = "utf8" | "dedup" | "bnf" | "verify_isbn" | "migrate_covers";
 
 interface MaintenanceTaskDef {
     id: TaskId;
@@ -58,6 +59,14 @@ const TASKS: MaintenanceTaskDef[] = [
         desc: "Vérifie chaque album ayant un ISBN auprès du catalogue BnF pour corriger le nombre exact de pages, rattacher la collection officielle et compléter les auteurs manquants.",
         icon: faCheckDouble,
         iconClass: "admin-maintenance__task-icon--verify"
+    },
+    {
+        id: "migrate_covers",
+        title: "Migrer les couvertures",
+        tag: "Médias & Stockage",
+        desc: "Télécharge les couvertures encore référencées par une URL externe, les optimise en WebP via le service média, puis remplace l'URL par l'UUID de l'image en base. Les images inaccessibles conservent leur URL d'origine.",
+        icon: faImage,
+        iconClass: "admin-maintenance__task-icon--media"
     }
 ];
 
@@ -84,7 +93,8 @@ export default function AdminMaintenancePage() {
         utf8: { state: "idle" },
         dedup: { state: "idle" },
         bnf: { state: "idle" },
-        verify_isbn: { state: "idle" }
+        verify_isbn: { state: "idle" },
+        migrate_covers: { state: "idle" }
     });
 
     const headerCheckboxRef = useRef<HTMLInputElement>(null);
@@ -129,6 +139,9 @@ export default function AdminMaintenancePage() {
         } else if (taskId === "verify_isbn") {
             endpoint = "/admin/scrapers/verify-isbn";
             taskName = "Vérification BnF";
+        } else if (taskId === "migrate_covers") {
+            endpoint = "/admin/scrapers/maintenance/migrate-covers";
+            taskName = "Migration des couvertures";
         }
 
         setTaskStatuses(prev => ({
@@ -209,7 +222,7 @@ export default function AdminMaintenancePage() {
 
     const handleExecuteAll = async () => {
         if (runningTasks.length > 0) return;
-        setRunningTasks(["utf8", "dedup", "bnf", "verify_isbn"]);
+        setRunningTasks(["utf8", "dedup", "bnf", "verify_isbn", "migrate_covers"]);
         setResult(null);
 
         const results: string[] = [];
@@ -230,6 +243,10 @@ export default function AdminMaintenancePage() {
         const resVerify = await runSingleTask("verify_isbn");
         if (!resVerify.ok) anyError = true;
         results.push(resVerify.message);
+
+        const resCovers = await runSingleTask("migrate_covers");
+        if (!resCovers.ok) anyError = true;
+        results.push(resCovers.message);
 
         setResult({
             taskName: "Maintenance complète (Tout)",

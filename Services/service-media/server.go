@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Server struct {
@@ -96,6 +98,25 @@ func (s *Server) handleCreateImage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, meta)
 }
 
+var remoteClient = &http.Client{Timeout: 20 * time.Second}
+
+// fetchRemote downloads a remote resource with browser-like headers
+// (some hosts reject requests without a User-Agent / Referer).
+func fetchRemote(rawURL string) (*http.Response, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return nil, fmt.Errorf("invalid URL")
+	}
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+	req.Header.Set("Accept", "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8,*/*;q=0.5")
+	req.Header.Set("Referer", u.Scheme+"://"+u.Host+"/")
+	return remoteClient.Do(req)
+}
+
 type RemoteURLUploadPayload struct {
 	URL string `json:"url"`
 }
@@ -137,13 +158,17 @@ func (s *Server) handleUploadImage(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON body, expected {\"url\": \"...\"}"})
 			return
 		}
-		resp, err := http.Get(payload.URL)
-		if err != nil || resp.StatusCode != http.StatusOK {
+		resp, err := fetchRemote(payload.URL)
+		if err != nil {
 			writeJSON(w, http.StatusBadGateway, map[string]string{"error": fmt.Sprintf("Failed to fetch remote image: %v", err)})
 			return
 		}
 		defer resp.Body.Close()
-		imgBytes, err := io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusOK {
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": fmt.Sprintf("Failed to fetch remote image: HTTP %d", resp.StatusCode)})
+			return
+		}
+		imgBytes, err := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to read remote image"})
 			return
