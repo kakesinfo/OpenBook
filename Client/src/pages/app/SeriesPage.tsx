@@ -8,14 +8,14 @@ import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import { Dialog } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-    faLayerGroup,
-    faPlus,
-    faMagnifyingGlass,
-    faXmark,
-    faBell,
-    faBook,
-    faTrash,
-    faPen,
+	faLayerGroup,
+	faPlus,
+	faMagnifyingGlass,
+	faXmark,
+	faBell,
+	faBook,
+	faTrash,
+	faPen,
 } from "@fortawesome/free-solid-svg-icons";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import "./SeriesPage.scss";
@@ -432,28 +432,27 @@ export default function SeriesPage() {
 
     return (
         <div className="series-page">
-            <WrapperHeader />
+			<WrapperHeader>
+				<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
+					<div>
+						<h2 style={{ margin: 0 }}>
+							Mes Séries
+						</h2>
+					</div>
+					<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+						<button
+							type="button"
+							className="series-page__create-btn"
+							onClick={() => setCreateDialogOpen(true)}
+						>
+							<FontAwesomeIcon icon={faPlus} />
+							<span>Créer une série</span>
+						</button>
+					</div>
+				</div>
+			</WrapperHeader>
 
             <div className="series-page__content">
-                {/* Header Title & Create Button */}
-                <div className="series-page__header">
-                    <div className="series-page__title-group">
-                        <h1 className="series-page__title">Mes Séries</h1>
-                        <p className="series-page__subtitle">
-                            Explorez et gérez vos séries d'albums.
-                        </p>
-                    </div>
-
-                    <button
-                        type="button"
-                        className="series-page__create-btn"
-                        onClick={() => setCreateDialogOpen(true)}
-                    >
-                        <FontAwesomeIcon icon={faPlus} />
-                        <span>Créer une série</span>
-                    </button>
-                </div>
-
                 {/* Controls: Scope tabs, Search, Categories */}
                 <div className="series-page__controls">
                     <div className="series-page__controls-top">

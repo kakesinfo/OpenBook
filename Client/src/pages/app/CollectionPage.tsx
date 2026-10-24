@@ -307,30 +307,8 @@ export default function CollectionPage() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
                     <div>
                         <h2 style={{ margin: 0 }}>
-                            Ma Bibliothèque {totalOwned > 0 ? `(${totalOwned} album${totalOwned > 1 ? "s" : ""})` : ""}
+                            Mes Albums {totalOwned > 0 ? `(${totalOwned} album${totalOwned > 1 ? "s" : ""})` : ""}
                         </h2>
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <Link
-                            to="/app/series"
-                            style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                padding: "6px 14px",
-                                borderRadius: "20px",
-                                background: "rgba(16, 185, 129, 0.12)",
-                                border: "1px solid rgba(16, 185, 129, 0.25)",
-                                color: "var(--accent-primary)",
-                                fontSize: "0.8125rem",
-                                fontWeight: 600,
-                                textDecoration: "none"
-                            }}
-                        >
-                            <FontAwesomeIcon icon={faLayerGroup} />
-                            <span>Mes Séries</span>
-                        </Link>
                     </div>
                 </div>
             </WrapperHeader>
