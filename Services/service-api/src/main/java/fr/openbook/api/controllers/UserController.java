@@ -16,8 +16,11 @@ import fr.openbook.api.entities.UserOwnsBookStatus;
 import org.springframework.web.server.ResponseStatusException;
 import fr.openbook.api.dtos.BookDTO;
 import fr.openbook.api.dtos.BookSummaryDTO;
+import fr.openbook.api.dtos.SeriesDTO;
+import fr.openbook.api.services.SeriesService;
 import fr.openbook.api.dtos.UserSeriesSummaryDTO;
 import java.util.Comparator;
+import java.util.Set;
 import fr.openbook.api.dtos.UserOwnsBookDTO;
 import fr.openbook.api.dtos.UserProfileDTO;
 import fr.openbook.api.dtos.UserStatisticsDTO;
@@ -600,6 +603,70 @@ public class UserController {
 
         List<UserSeriesSummaryDTO> result = new ArrayList<>(seriesMap.values());
         result.sort(Comparator.comparing(UserSeriesSummaryDTO::getName, String.CASE_INSENSITIVE_ORDER));
+        return result;
+    }
+
+    @GetMapping({"/series", "/my-series"})
+    public List<SeriesDTO> getUserSeries(HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+        List<SeriesEntity> seriesList = repositoryService.getSeriesRepository().findUserSeries(user.getId());
+
+        Set<Integer> followedSeriesIds = repositoryService.getUserFollowsSeriesRepository()
+                .findAllByUserId(user.getId()).stream()
+                .map(ufs -> ufs.getSeries().getId())
+                .collect(Collectors.toSet());
+
+        Map<Long, String> userOwnershipMap = repositoryService.getUserOwnsBooksRepository()
+                .findAllByUserId(user.getId()).stream()
+                .filter(uob -> uob.getBook() != null)
+                .collect(Collectors.toMap(
+                        uob -> uob.getBook().getId(),
+                        UserOwnsBookEntity::getStatus,
+                        (s1, s2) -> s1
+                ));
+
+        Map<Long, String> readingStatusMap = repositoryService.getBookStatusRepository()
+                .findAllByUserId(user.getId()).stream()
+                .filter(bse -> bse.getBook() != null)
+                .collect(Collectors.toMap(
+                        bse -> bse.getBook().getId(),
+                        BookStatusEntity::getStatus,
+                        (s1, s2) -> s1
+                ));
+
+        List<SeriesDTO> result = new ArrayList<>();
+        for (SeriesEntity series : seriesList) {
+            SeriesDTO dto = SeriesService.entityToDTO(series);
+            dto.setIsFollowed(followedSeriesIds.contains(series.getId()));
+
+            List<BookEntity> books = repositoryService.getBookRepository()
+                    .findAllBySeriesIdOrderByVolumeAscIdAsc(series.getId());
+
+            int ownedCount = 0;
+            List<BookSummaryDTO> bookDTOs = new ArrayList<>();
+            for (BookEntity book : books) {
+                BookSummaryDTO bDto = entityToSummaryDTO(book);
+                String ownership = userOwnershipMap.get(book.getId());
+                if (ownership != null) {
+                    bDto.setStatus(ownership);
+                    if (UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(ownership)
+                            || UserOwnsBookStatus.FOR_SALE.name().equalsIgnoreCase(ownership)) {
+                        ownedCount++;
+                    }
+                }
+                bDto.setReadingStatus(readingStatusMap.getOrDefault(book.getId(), "UNREAD"));
+                bookDTOs.add(bDto);
+            }
+
+            dto.setOwnedCount(ownedCount);
+            dto.setBooks(bookDTOs);
+            if (dto.getCoverUrl() == null && !bookDTOs.isEmpty()) {
+                dto.setCoverUrl(bookDTOs.get(0).getCoverUrl());
+            }
+            result.add(dto);
+        }
+
+        result.sort(Comparator.comparing(SeriesDTO::getName, String.CASE_INSENSITIVE_ORDER));
         return result;
     }
 

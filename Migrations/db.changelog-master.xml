@@ -1287,6 +1287,11 @@
     </changeSet>
 
     <changeSet id="25" author="Antigravity">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="book" columnName="parent_book_id" />
+            </not>
+        </preConditions>
         <addColumn tableName="book">
             <column name="parent_book_id" type="integer">
                 <constraints nullable="true" />
@@ -1308,4 +1313,53 @@
         />
     </changeSet>
 
+
+    <changeSet id="26" author="Antigravity">
+        <dropForeignKeyConstraint
+            baseTableName="book"
+            constraintName="fk_book_series_id"
+        />
+
+        <dropNotNullConstraint
+            tableName="book"
+            columnName="series_id"
+            columnDataType="integer"
+        />
+
+        <addForeignKeyConstraint
+            constraintName="fk_book_series_id"
+            baseTableName="book"
+            baseColumnNames="series_id"
+            referencedTableName="series"
+            referencedColumnNames="id"
+            onDelete="SET NULL"
+            onUpdate="CASCADE"
+        />
+
+        <addColumn tableName="series">
+            <column name="created_by_user_id" type="integer">
+                <constraints nullable="true" />
+            </column>
+            <column name="description" type="text">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+
+        <addForeignKeyConstraint
+            constraintName="fk_series_created_by_user_id"
+            baseTableName="series"
+            baseColumnNames="created_by_user_id"
+            referencedTableName="user"
+            referencedColumnNames="id"
+            onDelete="SET NULL"
+            onUpdate="CASCADE"
+        />
+
+        <sql>
+            UPDATE book SET series_id = NULL;
+            DELETE FROM series_has_theme;
+            DELETE FROM user_follows_series;
+            DELETE FROM series;
+        </sql>
+    </changeSet>
 </databaseChangeLog>

@@ -11,6 +11,8 @@ import {
 import {
     faNewspaper,
     faBook,
+    faBookOpen,
+    faLayerGroup,
     faHeart,
     faCalendarDays,
     faMagnifyingGlass,
@@ -94,7 +96,11 @@ export default function App() {
             <WrapperNavigation title="Yet Another Library" onSearchClick={handleOpen}>
                 <WrapperAction icon={faMagnifyingGlass} callback={handleOpen}>Recherche</WrapperAction>
                 <WrapperButton to={'/app/home'} icon={faNewspaper}>Nouveautés</WrapperButton>
-                <WrapperButton to={'/app/collection'} icon={faBook}>Bibliothèque</WrapperButton>
+                <WrapperButton to={'/app/collection'} icon={faBook} activeRoutes={['/app/series', '/app/collection/series']}>Bibliothèque</WrapperButton>
+                <WrapperSubGroup>
+                    <WrapperSubButton to={'/app/collection'} icon={faBookOpen}>Mes Albums</WrapperSubButton>
+                    <WrapperSubButton to={'/app/series'} icon={faLayerGroup}>Séries</WrapperSubButton>
+                </WrapperSubGroup>
                 <WrapperButton to={'/app/wishlist'} icon={faHeart}>Souhaits</WrapperButton>
                 <WrapperButton to={'/app/planning'} icon={faCalendarDays}>Planning</WrapperButton>
                 <WrapperButton to={'/app/statistics'} icon={faChartPie}>Statistiques</WrapperButton>

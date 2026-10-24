@@ -1,6 +1,11 @@
 package fr.openbook.api.controllers;
 
 import fr.openbook.api.dtos.BookDTO;
+import fr.openbook.api.dtos.SetBookSeriesDTO;
+import fr.openbook.api.entities.SeriesEntity;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import fr.openbook.api.dtos.PageDTO;
 import fr.openbook.api.entities.SeriesHasThemeEntity;
 import fr.openbook.api.dtos.BookHasAuthorDTO;
@@ -507,5 +512,31 @@ public class BookController {
         }
 
         return dto;
+    }
+
+    @PutMapping("/{id}/series")
+    public BookDTO updateBookSeries(
+            HttpSession session,
+            @PathVariable Long id,
+            @RequestBody SetBookSeriesDTO req
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        BookEntity book = repositoryService.getBookRepository().findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found"));
+
+        if (req.getSeriesId() != null) {
+            SeriesEntity series = repositoryService.getSeriesRepository().findById(req.getSeriesId().longValue())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Series not found"));
+            book.setSeries(series);
+        } else {
+            book.setSeries(null);
+        }
+
+        if (req.getVolume() != null) {
+            book.setVolume(req.getVolume());
+        }
+
+        book = repositoryService.getBookRepository().save(book);
+        return entityToDTO(book, user, true, true, true, true, true);
     }
 }

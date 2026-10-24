@@ -16,4 +16,7 @@ public interface UserFollowsSeriesRepository extends JpaRepository<UserFollowsSe
 
     @Transactional
     void deleteByUserIdAndSeriesId(Long userId, Integer seriesId);
+
+    @Transactional
+    void deleteAllBySeriesId(Integer seriesId);
 }

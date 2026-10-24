@@ -36,9 +36,21 @@ export function WrapperAction({ children, icon, callback }: {
     );
 }
 
-export function WrapperButton({ children, to, icon }: { children: React.ReactNode; to: string; icon: IconDefinition }) {
+export function WrapperButton({
+    children,
+    to,
+    icon,
+    activeRoutes
+}: {
+    children: React.ReactNode;
+    to: string;
+    icon: IconDefinition;
+    activeRoutes?: string[];
+}) {
     const location = useLocation();
-    const isActive = location.pathname === to || (to !== '/app' && location.pathname.startsWith(to));
+    const isActive = location.pathname === to ||
+        (to !== '/app' && location.pathname.startsWith(to)) ||
+        (activeRoutes && activeRoutes.some(r => location.pathname === r || location.pathname.startsWith(r)));
 
     return (
         <Link to={to} className={`wrapper-navigation__button ${isActive ? 'active' : ''}`}>

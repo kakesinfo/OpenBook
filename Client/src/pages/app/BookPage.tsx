@@ -1,6 +1,8 @@
 import { useParams, Link } from "react-router";
 import { ReactNode, useEffect, useState } from "react";
 import BookDTO from "../../dto/Book.dto";
+import SeriesDTO from "../../dto/Series.dto.ts";
+import { useSnackbar } from "notistack";
 import useSession, { SessionContextType } from "../../hooks/UseSession.tsx";
 import { getSeriesStatusLabel } from "../../dto/Series.dto.ts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -30,6 +32,8 @@ import {
     faBellSlash,
     faXmark,
     faClone,
+    faPen,
+    faTrash,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
@@ -133,6 +137,18 @@ export default function BookPage() {
     const [followStates, setFollowStates] = useState<Record<string, boolean>>({});
     const [followModalTarget, setFollowModalTarget] = useState<FollowTarget | null>(null);
     const [followProcessing, setFollowProcessing] = useState(false);
+    const { enqueueSnackbar } = useSnackbar();
+
+    // Series Association Dialog state
+    const [seriesModalOpen, setSeriesModalOpen] = useState(false);
+    const [seriesListOptions, setSeriesListOptions] = useState<SeriesDTO[]>([]);
+    const [selectedSeriesId, setSelectedSeriesId] = useState<number | null>(null);
+    const [selectedVolume, setSelectedVolume] = useState<number>(1);
+    const [seriesModalMode, setSeriesModalMode] = useState<"select" | "create">("select");
+    const [newSeriesName, setNewSeriesName] = useState("");
+    const [newSeriesCategory, setNewSeriesCategory] = useState<number>(3);
+    const [newSeriesStatus, setNewSeriesStatus] = useState("ON_GOING");
+    const [savingSeries, setSavingSeries] = useState(false);
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -199,6 +215,131 @@ export default function BookPage() {
             setLoading(false);
         });
     }, [id, session]);
+
+    const handleOpenSeriesModal = async () => {
+        setSelectedSeriesId(book?.series?.id ? Number(book.series.id) : null);
+        setSelectedVolume(book?.volume != null ? book.volume : 1);
+        setSeriesModalMode("select");
+        setNewSeriesName("");
+        setNewSeriesCategory(3);
+        setNewSeriesStatus("ON_GOING");
+        setSeriesModalOpen(true);
+
+        try {
+            const res = await session.customFetch("/series", { method: "GET" });
+            if (res.ok) {
+                const list: SeriesDTO[] = await res.json();
+                setSeriesListOptions(list);
+            }
+        } catch (err) {
+            console.error("Error fetching series list:", err);
+        }
+    };
+
+    const handleSaveSeriesAssociation = async () => {
+        if (!id || savingSeries) return;
+        setSavingSeries(true);
+
+        try {
+            if (seriesModalMode === "create") {
+                if (!newSeriesName.trim()) {
+                    enqueueSnackbar("Veuillez renseigner le nom de la série", { variant: "warning" });
+                    setSavingSeries(false);
+                    return;
+                }
+
+                // 1. Create series
+                const createRes = await session.customFetch("/series", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: newSeriesName.trim(),
+                        categoryId: newSeriesCategory,
+                        status: newSeriesStatus,
+                        bookIds: [Number(id)]
+                    })
+                });
+
+                if (!createRes.ok) {
+                    const errText = await createRes.text();
+                    enqueueSnackbar(`Erreur: ${errText}`, { variant: "error" });
+                    setSavingSeries(false);
+                    return;
+                }
+
+                const createdSeries: SeriesDTO = await createRes.json();
+
+                // 2. Set volume if needed
+                if (selectedVolume != null) {
+                    await session.customFetch(`/books/${encodeURIComponent(id)}/series`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ seriesId: createdSeries.id, volume: selectedVolume })
+                    });
+                }
+
+                enqueueSnackbar(`Nouvelle série « ${createdSeries.name} » créée et associée`, { variant: "success" });
+            } else {
+                // Link to existing series
+                const updateRes = await session.customFetch(`/books/${encodeURIComponent(id)}/series`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ seriesId: selectedSeriesId, volume: selectedVolume })
+                });
+
+                if (!updateRes.ok) {
+                    enqueueSnackbar("Erreur lors de l'association à la série", { variant: "error" });
+                    setSavingSeries(false);
+                    return;
+                }
+
+                enqueueSnackbar(selectedSeriesId ? "Série associée avec succès" : "Série dissociée", { variant: "success" });
+            }
+
+            // Reload book
+            const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1`;
+            const refreshRes = await session.customFetch(fetchUrl, { method: "GET" });
+            if (refreshRes.ok) {
+                const refreshedBook: BookDTO = await refreshRes.json();
+                setBook(refreshedBook);
+            }
+            setSeriesModalOpen(false);
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } finally {
+            setSavingSeries(false);
+        }
+    };
+
+    const handleRemoveFromSeries = async () => {
+        if (!id || savingSeries) return;
+        const confirm = window.confirm("Retirer cet album de sa série ?");
+        if (!confirm) return;
+
+        setSavingSeries(true);
+        try {
+            const updateRes = await session.customFetch(`/books/${encodeURIComponent(id)}/series`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ seriesId: null })
+            });
+
+            if (updateRes.ok) {
+                enqueueSnackbar("Album retiré de la série", { variant: "info" });
+                const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1`;
+                const refreshRes = await session.customFetch(fetchUrl, { method: "GET" });
+                if (refreshRes.ok) {
+                    const refreshedBook: BookDTO = await refreshRes.json();
+                    setBook(refreshedBook);
+                }
+                setSeriesModalOpen(false);
+            }
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } finally {
+            setSavingSeries(false);
+        }
+    };
 
     const openFollowModal = (type: FollowType, targetId?: number | string | null, name?: string, roleOrSubtitle?: string) => {
         if (!targetId || !name) return;
@@ -409,21 +550,67 @@ export default function BookPage() {
 
                             {/* Titles */}
                             <div className="book-page__headings">
-                                {/* Série cliquable pour Follow */}
-                                {book.series?.name && (
-                                    <h2 className="book-page__series-title">
+                                {/* Série */}
+                                {book.series?.name ? (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "4px" }}>
+                                        <h2 className="book-page__series-title" style={{ margin: 0 }}>
+                                            <button
+                                                type="button"
+                                                className="book-page__entity-title-btn"
+                                                onClick={() => openFollowModal("series", book.series?.id, book.series.name)}
+                                                title={`Gérer le suivi de la série ${book.series.name}`}
+                                            >
+                                                <span>{book.series.name}</span>
+                                                {book.series?.id && followStates[`series_${book.series.id}`] && (
+                                                    <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                )}
+                                            </button>
+                                        </h2>
                                         <button
                                             type="button"
-                                            className="book-page__entity-title-btn"
-                                            onClick={() => openFollowModal("series", book.series?.id, book.series.name)}
-                                            title={`Gérer le suivi de la série ${book.series.name}`}
+                                            onClick={handleOpenSeriesModal}
+                                            title="Gérer ou modifier l'association de série"
+                                            style={{
+                                                background: "rgba(255, 255, 255, 0.05)",
+                                                border: "1px solid var(--border-subtle)",
+                                                color: "var(--text-muted)",
+                                                padding: "4px 10px",
+                                                borderRadius: "6px",
+                                                fontSize: "0.75rem",
+                                                cursor: "pointer",
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: "6px"
+                                            }}
                                         >
-                                            <span>{book.series.name}</span>
-                                            {book.series?.id && followStates[`series_${book.series.id}`] && (
-                                                <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
-                                            )}
+                                            <FontAwesomeIcon icon={faPen} />
+                                            <span>Modifier la série</span>
                                         </button>
-                                    </h2>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px", flexWrap: "wrap" }}>
+                                        <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Aucune série associée</span>
+                                        <button
+                                            type="button"
+                                            onClick={handleOpenSeriesModal}
+                                            style={{
+                                                background: "rgba(16, 185, 129, 0.15)",
+                                                border: "1px solid var(--accent-primary)",
+                                                color: "var(--accent-primary)",
+                                                padding: "3px 10px",
+                                                borderRadius: "14px",
+                                                fontSize: "0.8rem",
+                                                fontWeight: 600,
+                                                cursor: "pointer",
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: "6px"
+                                            }}
+                                        >
+                                            <FontAwesomeIcon icon={faPlus} />
+                                            <span>Associer à une série</span>
+                                        </button>
+                                    </div>
                                 )}
                                 <h1 className="book-page__title">{book.title}</h1>
 
@@ -847,6 +1034,258 @@ export default function BookPage() {
                     </div>
                 )}
             </div>
+
+                        {/* Series Association Modal */}
+            <Dialog
+                open={seriesModalOpen}
+                onClose={() => setSeriesModalOpen(false)}
+                PaperProps={{
+                    style: {
+                        backgroundColor: "var(--bg-surface, #1e1e24)",
+                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                        borderRadius: "16px",
+                        maxWidth: "500px",
+                        width: "100%",
+                        padding: "24px",
+                        color: "var(--text-primary)"
+                    }
+                }}
+            >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <FontAwesomeIcon icon={faLayerGroup} style={{ color: "var(--accent-primary)" }} />
+                        <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>
+                            {book?.series ? "Gérer la série de cet album" : "Associer à une série"}
+                        </h3>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setSeriesModalOpen(false)}
+                        style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "1.1rem" }}
+                    >
+                        <FontAwesomeIcon icon={faXmark} />
+                    </button>
+                </div>
+
+                {/* Tabs: Choose existing vs Create new */}
+                <div style={{ display: "flex", gap: "8px", background: "rgba(255, 255, 255, 0.04)", padding: "4px", borderRadius: "8px", marginBottom: "16px" }}>
+                    <button
+                        type="button"
+                        onClick={() => setSeriesModalMode("select")}
+                        style={{
+                            flex: 1,
+                            padding: "6px 12px",
+                            background: seriesModalMode === "select" ? "var(--accent-primary)" : "transparent",
+                            color: seriesModalMode === "select" ? "#fff" : "var(--text-muted)",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontWeight: 600,
+                            fontSize: "0.85rem",
+                            cursor: "pointer"
+                        }}
+                    >
+                        Série existante
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setSeriesModalMode("create")}
+                        style={{
+                            flex: 1,
+                            padding: "6px 12px",
+                            background: seriesModalMode === "create" ? "var(--accent-primary)" : "transparent",
+                            color: seriesModalMode === "create" ? "#fff" : "var(--text-muted)",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontWeight: 600,
+                            fontSize: "0.85rem",
+                            cursor: "pointer"
+                        }}
+                    >
+                        + Nouvelle série
+                    </button>
+                </div>
+
+                {seriesModalMode === "select" ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                        <div>
+                            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
+                                Sélectionner une série
+                            </label>
+                            <select
+                                value={selectedSeriesId || ""}
+                                onChange={(e) => setSelectedSeriesId(e.target.value ? Number(e.target.value) : null)}
+                                style={{
+                                    width: "100%",
+                                    padding: "10px 14px",
+                                    background: "rgba(255, 255, 255, 0.05)",
+                                    border: "1px solid var(--border-subtle)",
+                                    borderRadius: "8px",
+                                    color: "var(--text-primary)",
+                                    outline: "none"
+                                }}
+                            >
+                                <option value="" style={{ background: "#1f2937", color: "#fff" }}>-- Aucune série --</option>
+                                {seriesListOptions.map((s) => (
+                                    <option key={s.id} value={s.id} style={{ background: "#1f2937", color: "#fff" }}>
+                                        {s.name} ({s.category || "Comics"})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
+                                Numéro de tome / volume
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                value={selectedVolume}
+                                onChange={(e) => setSelectedVolume(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                style={{
+                                    width: "100%",
+                                    padding: "10px 14px",
+                                    background: "rgba(255, 255, 255, 0.05)",
+                                    border: "1px solid var(--border-subtle)",
+                                    borderRadius: "8px",
+                                    color: "var(--text-primary)",
+                                    outline: "none"
+                                }}
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                        <div>
+                            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
+                                Nom de la nouvelle série *
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="ex: Batman Rebirth, Blackwater..."
+                                value={newSeriesName}
+                                onChange={(e) => setNewSeriesName(e.target.value)}
+                                style={{
+                                    width: "100%",
+                                    padding: "10px 14px",
+                                    background: "rgba(255, 255, 255, 0.05)",
+                                    border: "1px solid var(--border-subtle)",
+                                    borderRadius: "8px",
+                                    color: "var(--text-primary)",
+                                    outline: "none"
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
+                                    Catégorie
+                                </label>
+                                <select
+                                    value={newSeriesCategory}
+                                    onChange={(e) => setNewSeriesCategory(Number(e.target.value))}
+                                    style={{
+                                        width: "100%",
+                                        padding: "10px 14px",
+                                        background: "rgba(255, 255, 255, 0.05)",
+                                        border: "1px solid var(--border-subtle)",
+                                        borderRadius: "8px",
+                                        color: "var(--text-primary)",
+                                        outline: "none"
+                                    }}
+                                >
+                                    <option value={3} style={{ background: "#1f2937", color: "#fff" }}>Comics</option>
+                                    <option value={2} style={{ background: "#1f2937", color: "#fff" }}>Bande dessinée</option>
+                                    <option value={4} style={{ background: "#1f2937", color: "#fff" }}>Manga</option>
+                                    <option value={5} style={{ background: "#1f2937", color: "#fff" }}>Roman Graphique</option>
+                                    <option value={1} style={{ background: "#1f2937", color: "#fff" }}>Roman</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
+                                    Tome de cet album
+                                </label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    value={selectedVolume}
+                                    onChange={(e) => setSelectedVolume(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                    style={{
+                                        width: "100%",
+                                        padding: "10px 14px",
+                                        background: "rgba(255, 255, 255, 0.05)",
+                                        border: "1px solid var(--border-subtle)",
+                                        borderRadius: "8px",
+                                        color: "var(--text-primary)",
+                                        outline: "none"
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px" }}>
+                    {book?.series ? (
+                        <button
+                            type="button"
+                            onClick={handleRemoveFromSeries}
+                            style={{
+                                padding: "8px 14px",
+                                background: "rgba(239, 68, 68, 0.15)",
+                                border: "1px solid rgba(239, 68, 68, 0.3)",
+                                color: "#ef4444",
+                                borderRadius: "8px",
+                                cursor: "pointer",
+                                fontWeight: 600,
+                                fontSize: "0.8rem",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px"
+                            }}
+                        >
+                            <FontAwesomeIcon icon={faTrash} />
+                            <span>Retirer de la série</span>
+                        </button>
+                    ) : <div />}
+
+                    <div style={{ display: "flex", gap: "10px" }}>
+                        <button
+                            type="button"
+                            onClick={() => setSeriesModalOpen(false)}
+                            style={{
+                                padding: "8px 16px",
+                                background: "transparent",
+                                border: "1px solid var(--border-subtle)",
+                                color: "var(--text-muted)",
+                                borderRadius: "8px",
+                                cursor: "pointer",
+                                fontWeight: 600
+                            }}
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="button"
+                            disabled={savingSeries}
+                            onClick={handleSaveSeriesAssociation}
+                            style={{
+                                padding: "8px 18px",
+                                background: "var(--accent-primary)",
+                                border: "none",
+                                color: "#fff",
+                                borderRadius: "8px",
+                                cursor: "pointer",
+                                fontWeight: 600
+                            }}
+                        >
+                            {savingSeries ? "Enregistrement..." : "Valider"}
+                        </button>
+                    </div>
+                </div>
+            </Dialog>
 
             {/* Follow / Unfollow Dialog Modal */}
             <Dialog

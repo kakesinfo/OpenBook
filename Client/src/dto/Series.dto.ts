@@ -1,13 +1,23 @@
+import BookSummaryDTO from "./BookSummary.dto.ts";
+
 export default interface SeriesDTO {
-	id?: number;
+	id: number;
 	name: string;
-	category: string;
+	description?: string;
+	category?: string;
+	categoryId?: number;
 	status: string;
 	totalVolumes: number;
+	coverUrl?: string;
+	createdByUserId?: number;
+	createdByUsername?: string;
+	isFollowed?: boolean;
+	ownedCount?: number;
+	books?: BookSummaryDTO[];
 }
 
-export function getSeriesStatusLabel(status: string): string | null {
-	switch (status) {
+export function getSeriesStatusLabel(status?: string | null): string {
+	switch (status?.toUpperCase()) {
 		case "FINISHED":
 			return "Terminée";
 		case "ANNOUNCED":
@@ -17,6 +27,6 @@ export function getSeriesStatusLabel(status: string): string | null {
 		case "CANCELLED":
 			return "Annulée";
 		default:
-			return null;
+			return status || "En cours";
 	}
 }

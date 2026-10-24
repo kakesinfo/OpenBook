@@ -10,3 +10,5 @@ Cache/*
 !Cache/.gitkeepuploads/
 
 Services/service-api/uploads/
+__pycache__/
+*.pyc

@@ -70,8 +70,7 @@ public class BookEntity {
     private String originCountry;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.RESTRICT)
-    @JoinColumn(name = "series_id", nullable = false)
+    @JoinColumn(name = "series_id", nullable = true)
     private SeriesEntity series;
 
     @ManyToOne(fetch = FetchType.LAZY)
