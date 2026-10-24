@@ -16,12 +16,17 @@ import {
     faTag,
     faCheck,
     faBookOpen,
-    faBan
+    faBan,
+    faBorderAll,
+    faList,
+    faChevronRight,
+    faClone
 } from "@fortawesome/free-solid-svg-icons";
 import "./CollectionPage.scss";
 
 type CategoryFilter = "all" | "bd" | "comics" | "manga";
 type TomeStatusFilter = "all" | "toread" | "forsale" | "read" | "unread" | "abandoned";
+type DisplayMode = "grid" | "list";
 
 interface CategoryTab {
     id: CategoryFilter;
@@ -88,6 +93,55 @@ function matchesTomeStatus(book: BookSummaryDTO, filter: TomeStatusFilter): bool
     return true;
 }
 
+function getReadingStatusBadge(book: BookSummaryDTO) {
+    if (book.status === "FOR_SALE") {
+        return (
+            <span className="collection-status-badge collection-status-badge--forsale">
+                <FontAwesomeIcon icon={faTag} />
+                <span>À vendre</span>
+            </span>
+        );
+    }
+    const rStatus = (book.readingStatus || "").toUpperCase();
+    if (rStatus === "READ" || rStatus === "LU") {
+        return (
+            <span className="collection-status-badge collection-status-badge--read">
+                <FontAwesomeIcon icon={faCheck} />
+                <span>Lu</span>
+            </span>
+        );
+    }
+    if (rStatus === "TO_READ" || rStatus === "A_LIRE" || rStatus === "PILE_A_LIRE") {
+        return (
+            <span className="collection-status-badge collection-status-badge--toread">
+                <FontAwesomeIcon icon={faBookBookmark} />
+                <span>À lire</span>
+            </span>
+        );
+    }
+    if (rStatus === "READING" || rStatus === "EN_COURS") {
+        return (
+            <span className="collection-status-badge collection-status-badge--reading">
+                <FontAwesomeIcon icon={faBookOpen} />
+                <span>En cours</span>
+            </span>
+        );
+    }
+    if (rStatus === "ABANDONED" || rStatus === "ABANDONNE") {
+        return (
+            <span className="collection-status-badge collection-status-badge--abandoned">
+                <FontAwesomeIcon icon={faBan} />
+                <span>Abandonné</span>
+            </span>
+        );
+    }
+    return (
+        <span className="collection-status-badge collection-status-badge--unread">
+            <span>Non lu</span>
+        </span>
+    );
+}
+
 export default function CollectionPage() {
     const session = useSession();
     const [books, setBooks] = useState<BookSummaryDTO[]>([]);
@@ -96,6 +150,20 @@ export default function CollectionPage() {
     const [selectedStatus, setSelectedStatus] = useState<TomeStatusFilter>("all");
     const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
     const [searchQuery, setSearchQuery] = useState("");
+    const [displayMode, setDisplayMode] = useState<DisplayMode>(() => {
+        try {
+            return (localStorage.getItem("collection_display_mode") as DisplayMode) || "grid";
+        } catch {
+            return "grid";
+        }
+    });
+
+    const handleSetDisplayMode = (mode: DisplayMode) => {
+        setDisplayMode(mode);
+        try {
+            localStorage.setItem("collection_display_mode", mode);
+        } catch (_) {}
+    };
 
     useEffect(() => {
         setLoading(true);
@@ -202,7 +270,7 @@ export default function CollectionPage() {
             </WrapperHeader>
 
             <div className="collection-page__content">
-                {/* Controls Bar: Status Tabs, Category Filter, Search */}
+                {/* Controls Bar: Status Tabs, Category Filter, Search, View Mode Toggle */}
                 {books.length > 0 && (
                     <div className="collection-page__controls">
                         {/* Status Filters */}
@@ -228,7 +296,7 @@ export default function CollectionPage() {
                             })}
                         </div>
 
-                        {/* Search & Category Filter */}
+                        {/* Search, Categories & Display Mode Switcher */}
                         <div className="collection-page__right-controls">
                             <div className="collection-page__categories">
                                 {CATEGORY_TABS.map((tab) => (
@@ -251,6 +319,28 @@ export default function CollectionPage() {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
+                            </div>
+
+                            {/* View Mode: Galerie vs Liste */}
+                            <div className="collection-page__view-toggle">
+                                <button
+                                    type="button"
+                                    className={`collection-page__view-btn ${displayMode === "grid" ? "is-active" : ""}`}
+                                    onClick={() => handleSetDisplayMode("grid")}
+                                    title="Mode Galerie"
+                                >
+                                    <FontAwesomeIcon icon={faBorderAll} />
+                                    <span>Galerie</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`collection-page__view-btn ${displayMode === "list" ? "is-active" : ""}`}
+                                    onClick={() => handleSetDisplayMode("list")}
+                                    title="Mode Liste compacte"
+                                >
+                                    <FontAwesomeIcon icon={faList} />
+                                    <span>Liste</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -314,11 +404,91 @@ export default function CollectionPage() {
                             <span>Découvrir les nouveautés</span>
                         </Link>
                     </div>
-                ) : filteredBooks.length > 0 ? (
-                    <BookList books={filteredBooks} />
-                ) : (
+                ) : filteredBooks.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
                         Aucun album ne correspond à vos filtres.
+                    </div>
+                ) : displayMode === "grid" ? (
+                    /* Galerie Mode */
+                    <BookList books={filteredBooks} />
+                ) : (
+                    /* Compact List Mode */
+                    <div className="collection-list">
+                        {filteredBooks.map((book) => {
+                            const cat = book.category || book.type;
+                            return (
+                                <Link to={`/app/book/${book.id}`} className="collection-row" key={book.id}>
+                                    <div className="collection-row__cover-wrapper">
+                                        {book.coverUrl ? (
+                                            <img
+                                                src={book.coverUrl}
+                                                alt={`Couverture de ${book.title}`}
+                                                className="collection-row__cover"
+                                                loading="lazy"
+                                                decoding="async"
+                                            />
+                                        ) : (
+                                            <div className="collection-row__cover-fallback">
+                                                <FontAwesomeIcon icon={faBook} />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="collection-row__main">
+                                        <div className="collection-row__title-wrap">
+                                            <span className="collection-row__title" title={book.title}>
+                                                {book.title}
+                                            </span>
+                                            {book.parentBookId && (
+                                                <span className="collection-row__variant-badge" title="Couverture variante">
+                                                    <FontAwesomeIcon icon={faClone} />
+                                                    <span>Variante</span>
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="collection-row__sub">
+                                            {book.seriesName && (
+                                                <span className="collection-row__series">
+                                                    {book.seriesName}
+                                                </span>
+                                            )}
+                                            {book.volume > 0 && (
+                                                <span className="collection-row__volume">
+                                                    Tome {book.volume}
+                                                </span>
+                                            )}
+                                            {book.author && (
+                                                <span className="collection-row__author">
+                                                    {book.author}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {cat && (
+                                        <div className="collection-row__category">
+                                            <span className="collection-row__tag">
+                                                {cat}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    <div className="collection-row__status">
+                                        {getReadingStatusBadge(book)}
+                                    </div>
+
+                                    <div className="collection-row__action">
+                                        {book.releaseDate && (
+                                            <span className="collection-row__date">
+                                                {new Date(book.releaseDate).getFullYear()}
+                                            </span>
+                                        )}
+                                        <FontAwesomeIcon icon={faChevronRight} className="collection-row__chevron" />
+                                    </div>
+                                </Link>
+                            );
+                        })}
                     </div>
                 )}
             </div>
