@@ -160,7 +160,7 @@ export default function BookPage() {
         setBookStatus(null);
         setReadingStatus("UNREAD");
 
-        const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1`;
+        const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1&withSeries=1`;
         session.customFetch(fetchUrl, {
             method: "GET",
         }).then(async (response) => {
@@ -388,17 +388,17 @@ export default function BookPage() {
         (a) => !dessinateurs.includes(a) && !coloristes.includes(a)
     );
 
-    const totalVolumes = book?.series?.totalVolumes
-        ? Math.max(book.volume || 1, book.series.totalVolumes)
-        : book?.volume;
+    const totalVolumes = book?.series?.totalVolumes && book.series.totalVolumes > 0
+        ? book.series.totalVolumes
+        : null;
 
     const hasPrevious = Boolean(book?.previousBookId);
-    const canHavePrevious = Boolean(book?.volume != null && book.volume > 1);
+    const canHavePrevious = Boolean(book?.series && book?.volume != null && book.volume > 1);
     const showPrevious = hasPrevious || canHavePrevious;
 
     const hasNext = Boolean(book?.nextBookId);
     const canHaveNext = Boolean(
-        book?.volume != null && totalVolumes != null && book.volume < totalVolumes
+        book?.series && book?.volume != null && totalVolumes != null && book.volume < totalVolumes
     );
     const showNext = hasNext || canHaveNext;
 
@@ -532,7 +532,9 @@ export default function BookPage() {
                                 )}
                                 {book.volume != null && (
                                     <span className="book-page__tag book-page__tag--volume">
-                                        Volume {book.volume} sur {Math.max(book.volume, book.series?.totalVolumes || book.volume)}
+                                        {book.series?.totalVolumes && book.series.totalVolumes > 1
+                                            ? `Tome ${book.volume} sur ${Math.max(book.volume, book.series.totalVolumes)}`
+                                            : `Tome ${book.volume}`}
                                     </span>
                                 )}
                                 {book.series?.category && (

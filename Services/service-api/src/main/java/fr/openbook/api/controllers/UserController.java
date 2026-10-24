@@ -566,11 +566,13 @@ public class UserController {
             if (book == null) continue;
 
             SeriesEntity series = book.getSeries();
-            Long sId = (series != null && series.getId() != null) ? series.getId().longValue() : -book.getId();
-            String sName = (series != null && series.getName() != null) ? series.getName() : book.getTitle();
-            String cat = (series != null && series.getCategory() != null) ? series.getCategory().getName() : (book.getType() != null ? book.getType() : "Comics");
-            String sCover = (series != null && series.getCoverUrl() != null) ? series.getCoverUrl() : book.getCoverUrl();
-            int total = (series != null && series.getTotalVolumes() != null) ? series.getTotalVolumes() : 1;
+            if (series == null || series.getId() == null) continue;
+
+            Long sId = series.getId().longValue();
+            String sName = series.getName();
+            String cat = series.getCategory() != null ? series.getCategory().getName() : (book.getType() != null ? book.getType() : "Comics");
+            String sCover = series.getCoverUrl() != null ? series.getCoverUrl() : book.getCoverUrl();
+            int total = series.getTotalVolumes() != null ? series.getTotalVolumes() : 1;
 
             UserSeriesSummaryDTO sDto = seriesMap.computeIfAbsent(sId, id -> {
                 UserSeriesSummaryDTO dto = new UserSeriesSummaryDTO();
