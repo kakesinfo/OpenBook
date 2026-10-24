@@ -12,6 +12,7 @@ import {
     faNewspaper,
     faBook,
     faBookOpen,
+    faTag,
     faLayerGroup,
     faHeart,
     faCalendarDays,
@@ -101,6 +102,7 @@ export default function App() {
                     <WrapperSubButton to={'/app/collection'} icon={faBookOpen}>Mes Albums</WrapperSubButton>
                     <WrapperSubButton to={'/app/series'} icon={faLayerGroup}>Séries</WrapperSubButton>
                 </WrapperSubGroup>
+                <WrapperButton to={'/app/sales'} icon={faTag}>Mes Ventes</WrapperButton>
                 <WrapperButton to={'/app/wishlist'} icon={faHeart}>Souhaits</WrapperButton>
                 <WrapperButton to={'/app/planning'} icon={faCalendarDays}>Planning</WrapperButton>
                 <WrapperButton to={'/app/statistics'} icon={faChartPie}>Statistiques</WrapperButton>

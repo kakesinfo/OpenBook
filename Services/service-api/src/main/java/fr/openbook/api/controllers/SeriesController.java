@@ -76,8 +76,7 @@ public class SeriesController {
 
             List<UserOwnsBookEntity> ownedBooks = repositoryService.getUserOwnsBooksRepository()
                     .findAllByUserId(currentUser.getId()).stream()
-                    .filter(uob -> UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(uob.getStatus())
-                                || UserOwnsBookStatus.FOR_SALE.name().equalsIgnoreCase(uob.getStatus()))
+                    .filter(uob -> UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(uob.getStatus()))
                     .toList();
 
             ownedCountMap = new HashMap<>();
@@ -349,8 +348,7 @@ public class SeriesController {
             String ownership = userOwnershipMap.get(book.getId());
             if (ownership != null) {
                 bDto.setStatus(ownership);
-                if (UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(ownership)
-                        || UserOwnsBookStatus.FOR_SALE.name().equalsIgnoreCase(ownership)) {
+                if (UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(ownership)) {
                     ownedCount++;
                 }
             }

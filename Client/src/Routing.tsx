@@ -12,6 +12,7 @@ import App from "./pages/App.tsx";
 import BookPage from "./pages/app/BookPage.tsx";
 import HomePage from "./pages/app/HomePage.tsx";
 import CollectionPage from "./pages/app/CollectionPage.tsx";
+import SalesPage from "./pages/app/SalesPage.tsx";
 import SeriesPage from "./pages/app/SeriesPage.tsx";
 import WishlistPage from "./pages/app/WishlistPage.tsx";
 import PlanningPage from "./pages/app/PlanningPage.tsx";
@@ -72,6 +73,8 @@ export default function Routing() {
                 <Route index element={<Navigate replace to="home" />} />
                 <Route path="home" element={<HomePage key={location.pathname}/>} />
                 <Route path="collection" element={<CollectionPage key={location.pathname}/>} />
+                <Route path="sales" element={<SalesPage key={location.pathname}/>} />
+                <Route path="ventes" element={<SalesPage key={location.pathname}/>} />
                 <Route path="collection/series" element={<SeriesPage key={location.pathname}/>} />
                 <Route path="series" element={<SeriesPage key={location.pathname}/>} />
                 <Route path="bibliotheque" element={<CollectionPage key={location.pathname}/>} />

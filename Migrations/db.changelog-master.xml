@@ -1362,4 +1362,71 @@
             DELETE FROM series;
         </sql>
     </changeSet>
+    <changeSet id="27" author="Antigravity">
+        <createTable tableName="user_sells_book">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+            <column name="user_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="book_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="status" type="varchar(50)">
+                <constraints nullable="false" />
+            </column>
+            <column name="price" type="numeric(10,2)">
+                <constraints nullable="true" />
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="user_sells_book" indexName="idx_user_sells_book_user_id">
+            <column name="user_id" />
+        </createIndex>
+        <createIndex tableName="user_sells_book" indexName="idx_user_sells_book_book_id">
+            <column name="book_id" />
+        </createIndex>
+
+        <addUniqueConstraint
+            constraintName="uk_user_sells_book_user_id_book_id"
+            tableName="user_sells_book"
+            columnNames="user_id, book_id"
+        />
+
+        <addForeignKeyConstraint
+            constraintName="fk_user_sells_book_user_id"
+            baseTableName="user_sells_book"
+            baseColumnNames="user_id"
+            referencedTableName="user"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"
+        />
+        <addForeignKeyConstraint
+            constraintName="fk_user_sells_book_book_id"
+            baseTableName="user_sells_book"
+            baseColumnNames="book_id"
+            referencedTableName="book"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"
+        />
+
+        <sql>
+            INSERT INTO user_sells_book (user_id, book_id, status, created_at, updated_at)
+            SELECT user_id, book_id, UPPER(status), created_at, updated_at
+            FROM user_owns_book
+            WHERE UPPER(status) IN ('FOR_SALE', 'SOLD')
+            ON CONFLICT (user_id, book_id) DO NOTHING;
+
+            DELETE FROM user_owns_book WHERE UPPER(status) IN ('FOR_SALE', 'SOLD');
+        </sql>
+    </changeSet>
 </databaseChangeLog>

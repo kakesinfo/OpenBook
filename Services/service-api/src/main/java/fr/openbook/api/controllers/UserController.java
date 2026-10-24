@@ -12,6 +12,8 @@ import fr.openbook.api.entities.SeriesEntity;
 import fr.openbook.api.entities.SeriesStatus;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
+import fr.openbook.api.entities.UserSellsBookEntity;
+import org.springframework.web.bind.annotation.RequestMethod;
 import fr.openbook.api.entities.UserOwnsBookStatus;
 import org.springframework.web.server.ResponseStatusException;
 import fr.openbook.api.dtos.BookDTO;
@@ -342,12 +344,13 @@ public class UserController {
         @PathVariable String status
     ) {
         UserEntity user = getAuthenticatedUser(session);
+        String upperStatus = status.toUpperCase();
 
-        if (!UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(status)
-            && !UserOwnsBookStatus.WISHLISTED.name().equalsIgnoreCase(status)
-            && !UserOwnsBookStatus.FOR_SALE.name().equalsIgnoreCase(status)
-            && !UserOwnsBookStatus.LENT.name().equalsIgnoreCase(status)
-            && !UserOwnsBookStatus.SOLD.name().equalsIgnoreCase(status)) {
+        if (!UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(upperStatus)
+            && !UserOwnsBookStatus.WISHLISTED.name().equalsIgnoreCase(upperStatus)
+            && !UserOwnsBookStatus.FOR_SALE.name().equalsIgnoreCase(upperStatus)
+            && !UserOwnsBookStatus.LENT.name().equalsIgnoreCase(upperStatus)
+            && !UserOwnsBookStatus.SOLD.name().equalsIgnoreCase(upperStatus)) {
             throw new RuntimeException("Invalid status: " + status);
         }
 
@@ -355,22 +358,37 @@ public class UserController {
                 .findById(id)
                 .orElseThrow(() -> new RuntimeException("Book not found"));
 
-        UserOwnsBookEntity entity = repositoryService.getUserOwnsBooksRepository()
-                .findByUserIdAndBookId(user.getId(), id)
-                .orElseGet(() -> {
-                    UserOwnsBookEntity userOwnsBookEntity = new UserOwnsBookEntity();
-                    userOwnsBookEntity.setUser(user);
-                    userOwnsBookEntity.setBook(book);
-                    return userOwnsBookEntity;
-                });
+        if ("FOR_SALE".equals(upperStatus) || "SOLD".equals(upperStatus)) {
+            repositoryService.getUserOwnsBooksRepository()
+                    .findByUserIdAndBookId(user.getId(), id)
+                    .ifPresent(repositoryService.getUserOwnsBooksRepository()::delete);
 
-        entity.setStatus(status.toUpperCase());
+            UserSellsBookEntity entity = repositoryService.getUserSellsBookRepository()
+                    .findByUserIdAndBookId(user.getId(), id)
+                    .orElseGet(() -> {
+                        UserSellsBookEntity s = new UserSellsBookEntity();
+                        s.setUser(user);
+                        s.setBook(book);
+                        return s;
+                    });
+            entity.setStatus(upperStatus);
+            return UserOwnsBookDTO.from(repositoryService.getUserSellsBookRepository().saveAndFlush(entity));
+        } else {
+            repositoryService.getUserSellsBookRepository()
+                    .findByUserIdAndBookId(user.getId(), id)
+                    .ifPresent(repositoryService.getUserSellsBookRepository()::delete);
 
-        try {
+            UserOwnsBookEntity entity = repositoryService.getUserOwnsBooksRepository()
+                    .findByUserIdAndBookId(user.getId(), id)
+                    .orElseGet(() -> {
+                        UserOwnsBookEntity userOwnsBookEntity = new UserOwnsBookEntity();
+                        userOwnsBookEntity.setUser(user);
+                        userOwnsBookEntity.setBook(book);
+                        return userOwnsBookEntity;
+                    });
+
+            entity.setStatus(upperStatus);
             return UserOwnsBookDTO.from(repositoryService.getUserOwnsBooksRepository().saveAndFlush(entity));
-        } catch (RuntimeException e) {
-            System.err.println("Error saving UserOwnsBookEntity: " + e.getMessage());
-            throw e;
         }
     }
 
@@ -384,6 +402,10 @@ public class UserController {
         repositoryService.getUserOwnsBooksRepository()
                 .findByUserIdAndBookId(user.getId(), id)
                 .ifPresent(entity -> repositoryService.getUserOwnsBooksRepository().delete(entity));
+
+        repositoryService.getUserSellsBookRepository()
+                .findByUserIdAndBookId(user.getId(), id)
+                .ifPresent(entity -> repositoryService.getUserSellsBookRepository().delete(entity));
     }
 
     @PostMapping("/readingStatus/{id}/{status}")
@@ -525,8 +547,7 @@ public class UserController {
 
         List<UserOwnsBookEntity> ownedEntries = repositoryService.getUserOwnsBooksRepository()
                 .findAllByUserId(user.getId()).stream()
-                .filter(uob -> UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(uob.getStatus())
-                            || UserOwnsBookStatus.FOR_SALE.name().equalsIgnoreCase(uob.getStatus()))
+                .filter(uob -> UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(uob.getStatus()))
                 .toList();
 
         Map<Long, String> readingStatusMap = repositoryService.getBookStatusRepository()
@@ -550,8 +571,7 @@ public class UserController {
 
         List<UserOwnsBookEntity> ownedEntries = repositoryService.getUserOwnsBooksRepository()
                 .findAllByUserId(user.getId()).stream()
-                .filter(uob -> UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(uob.getStatus())
-                            || UserOwnsBookStatus.FOR_SALE.name().equalsIgnoreCase(uob.getStatus()))
+                .filter(uob -> UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(uob.getStatus()))
                 .toList();
 
         Map<Long, String> readingStatusMap = repositoryService.getBookStatusRepository()
@@ -651,8 +671,7 @@ public class UserController {
                 String ownership = userOwnershipMap.get(book.getId());
                 if (ownership != null) {
                     bDto.setStatus(ownership);
-                    if (UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(ownership)
-                            || UserOwnsBookStatus.FOR_SALE.name().equalsIgnoreCase(ownership)) {
+                    if (UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(ownership)) {
                         ownedCount++;
                     }
                 }
@@ -670,6 +689,69 @@ public class UserController {
 
         result.sort(Comparator.comparing(SeriesDTO::getName, String.CASE_INSENSITIVE_ORDER));
         return result;
+    }
+
+
+    @GetMapping({"/sales", "/ventes"})
+    public List<BookSummaryDTO> getUserSales(HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+
+        List<UserSellsBookEntity> salesEntries = repositoryService.getUserSellsBookRepository()
+                .findAllByUserId(user.getId());
+
+        Map<Long, String> readingStatusMap = repositoryService.getBookStatusRepository()
+                .findAllByUserId(user.getId()).stream()
+                .filter(bse -> bse.getBook() != null)
+                .collect(Collectors.toMap(bse -> bse.getBook().getId(), BookStatusEntity::getStatus, (s1, s2) -> s1));
+
+        return salesEntries.stream()
+                .filter(usb -> usb.getBook() != null)
+                .map(entity -> {
+                    BookSummaryDTO dto = entityToSummaryDTO(entity.getBook());
+                    dto.setStatus(entity.getStatus());
+                    dto.setReadingStatus(readingStatusMap.getOrDefault(entity.getBook().getId(), "UNREAD"));
+                    if (entity.getPrice() != null) {
+                        dto.setPrice(entity.getPrice().intValue());
+                    }
+                    return dto;
+                })
+                .toList();
+    }
+
+    @RequestMapping(value = "/sales/{bookId}/status/{status}", method = {RequestMethod.PUT, RequestMethod.POST})
+    public BookSummaryDTO updateSaleStatus(
+        HttpSession session,
+        @PathVariable Long bookId,
+        @PathVariable String status
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        String upperStatus = status.toUpperCase();
+        if (!"FOR_SALE".equals(upperStatus) && !"SOLD".equals(upperStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid sales status: " + status);
+        }
+
+        UserSellsBookEntity entity = repositoryService.getUserSellsBookRepository()
+                .findByUserIdAndBookId(user.getId(), bookId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found in sales"));
+
+        entity.setStatus(upperStatus);
+        repositoryService.getUserSellsBookRepository().saveAndFlush(entity);
+
+        BookSummaryDTO dto = entityToSummaryDTO(entity.getBook());
+        dto.setStatus(entity.getStatus());
+        return dto;
+    }
+
+    @DeleteMapping("/sales/{bookId}")
+    public ResponseEntity<Void> removeSale(
+        HttpSession session,
+        @PathVariable Long bookId
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        repositoryService.getUserSellsBookRepository()
+                .findByUserIdAndBookId(user.getId(), bookId)
+                .ifPresent(repositoryService.getUserSellsBookRepository()::delete);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/wishlist")

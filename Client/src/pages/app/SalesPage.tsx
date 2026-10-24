@@ -1,0 +1,710 @@
+import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
+import { useEffect, useState, useMemo } from "react";
+import useSession from "../../hooks/UseSession.tsx";
+import Pagination from "../../components/Pagination/Pagination.tsx";
+import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
+import { Link } from "react-router";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+    faBook,
+    faLayerGroup,
+    faBolt,
+    faFire,
+    faMagnifyingGlass,
+    faTag,
+    faCheck,
+    faBorderAll,
+    faList,
+    faClone,
+    faTrashCan,
+    faRotateLeft,
+    faCoins
+} from "@fortawesome/free-solid-svg-icons";
+import { useSnackbar } from "notistack";
+import "./SalesPage.scss";
+
+type CategoryFilter = "all" | "bd" | "comics" | "manga";
+type SalesStatusFilter = "all" | "FOR_SALE" | "SOLD";
+type DisplayMode = "grid" | "list";
+
+interface CategoryTab {
+    id: CategoryFilter;
+    label: string;
+    icon?: typeof faBook;
+}
+
+interface StatusTab {
+    id: SalesStatusFilter;
+    label: string;
+    icon?: typeof faTag;
+}
+
+interface HoveredCoverState {
+    url: string;
+    title: string;
+    x: number;
+    y: number;
+}
+
+const CATEGORY_TABS: CategoryTab[] = [
+    { id: "all", label: "Toutes catégories", icon: faLayerGroup },
+    { id: "bd", label: "BD", icon: faBook },
+    { id: "comics", label: "Comics", icon: faBolt },
+    { id: "manga", label: "Manga", icon: faFire }
+];
+
+const STATUS_TABS: StatusTab[] = [
+    { id: "all", label: "Tous", icon: faLayerGroup },
+    { id: "FOR_SALE", label: "À vendre", icon: faTag },
+    { id: "SOLD", label: "Vendu", icon: faCheck }
+];
+
+function normalizeCategory(category?: string | null, type?: string | null): "bd" | "comics" | "manga" {
+    const raw = `${category || ""} ${type || ""}`.toLowerCase();
+    if (raw.includes("manga")) return "manga";
+    if (raw.includes("comic")) return "comics";
+    if (raw.includes("bande") || raw.includes("bd") || raw.includes("roman") || raw.includes("cartonné")) return "bd";
+    return "comics";
+}
+
+export default function SalesPage() {
+    const session = useSession();
+    const { enqueueSnackbar } = useSnackbar();
+
+    const [books, setBooks] = useState<BookSummaryDTO[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+
+    const [selectedStatus, setSelectedStatus] = useState<SalesStatusFilter>("all");
+    const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
+    const [searchQuery, setSearchQuery] = useState("");
+
+    // Display mode: "grid" (Galerie) vs "list" (Liste compacte)
+    const [displayMode, setDisplayMode] = useState<DisplayMode>(() => {
+        try {
+            const saved = localStorage.getItem("sales_display_mode");
+            if (saved === "grid" || saved === "list") return saved;
+        } catch (_) {}
+        return "grid";
+    });
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [gridPageSize, setGridPageSize] = useState(24);
+    const [listPageSize, setListPageSize] = useState(50);
+
+    // Hovered cover state for list mode
+    const [hoveredCover, setHoveredCover] = useState<HoveredCoverState | null>(null);
+
+    const handleMouseEnterTitle = (e: React.MouseEvent, coverUrl?: string | null, title?: string) => {
+        if (!coverUrl) return;
+        setHoveredCover({
+            url: coverUrl,
+            title: title || "",
+            x: e.clientX,
+            y: e.clientY
+        });
+    };
+
+    const handleMouseMoveTitle = (e: React.MouseEvent) => {
+        if (!hoveredCover) return;
+        setHoveredCover((prev) => prev ? { ...prev, x: e.clientX, y: e.clientY } : null);
+    };
+
+    const handleMouseLeaveTitle = () => {
+        setHoveredCover(null);
+    };
+
+    const handleSetDisplayMode = (mode: DisplayMode) => {
+        setDisplayMode(mode);
+        setCurrentPage(1);
+        try {
+            localStorage.setItem("sales_display_mode", mode);
+        } catch (_) {}
+    };
+
+    const fetchSales = () => {
+        setLoading(true);
+        session.customFetch("/user/sales", { method: "GET" })
+            .then(async (res) => {
+                if (res.ok) {
+                    const data: BookSummaryDTO[] = await res.json();
+                    setBooks(data);
+                } else {
+                    setBooks([]);
+                }
+            })
+            .catch((err) => {
+                console.error("Sales fetch error:", err);
+                setBooks([]);
+            })
+            .finally(() => {
+                setLoading(false);
+            });
+    };
+
+    useEffect(() => {
+        fetchSales();
+    }, [session]);
+
+    // Status toggle: FOR_SALE <-> SOLD
+    const handleUpdateStatus = async (e: React.MouseEvent, bookId: string, targetStatus: "FOR_SALE" | "SOLD") => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (actionLoadingId != null) return;
+
+        setActionLoadingId(bookId);
+        try {
+            const res = await session.customFetch(`/user/sales/${bookId}/status/${targetStatus}`, {
+                method: "PUT"
+            });
+            if (res.ok) {
+                setBooks((prev) =>
+                    prev.map((b) => (b.id === bookId ? { ...b, status: targetStatus } : b))
+                );
+                enqueueSnackbar(
+                    targetStatus === "SOLD" ? "Album marqué comme vendu !" : "Album remis en vente !",
+                    { variant: "success" }
+                );
+            } else {
+                enqueueSnackbar("Erreur lors de la mise à jour du statut", { variant: "error" });
+            }
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
+    // Remove from sales
+    const handleRemoveFromSales = async (e: React.MouseEvent, bookId: string, bookTitle: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (actionLoadingId != null) return;
+
+        const confirm = window.confirm(`Retirer « ${bookTitle} » de vos ventes ?`);
+        if (!confirm) return;
+
+        setActionLoadingId(bookId);
+        try {
+            const res = await session.customFetch(`/user/sales/${bookId}`, {
+                method: "DELETE"
+            });
+            if (res.ok) {
+                setBooks((prev) => prev.filter((b) => b.id !== bookId));
+                enqueueSnackbar("Album retiré de vos ventes", { variant: "success" });
+            } else {
+                enqueueSnackbar("Erreur lors du retrait de l'album", { variant: "error" });
+            }
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
+    // Reset page to 1 whenever filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedStatus, selectedCategory, searchQuery]);
+
+    // Status counts
+    const statusCounts = useMemo(() => {
+        const counts: Record<SalesStatusFilter, number> = {
+            all: books.length,
+            FOR_SALE: 0,
+            SOLD: 0
+        };
+        for (const b of books) {
+            const status = (b.status || "").toUpperCase();
+            if (status === "FOR_SALE") counts.FOR_SALE++;
+            if (status === "SOLD") counts.SOLD++;
+        }
+        return counts;
+    }, [books]);
+
+    // Filtered books
+    const filteredBooks = useMemo(() => {
+        return books.filter((b) => {
+            // Status filter
+            if (selectedStatus !== "all") {
+                const bStatus = (b.status || "").toUpperCase();
+                if (bStatus !== selectedStatus) return false;
+            }
+
+            // Category filter
+            if (selectedCategory !== "all") {
+                const normalized = normalizeCategory(b.category, b.type);
+                if (normalized !== selectedCategory) return false;
+            }
+
+            // Search query filter
+            if (searchQuery.trim().length > 0) {
+                const q = searchQuery.toLowerCase().trim();
+                const titleMatch = (b.title || "").toLowerCase().includes(q);
+                const seriesMatch = (b.seriesName || "").toLowerCase().includes(q);
+                const authorMatch = (b.author || "").toLowerCase().includes(q);
+                if (!titleMatch && !seriesMatch && !authorMatch) return false;
+            }
+
+            return true;
+        });
+    }, [books, selectedStatus, selectedCategory, searchQuery]);
+
+    const totalSales = books.length;
+    const totalFiltered = filteredBooks.length;
+
+    // Pagination calculations
+    const pageSize = displayMode === "grid" ? gridPageSize : listPageSize;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+    const activePage = Math.min(currentPage, totalPages);
+
+    const startIndex = totalFiltered === 0 ? 0 : (activePage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, totalFiltered);
+
+    const paginatedBooks = useMemo(() => {
+        return filteredBooks.slice(startIndex, endIndex);
+    }, [filteredBooks, startIndex, endIndex]);
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    const handlePageSizeChange = (size: number) => {
+        if (displayMode === "grid") {
+            setGridPageSize(size);
+        } else {
+            setListPageSize(size);
+        }
+        setCurrentPage(1);
+    };
+
+    // Helper for cursor hover preview
+    const getCursorPreviewStyle = (x: number, y: number) => {
+        const cardW = 96;
+        const cardH = 140;
+        const offset = 16;
+
+        let left = x + offset;
+        if (left + cardW > window.innerWidth - 10) {
+            left = x - cardW - offset;
+        }
+
+        let top = y - cardH / 2;
+        if (top < 10) top = 10;
+        if (top + cardH > window.innerHeight - 10) {
+            top = window.innerHeight - cardH - 10;
+        }
+
+        return {
+            left: `${left}px`,
+            top: `${top}px`
+        };
+    };
+
+    return (
+        <div className="sales-page">
+            <WrapperHeader>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
+                    <div>
+                        <h2 style={{ margin: 0 }}>
+                            Mes Ventes {totalSales > 0 ? `(${totalSales} album${totalSales > 1 ? "s" : ""})` : ""}
+                        </h2>
+                    </div>
+                </div>
+            </WrapperHeader>
+
+            <div className="sales-page__content">
+                {/* Controls Bar: Status Tabs, Category Filter, Search, View Mode Toggle */}
+                {books.length > 0 && (
+                    <div className="sales-page__controls">
+                        {/* Segmented Status Filters */}
+                        <div className="sales-page__filters">
+                            {STATUS_TABS.map((tab) => {
+                                const isSelected = selectedStatus === tab.id;
+                                const count = statusCounts[tab.id];
+
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        onClick={() => setSelectedStatus(tab.id)}
+                                        className={`sales-page__filter-btn ${isSelected ? "is-active" : ""}`}
+                                    >
+                                        {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
+                                        <span>{tab.label}</span>
+                                        <span className="sales-page__filter-count">
+                                            {count}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Search, Categories & Display Mode Switcher */}
+                        <div className="sales-page__right-controls">
+                            <div className="sales-page__categories">
+                                {CATEGORY_TABS.map((tab) => (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        onClick={() => setSelectedCategory(tab.id)}
+                                        className={`sales-page__cat-btn ${selectedCategory === tab.id ? "is-active" : ""}`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="sales-page__search">
+                                <FontAwesomeIcon icon={faMagnifyingGlass} />
+                                <input
+                                    type="text"
+                                    placeholder="Rechercher une vente..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+
+                            {/* View Mode: Galerie vs Liste */}
+                            <div className="sales-page__view-toggle">
+                                <button
+                                    type="button"
+                                    className={`sales-page__view-btn ${displayMode === "grid" ? "is-active" : ""}`}
+                                    onClick={() => handleSetDisplayMode("grid")}
+                                    title="Mode Galerie"
+                                >
+                                    <FontAwesomeIcon icon={faBorderAll} />
+                                    <span>Galerie</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`sales-page__view-btn ${displayMode === "list" ? "is-active" : ""}`}
+                                    onClick={() => handleSetDisplayMode("list")}
+                                    title="Mode Liste compacte"
+                                >
+                                    <FontAwesomeIcon icon={faList} />
+                                    <span>Liste</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Body Content */}
+                {loading ? (
+                    <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
+                        Chargement de vos ventes...
+                    </div>
+                ) : books.length === 0 ? (
+                    /* Empty Sales State */
+                    <div style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "72px 24px",
+                        textAlign: "center",
+                        gap: "16px"
+                    }}>
+                        <div style={{
+                            width: "72px",
+                            height: "72px",
+                            borderRadius: "50%",
+                            background: "rgba(245, 158, 11, 0.1)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "#f59e0b",
+                            fontSize: "2rem"
+                        }}>
+                            <FontAwesomeIcon icon={faTag} />
+                        </div>
+                        <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}>
+                            Aucun album en vente pour le moment
+                        </h3>
+                        <p style={{ margin: 0, color: "var(--text-muted)", maxWidth: "420px", fontSize: "0.875rem" }}>
+                            Pour mettre un livre en vente, rendez-vous sur sa fiche album et cliquez sur « Mettre à vendre ».
+                        </p>
+                        <Link
+                            to="/app/collection"
+                            style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                height: "40px",
+                                padding: "0 22px",
+                                borderRadius: "var(--radius-full)",
+                                background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                                color: "#fff",
+                                fontWeight: 600,
+                                fontSize: "0.875rem",
+                                boxShadow: "0 4px 14px 0 rgba(245, 158, 11, 0.35)",
+                                textDecoration: "none"
+                            }}
+                        >
+                            <FontAwesomeIcon icon={faBook} />
+                            <span>Voir ma bibliothèque</span>
+                        </Link>
+                    </div>
+                ) : totalFiltered === 0 ? (
+                    <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
+                        Aucun album ne correspond à vos filtres de vente.
+                    </div>
+                ) : (
+                    <>
+                        {displayMode === "grid" ? (
+                            /* Galerie Mode for Sales */
+                            <div className="sales-grid">
+                                {paginatedBooks.map((book) => {
+                                    const isSold = book.status === "SOLD";
+                                    const isActionLoading = actionLoadingId === book.id;
+
+                                    return (
+                                        <div key={book.id} className={`sales-card ${isSold ? "is-sold" : ""}`}>
+                                            <Link to={`/app/book/${book.id}`} className="sales-card__media">
+                                                {book.coverUrl ? (
+                                                    <img src={book.coverUrl} alt={book.title} loading="lazy" />
+                                                ) : (
+                                                    <div className="sales-card__placeholder">
+                                                        <FontAwesomeIcon icon={faBook} />
+                                                    </div>
+                                                )}
+                                                <div className="sales-card__badge-row">
+                                                    <span className={`sales-badge ${isSold ? "sales-badge--sold" : "sales-badge--forsale"}`}>
+                                                        <FontAwesomeIcon icon={isSold ? faCheck : faTag} />
+                                                        <span>{isSold ? "Vendu" : "À vendre"}</span>
+                                                    </span>
+                                                    {book.volume > 0 && (
+                                                        <span className="sales-badge sales-badge--volume">
+                                                            T.{book.volume}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </Link>
+
+                                            <div className="sales-card__body">
+                                                <Link to={`/app/book/${book.id}`} className="sales-card__title" title={book.title}>
+                                                    {book.title}
+                                                </Link>
+                                                {book.seriesName && (
+                                                    <span className="sales-card__series" title={book.seriesName}>
+                                                        {book.seriesName}
+                                                    </span>
+                                                )}
+                                                {book.author && (
+                                                    <span className="sales-card__author" title={book.author}>
+                                                        {book.author}
+                                                    </span>
+                                                )}
+
+                                                <div className="sales-card__footer">
+                                                    {book.price != null && book.price > 0 && (
+                                                        <span className="sales-card__price">
+                                                            <FontAwesomeIcon icon={faCoins} />
+                                                            <span>{book.price} €</span>
+                                                        </span>
+                                                    )}
+
+                                                    <div className="sales-card__actions">
+                                                        {isSold ? (
+                                                            <button
+                                                                type="button"
+                                                                disabled={isActionLoading}
+                                                                onClick={(e) => handleUpdateStatus(e, book.id, "FOR_SALE")}
+                                                                className="sales-card__btn sales-card__btn--relist"
+                                                                title="Remettre en vente"
+                                                            >
+                                                                <FontAwesomeIcon icon={faRotateLeft} />
+                                                                <span>Remettre en vente</span>
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                disabled={isActionLoading}
+                                                                onClick={(e) => handleUpdateStatus(e, book.id, "SOLD")}
+                                                                className="sales-card__btn sales-card__btn--sold"
+                                                                title="Marquer comme vendu"
+                                                            >
+                                                                <FontAwesomeIcon icon={faCheck} />
+                                                                <span>Marquer vendu</span>
+                                                            </button>
+                                                        )}
+
+                                                        <button
+                                                            type="button"
+                                                            disabled={isActionLoading}
+                                                            onClick={(e) => handleRemoveFromSales(e, book.id, book.title)}
+                                                            className="sales-card__btn sales-card__btn--delete"
+                                                            title="Retirer de mes ventes"
+                                                        >
+                                                            <FontAwesomeIcon icon={faTrashCan} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            /* Compact Table/List Mode for Sales */
+                            <div className="sales-list">
+                                <div className="sales-list__header">
+                                    <span className="sales-list__th sales-list__th--title">Titre</span>
+                                    <span className="sales-list__th sales-list__th--series">Série / Tome</span>
+                                    <span className="sales-list__th sales-list__th--author">Auteur</span>
+                                    <span className="sales-list__th sales-list__th--category">Catégorie</span>
+                                    <span className="sales-list__th sales-list__th--price">Prix</span>
+                                    <span className="sales-list__th sales-list__th--status">Statut</span>
+                                    <span className="sales-list__th sales-list__th--action">Actions</span>
+                                </div>
+
+                                {paginatedBooks.map((book) => {
+                                    const cat = book.category || book.type;
+                                    const isSold = book.status === "SOLD";
+                                    const isActionLoading = actionLoadingId === book.id;
+
+                                    return (
+                                        <div className={`sales-row ${isSold ? "is-sold" : ""}`} key={book.id}>
+                                            {/* Title column with hover tracking for cursor preview */}
+                                            <Link
+                                                to={`/app/book/${book.id}`}
+                                                className="sales-row__col sales-row__col--title"
+                                                onMouseEnter={(e) => handleMouseEnterTitle(e, book.coverUrl, book.title)}
+                                                onMouseMove={handleMouseMoveTitle}
+                                                onMouseLeave={handleMouseLeaveTitle}
+                                            >
+                                                <FontAwesomeIcon icon={faBook} className="sales-row__book-icon" />
+                                                <span className="sales-row__title" title={book.title}>
+                                                    {book.title}
+                                                </span>
+                                                {book.parentBookId && (
+                                                    <span className="sales-row__variant-badge" title="Couverture variante">
+                                                        <FontAwesomeIcon icon={faClone} />
+                                                        <span>Variante</span>
+                                                    </span>
+                                                )}
+                                            </Link>
+
+                                            {/* Series / Volume column */}
+                                            <div className="sales-row__col sales-row__col--series">
+                                                {book.seriesName && (
+                                                    <span className="sales-row__series-name" title={book.seriesName}>
+                                                        {book.seriesName}
+                                                    </span>
+                                                )}
+                                                {book.volume > 0 && (
+                                                    <span className="sales-row__volume-badge">
+                                                        T.{book.volume}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Author column */}
+                                            <div className="sales-row__col sales-row__col--author">
+                                                {book.author && (
+                                                    <span className="sales-row__author" title={book.author}>
+                                                        {book.author}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Category column */}
+                                            <div className="sales-row__col sales-row__col--category">
+                                                {cat && (
+                                                    <span className="sales-row__tag">
+                                                        {cat}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Price column */}
+                                            <div className="sales-row__col sales-row__col--price">
+                                                {book.price != null && book.price > 0 ? (
+                                                    <span className="sales-row__price">
+                                                        {book.price} €
+                                                    </span>
+                                                ) : (
+                                                    <span className="sales-row__price sales-row__price--none">-</span>
+                                                )}
+                                            </div>
+
+                                            {/* Status column */}
+                                            <div className="sales-row__col sales-row__col--status">
+                                                <span className={`sales-badge ${isSold ? "sales-badge--sold" : "sales-badge--forsale"}`}>
+                                                    <FontAwesomeIcon icon={isSold ? faCheck : faTag} />
+                                                    <span>{isSold ? "Vendu" : "À vendre"}</span>
+                                                </span>
+                                            </div>
+
+                                            {/* Quick Actions */}
+                                            <div className="sales-row__col sales-row__col--action">
+                                                {isSold ? (
+                                                    <button
+                                                        type="button"
+                                                        disabled={isActionLoading}
+                                                        onClick={(e) => handleUpdateStatus(e, book.id, "FOR_SALE")}
+                                                        className="sales-row__action-btn sales-row__action-btn--relist"
+                                                        title="Remettre en vente"
+                                                    >
+                                                        <FontAwesomeIcon icon={faRotateLeft} />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        disabled={isActionLoading}
+                                                        onClick={(e) => handleUpdateStatus(e, book.id, "SOLD")}
+                                                        className="sales-row__action-btn sales-row__action-btn--sold"
+                                                        title="Marquer comme vendu"
+                                                    >
+                                                        <FontAwesomeIcon icon={faCheck} />
+                                                    </button>
+                                                )}
+
+                                                <button
+                                                    type="button"
+                                                    disabled={isActionLoading}
+                                                    onClick={(e) => handleRemoveFromSales(e, book.id, book.title)}
+                                                    className="sales-row__action-btn sales-row__action-btn--delete"
+                                                    title="Retirer de mes ventes"
+                                                >
+                                                    <FontAwesomeIcon icon={faTrashCan} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* Floating Cursor Preview when hovering row titles in list mode */}
+                        {displayMode === "list" && hoveredCover && (
+                            <div
+                                className="sales-cursor-preview"
+                                style={getCursorPreviewStyle(hoveredCover.x, hoveredCover.y)}
+                            >
+                                <img src={hoveredCover.url} alt={hoveredCover.title} />
+                                <span className="sales-cursor-preview__title">{hoveredCover.title}</span>
+                            </div>
+                        )}
+
+                        {/* Pagination Bar */}
+                        {totalFiltered > 0 && (
+                            <Pagination
+                                currentPage={activePage}
+                                totalPages={totalPages}
+                                totalItems={totalFiltered}
+                                pageSize={pageSize}
+                                onPageChange={handlePageChange}
+                                onPageSizeChange={handlePageSizeChange}
+                                pageSizeOptions={displayMode === "grid" ? [12, 24, 48, 96] : [25, 50, 100]}
+                            />
+                        )}
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}

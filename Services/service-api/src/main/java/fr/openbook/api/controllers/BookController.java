@@ -16,6 +16,7 @@ import fr.openbook.api.entities.BookEntity;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.entities.BookStatusEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
+import fr.openbook.api.entities.UserSellsBookEntity;
 import fr.openbook.api.repositories.BookRepository;
 import fr.openbook.api.services.CollectionService;
 import fr.openbook.api.services.EditorService;
@@ -500,10 +501,19 @@ public class BookController {
         }
 
         if (withStatus && userEntity != null) {
-            dto.setStatus(repositoryService.getUserOwnsBooksRepository()
+            String status = repositoryService.getUserOwnsBooksRepository()
                     .findByUserIdAndBookId(userEntity.getId(), bookEntity.getId())
                     .map(UserOwnsBookEntity::getStatus)
-                    .orElse(null));
+                    .orElse(null);
+
+            if (status == null) {
+                status = repositoryService.getUserSellsBookRepository()
+                        .findByUserIdAndBookId(userEntity.getId(), bookEntity.getId())
+                        .map(UserSellsBookEntity::getStatus)
+                        .orElse(null);
+            }
+
+            dto.setStatus(status);
 
             dto.setReadingStatus(repositoryService.getBookStatusRepository()
                     .findByUserIdAndBookId(userEntity.getId(), bookEntity.getId())

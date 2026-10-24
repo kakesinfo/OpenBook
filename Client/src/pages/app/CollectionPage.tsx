@@ -14,7 +14,6 @@ import {
     faFire,
     faMagnifyingGlass,
     faBookBookmark,
-    faTag,
     faCheck,
     faBookOpen,
     faBan,
@@ -26,7 +25,7 @@ import {
 import "./CollectionPage.scss";
 
 type CategoryFilter = "all" | "bd" | "comics" | "manga";
-type TomeStatusFilter = "all" | "toread" | "forsale" | "read" | "unread" | "abandoned";
+type TomeStatusFilter = "all" | "toread" | "read" | "abandoned";
 type DisplayMode = "grid" | "list";
 
 interface CategoryTab {
@@ -59,8 +58,6 @@ const STATUS_TABS: StatusTab[] = [
     { id: "all", label: "Tous", icon: faLayerGroup },
     { id: "toread", label: "Pile à lire", icon: faBookBookmark },
     { id: "read", label: "Lu", icon: faCheck },
-    { id: "unread", label: "Non lu", icon: faBookOpen },
-    { id: "forsale", label: "À vendre", icon: faTag },
     { id: "abandoned", label: "Abandonné", icon: faBan }
 ];
 
@@ -76,24 +73,12 @@ function matchesTomeStatus(book: BookSummaryDTO, filter: TomeStatusFilter): bool
     if (filter === "all") return true;
 
     const rStatus = (book.readingStatus || "").toUpperCase();
-    const isForSale = book.status === "FOR_SALE";
 
-    if (filter === "forsale") {
-        return isForSale;
-    }
     if (filter === "toread") {
         return rStatus !== "READ" && rStatus !== "LU" && rStatus !== "ABANDONED" && rStatus !== "ABANDONNE";
     }
     if (filter === "read") {
         return rStatus === "READ" || rStatus === "LU";
-    }
-    if (filter === "unread") {
-        return (
-            (rStatus === "UNREAD" || rStatus === "NON_LU" || !rStatus) &&
-            rStatus !== "TO_READ" &&
-            rStatus !== "READING" &&
-            rStatus !== "A_LIRE"
-        );
     }
     if (filter === "abandoned") {
         return rStatus === "ABANDONED" || rStatus === "ABANDONNE";
@@ -102,14 +87,6 @@ function matchesTomeStatus(book: BookSummaryDTO, filter: TomeStatusFilter): bool
 }
 
 function getReadingStatusBadge(book: BookSummaryDTO) {
-    if (book.status === "FOR_SALE") {
-        return (
-            <span className="collection-status-badge collection-status-badge--forsale">
-                <FontAwesomeIcon icon={faTag} />
-                <span>À vendre</span>
-            </span>
-        );
-    }
     const rStatus = (book.readingStatus || "").toUpperCase();
     if (rStatus === "READ" || rStatus === "LU") {
         return (
@@ -234,19 +211,15 @@ export default function CollectionPage() {
         const counts: Record<TomeStatusFilter, number> = {
             all: books.length,
             toread: 0,
-            forsale: 0,
             read: 0,
-            unread: 0,
             abandoned: 0
         };
         for (const b of books) {
             const rStatus = (b.readingStatus || "UNREAD").toUpperCase();
-            if (b.status === "FOR_SALE") counts.forsale++;
             if (rStatus !== "READ" && rStatus !== "LU" && rStatus !== "ABANDONED" && rStatus !== "ABANDONNE") {
                 counts.toread++;
             }
             if (rStatus === "READ" || rStatus === "LU") counts.read++;
-            if (rStatus === "UNREAD" || rStatus === "NON_LU" || !b.readingStatus) counts.unread++;
             if (rStatus === "ABANDONED" || rStatus === "ABANDONNE") counts.abandoned++;
         }
         return counts;

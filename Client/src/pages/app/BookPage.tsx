@@ -667,7 +667,7 @@ export default function BookPage() {
 
                             {/* Actions */}
                             <div className="book-page__actions">
-                                {bookStatus !== "OWNED" && bookStatus !== "FOR_SALE" && (
+                                {bookStatus !== "OWNED" && bookStatus !== "FOR_SALE" && bookStatus !== "SOLD" && (
                                     <ChangeBookStatusButton
                                         status={bookStatus}
                                         setStatus={setBookStatus}
@@ -680,7 +680,7 @@ export default function BookPage() {
                                     </ChangeBookStatusButton>
                                 )}
 
-                                {bookStatus !== "WISHLISTED" && bookStatus !== "FOR_SALE" && (
+                                {bookStatus !== "WISHLISTED" && (
                                     <ChangeBookStatusButton
                                         status={bookStatus}
                                         setStatus={setBookStatus}
@@ -702,7 +702,7 @@ export default function BookPage() {
                                         session={session}
                                         icon={faTag}
                                     >
-                                        {bookStatus === "FOR_SALE" ? "En vente" : "Mettre à vendre"}
+                                        {bookStatus === "FOR_SALE" ? "En vente" : (bookStatus === "SOLD" ? "Vendu (remettre en vente)" : "Mettre à vendre")}
                                     </ChangeBookStatusButton>
                                 )}
 

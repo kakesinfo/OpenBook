@@ -17,7 +17,7 @@ public interface SeriesRepository extends JpaRepository<SeriesEntity, Long> {
 
     @Query("SELECT DISTINCT s FROM series s " +
            "WHERE EXISTS (SELECT ufs FROM user_follows_series ufs WHERE ufs.user.id = :userId AND ufs.series.id = s.id) " +
-           "   OR EXISTS (SELECT uob FROM user_owns_book uob WHERE uob.user.id = :userId AND uob.book.series.id = s.id AND UPPER(uob.status) IN ('OWNED', 'FOR_SALE', 'LENT')) " +
+           "   OR EXISTS (SELECT uob FROM user_owns_book uob WHERE uob.user.id = :userId AND uob.book.series.id = s.id AND UPPER(uob.status) IN ('OWNED', 'LENT')) " +
            "ORDER BY s.name ASC")
     List<SeriesEntity> findUserSeries(@Param("userId") Long userId);
 }

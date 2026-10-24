@@ -43,34 +43,36 @@
   }
 
   &__filters {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-subtle);
+    border-radius: 18px;
+    padding: 2px;
+    gap: 2px;
   }
 
   &__filter-btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 13px;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--text-primary);
-    font-size: 0.835rem;
-    font-weight: 500;
+    gap: 6px;
+    height: 30px;
+    padding: 0 11px;
+    border-radius: 14px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all var(--transition-fast);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
     }
 
     &.is-active {
-      background: rgba(16, 185, 129, 0.15);
-      border-color: var(--accent-primary);
+      background: rgba(16, 185, 129, 0.18);
       color: var(--accent-primary);
       font-weight: 700;
 
