@@ -5,6 +5,7 @@ import { useSnackbar } from "notistack";
 import SeriesDTO, { getSeriesStatusLabel } from "../../dto/Series.dto.ts";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
+import Pagination from "../../components/Pagination/Pagination.tsx";
 import { Dialog } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -16,6 +17,8 @@ import {
 	faBook,
 	faTrash,
 	faPen,
+	faChevronRight,
+	faCheck
 } from "@fortawesome/free-solid-svg-icons";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import "./SeriesPage.scss";
@@ -23,6 +26,13 @@ import "./SeriesPage.scss";
 interface CategoryOption {
     id: number;
     name: string;
+}
+
+interface HoveredCoverState {
+    url: string;
+    title: string;
+    x: number;
+    y: number;
 }
 
 const DEFAULT_CATEGORIES: CategoryOption[] = [
@@ -46,6 +56,54 @@ export default function SeriesPage() {
 
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+    // Pagination states
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [pageSize, setPageSize] = useState<number>(50);
+
+    // Floating cover preview on cursor hover
+    const [hoveredCover, setHoveredCover] = useState<HoveredCoverState | null>(null);
+
+    const handleMouseEnterTitle = (e: React.MouseEvent, coverUrl?: string, title?: string) => {
+        if (!coverUrl) return;
+        setHoveredCover({
+            url: coverUrl,
+            title: title || "",
+            x: e.clientX,
+            y: e.clientY
+        });
+    };
+
+    const handleMouseMoveTitle = (e: React.MouseEvent) => {
+        if (hoveredCover) {
+            setHoveredCover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : null));
+        }
+    };
+
+    const handleMouseLeaveTitle = () => {
+        setHoveredCover(null);
+    };
+
+    const getCursorPreviewStyle = (x: number, y: number) => {
+        const cardW = 96;
+        const cardH = 140;
+        const offset = 16;
+
+        let left = x + offset;
+        if (left + cardW > window.innerWidth - 10) {
+            left = x - cardW - offset;
+        }
+
+        let top = y;
+        const halfH = cardH / 2;
+        if (top - halfH < 10) {
+            top = halfH + 10;
+        } else if (top + halfH > window.innerHeight - 10) {
+            top = window.innerHeight - halfH - 10;
+        }
+
+        return { left: `${left}px`, top: `${top}px` };
+    };
 
     // Modal states
     const [activeSeries, setActiveSeries] = useState<SeriesDTO | null>(null);
@@ -430,6 +488,32 @@ export default function SeriesPage() {
         });
     }, [scope, mySeries, allSeries, selectedCategory, searchQuery]);
 
+    // Reset page to 1 whenever filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [scope, selectedCategory, searchQuery]);
+
+    // Pagination calculations
+    const totalFiltered = displayedSeries.length;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+    const activePage = Math.min(currentPage, totalPages);
+    const startIndex = totalFiltered === 0 ? 0 : (activePage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, totalFiltered);
+
+    const paginatedSeries = useMemo(() => {
+        return displayedSeries.slice(startIndex, endIndex);
+    }, [displayedSeries, startIndex, endIndex]);
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    const handlePageSizeChange = (size: number) => {
+        setPageSize(size);
+        setCurrentPage(1);
+    };
+
     return (
         <div className="series-page">
 			<WrapperHeader>
@@ -526,69 +610,108 @@ export default function SeriesPage() {
                     </div>
                 )}
 
-                {/* Series Grid */}
+                {/* Series List Mode (mode liste uniquement, pas de galerie) */}
                 {!loading && displayedSeries.length > 0 && (
-                    <div className="series-page__grid">
-                        {displayedSeries.map((s) => (
-                            <div
-                                key={s.id}
-                                className="series-page__card"
-                                onClick={() => openSeriesDetails(s.id)}
-                            >
-                                <div className="series-page__card-cover">
-                                    {s.coverUrl ? (
-                                        <img src={s.coverUrl} alt={s.name} loading="lazy" />
-                                    ) : (
-                                        <div className="series-page__card-cover-fallback">
-                                            <FontAwesomeIcon icon={faLayerGroup} />
-                                        </div>
-                                    )}
+                    <>
+                        <div className="series-list">
+                            <div className="series-list__header">
+                                <span className="series-list__th series-list__th--title">Série</span>
+                                <span className="series-list__th series-list__th--category">Catégorie</span>
+                                <span className="series-list__th series-list__th--status">Statut</span>
+                                <span className="series-list__th series-list__th--volumes">Tomes possédés</span>
+                                <span className="series-list__th series-list__th--follow">Suivi</span>
+                                <span className="series-list__th series-list__th--action"></span>
+                            </div>
 
-                                    <button
-                                        type="button"
-                                        className={`series-page__card-follow-btn ${s.isFollowed ? "is-followed" : ""}`}
-                                        title={s.isFollowed ? "Suivi actif (cliquer pour ne plus suivre)" : "Suivre cette série"}
-                                        onClick={(e) => handleToggleFollow(s.id, e)}
+                            {paginatedSeries.map((s) => (
+                                <div
+                                    key={s.id}
+                                    className="series-row"
+                                    onClick={() => openSeriesDetails(s.id)}
+                                >
+                                    {/* Title column with hover tracking for cursor preview */}
+                                    <div
+                                        className="series-row__col series-row__col--title"
+                                        onMouseEnter={(e) => handleMouseEnterTitle(e, s.coverUrl, s.name)}
+                                        onMouseMove={handleMouseMoveTitle}
+                                        onMouseLeave={handleMouseLeaveTitle}
                                     >
-                                        <FontAwesomeIcon icon={faBell} />
-                                    </button>
-                                </div>
+                                        <FontAwesomeIcon icon={faLayerGroup} className="series-row__icon" />
+                                        <span className="series-row__title" title={s.name}>
+                                            {s.name}
+                                        </span>
+                                        {s.description && (
+                                            <span className="series-row__desc" title={s.description}>
+                                                {s.description}
+                                            </span>
+                                        )}
+                                    </div>
 
-                                <div className="series-page__card-body">
-                                    <div className="series-page__card-tags">
+                                    {/* Category column */}
+                                    <div className="series-row__col series-row__col--category">
                                         {s.category && (
-                                            <span className="series-page__tag series-page__tag--category">
+                                            <span className="series-row__tag series-row__tag--category">
                                                 {s.category}
                                             </span>
                                         )}
+                                    </div>
+
+                                    {/* Status column */}
+                                    <div className="series-row__col series-row__col--status">
                                         {s.status && (
                                             <span
-                                                className={`series-page__tag series-page__tag--status ${s.status === "FINISHED" ? "status-finished" : ""}`}
+                                                className={`series-row__tag series-row__tag--status ${s.status === "FINISHED" ? "status-finished" : ""}`}
                                             >
                                                 {getSeriesStatusLabel(s.status)}
                                             </span>
                                         )}
                                     </div>
 
-                                    <h3 className="series-page__card-title">{s.name}</h3>
-
-                                    <div className="series-page__card-footer">
-                                        <span className={`series-page__card-owned-badge ${(s.ownedCount || 0) > 0 ? "has-owned" : ""}`}>
+                                    {/* Owned volumes column */}
+                                    <div className="series-row__col series-row__col--volumes">
+                                        <span className={`series-row__owned-badge ${(s.ownedCount || 0) > 0 ? "has-owned" : ""}`}>
                                             <FontAwesomeIcon icon={faBook} />
                                             <span>
                                                 {s.ownedCount || 0} / {Math.max(s.totalVolumes || 0, s.ownedCount || 0)} tomes
                                             </span>
                                         </span>
-                                        {s.isFollowed && (
-                                            <span style={{ color: "var(--accent-primary)", fontSize: "0.75rem", fontWeight: 600 }}>
-                                                Suivie
-                                            </span>
-                                        )}
+                                    </div>
+
+                                    {/* Follow column */}
+                                    <div className="series-row__col series-row__col--follow" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                            type="button"
+                                            className={`series-row__follow-btn ${s.isFollowed ? "is-followed" : ""}`}
+                                            title={s.isFollowed ? "Suivi actif (cliquer pour ne plus suivre)" : "Suivre cette série"}
+                                            onClick={(e) => handleToggleFollow(s.id, e)}
+                                        >
+                                            <FontAwesomeIcon icon={s.isFollowed ? faCheck : faBell} />
+                                            <span>{s.isFollowed ? "Suivie" : "Suivre"}</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Action column */}
+                                    <div className="series-row__col series-row__col--action">
+                                        <FontAwesomeIcon icon={faChevronRight} className="series-row__chevron" />
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+
+                        {/* Shared Pagination component */}
+                        <Pagination
+                            currentPage={activePage}
+                            totalPages={totalPages}
+                            onPageChange={handlePageChange}
+                            totalItems={totalFiltered}
+                            startIndex={startIndex}
+                            endIndex={endIndex}
+                            pageSize={pageSize}
+                            onPageSizeChange={handlePageSizeChange}
+                            pageSizeOptions={[20, 50, 100]}
+                            itemLabel="séries"
+                        />
+                    </>
                 )}
 
                 {/* Empty State */}
@@ -612,6 +735,20 @@ export default function SeriesPage() {
                     </div>
                 )}
             </div>
+
+            {/* Floating Cover Preview right at mouse cursor on series title hover */}
+            {hoveredCover && (
+                <div
+                    className="series-cursor-preview"
+                    style={getCursorPreviewStyle(hoveredCover.x, hoveredCover.y)}
+                >
+                    <img
+                        src={hoveredCover.url}
+                        alt={`Couverture de ${hoveredCover.title}`}
+                        decoding="async"
+                    />
+                </div>
+            )}
 
             {/* Create Series Dialog */}
             <Dialog
@@ -651,7 +788,7 @@ export default function SeriesPage() {
                         <input
                             type="text"
                             required
-                            placeholder="ex: Batman Rebirth, Blackwater, Berserk..."
+                            placeholder="Ex: Spider-Man, Tintin, One Piece..."
                             value={createName}
                             onChange={(e) => setCreateName(e.target.value)}
                             style={{
@@ -719,11 +856,11 @@ export default function SeriesPage() {
 
                     <div>
                         <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                            Description (optionnelle)
+                            Description
                         </label>
                         <textarea
                             rows={3}
-                            placeholder="Synopsis ou présentation générale de la série..."
+                            placeholder="Synopsis ou description générale de la série..."
                             value={createDescription}
                             onChange={(e) => setCreateDescription(e.target.value)}
                             style={{
@@ -1276,7 +1413,7 @@ export default function SeriesPage() {
                             Annuler
                         </button>
                         <button
-                            type="button"
+                            type="submit"
                             disabled={!selectedBookForAdd || addingBook}
                             onClick={handleAddBookToSeries}
                             className="series-page__create-btn"

@@ -17,6 +17,7 @@ interface PaginationProps {
     pageSize?: number;
     onPageSizeChange?: (size: number) => void;
     pageSizeOptions?: number[];
+    itemLabel?: string;
 }
 
 function getPaginationItems(current: number, total: number): (number | string)[] {
@@ -41,7 +42,8 @@ export default function Pagination({
     endIndex = 0,
     pageSize,
     onPageSizeChange,
-    pageSizeOptions = [20, 50, 100]
+    pageSizeOptions = [20, 50, 100],
+    itemLabel = "livres"
 }: PaginationProps) {
     if (!totalItems || totalItems === 0 || totalPages === 0) {
         return null;
@@ -50,12 +52,12 @@ export default function Pagination({
     const pages = getPaginationItems(currentPage, totalPages);
 
     return (
-        <nav className="pagination" aria-label="Pagination des nouveautés">
+        <nav className="pagination" aria-label="Pagination">
             <div className="pagination__info">
                 {totalItems !== undefined && (
                     <span className="pagination__count">
                         Affichage de <strong>{totalItems === 0 ? 0 : startIndex + 1}</strong> à{" "}
-                        <strong>{endIndex}</strong> sur <strong>{totalItems.toLocaleString("fr-FR")}</strong> livres
+                        <strong>{endIndex}</strong> sur <strong>{totalItems.toLocaleString("fr-FR")}</strong> {itemLabel}
                     </span>
                 )}
 
@@ -113,14 +115,14 @@ export default function Pagination({
                             );
                         }
 
-                        const isActive = p === currentPage;
+                        const isCurrent = p === currentPage;
                         return (
                             <button
                                 key={p}
                                 type="button"
-                                className={`pagination__btn pagination__btn--page ${isActive ? "pagination__btn--active" : ""}`}
+                                className={`pagination__btn pagination__btn--page ${isCurrent ? "is-active" : ""}`}
                                 onClick={() => onPageChange(p)}
-                                aria-current={isActive ? "page" : undefined}
+                                aria-current={isCurrent ? "page" : undefined}
                                 aria-label={`Page ${p}`}
                             >
                                 {p}
