@@ -69,6 +69,7 @@ services:
     build:
       context: ./Services/service-scraper
       dockerfile: Dockerfile
+    restart: unless-stopped
     depends_on:
       project-liquibase:
         condition: service_completed_successfully
