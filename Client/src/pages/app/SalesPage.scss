@@ -1,18 +1,23 @@
 .sales-page {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  width: 100%;
-  animation: fadeIn var(--transition-fast) ease-out;
 
   &__content {
-    padding: 24px 32px 60px;
-    max-width: 1480px;
-    margin: 0 auto;
     width: 100%;
-    box-sizing: border-box;
+    padding: 24px 28px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 
-    @media (max-width: 768px) {
-      padding: 16px 16px 40px;
+    @media (max-width: 900px) {
+      padding: 20px 18px 36px;
+      gap: 16px;
+    }
+
+    @media (max-width: 600px) {
+      padding: 16px 14px 28px;
+      gap: 14px;
     }
 
     .pagination {
@@ -25,8 +30,11 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 24px;
     flex-wrap: wrap;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 14px 18px;
   }
 
   /* Segmented status filter buttons */
