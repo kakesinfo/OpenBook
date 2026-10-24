@@ -1,5 +1,6 @@
 package fr.openbook.api.dtos;
 
+import fr.openbook.api.utils.MediaUrlUtils;
 import lombok.Data;
 
 @Data
@@ -22,4 +23,12 @@ public class BookSummaryDTO {
     private String status;
     private String readingStatus;
     private Long parentBookId;
+
+    public String getCoverUrl() {
+        return MediaUrlUtils.formatCoverUrl(this.coverUrl);
+    }
+
+    public String getSeriesCoverUrl() {
+        return MediaUrlUtils.formatCoverUrl(this.seriesCoverUrl);
+    }
 }

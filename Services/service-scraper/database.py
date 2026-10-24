@@ -1,4 +1,6 @@
 import re
+import os
+import requests
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -20,6 +22,23 @@ from scrapers.base import (
 )
 
 logger = logging.getLogger(__name__)
+
+def optimize_cover_to_media_service(remote_url: Optional[str]) -> Optional[str]:
+    if not remote_url or not remote_url.startswith("http"):
+        return remote_url
+    media_url = os.getenv("MEDIA_SERVICE_URL", "http://project-media:5002").rstrip("/")
+    try:
+        res = requests.post(f"{media_url}/images", timeout=4)
+        if res.status_code == 201:
+            img_id = res.json().get("id")
+            if img_id:
+                up_res = requests.post(f"{media_url}/images/{img_id}", json={"url": remote_url}, timeout=8)
+                if up_res.status_code == 200:
+                    return img_id
+    except Exception as e:
+        logger.debug("Media service upload skipped for %s: %s", remote_url, e)
+    return remote_url
+
 
 class Database:
     def __init__(self, db_url: str):
@@ -542,6 +561,8 @@ class Database:
                                 book_id = cand_id
                                 break
 
+                stored_cover = optimize_cover_to_media_service(book.cover_url)
+
                 if book_id:
                     # Guard against self-reference
                     if parent_book_id and parent_book_id == book_id:
@@ -570,7 +591,7 @@ class Database:
                             book.page_count or 0,
                             book.release_date,
                             clean_desc,
-                            book.cover_url,
+                            stored_cover,
                             collection_id,
                             parent_book_id,
                             parent_book_id,
@@ -642,7 +663,7 @@ class Database:
                             book.page_count or 0,
                             book.price or 0,
                             clean_desc,
-                            book.cover_url,
+                            stored_cover,
                             book.release_date or datetime.now(),
                             book.book_type or "Comics",
                             parent_book_id

@@ -1,5 +1,6 @@
 package fr.openbook.api.dtos;
 
+import fr.openbook.api.utils.MediaUrlUtils;
 import lombok.Data;
 import java.util.List;
 
@@ -16,4 +17,8 @@ public class UserSeriesSummaryDTO {
     private Integer ownedCount;
     private Boolean isFollowed;
     private List<BookSummaryDTO> books;
+
+    public String getCoverUrl() {
+        return MediaUrlUtils.formatCoverUrl(this.coverUrl);
+    }
 }
