@@ -412,78 +412,96 @@ export default function CollectionPage() {
                     /* Galerie Mode */
                     <BookList books={filteredBooks} />
                 ) : (
-                    /* Compact List Mode */
+                    /* Compact Table/List Mode (0 margins between rows, cover only on hover) */
                     <div className="collection-list">
+                        <div className="collection-list__header">
+                            <span className="collection-list__th collection-list__th--title">Titre</span>
+                            <span className="collection-list__th collection-list__th--series">Série / Tome</span>
+                            <span className="collection-list__th collection-list__th--author">Auteur</span>
+                            <span className="collection-list__th collection-list__th--category">Catégorie</span>
+                            <span className="collection-list__th collection-list__th--status">Statut</span>
+                            <span className="collection-list__th collection-list__th--date">Date</span>
+                            <span className="collection-list__th collection-list__th--action"></span>
+                        </div>
+
                         {filteredBooks.map((book) => {
                             const cat = book.category || book.type;
                             return (
                                 <Link to={`/app/book/${book.id}`} className="collection-row" key={book.id}>
-                                    <div className="collection-row__cover-wrapper">
-                                        {book.coverUrl ? (
+                                    {/* Cover preview ONLY on hover (floats seamlessly) */}
+                                    {book.coverUrl && (
+                                        <div className="collection-row__cover-preview">
                                             <img
                                                 src={book.coverUrl}
                                                 alt={`Couverture de ${book.title}`}
-                                                className="collection-row__cover"
                                                 loading="lazy"
                                                 decoding="async"
                                             />
-                                        ) : (
-                                            <div className="collection-row__cover-fallback">
-                                                <FontAwesomeIcon icon={faBook} />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="collection-row__main">
-                                        <div className="collection-row__title-wrap">
-                                            <span className="collection-row__title" title={book.title}>
-                                                {book.title}
-                                            </span>
-                                            {book.parentBookId && (
-                                                <span className="collection-row__variant-badge" title="Couverture variante">
-                                                    <FontAwesomeIcon icon={faClone} />
-                                                    <span>Variante</span>
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <div className="collection-row__sub">
-                                            {book.seriesName && (
-                                                <span className="collection-row__series">
-                                                    {book.seriesName}
-                                                </span>
-                                            )}
-                                            {book.volume > 0 && (
-                                                <span className="collection-row__volume">
-                                                    Tome {book.volume}
-                                                </span>
-                                            )}
-                                            {book.author && (
-                                                <span className="collection-row__author">
-                                                    {book.author}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {cat && (
-                                        <div className="collection-row__category">
-                                            <span className="collection-row__tag">
-                                                {cat}
-                                            </span>
                                         </div>
                                     )}
 
-                                    <div className="collection-row__status">
+                                    {/* Title column */}
+                                    <div className="collection-row__col collection-row__col--title">
+                                        <FontAwesomeIcon icon={faBook} className="collection-row__icon" />
+                                        <span className="collection-row__title" title={book.title}>
+                                            {book.title}
+                                        </span>
+                                        {book.parentBookId && (
+                                            <span className="collection-row__variant-badge" title="Couverture variante">
+                                                <FontAwesomeIcon icon={faClone} />
+                                                <span>Variante</span>
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Series / Volume column */}
+                                    <div className="collection-row__col collection-row__col--series">
+                                        {book.seriesName && (
+                                            <span className="collection-row__series-name" title={book.seriesName}>
+                                                {book.seriesName}
+                                            </span>
+                                        )}
+                                        {book.volume > 0 && (
+                                            <span className="collection-row__volume-badge">
+                                                T.{book.volume}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Author column */}
+                                    <div className="collection-row__col collection-row__col--author">
+                                        {book.author && (
+                                            <span className="collection-row__author" title={book.author}>
+                                                {book.author}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Category column */}
+                                    <div className="collection-row__col collection-row__col--category">
+                                        {cat && (
+                                            <span className="collection-row__tag">
+                                                {cat}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Status column */}
+                                    <div className="collection-row__col collection-row__col--status">
                                         {getReadingStatusBadge(book)}
                                     </div>
 
-                                    <div className="collection-row__action">
+                                    {/* Date column */}
+                                    <div className="collection-row__col collection-row__col--date">
                                         {book.releaseDate && (
                                             <span className="collection-row__date">
                                                 {new Date(book.releaseDate).getFullYear()}
                                             </span>
                                         )}
+                                    </div>
+
+                                    {/* Action column */}
+                                    <div className="collection-row__col collection-row__col--action">
                                         <FontAwesomeIcon icon={faChevronRight} className="collection-row__chevron" />
                                     </div>
                                 </Link>
