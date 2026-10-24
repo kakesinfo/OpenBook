@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import useSession from "../../hooks/UseSession.tsx";
 import Pagination from "../../components/Pagination/Pagination.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
+import { Dialog } from "@mui/material";
 import { Link } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -18,7 +19,11 @@ import {
     faClone,
     faTrashCan,
     faRotateLeft,
-    faCoins
+    faCoins,
+    faCalendarDays,
+    faXmark,
+    faStore,
+    faNoteSticky
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
 import "./SalesPage.scss";
@@ -92,6 +97,60 @@ export default function SalesPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [gridPageSize, setGridPageSize] = useState(24);
     const [listPageSize, setListPageSize] = useState(50);
+
+    // Sale modal state (Date and Price when marking a book as SOLD)
+    const [saleModalOpen, setSaleModalOpen] = useState(false);
+    const [saleTargetBook, setSaleTargetBook] = useState<BookSummaryDTO | null>(null);
+    const [saleDate, setSaleDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+    const [salePrice, setSalePrice] = useState<string>("");
+    const [saleLocation, setSaleLocation] = useState<string>("");
+    const [saleMemo, setSaleMemo] = useState<string>("");
+    const [submittingSale, setSubmittingSale] = useState(false);
+
+    const handleOpenSaleModal = (e: React.MouseEvent, book: BookSummaryDTO) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setSaleTargetBook(book);
+        setSaleDate(new Date().toISOString().split("T")[0]);
+        setSalePrice(book.price ? String(book.price) : "");
+        setSaleLocation("");
+        setSaleMemo("");
+        setSaleModalOpen(true);
+    };
+
+    const handleConfirmSale = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!saleTargetBook || submittingSale) return;
+
+        setSubmittingSale(true);
+        try {
+            const parsedPrice = salePrice ? parseFloat(salePrice) : null;
+            const res = await session.customFetch(`/user/sales/${encodeURIComponent(saleTargetBook.id)}/status/SOLD`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    date: saleDate,
+                    price: parsedPrice,
+                    location: saleLocation.trim() || null,
+                    memo: saleMemo.trim() || null
+                })
+            });
+
+            if (res.ok) {
+                setBooks((prev) =>
+                    prev.map((b) => (b.id === saleTargetBook.id ? { ...b, status: "SOLD", price: parsedPrice ? Math.round(parsedPrice) : b.price } : b))
+                );
+                enqueueSnackbar("Album marqué comme vendu avec succès !", { variant: "success" });
+                setSaleModalOpen(false);
+            } else {
+                enqueueSnackbar("Erreur lors de la validation de la vente", { variant: "error" });
+            }
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } finally {
+            setSubmittingSale(false);
+        }
+    };
 
     // Hovered cover state for list mode
     const [hoveredCover, setHoveredCover] = useState<HoveredCoverState | null>(null);
@@ -471,17 +530,13 @@ export default function SalesPage() {
                                                         <FontAwesomeIcon icon={faBook} />
                                                     </div>
                                                 )}
-                                                <div className="sales-card__badge-row">
-                                                    <span className={`sales-badge ${isSold ? "sales-badge--sold" : "sales-badge--forsale"}`}>
-                                                        <FontAwesomeIcon icon={isSold ? faCheck : faTag} />
-                                                        <span>{isSold ? "Vendu" : "À vendre"}</span>
-                                                    </span>
-                                                    {book.volume > 0 && (
+                                                {book.volume > 0 && (
+                                                    <div className="sales-card__badge-row">
                                                         <span className="sales-badge sales-badge--volume">
                                                             T.{book.volume}
                                                         </span>
-                                                    )}
-                                                </div>
+                                                    </div>
+                                                )}
                                             </Link>
 
                                             <div className="sales-card__body">
@@ -523,7 +578,7 @@ export default function SalesPage() {
                                                             <button
                                                                 type="button"
                                                                 disabled={isActionLoading}
-                                                                onClick={(e) => handleUpdateStatus(e, book.id, "SOLD")}
+                                                                onClick={(e) => handleOpenSaleModal(e, book)}
                                                                 className="sales-card__btn sales-card__btn--sold"
                                                                 title="Marquer comme vendu"
                                                             >
@@ -655,7 +710,7 @@ export default function SalesPage() {
                                                     <button
                                                         type="button"
                                                         disabled={isActionLoading}
-                                                        onClick={(e) => handleUpdateStatus(e, book.id, "SOLD")}
+                                                        onClick={(e) => handleOpenSaleModal(e, book)}
                                                         className="sales-row__action-btn sales-row__action-btn--sold"
                                                         title="Marquer comme vendu"
                                                     >
@@ -707,6 +762,120 @@ export default function SalesPage() {
                     </>
                 )}
             </div>
+            {/* Sale Modal to enter date and price */}
+            <Dialog
+                open={saleModalOpen}
+                onClose={() => setSaleModalOpen(false)}
+                PaperProps={{
+                    style: {
+                        backgroundColor: "var(--bg-surface, #1e1e24)",
+                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                        borderRadius: "16px",
+                        maxWidth: "460px",
+                        width: "100%",
+                        padding: "24px",
+                        color: "var(--text-primary)"
+                    }
+                }}
+            >
+                <div className="tx-dialog">
+                    <div className="tx-dialog__header">
+                        <div className="tx-dialog__header-title">
+                            <FontAwesomeIcon icon={faCoins} style={{ color: "#f59e0b" }} />
+                            <h3>Marquer comme vendu</h3>
+                        </div>
+                        <button
+                            type="button"
+                            className="tx-dialog__header-close"
+                            onClick={() => setSaleModalOpen(false)}
+                            aria-label="Fermer"
+                        >
+                            <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                    </div>
+
+                    {saleTargetBook && (
+                        <p style={{ margin: "0 0 4px", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+                            Renseignez les informations de vente pour <strong>« {saleTargetBook.title} »</strong> :
+                        </p>
+                    )}
+
+                    <form className="tx-dialog__form" onSubmit={handleConfirmSale}>
+                        <div className="tx-dialog__grid">
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faCalendarDays} />
+                                    <span>Date de vente *</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={saleDate}
+                                    onChange={(e) => setSaleDate(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faCoins} />
+                                    <span>Prix de vente (€)</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="ex: 12.00"
+                                    value={salePrice}
+                                    onChange={(e) => setSalePrice(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="tx-dialog__field">
+                            <label>
+                                <FontAwesomeIcon icon={faStore} />
+                                <span>Lieu / Canal de vente (optionnel)</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="ex: Vinted, Brocante, Ami, etc."
+                                value={saleLocation}
+                                onChange={(e) => setSaleLocation(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="tx-dialog__field">
+                            <label>
+                                <FontAwesomeIcon icon={faNoteSticky} />
+                                <span>Mémo / Remarques (optionnel)</span>
+                            </label>
+                            <textarea
+                                placeholder="ex: Remise en main propre, lot de 3 tomes..."
+                                value={saleMemo}
+                                onChange={(e) => setSaleMemo(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="tx-dialog__actions">
+                            <button
+                                type="button"
+                                className="tx-dialog__btn-cancel"
+                                onClick={() => setSaleModalOpen(false)}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={submittingSale}
+                                className="tx-dialog__btn-submit tx-dialog__btn-submit--sold"
+                            >
+                                <FontAwesomeIcon icon={faCheck} />
+                                <span>{submittingSale ? "Validation..." : "Valider la vente"}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </Dialog>
         </div>
     );
 }

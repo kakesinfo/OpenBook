@@ -13,6 +13,12 @@ import fr.openbook.api.entities.SeriesStatus;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
 import fr.openbook.api.entities.UserSellsBookEntity;
+import fr.openbook.api.entities.UserBookTransactionEntity;
+import fr.openbook.api.dtos.UserBookTransactionDTO;
+import fr.openbook.api.dtos.CreateBookTransactionRequestDTO;
+import fr.openbook.api.dtos.SaleStatusUpdateRequestDTO;
+import java.time.LocalDate;
+
 import org.springframework.web.bind.annotation.RequestMethod;
 import fr.openbook.api.entities.UserOwnsBookStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -724,7 +730,8 @@ public class UserController {
     public BookSummaryDTO updateSaleStatus(
         HttpSession session,
         @PathVariable Long bookId,
-        @PathVariable String status
+        @PathVariable String status,
+        @RequestBody(required = false) SaleStatusUpdateRequestDTO request
     ) {
         UserEntity user = getAuthenticatedUser(session);
         String upperStatus = status.toUpperCase();
@@ -737,10 +744,36 @@ public class UserController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found in sales"));
 
         entity.setStatus(upperStatus);
+        if (request != null && request.getPrice() != null) {
+            entity.setPrice(request.getPrice());
+        }
         repositoryService.getUserSellsBookRepository().saveAndFlush(entity);
+
+        if ("SOLD".equals(upperStatus)) {
+            UserBookTransactionEntity tx = new UserBookTransactionEntity();
+            tx.setUser(user);
+            tx.setBook(entity.getBook());
+            tx.setType("SOLD");
+            LocalDate txDate = LocalDate.now();
+            if (request != null && request.getDate() != null && !request.getDate().trim().isEmpty()) {
+                try {
+                    txDate = LocalDate.parse(request.getDate().trim());
+                } catch (Exception ignored) {}
+            }
+            tx.setTransactionDate(txDate);
+            tx.setPrice(request != null && request.getPrice() != null ? request.getPrice() : entity.getPrice());
+            if (request != null) {
+                tx.setLocation(request.getLocation());
+                tx.setMemo(request.getMemo());
+            }
+            repositoryService.getUserBookTransactionRepository().saveAndFlush(tx);
+        }
 
         BookSummaryDTO dto = entityToSummaryDTO(entity.getBook());
         dto.setStatus(entity.getStatus());
+        if (entity.getPrice() != null) {
+            dto.setPrice(entity.getPrice().intValue());
+        }
         return dto;
     }
 
@@ -781,6 +814,113 @@ public class UserController {
                 .stream()
                 .map(entity -> entityToSummaryDTO(entity.getBook()))
                 .toList();
+    }
+
+    // --- Book Purchase & Sales Transactions Endpoints ---
+
+    @GetMapping("/books/{bookId}/transactions")
+    public List<UserBookTransactionDTO> getBookTransactions(
+        HttpSession session,
+        @PathVariable Long bookId
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        }
+
+        return repositoryService.getUserBookTransactionRepository()
+                .findAllByUserIdAndBookIdOrderByTransactionDateDescCreatedAtDesc(user.getId(), bookId)
+                .stream()
+                .map(UserBookTransactionDTO::from)
+                .toList();
+    }
+
+    @PostMapping("/books/{bookId}/transactions")
+    public UserBookTransactionDTO createBookTransaction(
+        HttpSession session,
+        @PathVariable Long bookId,
+        @RequestBody CreateBookTransactionRequestDTO req
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        }
+
+        BookEntity book = repositoryService.getBookRepository().findById(bookId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found"));
+
+        String type = (req.getType() != null) ? req.getType().toUpperCase() : "BOUGHT";
+        if (!"BOUGHT".equals(type) && !"SOLD".equals(type)) {
+            type = "BOUGHT";
+        }
+
+        UserBookTransactionEntity tx = new UserBookTransactionEntity();
+        tx.setUser(user);
+        tx.setBook(book);
+        tx.setType(type);
+        LocalDate txDate = LocalDate.now();
+        if (req.getDate() != null && !req.getDate().trim().isEmpty()) {
+            try {
+                txDate = LocalDate.parse(req.getDate().trim());
+            } catch (Exception ignored) {}
+        }
+        tx.setTransactionDate(txDate);
+        tx.setPrice(req.getPrice());
+        tx.setLocation(req.getLocation());
+        tx.setMemo(req.getMemo());
+
+        UserBookTransactionEntity saved = repositoryService.getUserBookTransactionRepository().saveAndFlush(tx);
+
+        if ("BOUGHT".equals(type)) {
+            boolean owns = repositoryService.getUserOwnsBooksRepository()
+                    .findByUserIdAndBookId(user.getId(), bookId).isPresent();
+            boolean sells = repositoryService.getUserSellsBookRepository()
+                    .findByUserIdAndBookId(user.getId(), bookId).isPresent();
+            if (!owns && !sells) {
+                UserOwnsBookEntity userOwnsBook = new UserOwnsBookEntity();
+                userOwnsBook.setUser(user);
+                userOwnsBook.setBook(book);
+                userOwnsBook.setStatus(UserOwnsBookStatus.OWNED.name());
+                repositoryService.getUserOwnsBooksRepository().saveAndFlush(userOwnsBook);
+            }
+        } else if ("SOLD".equals(type)) {
+            UserSellsBookEntity saleEntity = repositoryService.getUserSellsBookRepository()
+                    .findByUserIdAndBookId(user.getId(), bookId)
+                    .orElseGet(() -> {
+                        UserSellsBookEntity s = new UserSellsBookEntity();
+                        s.setUser(user);
+                        s.setBook(book);
+                        return s;
+                    });
+            saleEntity.setStatus("SOLD");
+            if (req.getPrice() != null) {
+                saleEntity.setPrice(req.getPrice());
+            }
+            repositoryService.getUserSellsBookRepository().saveAndFlush(saleEntity);
+
+            repositoryService.getUserOwnsBooksRepository()
+                    .findByUserIdAndBookId(user.getId(), bookId)
+                    .ifPresent(repositoryService.getUserOwnsBooksRepository()::delete);
+        }
+
+        return UserBookTransactionDTO.from(saved);
+    }
+
+    @DeleteMapping("/transactions/{id}")
+    public ResponseEntity<Void> deleteTransaction(
+        HttpSession session,
+        @PathVariable Integer id
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        }
+
+        repositoryService.getUserBookTransactionRepository()
+                .findByIdAndUserId(id, user.getId())
+                .ifPresent(repositoryService.getUserBookTransactionRepository()::delete);
+
+        return ResponseEntity.noContent().build();
     }
 
     // --- Reading Sessions Endpoints ---

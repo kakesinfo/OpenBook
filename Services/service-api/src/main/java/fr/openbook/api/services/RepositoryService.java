@@ -18,6 +18,7 @@ import fr.openbook.api.repositories.UserFollowsEditorRepository;
 import fr.openbook.api.repositories.UserFollowsSeriesRepository;
 import fr.openbook.api.repositories.UserOwnsBooksRepository;
 import fr.openbook.api.repositories.UserSellsBookRepository;
+import fr.openbook.api.repositories.UserBookTransactionRepository;
 import fr.openbook.api.repositories.UserRepository;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class RepositoryService
     private final ThemeRepository themeRepository;
     private final UserOwnsBooksRepository userOwnsBooksRepository;
     private final UserSellsBookRepository userSellsBookRepository;
+    private final UserBookTransactionRepository userBookTransactionRepository;
     private final UserFollowsSeriesRepository userFollowsSeriesRepository;
     private final UserFollowsAuthorRepository userFollowsAuthorRepository;
     private final UserFollowsEditorRepository userFollowsEditorRepository;

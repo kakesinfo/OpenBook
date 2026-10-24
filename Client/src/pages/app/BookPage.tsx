@@ -2,6 +2,7 @@ import { useParams, Link } from "react-router";
 import { ReactNode, useEffect, useState } from "react";
 import BookDTO from "../../dto/Book.dto";
 import SeriesDTO from "../../dto/Series.dto.ts";
+import UserBookTransactionDTO from "../../dto/UserBookTransaction.dto.ts";
 import { useSnackbar } from "notistack";
 import useSession, { SessionContextType } from "../../hooks/UseSession.tsx";
 import { getSeriesStatusLabel } from "../../dto/Series.dto.ts";
@@ -34,6 +35,11 @@ import {
     faClone,
     faPen,
     faTrash,
+    faTrashCan,
+    faCoins,
+    faCartShopping,
+    faStore,
+    faNoteSticky,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
@@ -140,6 +146,145 @@ export default function BookPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Purchase & Sales Transactions History
+    const [transactions, setTransactions] = useState<UserBookTransactionDTO[]>([]);
+    const [loadingTransactions, setLoadingTransactions] = useState(false);
+
+    // Transaction modals
+    const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+    const [saleModalOpen, setSaleModalOpen] = useState(false);
+    const [submittingTx, setSubmittingTx] = useState(false);
+
+    // Buy modal form
+    const [buyDate, setBuyDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+    const [buyPrice, setBuyPrice] = useState<string>("");
+    const [buyLocation, setBuyLocation] = useState<string>("");
+    const [buyMemo, setBuyMemo] = useState<string>("");
+
+    // Sale modal form
+    const [sellDate, setSellDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+    const [sellPrice, setSellPrice] = useState<string>("");
+    const [sellLocation, setSellLocation] = useState<string>("");
+    const [sellMemo, setSellMemo] = useState<string>("");
+
+    const fetchTransactions = (bookId: string) => {
+        setLoadingTransactions(true);
+        session.customFetch(`/user/books/${encodeURIComponent(bookId)}/transactions`, { method: "GET" })
+            .then(async (res) => {
+                if (res.ok) {
+                    const data: UserBookTransactionDTO[] = await res.json();
+                    setTransactions(data);
+                } else {
+                    setTransactions([]);
+                }
+            })
+            .catch(() => setTransactions([]))
+            .finally(() => setLoadingTransactions(false));
+    };
+
+    const handleOpenPurchaseModal = () => {
+        setBuyDate(new Date().toISOString().split("T")[0]);
+        setBuyPrice(book?.price ? String(book.price) : "");
+        setBuyLocation("");
+        setBuyMemo("");
+        setPurchaseModalOpen(true);
+    };
+
+    const handleSavePurchase = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!id || submittingTx) return;
+
+        setSubmittingTx(true);
+        try {
+            const parsedPrice = buyPrice ? parseFloat(buyPrice) : null;
+            const res = await session.customFetch(`/user/books/${encodeURIComponent(id)}/transactions`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    type: "BOUGHT",
+                    date: buyDate,
+                    price: parsedPrice,
+                    location: buyLocation.trim() || null,
+                    memo: buyMemo.trim() || null
+                })
+            });
+
+            if (res.ok) {
+                enqueueSnackbar("Achat enregistré avec succès !", { variant: "success" });
+                setPurchaseModalOpen(false);
+                fetchTransactions(id);
+                if (bookStatus !== "OWNED" && bookStatus !== "FOR_SALE" && bookStatus !== "SOLD") {
+                    setBookStatus("OWNED");
+                }
+            } else {
+                enqueueSnackbar("Erreur lors de l'enregistrement de l'achat", { variant: "error" });
+            }
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } finally {
+            setSubmittingTx(false);
+        }
+    };
+
+    const handleOpenSaleModal = () => {
+        setSellDate(new Date().toISOString().split("T")[0]);
+        setSellPrice(book?.price ? String(book.price) : "");
+        setSellLocation("");
+        setSellMemo("");
+        setSaleModalOpen(true);
+    };
+
+    const handleSaveSale = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!id || submittingTx) return;
+
+        setSubmittingTx(true);
+        try {
+            const parsedPrice = sellPrice ? parseFloat(sellPrice) : null;
+            const res = await session.customFetch(`/user/books/${encodeURIComponent(id)}/transactions`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    type: "SOLD",
+                    date: sellDate,
+                    price: parsedPrice,
+                    location: sellLocation.trim() || null,
+                    memo: sellMemo.trim() || null
+                })
+            });
+
+            if (res.ok) {
+                enqueueSnackbar("Vente enregistrée avec succès !", { variant: "success" });
+                setSaleModalOpen(false);
+                setBookStatus("SOLD");
+                fetchTransactions(id);
+            } else {
+                enqueueSnackbar("Erreur lors de l'enregistrement de la vente", { variant: "error" });
+            }
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } finally {
+            setSubmittingTx(false);
+        }
+    };
+
+    const handleDeleteTransaction = async (txId: number) => {
+        const confirm = window.confirm("Supprimer cette ligne d'historique ?");
+        if (!confirm || !id) return;
+
+        try {
+            const res = await session.customFetch(`/user/transactions/${txId}`, { method: "DELETE" });
+            if (res.ok) {
+                enqueueSnackbar("Ligne supprimée", { variant: "info" });
+                fetchTransactions(id);
+            } else {
+                enqueueSnackbar("Erreur lors de la suppression", { variant: "error" });
+            }
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        }
+    };
+
     // Follow system states
     const [followStates, setFollowStates] = useState<Record<string, boolean>>({});
     const [followModalTarget, setFollowModalTarget] = useState<FollowTarget | null>(null);
@@ -166,6 +311,7 @@ export default function BookPage() {
         setBook(null);
         setBookStatus(null);
         setReadingStatus("UNREAD");
+        fetchTransactions(id);
 
         const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1&withSeries=1`;
         session.customFetch(fetchUrl, {
@@ -384,6 +530,15 @@ export default function BookPage() {
     };
 
     // Author categorization & deduplication helper
+    const totalBought = transactions
+        .filter((t) => t.type === "BOUGHT" && t.price != null)
+        .reduce((sum, t) => sum + Number(t.price || 0), 0);
+    const totalSold = transactions
+        .filter((t) => t.type === "SOLD" && t.price != null)
+        .reduce((sum, t) => sum + Number(t.price || 0), 0);
+    const hasBought = transactions.some((t) => t.type === "BOUGHT");
+    const hasSold = transactions.some((t) => t.type === "SOLD");
+
     const allAuthors = book?.authors || [];
     const dessinateurs = allAuthors.filter(
         (a) => a.type && (a.type.toLowerCase() === "illustrator" || a.type.toLowerCase().includes("dessin") || a.type.toLowerCase().includes("pencil") || a.type.toLowerCase().includes("artist"))
@@ -419,6 +574,7 @@ export default function BookPage() {
                 });
                 if (response.ok) {
                     setReadingStatus("UNREAD");
+        fetchTransactions(id);
                 }
             } else {
                 const response = await session.customFetch(`/user/readingStatus/${encodeURIComponent(id)}/${encodeURIComponent(newStatus)}`, {
@@ -713,6 +869,17 @@ export default function BookPage() {
                                     </ChangeBookStatusButton>
                                 )}
 
+                                {(bookStatus === "FOR_SALE" || bookStatus === "SOLD") && (
+                                    <button
+                                        type="button"
+                                        className={`book-action-btn ${bookStatus === 'SOLD' ? 'book-action-btn--active' : ''}`}
+                                        onClick={handleOpenSaleModal}
+                                    >
+                                        <FontAwesomeIcon icon={bookStatus === 'SOLD' ? faCheck : faCoins} />
+                                        <span>{bookStatus === 'SOLD' ? 'Vendu' : 'Marquer comme vendu'}</span>
+                                    </button>
+                                )}
+
                                 <div className={`book-reading-status-selector ${readingStatus && readingStatus.toUpperCase() !== "UNREAD" ? 'book-reading-status-selector--active' : ''}`}>
                                     <FontAwesomeIcon icon={faBookOpen} />
                                     <select
@@ -954,6 +1121,146 @@ export default function BookPage() {
                                         </div>
                                     ) : null}
                                 </div>
+                            </div>
+
+                            {/* Purchase & Sales Transactions History Card */}
+                            <div className="book-page__transactions-card">
+                                <div className="book-page__transactions-header">
+                                    <div className="book-page__transactions-header-title">
+                                        <FontAwesomeIcon icon={faCoins} />
+                                        <h3>Historique d'achat (Acheté, Vendu) {transactions.length > 0 ? `(${transactions.length})` : ""}</h3>
+                                    </div>
+                                    <div className="book-page__transactions-header-actions">
+                                        <button
+                                            type="button"
+                                            className="book-page__tx-btn book-page__tx-btn--buy"
+                                            onClick={handleOpenPurchaseModal}
+                                            title="Ajouter un achat pour cet album"
+                                        >
+                                            <FontAwesomeIcon icon={faCartShopping} />
+                                            <span>Ajouter un achat</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="book-page__tx-btn book-page__tx-btn--sell"
+                                            onClick={handleOpenSaleModal}
+                                            title="Renseigner une vente pour cet album"
+                                        >
+                                            <FontAwesomeIcon icon={faCoins} />
+                                            <span>Renseigner une vente</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {transactions.length > 0 && (
+                                    <div className="book-page__transactions-summary">
+                                        {hasBought && (
+                                            <div className="book-page__summary-pill book-page__summary-pill--bought">
+                                                <span>Total acheté :</span>
+                                                <strong>{totalBought.toFixed(2).replace('.', ',')} €</strong>
+                                            </div>
+                                        )}
+                                        {hasSold && (
+                                            <div className="book-page__summary-pill book-page__summary-pill--sold">
+                                                <span>Total vendu :</span>
+                                                <strong>{totalSold.toFixed(2).replace('.', ',')} €</strong>
+                                            </div>
+                                        )}
+                                        {hasBought && hasSold && (
+                                            <div className="book-page__summary-pill">
+                                                <span>Solde :</span>
+                                                <strong style={{ color: totalSold >= totalBought ? "#34d399" : "#f87171" }}>
+                                                    {(totalSold - totalBought >= 0 ? "+" : "") + (totalSold - totalBought).toFixed(2).replace('.', ',')} €
+                                                </strong>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {loadingTransactions ? (
+                                    <div className="book-page__transactions-empty">
+                                        <p>Chargement de l'historique...</p>
+                                    </div>
+                                ) : transactions.length === 0 ? (
+                                    <div className="book-page__transactions-empty">
+                                        <p>Aucun historique d'achat ou de vente renseigné pour cet album.</p>
+                                        <div style={{ marginTop: "10px" }}>
+                                            <button
+                                                type="button"
+                                                className="book-page__tx-btn book-page__tx-btn--buy"
+                                                onClick={handleOpenPurchaseModal}
+                                            >
+                                                <FontAwesomeIcon icon={faCartShopping} />
+                                                <span>Ajouter un premier achat</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="book-page__transactions-list">
+                                        {transactions.map((tx) => {
+                                            const isBuy = tx.type === "BOUGHT";
+                                            return (
+                                                <div key={tx.id} className="book-page__tx-item">
+                                                    <div className="book-page__tx-left">
+                                                        <span className={`book-page__tx-badge ${isBuy ? 'book-page__tx-badge--bought' : 'book-page__tx-badge--sold'}`}>
+                                                            <FontAwesomeIcon icon={isBuy ? faCartShopping : faCoins} />
+                                                            <span>{isBuy ? "Acheté" : "Vendu"}</span>
+                                                        </span>
+
+                                                        <div className="book-page__tx-details">
+                                                            <div className="book-page__tx-date-location">
+                                                                <span>
+                                                                    {tx.date
+                                                                        ? new Date(tx.date + 'T00:00:00').toLocaleDateString('fr-FR', {
+                                                                            day: 'numeric',
+                                                                            month: 'short',
+                                                                            year: 'numeric'
+                                                                        })
+                                                                        : (tx.createdAt
+                                                                            ? new Date(tx.createdAt).toLocaleDateString('fr-FR', {
+                                                                                day: 'numeric',
+                                                                                month: 'short',
+                                                                                year: 'numeric'
+                                                                            })
+                                                                            : "Date non renseignée")}
+                                                                </span>
+
+                                                                {tx.location && (
+                                                                    <span className="book-page__tx-location" title={isBuy ? "Lieu d'achat" : "Canal / Acheteur"}>
+                                                                        <FontAwesomeIcon icon={faStore} />
+                                                                        <span>{tx.location}</span>
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            {tx.memo && (
+                                                                <span className="book-page__tx-memo" title="Mémo">
+                                                                    <FontAwesomeIcon icon={faNoteSticky} />
+                                                                    <span>« {tx.memo} »</span>
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="book-page__tx-right">
+                                                        <span className={`book-page__tx-price ${isBuy ? 'book-page__tx-price--bought' : 'book-page__tx-price--sold'}`}>
+                                                            {tx.price != null ? `${Number(tx.price).toFixed(2).replace('.', ',')} €` : "- €"}
+                                                        </span>
+
+                                                        <button
+                                                            type="button"
+                                                            className="book-page__tx-delete"
+                                                            onClick={() => handleDeleteTransaction(tx.id)}
+                                                            title="Supprimer cette ligne"
+                                                        >
+                                                            <FontAwesomeIcon icon={faTrashCan} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Variants / Alternative Covers Section */}
@@ -1363,6 +1670,235 @@ export default function BookPage() {
                         </div>
                     );
                 })()}
+            </Dialog>
+            {/* Purchase Modal */}
+            <Dialog
+                open={purchaseModalOpen}
+                onClose={() => setPurchaseModalOpen(false)}
+                PaperProps={{
+                    style: {
+                        backgroundColor: "var(--bg-surface, #1e1e24)",
+                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                        borderRadius: "16px",
+                        maxWidth: "460px",
+                        width: "100%",
+                        padding: "24px",
+                        color: "var(--text-primary)"
+                    }
+                }}
+            >
+                <div className="tx-dialog">
+                    <div className="tx-dialog__header">
+                        <div className="tx-dialog__header-title">
+                            <FontAwesomeIcon icon={faCartShopping} style={{ color: "#10b981" }} />
+                            <h3>Ajouter un achat</h3>
+                        </div>
+                        <button
+                            type="button"
+                            className="tx-dialog__header-close"
+                            onClick={() => setPurchaseModalOpen(false)}
+                            aria-label="Fermer"
+                        >
+                            <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                    </div>
+
+                    {book && (
+                        <p style={{ margin: "0 0 4px", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+                            Renseignez les détails d'achat pour <strong>« {book.title} »</strong> :
+                        </p>
+                    )}
+
+                    <form className="tx-dialog__form" onSubmit={handleSavePurchase}>
+                        <div className="tx-dialog__grid">
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faCalendarDays} />
+                                    <span>Date d'achat *</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={buyDate}
+                                    onChange={(e) => setBuyDate(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faTag} />
+                                    <span>Prix d'achat (€)</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="ex: 15.00"
+                                    value={buyPrice}
+                                    onChange={(e) => setBuyPrice(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="tx-dialog__field">
+                            <label>
+                                <FontAwesomeIcon icon={faStore} />
+                                <span>Lieu d'achat</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="ex: Librairie Album, Fnac, Vinted, Brocante..."
+                                value={buyLocation}
+                                onChange={(e) => setBuyLocation(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="tx-dialog__field">
+                            <label>
+                                <FontAwesomeIcon icon={faNoteSticky} />
+                                <span>Mémo / Remarques</span>
+                            </label>
+                            <textarea
+                                placeholder="ex: Édition spéciale, état neuf, dédicacé..."
+                                value={buyMemo}
+                                onChange={(e) => setBuyMemo(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="tx-dialog__actions">
+                            <button
+                                type="button"
+                                className="tx-dialog__btn-cancel"
+                                onClick={() => setPurchaseModalOpen(false)}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={submittingTx}
+                                className="tx-dialog__btn-submit tx-dialog__btn-submit--bought"
+                            >
+                                <FontAwesomeIcon icon={faCheck} />
+                                <span>{submittingTx ? "Enregistrement..." : "Enregistrer l'achat"}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </Dialog>
+
+            {/* Sale Modal */}
+            <Dialog
+                open={saleModalOpen}
+                onClose={() => setSaleModalOpen(false)}
+                PaperProps={{
+                    style: {
+                        backgroundColor: "var(--bg-surface, #1e1e24)",
+                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                        borderRadius: "16px",
+                        maxWidth: "460px",
+                        width: "100%",
+                        padding: "24px",
+                        color: "var(--text-primary)"
+                    }
+                }}
+            >
+                <div className="tx-dialog">
+                    <div className="tx-dialog__header">
+                        <div className="tx-dialog__header-title">
+                            <FontAwesomeIcon icon={faCoins} style={{ color: "#f59e0b" }} />
+                            <h3>Renseigner la vente</h3>
+                        </div>
+                        <button
+                            type="button"
+                            className="tx-dialog__header-close"
+                            onClick={() => setSaleModalOpen(false)}
+                            aria-label="Fermer"
+                        >
+                            <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                    </div>
+
+                    {book && (
+                        <p style={{ margin: "0 0 4px", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+                            Renseignez les détails de la vente pour <strong>« {book.title} »</strong> :
+                        </p>
+                    )}
+
+                    <form className="tx-dialog__form" onSubmit={handleSaveSale}>
+                        <div className="tx-dialog__grid">
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faCalendarDays} />
+                                    <span>Date de vente *</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={sellDate}
+                                    onChange={(e) => setSellDate(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faCoins} />
+                                    <span>Prix de vente (€)</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="ex: 12.00"
+                                    value={sellPrice}
+                                    onChange={(e) => setSellPrice(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="tx-dialog__field">
+                            <label>
+                                <FontAwesomeIcon icon={faStore} />
+                                <span>Lieu / Canal de vente (optionnel)</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="ex: Vinted, Brocante, Ami, etc."
+                                value={sellLocation}
+                                onChange={(e) => setSellLocation(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="tx-dialog__field">
+                            <label>
+                                <FontAwesomeIcon icon={faNoteSticky} />
+                                <span>Mémo / Remarques (optionnel)</span>
+                            </label>
+                            <textarea
+                                placeholder="ex: Remise en main propre, vendu en lot..."
+                                value={sellMemo}
+                                onChange={(e) => setSellMemo(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="tx-dialog__actions">
+                            <button
+                                type="button"
+                                className="tx-dialog__btn-cancel"
+                                onClick={() => setSaleModalOpen(false)}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={submittingTx}
+                                className="tx-dialog__btn-submit tx-dialog__btn-submit--sold"
+                            >
+                                <FontAwesomeIcon icon={faCheck} />
+                                <span>{submittingTx ? "Validation..." : "Valider la vente"}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </Dialog>
         </div>
     );
