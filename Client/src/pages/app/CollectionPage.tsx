@@ -329,7 +329,7 @@ export default function CollectionPage() {
                             }}
                         >
                             <FontAwesomeIcon icon={faLayerGroup} />
-                            <span>Gérer mes séries</span>
+                            <span>Mes Séries</span>
                         </Link>
                     </div>
                 </div>

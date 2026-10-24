@@ -684,7 +684,9 @@ public class UserController {
             if (dto.getCoverUrl() == null && !bookDTOs.isEmpty()) {
                 dto.setCoverUrl(bookDTOs.get(0).getCoverUrl());
             }
-            result.add(dto);
+            if (ownedCount > 0) {
+                result.add(dto);
+            }
         }
 
         result.sort(Comparator.comparing(SeriesDTO::getName, String.CASE_INSENSITIVE_ORDER));

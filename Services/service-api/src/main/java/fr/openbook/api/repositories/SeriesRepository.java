@@ -16,8 +16,7 @@ public interface SeriesRepository extends JpaRepository<SeriesEntity, Long> {
     List<SeriesEntity> findByNameContainingIgnoreCaseOrderByNameAsc(String name);
 
     @Query("SELECT DISTINCT s FROM series s " +
-           "WHERE EXISTS (SELECT ufs FROM user_follows_series ufs WHERE ufs.user.id = :userId AND ufs.series.id = s.id) " +
-           "   OR EXISTS (SELECT uob FROM user_owns_book uob WHERE uob.user.id = :userId AND uob.book.series.id = s.id AND UPPER(uob.status) IN ('OWNED', 'LENT')) " +
+           "WHERE EXISTS (SELECT uob FROM user_owns_book uob WHERE uob.user.id = :userId AND uob.book.series.id = s.id AND UPPER(uob.status) = 'OWNED') " +
            "ORDER BY s.name ASC")
     List<SeriesEntity> findUserSeries(@Param("userId") Long userId);
 }

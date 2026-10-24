@@ -96,7 +96,7 @@ export default function SeriesPage() {
             const res = await session.customFetch("/user/series", { method: "GET" });
             if (res.ok) {
                 const data: SeriesDTO[] = await res.json();
-                setMySeries(data);
+                setMySeries(data.filter((s) => (s.ownedCount || 0) > 0));
             }
         } catch (err) {
             console.error("Error fetching user series:", err);
@@ -410,7 +410,10 @@ export default function SeriesPage() {
 
     // Filter displayed series
     const displayedSeries = useMemo(() => {
-        const list = scope === "my" ? mySeries : allSeries;
+        let list = scope === "my" ? mySeries : allSeries;
+        if (scope === "my") {
+            list = list.filter((s) => (s.ownedCount || 0) > 0);
+        }
         return list.filter((s) => {
             if (selectedCategory !== "all") {
                 if (!s.category || s.category.toLowerCase() !== selectedCategory.toLowerCase()) {
@@ -435,9 +438,9 @@ export default function SeriesPage() {
                 {/* Header Title & Create Button */}
                 <div className="series-page__header">
                     <div className="series-page__title-group">
-                        <h1 className="series-page__title">Gestion des Séries</h1>
+                        <h1 className="series-page__title">Mes Séries</h1>
                         <p className="series-page__subtitle">
-                            Créez, explorez et gérez vos séries d'albums partagées avec la communauté.
+                            Explorez et gérez vos séries d'albums.
                         </p>
                     </div>
 
@@ -593,10 +596,10 @@ export default function SeriesPage() {
                 {!loading && displayedSeries.length === 0 && (
                     <div className="series-page__empty">
                         <FontAwesomeIcon icon={faLayerGroup} className="series-page__empty-icon" />
-                        <h3>{scope === "my" ? "Aucune série dans votre collection" : "Aucune série trouvée"}</h3>
+                        <h3>{scope === "my" ? "Aucune série dans vos albums" : "Aucune série trouvée"}</h3>
                         <p>
                             {scope === "my"
-                                ? "Vous ne suivez actuellement aucune série et ne possédez aucun album associé à une série. Vous pouvez créer votre première série ou en explorer existantes !"
+                                ? "Vous ne possédez actuellement aucun album associé à une série dans vos albums. Vous pouvez créer une série et y associer vos albums !"
                                 : "Aucune série ne correspond à votre filtre de recherche. Créez-la en un clic !"}
                         </p>
                         <button
