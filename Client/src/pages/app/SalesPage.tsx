@@ -696,10 +696,12 @@ export default function SalesPage() {
                                 currentPage={activePage}
                                 totalPages={totalPages}
                                 totalItems={totalFiltered}
+                                startIndex={startIndex}
+                                endIndex={endIndex}
                                 pageSize={pageSize}
                                 onPageChange={handlePageChange}
                                 onPageSizeChange={handlePageSizeChange}
-                                pageSizeOptions={displayMode === "grid" ? [12, 24, 48, 96] : [25, 50, 100]}
+                                pageSizeOptions={displayMode === "grid" ? [6, 12, 24, 48] : [10, 25, 50, 100]}
                             />
                         )}
                     </>

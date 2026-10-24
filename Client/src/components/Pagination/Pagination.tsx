@@ -43,7 +43,7 @@ export default function Pagination({
     onPageSizeChange,
     pageSizeOptions = [20, 50, 100]
 }: PaginationProps) {
-    if (totalPages <= 1 && (!totalItems || totalItems <= (pageSize || 20))) {
+    if (!totalItems || totalItems === 0 || totalPages === 0) {
         return null;
     }
 

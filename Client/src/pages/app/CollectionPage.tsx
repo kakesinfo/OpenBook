@@ -581,7 +581,7 @@ export default function CollectionPage() {
                             endIndex={endIndex}
                             pageSize={pageSize}
                             onPageSizeChange={handlePageSizeChange}
-                            pageSizeOptions={displayMode === "grid" ? [12, 24, 48, 96] : [25, 50, 100]}
+                            pageSizeOptions={displayMode === "grid" ? [12, 24, 48, 96] : [10, 25, 50, 100]}
                         />
                     </>
                 )}
