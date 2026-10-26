@@ -17,13 +17,13 @@ up-postgres:
 	docker compose up --force-recreate --build -d project-postgres
 
 scrape-now:
-	docker compose exec project-scraper python main.py --now
+	docker compose exec project-scraper /app/scraper-service --now
 
 scrape-full:
-	docker compose exec project-scraper python main.py --now --full
+	docker compose exec project-scraper /app/scraper-service --now --full
 
 scrape-repair:
-	docker compose exec project-scraper python main.py --repair
+	docker compose exec project-scraper /app/scraper-service --repair
 
 scraper-status:
 	curl -s http://localhost:5001/api/status

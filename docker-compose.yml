@@ -90,7 +90,7 @@ services:
       working_dir: /usr/src/app
       entrypoint: ["sh", "-c", "npm ci && npm run dev"]
 
-  # Run comics scraper service
+  # Run comics scraper service (Go)
   project-scraper:
     container_name: project-scraper
     build:
@@ -103,7 +103,7 @@ services:
       project-media:
         condition: service_started
     environment:
-      DATABASE_URL: postgresql://strapi:strapi@project-postgres:5432/strapi
+      DATABASE_URL: postgresql://strapi:strapi@project-postgres:5432/strapi?sslmode=disable
       MEDIA_SERVICE_URL: http://project-media:5002
       PORT: 5001
       SCHEDULE_HOUR: 3
