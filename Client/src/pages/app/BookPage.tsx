@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from "react-router";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import BookDTO, { AuthorSummaryDTO } from "../../dto/Book.dto";
+import BookDTO from "../../dto/Book.dto";
 import SeriesDTO from "../../dto/Series.dto.ts";
 import UserBookTransactionDTO from "../../dto/UserBookTransaction.dto.ts";
 import { useSnackbar } from "notistack";
@@ -9,6 +9,7 @@ import { getSeriesStatusLabel } from "../../dto/Series.dto.ts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faArrowLeft,
+    faBars,
     faBook,
     faHeart,
     faPlus,
@@ -26,6 +27,7 @@ import {
     faTags,
     faChevronLeft,
     faChevronRight,
+    faChevronDown,
     faBookOpen,
     faBuilding,
     faLayerGroup,
@@ -44,8 +46,6 @@ import {
     faImage,
     faUpload,
     faLink,
-    faAlignLeft,
-    faUserPlus,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
@@ -62,15 +62,383 @@ interface FollowTarget {
     roleOrSubtitle?: string;
 }
 
-interface MetadataAuthorOption {
-    id: number;
-    firstname: string;
-    lastname: string;
-}
-
 interface MetadataNamedOption {
     id: number;
     name: string;
+}
+
+const DEFAULT_BOOK_TYPES = [
+    "Bande dessinée",
+    "Broché",
+    "Cartonné",
+    "Comics",
+    "Intégrale",
+    "Manga",
+    "Poche",
+    "Roman",
+    "Roman Graphique",
+    "Souple"
+];
+
+function SearchableSelect({
+    value,
+    onChange,
+    options,
+    placeholder,
+    emptyLabel = "-- Aucun --",
+    openDirection = "down"
+}: {
+    value: string;
+    onChange: (val: string) => void;
+    options: string[];
+    placeholder?: string;
+    emptyLabel?: string;
+    openDirection?: "down" | "up";
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isFiltering, setIsFiltering] = useState(false);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+                setIsFiltering(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const normalizedQuery = isFiltering ? value.trim().toLowerCase() : "";
+    const filteredOptions = normalizedQuery
+        ? options.filter((opt) => opt.toLowerCase().includes(normalizedQuery))
+        : options;
+
+    const isNoneQuery =
+        normalizedQuery !== "" &&
+        ("aucun".includes(normalizedQuery) ||
+            "aucune".includes(normalizedQuery) ||
+            emptyLabel.toLowerCase().includes(normalizedQuery));
+
+    const showEmptyOption = !isFiltering || normalizedQuery === "" || isNoneQuery;
+
+    const exactMatchExists = options.some(
+        (opt) => opt.toLowerCase() === value.trim().toLowerCase()
+    ) || ["aucun", "aucune"].includes(value.trim().toLowerCase());
+
+    const handleSelectOption = (opt: string) => {
+        onChange(opt);
+        setIsOpen(false);
+        setIsFiltering(false);
+    };
+
+    return (
+        <div className="searchable-select" ref={containerRef}>
+            <div className={`searchable-select__control ${isOpen ? "searchable-select__control--open" : ""}`}>
+                <input
+                    type="text"
+                    value={value}
+                    placeholder={placeholder}
+                    onFocus={() => {
+                        setIsOpen(true);
+                        setIsFiltering(false);
+                    }}
+                    onClick={() => {
+                        if (!isOpen) {
+                            setIsOpen(true);
+                            setIsFiltering(false);
+                        }
+                    }}
+                    onChange={(e) => {
+                        onChange(e.target.value);
+                        setIsFiltering(true);
+                        setIsOpen(true);
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                            setIsOpen(false);
+                            setIsFiltering(false);
+                        } else if (e.key === "Enter" && isOpen) {
+                            e.preventDefault();
+                            if (filteredOptions.length === 1) {
+                                handleSelectOption(filteredOptions[0]);
+                            } else {
+                                setIsOpen(false);
+                                setIsFiltering(false);
+                            }
+                        }
+                    }}
+                />
+                <div className="searchable-select__actions">
+                    {value && (
+                        <button
+                            type="button"
+                            className="searchable-select__clear-btn"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onChange("");
+                                setIsFiltering(false);
+                                setIsOpen(true);
+                            }}
+                            title="Effacer"
+                            aria-label="Effacer"
+                        >
+                            <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        className={`searchable-select__toggle-btn ${isOpen ? "searchable-select__toggle-btn--open" : ""}`}
+                        onClick={() => {
+                            const next = !isOpen;
+                            setIsOpen(next);
+                            if (next) setIsFiltering(false);
+                        }}
+                        tabIndex={-1}
+                        aria-label="Ouvrir la liste"
+                    >
+                        <FontAwesomeIcon icon={faChevronDown} />
+                    </button>
+                </div>
+            </div>
+
+            {isOpen && (
+                <div className={`searchable-select__menu ${openDirection === "up" ? "searchable-select__menu--up" : ""}`}>
+                    {showEmptyOption && (
+                        <button
+                            type="button"
+                            className={`searchable-select__option searchable-select__option--clear ${value.trim() === "" ? "searchable-select__option--selected" : ""}`}
+                            onClick={() => handleSelectOption("")}
+                        >
+                            <span>{emptyLabel}</span>
+                            {value.trim() === "" && <FontAwesomeIcon icon={faCheck} className="searchable-select__check" />}
+                        </button>
+                    )}
+
+                    {value.trim() !== "" && !exactMatchExists && (
+                        <button
+                            type="button"
+                            className="searchable-select__option searchable-select__option--create"
+                            onClick={() => handleSelectOption(value.trim())}
+                        >
+                            <FontAwesomeIcon icon={faPlus} />
+                            <span>Utiliser « {value.trim()} »</span>
+                        </button>
+                    )}
+
+                    {filteredOptions.length > 0 ? (
+                        filteredOptions.map((opt) => {
+                            const isSelected = opt.toLowerCase() === value.trim().toLowerCase();
+                            return (
+                                <button
+                                    type="button"
+                                    key={opt}
+                                    className={`searchable-select__option ${isSelected ? "searchable-select__option--selected" : ""}`}
+                                    onClick={() => handleSelectOption(opt)}
+                                >
+                                    <span>{opt}</span>
+                                    {isSelected && <FontAwesomeIcon icon={faCheck} className="searchable-select__check" />}
+                                </button>
+                            );
+                        })
+                    ) : (
+                        value.trim() === "" && (
+                            <div className="searchable-select__empty">Aucune option disponible</div>
+                        )
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function SeriesSearchableSelect({
+    selectedId,
+    onSelectId,
+    seriesList,
+    onCreateNew
+}: {
+    selectedId: number | null;
+    onSelectId: (id: number | null) => void;
+    seriesList: SeriesDTO[];
+    onCreateNew?: (initialName: string) => void;
+}) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isFiltering, setIsFiltering] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    const selectedSeries = seriesList.find((s) => Number(s.id) === Number(selectedId)) || null;
+    const selectedDisplay = selectedSeries
+        ? `${selectedSeries.name} (${selectedSeries.category || "Comics"})`
+        : "";
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+                setIsFiltering(false);
+                setSearchQuery("");
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const normalizedQuery = isFiltering ? searchQuery.trim().toLowerCase() : "";
+    const filteredSeries = normalizedQuery
+        ? seriesList.filter((s) => {
+              const label = `${s.name} (${s.category || "Comics"})`.toLowerCase();
+              return s.name.toLowerCase().includes(normalizedQuery) || label.includes(normalizedQuery);
+          })
+        : seriesList;
+
+    const isNoneQuery =
+        normalizedQuery !== "" &&
+        ("aucun".includes(normalizedQuery) || "aucune".includes(normalizedQuery));
+
+    const showEmptyOption = !isFiltering || normalizedQuery === "" || isNoneQuery;
+
+    const exactMatchExists =
+        seriesList.some((s) => s.name.toLowerCase() === normalizedQuery) || isNoneQuery;
+
+    const handleSelect = (id: number | null) => {
+        onSelectId(id);
+        setIsOpen(false);
+        setIsFiltering(false);
+        setSearchQuery("");
+    };
+
+    return (
+        <div className="searchable-select" ref={containerRef}>
+            <div className={`searchable-select__control ${isOpen ? "searchable-select__control--open" : ""}`}>
+                <input
+                    type="text"
+                    value={isFiltering ? searchQuery : selectedDisplay}
+                    placeholder="Rechercher ou sélectionner une série..."
+                    onFocus={(e) => {
+                        setIsOpen(true);
+                        setIsFiltering(false);
+                        setSearchQuery("");
+                        e.currentTarget.select();
+                    }}
+                    onClick={() => {
+                        if (!isOpen) {
+                            setIsOpen(true);
+                            setIsFiltering(false);
+                            setSearchQuery("");
+                        }
+                    }}
+                    onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setIsFiltering(true);
+                        setIsOpen(true);
+                    }}
+                    onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                            setIsOpen(false);
+                            setIsFiltering(false);
+                            setSearchQuery("");
+                        } else if (e.key === "Enter" && isOpen) {
+                            e.preventDefault();
+                            if (filteredSeries.length === 1) {
+                                handleSelect(Number(filteredSeries[0].id));
+                            }
+                        }
+                    }}
+                />
+                <div className="searchable-select__actions">
+                    {(selectedId != null || (isFiltering && searchQuery)) && (
+                        <button
+                            type="button"
+                            className="searchable-select__clear-btn"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectId(null);
+                                setSearchQuery("");
+                                setIsFiltering(false);
+                                setIsOpen(true);
+                            }}
+                            title="Effacer"
+                            aria-label="Effacer"
+                        >
+                            <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        className={`searchable-select__toggle-btn ${isOpen ? "searchable-select__toggle-btn--open" : ""}`}
+                        onClick={() => {
+                            const next = !isOpen;
+                            setIsOpen(next);
+                            if (next) {
+                                setIsFiltering(false);
+                                setSearchQuery("");
+                            }
+                        }}
+                        tabIndex={-1}
+                        aria-label="Ouvrir la liste des séries"
+                    >
+                        <FontAwesomeIcon icon={faChevronDown} />
+                    </button>
+                </div>
+            </div>
+
+            {isOpen && (
+                <div className="searchable-select__menu">
+                    {showEmptyOption && (
+                        <button
+                            type="button"
+                            className={`searchable-select__option searchable-select__option--clear ${selectedId == null ? "searchable-select__option--selected" : ""}`}
+                            onClick={() => handleSelect(null)}
+                        >
+                            <span>-- Aucune série --</span>
+                            {selectedId == null && <FontAwesomeIcon icon={faCheck} className="searchable-select__check" />}
+                        </button>
+                    )}
+
+                    {isFiltering && searchQuery.trim() !== "" && !exactMatchExists && onCreateNew && (
+                        <button
+                            type="button"
+                            className="searchable-select__option searchable-select__option--create"
+                            onClick={() => {
+                                const name = searchQuery.trim();
+                                setIsOpen(false);
+                                setIsFiltering(false);
+                                setSearchQuery("");
+                                onCreateNew(name);
+                            }}
+                        >
+                            <FontAwesomeIcon icon={faPlus} />
+                            <span>Créer la nouvelle série « {searchQuery.trim()} »</span>
+                        </button>
+                    )}
+
+                    {filteredSeries.length > 0 ? (
+                        filteredSeries.map((s) => {
+                            const isSelected = Number(s.id) === Number(selectedId);
+                            return (
+                                <button
+                                    type="button"
+                                    key={s.id}
+                                    className={`searchable-select__option ${isSelected ? "searchable-select__option--selected" : ""}`}
+                                    onClick={() => handleSelect(Number(s.id))}
+                                >
+                                    <span>
+                                        {s.name} <small style={{ color: "var(--text-muted)" }}>({s.category || "Comics"})</small>
+                                    </span>
+                                    {isSelected && <FontAwesomeIcon icon={faCheck} className="searchable-select__check" />}
+                                </button>
+                            );
+                        })
+                    ) : (
+                        <div className="searchable-select__empty">Aucune série trouvée</div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
 }
 
 function getFollowTypeIcon(type: FollowType) {
@@ -89,28 +457,6 @@ function getFollowTypeLabel(type: FollowType) {
         case "editor": return "Maison d'édition";
         case "collection": return "Collection";
     }
-}
-
-function getAuthorRoleLabel(type?: string): string {
-    const low = (type || "").toLowerCase();
-    if (low === "illustrator" || low.includes("dessin") || low.includes("pencil") || low.includes("artist")) {
-        return "Dessinateur";
-    }
-    if (low === "colorist" || low.includes("color") || low.includes("couleur")) {
-        return "Coloriste";
-    }
-    return "Scénariste";
-}
-
-function normalizeAuthorRoleValue(type?: string): "Writer" | "Illustrator" | "Colorist" {
-    const low = (type || "").toLowerCase();
-    if (low === "illustrator" || low.includes("dessin") || low.includes("pencil") || low.includes("artist")) {
-        return "Illustrator";
-    }
-    if (low === "colorist" || low.includes("color") || low.includes("couleur")) {
-        return "Colorist";
-    }
-    return "Writer";
 }
 
 function ChangeBookStatusButton({
@@ -190,10 +536,34 @@ export default function BookPage() {
     const [transactions, setTransactions] = useState<UserBookTransactionDTO[]>([]);
     const [loadingTransactions, setLoadingTransactions] = useState(false);
 
+    // Details column hamburger dropdown
+    const [detailsMenuOpen, setDetailsMenuOpen] = useState(false);
+    const detailsMenuRef = useRef<HTMLDivElement | null>(null);
+
     // Transaction modals
+    const [historyModalOpen, setHistoryModalOpen] = useState(false);
     const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
     const [saleModalOpen, setSaleModalOpen] = useState(false);
     const [submittingTx, setSubmittingTx] = useState(false);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (detailsMenuRef.current && !detailsMenuRef.current.contains(event.target as Node)) {
+                setDetailsMenuOpen(false);
+            }
+        };
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setDetailsMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("keydown", handleKeyDown);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, []);
 
     // Buy modal form
     const [buyDate, setBuyDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
@@ -356,17 +726,11 @@ export default function BookPage() {
     const [editType, setEditType] = useState<string>("");
     const [editEditorName, setEditEditorName] = useState<string>("");
     const [editCollectionName, setEditCollectionName] = useState<string>("");
-    const [editDescription, setEditDescription] = useState<string>("");
-    const [editAuthors, setEditAuthors] = useState<AuthorSummaryDTO[]>([]);
-
-    // Author addition inputs inside Edit Modal
-    const [newAuthorRole, setNewAuthorRole] = useState<"Writer" | "Illustrator" | "Colorist">("Writer");
-    const [newAuthorNameInput, setNewAuthorNameInput] = useState<string>("");
 
     // Autocomplete metadata options
-    const [authorOptions, setAuthorOptions] = useState<MetadataAuthorOption[]>([]);
     const [editorOptions, setEditorOptions] = useState<MetadataNamedOption[]>([]);
     const [collectionOptions, setCollectionOptions] = useState<MetadataNamedOption[]>([]);
+    const [typeOptions, setTypeOptions] = useState<string[]>(DEFAULT_BOOK_TYPES);
 
     // Series Association Dialog state
     const [seriesModalOpen, setSeriesModalOpen] = useState(false);
@@ -401,93 +765,19 @@ export default function BookPage() {
         setEditType(book.type || "");
         setEditEditorName(book.editor?.name || "");
         setEditCollectionName(book.collection?.name || "");
-        setEditDescription(book.description || "");
-        setEditAuthors(
-            (book.authors || []).map((a) => ({
-                id: a.id,
-                firstname: a.firstname || "",
-                lastname: a.lastname || "",
-                type: normalizeAuthorRoleValue(a.type)
-            }))
-        );
-        setNewAuthorRole("Writer");
-        setNewAuthorNameInput("");
         setEditModalOpen(true);
 
         try {
             const res = await session.customFetch("/books/metadata-options", { method: "GET" });
             if (res.ok) {
                 const data = await res.json();
-                if (Array.isArray(data.authors)) setAuthorOptions(data.authors);
                 if (Array.isArray(data.editors)) setEditorOptions(data.editors);
                 if (Array.isArray(data.collections)) setCollectionOptions(data.collections);
+                if (Array.isArray(data.types) && data.types.length > 0) setTypeOptions(data.types);
             }
         } catch (err) {
             console.error("Error loading metadata options:", err);
         }
-    };
-
-    const parseFullNameToAuthor = (rawInput: string, role: "Writer" | "Illustrator" | "Colorist"): AuthorSummaryDTO | null => {
-        const trimmed = rawInput.trim();
-        if (!trimmed) return null;
-
-        // Check if matches an existing author option exactly
-        const matchedOption = authorOptions.find((opt) => {
-            const full = `${opt.firstname || ""} ${opt.lastname || ""}`.trim();
-            return full.toLowerCase() === trimmed.toLowerCase();
-        });
-
-        if (matchedOption) {
-            return {
-                id: matchedOption.id,
-                firstname: matchedOption.firstname || "",
-                lastname: matchedOption.lastname || "",
-                type: role
-            };
-        }
-
-        const lastSpace = trimmed.lastIndexOf(" ");
-        if (lastSpace > 0) {
-            return {
-                firstname: trimmed.substring(0, lastSpace).trim(),
-                lastname: trimmed.substring(lastSpace + 1).trim(),
-                type: role
-            };
-        }
-
-        return {
-            firstname: "",
-            lastname: trimmed,
-            type: role
-        };
-    };
-
-    const handleAddAuthorToEditList = () => {
-        const parsed = parseFullNameToAuthor(newAuthorNameInput, newAuthorRole);
-        if (!parsed) {
-            enqueueSnackbar("Veuillez saisir le nom du scénariste / dessinateur / coloriste", { variant: "warning" });
-            return;
-        }
-
-        const duplicate = editAuthors.some(
-            (a) =>
-                a.firstname.trim().toLowerCase() === parsed.firstname.trim().toLowerCase() &&
-                a.lastname.trim().toLowerCase() === parsed.lastname.trim().toLowerCase() &&
-                normalizeAuthorRoleValue(a.type) === parsed.type
-        );
-
-        if (duplicate) {
-            enqueueSnackbar("Cet auteur avec ce rôle est déjà présent dans la liste", { variant: "info" });
-            setNewAuthorNameInput("");
-            return;
-        }
-
-        setEditAuthors((prev) => [...prev, parsed]);
-        setNewAuthorNameInput("");
-    };
-
-    const handleRemoveAuthorFromEditList = (index: number) => {
-        setEditAuthors((prev) => prev.filter((_, idx) => idx !== index));
     };
 
     const handleSaveBookInfo = async (e: React.FormEvent) => {
@@ -497,23 +787,6 @@ export default function BookPage() {
         if (!editTitle.trim()) {
             enqueueSnackbar("Le titre de l'album est obligatoire", { variant: "warning" });
             return;
-        }
-
-        // If user typed an author name in the input field without clicking "+ Ajouter", include it automatically
-        let finalAuthors = [...editAuthors];
-        if (newAuthorNameInput.trim()) {
-            const pendingAuthor = parseFullNameToAuthor(newAuthorNameInput, newAuthorRole);
-            if (pendingAuthor) {
-                const isDup = finalAuthors.some(
-                    (a) =>
-                        a.firstname.trim().toLowerCase() === pendingAuthor.firstname.trim().toLowerCase() &&
-                        a.lastname.trim().toLowerCase() === pendingAuthor.lastname.trim().toLowerCase() &&
-                        normalizeAuthorRoleValue(a.type) === pendingAuthor.type
-                );
-                if (!isDup) {
-                    finalAuthors.push(pendingAuthor);
-                }
-            }
         }
 
         setSavingBookInfo(true);
@@ -530,9 +803,7 @@ export default function BookPage() {
                 thickness: editThickness.trim() !== "" ? parseInt(editThickness, 10) : 0,
                 type: editType.trim(),
                 editorName: editEditorName.trim(),
-                collectionName: editCollectionName.trim(),
-                description: editDescription.trim(),
-                authors: finalAuthors
+                collectionName: editCollectionName.trim()
             };
 
             const res = await session.customFetch(`/books/${encodeURIComponent(id)}`, {
@@ -545,7 +816,6 @@ export default function BookPage() {
                 const updated: BookDTO = await res.json();
                 setBook(updated);
                 setEditModalOpen(false);
-                setNewAuthorNameInput("");
                 enqueueSnackbar("Informations de l'album mises à jour avec succès !", { variant: "success" });
             } else {
                 let errMsg = "Impossible de mettre à jour les informations de l'album";
@@ -1065,32 +1335,75 @@ export default function BookPage() {
 
                         {/* Right column: Info & Actions */}
                         <div className="book-page__details-col">
-                            {/* Badges */}
-                            <div className="book-page__tags">
-                                {book.series?.status && (
-                                    <span className="book-page__tag book-page__tag--status">
-                                        {getSeriesStatusLabel(book.series.status)}
-                                    </span>
-                                )}
-                                {book.series && book.volume != null && (
-                                    <span className="book-page__tag book-page__tag--volume">
-                                        {book.series?.totalVolumes && book.series.totalVolumes > 1
-                                            ? `Tome ${book.volume} sur ${Math.max(book.volume, book.series.totalVolumes)}`
-                                            : `Tome ${book.volume}`}
-                                    </span>
-                                )}
-                                {book.series?.category && (
-                                    <span className="book-page__tag book-page__tag--category">
-                                        {book.series.category}
-                                    </span>
-                                )}
-                                {book.parentBookId && (
-                                    <Link to={`/app/book/${book.parentBookId}`} className="book-page__tag book-page__tag--variant">
-                                        <FontAwesomeIcon icon={faClone} />
-                                        <span>Couverture variante</span>
-                                    </Link>
+                            {/* Hamburger Menu (top-right corner) */}
+                            <div className="book-page__menu" ref={detailsMenuRef}>
+                                <button
+                                    type="button"
+                                    className={`book-page__menu-btn ${detailsMenuOpen ? "book-page__menu-btn--open" : ""}`}
+                                    onClick={() => setDetailsMenuOpen((prev) => !prev)}
+                                    title="Actions"
+                                    aria-label="Menu d'actions"
+                                    aria-expanded={detailsMenuOpen}
+                                >
+                                    <FontAwesomeIcon icon={faBars} />
+                                </button>
+
+                                {detailsMenuOpen && (
+                                    <div className="book-page__dropdown">
+                                        <button
+                                            type="button"
+                                            className="book-page__dropdown-item"
+                                            onClick={() => {
+                                                setDetailsMenuOpen(false);
+                                                handleOpenEditModal();
+                                            }}
+                                        >
+                                            <FontAwesomeIcon icon={faPen} />
+                                            <span>Modifier</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="book-page__dropdown-item"
+                                            onClick={() => {
+                                                setDetailsMenuOpen(false);
+                                                setHistoryModalOpen(true);
+                                            }}
+                                        >
+                                            <FontAwesomeIcon icon={faCoins} />
+                                            <span>Historique d'achat{transactions.length > 0 ? ` (${transactions.length})` : ""}</span>
+                                        </button>
+                                    </div>
                                 )}
                             </div>
+
+                            {/* Badges */}
+                            {(book.series?.status || (book.series && book.volume != null) || book.series?.category || book.parentBookId) && (
+                                <div className="book-page__tags">
+                                    {book.series?.status && (
+                                        <span className="book-page__tag book-page__tag--status">
+                                            {getSeriesStatusLabel(book.series.status)}
+                                        </span>
+                                    )}
+                                    {book.series && book.volume != null && (
+                                        <span className="book-page__tag book-page__tag--volume">
+                                            {book.series?.totalVolumes && book.series.totalVolumes > 1
+                                                ? `Tome ${book.volume} sur ${Math.max(book.volume, book.series.totalVolumes)}`
+                                                : `Tome ${book.volume}`}
+                                        </span>
+                                    )}
+                                    {book.series?.category && (
+                                        <span className="book-page__tag book-page__tag--category">
+                                            {book.series.category}
+                                        </span>
+                                    )}
+                                    {book.parentBookId && (
+                                        <Link to={`/app/book/${book.parentBookId}`} className="book-page__tag book-page__tag--variant">
+                                            <FontAwesomeIcon icon={faClone} />
+                                            <span>Couverture variante</span>
+                                        </Link>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Titles */}
                             <div className="book-page__headings">
@@ -1119,15 +1432,6 @@ export default function BookPage() {
 
                                 <div className="book-page__title-row">
                                     <h1 className="book-page__title">{book.title}</h1>
-                                    <button
-                                        type="button"
-                                        className="book-page__edit-info-btn"
-                                        onClick={handleOpenEditModal}
-                                        title="Modifier les informations du livre"
-                                        aria-label="Modifier les informations du livre"
-                                    >
-                                        <FontAwesomeIcon icon={faPen} />
-                                    </button>
                                 </div>
 
                                 {/* Auteurs cliquables pour Follow */}
@@ -1250,16 +1554,7 @@ export default function BookPage() {
                             {/* Technical Details Card */}
                             <div className="book-page__specs-card">
                                 <div className="book-page__specs-header">
-                                    <h3 className="book-page__specs-title">Détails techniques</h3>
-                                    <button
-                                        type="button"
-                                        className="book-page__specs-edit-btn"
-                                        onClick={handleOpenEditModal}
-                                        title="Modifier les informations techniques et les auteurs"
-                                    >
-                                        <FontAwesomeIcon icon={faPen} />
-                                        <span>Modifier</span>
-                                    </button>
+                                    <h3 className="book-page__specs-title">Détails</h3>
                                 </div>
                                 <div className="book-page__specs-list">
                                     {/* Maison d'édition (Éditeur) cliquable */}
@@ -1306,12 +1601,12 @@ export default function BookPage() {
                                     {book.releaseDate && (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faCalendarDays} /> Date de sortie
+                                                <FontAwesomeIcon icon={faCalendarDays} /> Sortie
                                             </span>
                                             <span className="book-page__spec-value">
                                                 {new Date(book.releaseDate).toLocaleDateString('fr-FR', {
                                                     day: 'numeric',
-                                                    month: 'long',
+                                                    month: 'short',
                                                     year: 'numeric'
                                                 })}
                                             </span>
@@ -1409,7 +1704,7 @@ export default function BookPage() {
                                     {book.isbn && (
                                         <div className="book-page__spec-item">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faBarcode} /> ISBN / EAN
+                                                <FontAwesomeIcon icon={faBarcode} /> ISBN
                                             </span>
                                             <span className="book-page__spec-value">{book.isbn}</span>
                                         </div>
@@ -1443,7 +1738,7 @@ export default function BookPage() {
                                             <span className="book-page__spec-label">
                                                 <FontAwesomeIcon icon={faFileLines} /> Pages
                                             </span>
-                                            <span className="book-page__spec-value">{book.pageCount} pages</span>
+                                            <span className="book-page__spec-value">{book.pageCount} p.</span>
                                         </div>
                                     ) : null}
 
@@ -1483,146 +1778,6 @@ export default function BookPage() {
                                         </div>
                                     ) : null}
                                 </div>
-                            </div>
-
-                            {/* Purchase & Sales Transactions History Card */}
-                            <div className="book-page__transactions-card">
-                                <div className="book-page__transactions-header">
-                                    <div className="book-page__transactions-header-title">
-                                        <FontAwesomeIcon icon={faCoins} />
-                                        <h3>Historique d'achat (Acheté, Vendu) {transactions.length > 0 ? `(${transactions.length})` : ""}</h3>
-                                    </div>
-                                    <div className="book-page__transactions-header-actions">
-                                        <button
-                                            type="button"
-                                            className="book-page__tx-btn book-page__tx-btn--buy"
-                                            onClick={handleOpenPurchaseModal}
-                                            title="Ajouter un achat pour cet album"
-                                        >
-                                            <FontAwesomeIcon icon={faCartShopping} />
-                                            <span>Ajouter un achat</span>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="book-page__tx-btn book-page__tx-btn--sell"
-                                            onClick={handleOpenSaleModal}
-                                            title="Renseigner une vente pour cet album"
-                                        >
-                                            <FontAwesomeIcon icon={faCoins} />
-                                            <span>Renseigner une vente</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {transactions.length > 0 && (
-                                    <div className="book-page__transactions-summary">
-                                        {hasBought && (
-                                            <div className="book-page__summary-pill book-page__summary-pill--bought">
-                                                <span>Total acheté :</span>
-                                                <strong>{totalBought.toFixed(2).replace('.', ',')} €</strong>
-                                            </div>
-                                        )}
-                                        {hasSold && (
-                                            <div className="book-page__summary-pill book-page__summary-pill--sold">
-                                                <span>Total vendu :</span>
-                                                <strong>{totalSold.toFixed(2).replace('.', ',')} €</strong>
-                                            </div>
-                                        )}
-                                        {hasBought && hasSold && (
-                                            <div className="book-page__summary-pill">
-                                                <span>Solde :</span>
-                                                <strong style={{ color: totalSold >= totalBought ? "#34d399" : "#f87171" }}>
-                                                    {(totalSold - totalBought >= 0 ? "+" : "") + (totalSold - totalBought).toFixed(2).replace('.', ',')} €
-                                                </strong>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                                {loadingTransactions ? (
-                                    <div className="book-page__transactions-empty">
-                                        <p>Chargement de l'historique...</p>
-                                    </div>
-                                ) : transactions.length === 0 ? (
-                                    <div className="book-page__transactions-empty">
-                                        <p>Aucun historique d'achat ou de vente renseigné pour cet album.</p>
-                                        <div style={{ marginTop: "10px" }}>
-                                            <button
-                                                type="button"
-                                                className="book-page__tx-btn book-page__tx-btn--buy"
-                                                onClick={handleOpenPurchaseModal}
-                                            >
-                                                <FontAwesomeIcon icon={faCartShopping} />
-                                                <span>Ajouter un premier achat</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="book-page__transactions-list">
-                                        {transactions.map((tx) => {
-                                            const isBuy = tx.type === "BOUGHT";
-                                            return (
-                                                <div key={tx.id} className="book-page__tx-item">
-                                                    <div className="book-page__tx-left">
-                                                        <span className={`book-page__tx-badge ${isBuy ? 'book-page__tx-badge--bought' : 'book-page__tx-badge--sold'}`}>
-                                                            <FontAwesomeIcon icon={isBuy ? faCartShopping : faCoins} />
-                                                            <span>{isBuy ? "Acheté" : "Vendu"}</span>
-                                                        </span>
-
-                                                        <div className="book-page__tx-details">
-                                                            <div className="book-page__tx-date-location">
-                                                                <span>
-                                                                    {tx.date
-                                                                        ? new Date(tx.date + 'T00:00:00').toLocaleDateString('fr-FR', {
-                                                                            day: 'numeric',
-                                                                            month: 'short',
-                                                                            year: 'numeric'
-                                                                        })
-                                                                        : (tx.createdAt
-                                                                            ? new Date(tx.createdAt).toLocaleDateString('fr-FR', {
-                                                                                day: 'numeric',
-                                                                                month: 'short',
-                                                                                year: 'numeric'
-                                                                            })
-                                                                            : "Date non renseignée")}
-                                                                </span>
-
-                                                                {tx.location && (
-                                                                    <span className="book-page__tx-location" title={isBuy ? "Lieu d'achat" : "Canal / Acheteur"}>
-                                                                        <FontAwesomeIcon icon={faStore} />
-                                                                        <span>{tx.location}</span>
-                                                                    </span>
-                                                                )}
-                                                            </div>
-
-                                                            {tx.memo && (
-                                                                <span className="book-page__tx-memo" title="Mémo">
-                                                                    <FontAwesomeIcon icon={faNoteSticky} />
-                                                                    <span>« {tx.memo} »</span>
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="book-page__tx-right">
-                                                        <span className={`book-page__tx-price ${isBuy ? 'book-page__tx-price--bought' : 'book-page__tx-price--sold'}`}>
-                                                            {tx.price != null ? `${Number(tx.price).toFixed(2).replace('.', ',')} €` : "- €"}
-                                                        </span>
-
-                                                        <button
-                                                            type="button"
-                                                            className="book-page__tx-delete"
-                                                            onClick={() => handleDeleteTransaction(tx.id)}
-                                                            title="Supprimer cette ligne"
-                                                        >
-                                                            <FontAwesomeIcon icon={faTrashCan} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
                             </div>
 
                             {/* Variants / Alternative Covers Section */}
@@ -1725,7 +1880,8 @@ export default function BookPage() {
                         maxWidth: "600px",
                         width: "100%",
                         padding: "18px 20px",
-                        color: "var(--text-primary)"
+                        color: "var(--text-primary)",
+                        overflow: "visible"
                     }
                 }}
             >
@@ -1821,18 +1977,12 @@ export default function BookPage() {
                                     <FontAwesomeIcon icon={faBuilding} />
                                     <span>Éditeur</span>
                                 </label>
-                                <input
-                                    type="text"
-                                    list="book-edit-editors-list"
+                                <SearchableSelect
                                     value={editEditorName}
-                                    onChange={(e) => setEditEditorName(e.target.value)}
-                                    placeholder="ex: Urban Comics, Glénat..."
+                                    onChange={setEditEditorName}
+                                    options={editorOptions.map((ed) => ed.name)}
+                                    placeholder="Rechercher ou saisir un éditeur..."
                                 />
-                                <datalist id="book-edit-editors-list">
-                                    {editorOptions.map((ed) => (
-                                        <option key={ed.id} value={ed.name} />
-                                    ))}
-                                </datalist>
                             </div>
 
                             <div className="tx-dialog__field">
@@ -1840,18 +1990,13 @@ export default function BookPage() {
                                     <FontAwesomeIcon icon={faLayerGroup} />
                                     <span>Collection</span>
                                 </label>
-                                <input
-                                    type="text"
-                                    list="book-edit-collections-list"
+                                <SearchableSelect
                                     value={editCollectionName}
-                                    onChange={(e) => setEditCollectionName(e.target.value)}
-                                    placeholder="ex: DC Rebirth, DC Black Label..."
+                                    onChange={setEditCollectionName}
+                                    options={collectionOptions.map((col) => col.name)}
+                                    placeholder="Rechercher ou saisir une collection..."
+                                    emptyLabel="-- Aucun (sans collection) --"
                                 />
-                                <datalist id="book-edit-collections-list">
-                                    {collectionOptions.map((col) => (
-                                        <option key={col.id} value={col.name} />
-                                    ))}
-                                </datalist>
                             </div>
                         </div>
 
@@ -1953,112 +2098,14 @@ export default function BookPage() {
                                     <FontAwesomeIcon icon={faBookBookmark} />
                                     <span>Format / Type</span>
                                 </label>
-                                <input
-                                    type="text"
+                                <SearchableSelect
                                     value={editType}
-                                    onChange={(e) => setEditType(e.target.value)}
-                                    placeholder="ex: Comics, Cartonné, Broché..."
+                                    onChange={setEditType}
+                                    options={typeOptions}
+                                    placeholder="Rechercher ou choisir un format..."
+                                    openDirection="up"
                                 />
                             </div>
-                        </div>
-
-                        {/* Scénaristes / Dessinateurs / Coloristes */}
-                        <div className="book-edit-dialog__authors-section">
-                            <label className="book-edit-dialog__section-title">
-                                <FontAwesomeIcon icon={faPenNib} />
-                                <span>Scénaristes, Dessinateurs &amp; Coloristes</span>
-                            </label>
-
-                            {editAuthors.length === 0 ? (
-                                <p className="book-edit-dialog__authors-empty">
-                                    Aucun auteur renseigné pour cet album.
-                                </p>
-                            ) : (
-                                <div className="book-edit-dialog__authors-chips">
-                                    {editAuthors.map((a, idx) => {
-                                        const fullName = `${a.firstname || ""} ${a.lastname || ""}`.trim();
-                                        const roleVal = normalizeAuthorRoleValue(a.type);
-                                        const roleLabel = getAuthorRoleLabel(a.type);
-                                        return (
-                                            <span
-                                                key={`${fullName}-${roleVal}-${idx}`}
-                                                className={`book-edit-dialog__author-chip book-edit-dialog__author-chip--${roleVal.toLowerCase()}`}
-                                            >
-                                                <FontAwesomeIcon
-                                                    icon={roleVal === "Illustrator" ? faPalette : roleVal === "Colorist" ? faPaintbrush : faPenNib}
-                                                />
-                                                <span className="book-edit-dialog__author-chip-name">{fullName}</span>
-                                                <span className="book-edit-dialog__author-chip-role">{roleLabel}</span>
-                                                <button
-                                                    type="button"
-                                                    className="book-edit-dialog__author-chip-remove"
-                                                    onClick={() => handleRemoveAuthorFromEditList(idx)}
-                                                    title={`Retirer ${fullName}`}
-                                                >
-                                                    <FontAwesomeIcon icon={faXmark} />
-                                                </button>
-                                            </span>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            <div className="book-edit-dialog__add-author-bar">
-                                <select
-                                    value={newAuthorRole}
-                                    onChange={(e) => setNewAuthorRole(e.target.value as "Writer" | "Illustrator" | "Colorist")}
-                                    className="book-edit-dialog__role-select"
-                                    aria-label="Rôle de l'auteur"
-                                >
-                                    <option value="Writer">Scénariste</option>
-                                    <option value="Illustrator">Dessinateur</option>
-                                    <option value="Colorist">Coloriste</option>
-                                </select>
-
-                                <input
-                                    type="text"
-                                    list="book-edit-authors-list"
-                                    value={newAuthorNameInput}
-                                    onChange={(e) => setNewAuthorNameInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            handleAddAuthorToEditList();
-                                        }
-                                    }}
-                                    placeholder="Nom de l'auteur (ex: Scott Snyder, Greg Capullo...)"
-                                    className="book-edit-dialog__author-input"
-                                />
-                                <datalist id="book-edit-authors-list">
-                                    {authorOptions.map((a) => {
-                                        const full = `${a.firstname || ""} ${a.lastname || ""}`.trim();
-                                        return <option key={a.id} value={full} />;
-                                    })}
-                                </datalist>
-
-                                <button
-                                    type="button"
-                                    className="book-edit-dialog__add-author-btn"
-                                    onClick={handleAddAuthorToEditList}
-                                >
-                                    <FontAwesomeIcon icon={faUserPlus} />
-                                    <span>Ajouter</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Synopsis / Description */}
-                        <div className="tx-dialog__field">
-                            <label>
-                                <FontAwesomeIcon icon={faAlignLeft} />
-                                <span>Description / Synopsis</span>
-                            </label>
-                            <textarea
-                                rows={3}
-                                value={editDescription}
-                                onChange={(e) => setEditDescription(e.target.value)}
-                                placeholder="Résumé ou description de l'album..."
-                            />
                         </div>
 
                         <div className="tx-dialog__actions">
@@ -2095,7 +2142,8 @@ export default function BookPage() {
                         maxWidth: "500px",
                         width: "100%",
                         padding: "24px",
-                        color: "var(--text-primary)"
+                        color: "var(--text-primary)",
+                        overflow: "visible"
                     }
                 }}
             >
@@ -2315,30 +2363,19 @@ export default function BookPage() {
 
                 {seriesModalMode === "select" ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                        <div>
+                        <div className="tx-dialog__field">
                             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
                                 Sélectionner une série
                             </label>
-                            <select
-                                value={selectedSeriesId || ""}
-                                onChange={(e) => setSelectedSeriesId(e.target.value ? Number(e.target.value) : null)}
-                                style={{
-                                    width: "100%",
-                                    padding: "10px 14px",
-                                    background: "rgba(255, 255, 255, 0.05)",
-                                    border: "1px solid var(--border-subtle)",
-                                    borderRadius: "8px",
-                                    color: "var(--text-primary)",
-                                    outline: "none"
+                            <SeriesSearchableSelect
+                                selectedId={selectedSeriesId}
+                                onSelectId={setSelectedSeriesId}
+                                seriesList={seriesListOptions}
+                                onCreateNew={(initialName) => {
+                                    setNewSeriesName(initialName);
+                                    setSeriesModalMode("create");
                                 }}
-                            >
-                                <option value="" style={{ background: "#1f2937", color: "#fff" }}>-- Aucune série --</option>
-                                {seriesListOptions.map((s) => (
-                                    <option key={s.id} value={s.id} style={{ background: "#1f2937", color: "#fff" }}>
-                                        {s.name} ({s.category || "Comics"})
-                                    </option>
-                                ))}
-                            </select>
+                            />
                         </div>
 
                         {selectedSeriesId ? (
@@ -2569,6 +2606,171 @@ export default function BookPage() {
                     );
                 })()}
             </Dialog>
+
+            {/* Purchase & Sales History Dialog */}
+            <Dialog
+                open={historyModalOpen}
+                onClose={() => setHistoryModalOpen(false)}
+                PaperProps={{
+                    style: {
+                        backgroundColor: "var(--bg-surface, #1e1e24)",
+                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                        borderRadius: "16px",
+                        maxWidth: "620px",
+                        width: "100%",
+                        padding: "20px 22px",
+                        color: "var(--text-primary)"
+                    }
+                }}
+            >
+                <div className="book-page__transactions-dialog">
+                    <div className="book-page__transactions-header">
+                        <div className="book-page__transactions-header-title">
+                            <FontAwesomeIcon icon={faCoins} />
+                            <h3>Historique d'achat {transactions.length > 0 ? `(${transactions.length})` : ""}</h3>
+                        </div>
+                        <div className="book-page__transactions-header-actions">
+                            <button
+                                type="button"
+                                className="book-page__tx-btn book-page__tx-btn--buy"
+                                onClick={handleOpenPurchaseModal}
+                                title="Ajouter un achat pour cet album"
+                            >
+                                <FontAwesomeIcon icon={faCartShopping} />
+                                <span>Ajouter un achat</span>
+                            </button>
+                            <button
+                                type="button"
+                                className="book-page__tx-btn book-page__tx-btn--sell"
+                                onClick={handleOpenSaleModal}
+                                title="Renseigner une vente pour cet album"
+                            >
+                                <FontAwesomeIcon icon={faCoins} />
+                                <span>Renseigner une vente</span>
+                            </button>
+                            <button
+                                type="button"
+                                className="tx-dialog__header-close"
+                                onClick={() => setHistoryModalOpen(false)}
+                                aria-label="Fermer"
+                            >
+                                <FontAwesomeIcon icon={faXmark} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {transactions.length > 0 && (
+                        <div className="book-page__transactions-summary">
+                            {hasBought && (
+                                <div className="book-page__summary-pill book-page__summary-pill--bought">
+                                    <span>Total acheté :</span>
+                                    <strong>{totalBought.toFixed(2).replace('.', ',')} €</strong>
+                                </div>
+                            )}
+                            {hasSold && (
+                                <div className="book-page__summary-pill book-page__summary-pill--sold">
+                                    <span>Total vendu :</span>
+                                    <strong>{totalSold.toFixed(2).replace('.', ',')} €</strong>
+                                </div>
+                            )}
+                            {hasBought && hasSold && (
+                                <div className="book-page__summary-pill">
+                                    <span>Solde :</span>
+                                    <strong style={{ color: totalSold >= totalBought ? "#34d399" : "#f87171" }}>
+                                        {(totalSold - totalBought >= 0 ? "+" : "") + (totalSold - totalBought).toFixed(2).replace('.', ',')} €
+                                    </strong>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {loadingTransactions ? (
+                        <div className="book-page__transactions-empty">
+                            <p>Chargement de l'historique...</p>
+                        </div>
+                    ) : transactions.length === 0 ? (
+                        <div className="book-page__transactions-empty">
+                            <p>Aucun historique d'achat ou de vente renseigné pour cet album.</p>
+                            <div style={{ marginTop: "10px" }}>
+                                <button
+                                    type="button"
+                                    className="book-page__tx-btn book-page__tx-btn--buy"
+                                    onClick={handleOpenPurchaseModal}
+                                >
+                                    <FontAwesomeIcon icon={faCartShopping} />
+                                    <span>Ajouter un premier achat</span>
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="book-page__transactions-list">
+                            {transactions.map((tx) => {
+                                const isBuy = tx.type === "BOUGHT";
+                                return (
+                                    <div key={tx.id} className="book-page__tx-item">
+                                        <div className="book-page__tx-left">
+                                            <span className={`book-page__tx-badge ${isBuy ? 'book-page__tx-badge--bought' : 'book-page__tx-badge--sold'}`}>
+                                                <FontAwesomeIcon icon={isBuy ? faCartShopping : faCoins} />
+                                                <span>{isBuy ? "Acheté" : "Vendu"}</span>
+                                            </span>
+
+                                            <div className="book-page__tx-details">
+                                                <div className="book-page__tx-date-location">
+                                                    <span>
+                                                        {tx.date
+                                                            ? new Date(tx.date + 'T00:00:00').toLocaleDateString('fr-FR', {
+                                                                day: 'numeric',
+                                                                month: 'short',
+                                                                year: 'numeric'
+                                                            })
+                                                            : (tx.createdAt
+                                                                ? new Date(tx.createdAt).toLocaleDateString('fr-FR', {
+                                                                    day: 'numeric',
+                                                                    month: 'short',
+                                                                    year: 'numeric'
+                                                                })
+                                                                : "Date non renseignée")}
+                                                    </span>
+
+                                                    {tx.location && (
+                                                        <span className="book-page__tx-location" title={isBuy ? "Lieu d'achat" : "Canal / Acheteur"}>
+                                                            <FontAwesomeIcon icon={faStore} />
+                                                            <span>{tx.location}</span>
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {tx.memo && (
+                                                    <span className="book-page__tx-memo" title="Mémo">
+                                                        <FontAwesomeIcon icon={faNoteSticky} />
+                                                        <span>« {tx.memo} »</span>
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="book-page__tx-right">
+                                            <span className={`book-page__tx-price ${isBuy ? 'book-page__tx-price--bought' : 'book-page__tx-price--sold'}`}>
+                                                {tx.price != null ? `${Number(tx.price).toFixed(2).replace('.', ',')} €` : "- €"}
+                                            </span>
+
+                                            <button
+                                                type="button"
+                                                className="book-page__tx-delete"
+                                                onClick={() => handleDeleteTransaction(tx.id)}
+                                                title="Supprimer cette ligne"
+                                            >
+                                                <FontAwesomeIcon icon={faTrashCan} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </Dialog>
+
             {/* Purchase Modal */}
             <Dialog
                 open={purchaseModalOpen}

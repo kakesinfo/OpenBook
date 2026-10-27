@@ -93,4 +93,7 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
     Optional<BookEntity> findByIsbnAndIdNot(String isbn, Long id);
 
     Optional<BookEntity> findByTitleIgnoreCaseAndIdNot(String title, Long id);
+
+    @Query("SELECT DISTINCT b.type FROM book b WHERE b.type IS NOT NULL AND TRIM(b.type) != '' ORDER BY b.type ASC")
+    List<String> findDistinctTypes();
 }

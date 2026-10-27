@@ -181,10 +181,25 @@ public class BookController {
                 .map(CollectionService::entityToDTO)
                 .toList();
 
+        Map<String, String> typesMap = new LinkedHashMap<>();
+        for (String defaultType : List.of("Bande dessinée", "Broché", "Cartonné", "Comics", "Intégrale", "Manga", "Poche", "Roman", "Roman Graphique", "Souple")) {
+            typesMap.put(defaultType.toLowerCase(Locale.ROOT), defaultType);
+        }
+        for (String dbType : repositoryService.getBookRepository().findDistinctTypes()) {
+            if (dbType != null && !dbType.trim().isEmpty()) {
+                String clean = dbType.trim();
+                typesMap.putIfAbsent(clean.toLowerCase(Locale.ROOT), clean);
+            }
+        }
+        List<String> types = typesMap.values().stream()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
+
         return Map.of(
                 "authors", authors,
                 "editors", editors,
-                "collections", collections
+                "collections", collections,
+                "types", types
         );
     }
 
@@ -466,7 +481,7 @@ public class BookController {
 
         if (req.getType() != null) {
             String cleanType = req.getType().trim();
-            book.setType(cleanType.isEmpty() ? null : cleanType);
+            book.setType(cleanType.isEmpty() || cleanType.equalsIgnoreCase("aucun") || cleanType.equalsIgnoreCase("aucune") ? null : cleanType);
         }
 
         if (req.getDescription() != null) {
@@ -512,7 +527,7 @@ public class BookController {
         // Editor update
         if (req.getEditorName() != null) {
             String cleanEditor = req.getEditorName().trim();
-            if (cleanEditor.isEmpty()) {
+            if (cleanEditor.isEmpty() || cleanEditor.equalsIgnoreCase("aucun") || cleanEditor.equalsIgnoreCase("aucune")) {
                 book.setEditor(null);
             } else {
                 EditorEntity editor = repositoryService.getEditorRepository()
@@ -529,7 +544,7 @@ public class BookController {
         // Collection update
         if (req.getCollectionName() != null) {
             String cleanCollection = req.getCollectionName().trim();
-            if (cleanCollection.isEmpty()) {
+            if (cleanCollection.isEmpty() || cleanCollection.equalsIgnoreCase("aucun") || cleanCollection.equalsIgnoreCase("aucune")) {
                 book.setCollection(null);
             } else {
                 CollectionEntity collection = repositoryService.getCollectionRepository()
