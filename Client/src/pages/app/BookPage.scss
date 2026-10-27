@@ -486,7 +486,11 @@
     background-color: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
-    padding: 14px 16px;
+    padding: 16px 20px;
+
+    @media (max-width: 600px) {
+      padding: 12px 14px;
+    }
   }
 
   &__specs-header {
@@ -494,111 +498,112 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
+    margin-bottom: 2px;
+    padding-bottom: 12px;
     border-bottom: 1px solid var(--border-subtle);
   }
 
   &__specs-title {
-    font-size: 0.95rem;
+    font-size: 1.15rem;
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
     padding: 0;
     border: none;
-  }
-
-  &__specs-edit-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
-    border-radius: var(--radius-full);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-
-    svg {
-      font-size: 0.7rem;
-      color: var(--accent-primary);
-    }
-
-    &:hover {
-      background: rgba(16, 185, 129, 0.14);
-      border-color: rgba(16, 185, 129, 0.4);
-      color: var(--text-primary);
-    }
+    letter-spacing: -0.01em;
   }
 
   &__specs-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+  }
 
-    @media (max-width: 600px) {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
+  &__spec-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--border-subtle);
+
+    &:last-child {
+      border-bottom: none;
+      padding-bottom: 2px;
+    }
+
+    &:first-child {
+      padding-top: 10px;
+    }
+
+    @media (max-width: 500px) {
+      padding: 9px 0;
     }
   }
 
-  &__spec-item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 6px 10px;
-    background: rgba(11, 15, 23, 0.5);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    min-width: 0;
-  }
-
   &__spec-label {
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 10px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    flex-shrink: 0;
 
-    svg {
+    .book-page__spec-icon {
       color: var(--accent-primary);
-      font-size: 0.7rem;
+      font-size: 0.95rem;
+      width: 18px;
+      text-align: center;
+      display: inline-flex;
+      justify-content: center;
     }
   }
 
   &__spec-value {
-    font-size: 0.825rem;
-    font-weight: 600;
+    font-size: 0.9375rem;
+    font-weight: 500;
     color: var(--text-primary);
+    text-align: right;
+    word-break: break-word;
   }
 
-  &__spec-item--themes {
-    grid-column: 1 / -1;
-  }
-
-  &__themes-list {
-    display: flex;
+  &__spec-authors {
+    display: inline-flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 4px;
+    justify-content: flex-end;
+    align-items: center;
+    text-align: right;
   }
 
-  &__theme-pill {
+  &__spec-author-item {
     display: inline-flex;
     align-items: center;
-    padding: 3px 10px;
-    border-radius: var(--radius-full);
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.25);
-    color: var(--accent-primary);
-    font-size: 0.8125rem;
-    font-weight: 600;
+  }
+
+  &__spec-author-link {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    text-align: right;
+    transition: color var(--transition-fast);
+
+    &:hover {
+      color: var(--accent-primary);
+      text-decoration: underline;
+    }
+  }
+
+  &__spec-separator {
+    color: var(--text-secondary);
+    margin-right: 5px;
   }
 }
 

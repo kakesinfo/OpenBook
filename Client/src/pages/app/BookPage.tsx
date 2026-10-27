@@ -22,7 +22,6 @@ import {
     faTag,
     faPenNib,
     faPalette,
-    faPaintbrush,
     faBookBookmark,
     faTags,
     faChevronLeft,
@@ -46,6 +45,9 @@ import {
     faImage,
     faUpload,
     faLink,
+    faPencil,
+    faScaleBalanced,
+    faBox,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
@@ -79,6 +81,23 @@ const DEFAULT_BOOK_TYPES = [
     "Roman Graphique",
     "Souple"
 ];
+
+function formatDimensions(length?: number, height?: number, thickness?: number): string | null {
+    if (!length && !height && !thickness) return null;
+
+    const toCmString = (val?: number) => {
+        if (!val || val <= 0) return null;
+        if (val > 30) {
+            const cm = val / 10;
+            return Number.isInteger(cm) ? `${cm}` : cm.toFixed(1).replace(".", ",");
+        }
+        return `${val}`;
+    };
+
+    const parts = [toCmString(length), toCmString(height), toCmString(thickness)].filter(Boolean);
+    if (parts.length === 0) return null;
+    return `${parts.join(" × ")} cm`;
+}
 
 function SearchableSelect({
     value,
@@ -1557,85 +1576,91 @@ export default function BookPage() {
                                     <h3 className="book-page__specs-title">Détails</h3>
                                 </div>
                                 <div className="book-page__specs-list">
-                                    {/* Maison d'édition (Éditeur) cliquable */}
-                                    {book.editor?.name && (
-                                        <div className="book-page__spec-item">
-                                            <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faBuilding} /> Éditeur
-                                            </span>
-                                            <button
-                                                type="button"
-                                                className="book-page__spec-btn"
-                                                onClick={() => openFollowModal("editor", book.editor?.id, book.editor!.name)}
-                                                title={`Gérer le suivi de l'éditeur ${book.editor.name}`}
-                                            >
-                                                <span>{book.editor.name}</span>
-                                                {book.editor?.id && followStates[`editor_${book.editor.id}`] && (
-                                                    <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
-                                                )}
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {/* Collection cliquable */}
-                                    {book.collection?.name && (
-                                        <div className="book-page__spec-item">
-                                            <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faLayerGroup} /> Collection
-                                            </span>
-                                            <button
-                                                type="button"
-                                                className="book-page__spec-btn"
-                                                onClick={() => openFollowModal("collection", book.collection?.id, book.collection!.name)}
-                                                title={`Gérer le suivi de la collection ${book.collection.name}`}
-                                            >
-                                                <span>{book.collection.name}</span>
-                                                {book.collection?.id && followStates[`collection_${book.collection.id}`] && (
-                                                    <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
-                                                )}
-                                            </button>
-                                        </div>
-                                    )}
-
                                     {/* Date de sortie */}
                                     {book.releaseDate && (
-                                        <div className="book-page__spec-item">
+                                        <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faCalendarDays} /> Sortie
+                                                <FontAwesomeIcon icon={faCalendarDays} className="book-page__spec-icon" /> Date de sortie
                                             </span>
                                             <span className="book-page__spec-value">
                                                 {new Date(book.releaseDate).toLocaleDateString('fr-FR', {
                                                     day: 'numeric',
-                                                    month: 'short',
+                                                    month: 'long',
                                                     year: 'numeric'
                                                 })}
                                             </span>
                                         </div>
                                     )}
 
+                                    {/* Maison d'édition (Éditeur) cliquable */}
+                                    {book.editor?.name && (
+                                        <div className="book-page__spec-row">
+                                            <span className="book-page__spec-label">
+                                                <FontAwesomeIcon icon={faBuilding} className="book-page__spec-icon" /> Éditeur
+                                            </span>
+                                            <div className="book-page__spec-value">
+                                                <button
+                                                    type="button"
+                                                    className="book-page__spec-author-link"
+                                                    onClick={() => openFollowModal("editor", book.editor?.id, book.editor!.name)}
+                                                    title={`Gérer le suivi de l'éditeur ${book.editor.name}`}
+                                                >
+                                                    <span>{book.editor.name}</span>
+                                                    {book.editor?.id && followStates[`editor_${book.editor.id}`] && (
+                                                        <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Collection cliquable */}
+                                    {book.collection?.name && (
+                                        <div className="book-page__spec-row">
+                                            <span className="book-page__spec-label">
+                                                <FontAwesomeIcon icon={faLayerGroup} className="book-page__spec-icon" /> Collection
+                                            </span>
+                                            <div className="book-page__spec-value">
+                                                <button
+                                                    type="button"
+                                                    className="book-page__spec-author-link"
+                                                    onClick={() => openFollowModal("collection", book.collection?.id, book.collection!.name)}
+                                                    title={`Gérer le suivi de la collection ${book.collection.name}`}
+                                                >
+                                                    <span>{book.collection.name}</span>
+                                                    {book.collection?.id && followStates[`collection_${book.collection.id}`] && (
+                                                        <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Scénariste(s) cliquable(s) */}
                                     {scenaristes.length > 0 && (
-                                        <div className="book-page__spec-item">
+                                        <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faPenNib} /> Scénariste{scenaristes.length > 1 ? "s" : ""}
+                                                <FontAwesomeIcon icon={faPenNib} className="book-page__spec-icon" /> Scénariste{scenaristes.length > 1 ? "s" : ""}
                                             </span>
-                                            <div className="book-page__spec-authors-list">
+                                            <div className="book-page__spec-value book-page__spec-authors">
                                                 {scenaristes.map((a, i) => {
                                                     const name = `${a.firstname || ""} ${a.lastname || ""}`.trim();
                                                     const isFollowed = a.id ? Boolean(followStates[`author_${a.id}`]) : false;
                                                     return (
-                                                        <button
-                                                            type="button"
-                                                            key={a.id || i}
-                                                            className="book-page__spec-author-chip"
-                                                            onClick={() => openFollowModal("author", a.id, name, "Scénariste")}
-                                                            title={`Gérer le suivi de ${name}`}
-                                                        >
-                                                            <span>{name}</span>
-                                                            {isFollowed && (
-                                                                <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
-                                                            )}
-                                                        </button>
+                                                        <span key={a.id || i} className="book-page__spec-author-item">
+                                                            <button
+                                                                type="button"
+                                                                className="book-page__spec-author-link"
+                                                                onClick={() => openFollowModal("author", a.id, name, "Scénariste")}
+                                                                title={`Gérer le suivi de ${name}`}
+                                                            >
+                                                                <span>{name}</span>
+                                                                {isFollowed && (
+                                                                    <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                                )}
+                                                            </button>
+                                                            {i < scenaristes.length - 1 && <span className="book-page__spec-separator">,</span>}
+                                                        </span>
                                                     );
                                                 })}
                                             </div>
@@ -1644,27 +1669,29 @@ export default function BookPage() {
 
                                     {/* Dessinateur(s) cliquable(s) */}
                                     {dessinateurs.length > 0 && (
-                                        <div className="book-page__spec-item">
+                                        <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faPalette} /> Dessinateur{dessinateurs.length > 1 ? "s" : ""}
+                                                <FontAwesomeIcon icon={faPencil} className="book-page__spec-icon" /> Dessinateur{dessinateurs.length > 1 ? "s" : ""}
                                             </span>
-                                            <div className="book-page__spec-authors-list">
+                                            <div className="book-page__spec-value book-page__spec-authors">
                                                 {dessinateurs.map((a, i) => {
                                                     const name = `${a.firstname || ""} ${a.lastname || ""}`.trim();
                                                     const isFollowed = a.id ? Boolean(followStates[`author_${a.id}`]) : false;
                                                     return (
-                                                        <button
-                                                            type="button"
-                                                            key={a.id || i}
-                                                            className="book-page__spec-author-chip"
-                                                            onClick={() => openFollowModal("author", a.id, name, "Dessinateur")}
-                                                            title={`Gérer le suivi de ${name}`}
-                                                        >
-                                                            <span>{name}</span>
-                                                            {isFollowed && (
-                                                                <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
-                                                            )}
-                                                        </button>
+                                                        <span key={a.id || i} className="book-page__spec-author-item">
+                                                            <button
+                                                                type="button"
+                                                                className="book-page__spec-author-link"
+                                                                onClick={() => openFollowModal("author", a.id, name, "Dessinateur")}
+                                                                title={`Gérer le suivi de ${name}`}
+                                                            >
+                                                                <span>{name}</span>
+                                                                {isFollowed && (
+                                                                    <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                                )}
+                                                            </button>
+                                                            {i < dessinateurs.length - 1 && <span className="book-page__spec-separator">,</span>}
+                                                        </span>
                                                     );
                                                 })}
                                             </div>
@@ -1673,27 +1700,29 @@ export default function BookPage() {
 
                                     {/* Coloriste(s) cliquable(s) */}
                                     {coloristes.length > 0 && (
-                                        <div className="book-page__spec-item">
+                                        <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faPaintbrush} /> Coloriste{coloristes.length > 1 ? "s" : ""}
+                                                <FontAwesomeIcon icon={faPalette} className="book-page__spec-icon" /> Coloriste{coloristes.length > 1 ? "s" : ""}
                                             </span>
-                                            <div className="book-page__spec-authors-list">
+                                            <div className="book-page__spec-value book-page__spec-authors">
                                                 {coloristes.map((a, i) => {
                                                     const name = `${a.firstname || ""} ${a.lastname || ""}`.trim();
                                                     const isFollowed = a.id ? Boolean(followStates[`author_${a.id}`]) : false;
                                                     return (
-                                                        <button
-                                                            type="button"
-                                                            key={a.id || i}
-                                                            className="book-page__spec-author-chip"
-                                                            onClick={() => openFollowModal("author", a.id, name, "Coloriste")}
-                                                            title={`Gérer le suivi de ${name}`}
-                                                        >
-                                                            <span>{name}</span>
-                                                            {isFollowed && (
-                                                                <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
-                                                            )}
-                                                        </button>
+                                                        <span key={a.id || i} className="book-page__spec-author-item">
+                                                            <button
+                                                                type="button"
+                                                                className="book-page__spec-author-link"
+                                                                onClick={() => openFollowModal("author", a.id, name, "Coloriste")}
+                                                                title={`Gérer le suivi de ${name}`}
+                                                            >
+                                                                <span>{name}</span>
+                                                                {isFollowed && (
+                                                                    <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                                )}
+                                                            </button>
+                                                            {i < coloristes.length - 1 && <span className="book-page__spec-separator">,</span>}
+                                                        </span>
                                                     );
                                                 })}
                                             </div>
@@ -1702,31 +1731,31 @@ export default function BookPage() {
 
                                     {/* ISBN / EAN */}
                                     {book.isbn && (
-                                        <div className="book-page__spec-item">
+                                        <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faBarcode} /> ISBN
+                                                <FontAwesomeIcon icon={faBarcode} className="book-page__spec-icon" /> ISBN
                                             </span>
                                             <span className="book-page__spec-value">{book.isbn}</span>
                                         </div>
                                     )}
 
                                     {/* Dimensions */}
-                                    {(book.length || book.height || book.thickness) ? (
-                                        <div className="book-page__spec-item">
+                                    {formatDimensions(book.length, book.height, book.thickness) && (
+                                        <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faRulerCombined} /> Dimensions
+                                                <FontAwesomeIcon icon={faRulerCombined} className="book-page__spec-icon" /> Dimensions
                                             </span>
                                             <span className="book-page__spec-value">
-                                                {book.length || 0} × {book.height || 0} × {book.thickness || 0} mm
+                                                {formatDimensions(book.length, book.height, book.thickness)}
                                             </span>
                                         </div>
-                                    ) : null}
+                                    )}
 
                                     {/* Poids */}
                                     {book.weight ? (
-                                        <div className="book-page__spec-item">
+                                        <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faWeightHanging} /> Poids
+                                                <FontAwesomeIcon icon={faScaleBalanced} className="book-page__spec-icon" /> Poids
                                             </span>
                                             <span className="book-page__spec-value">{book.weight} g</span>
                                         </div>
@@ -1734,19 +1763,19 @@ export default function BookPage() {
 
                                     {/* Pages */}
                                     {book.pageCount ? (
-                                        <div className="book-page__spec-item">
+                                        <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faFileLines} /> Pages
+                                                <FontAwesomeIcon icon={faFileLines} className="book-page__spec-icon" /> Pages
                                             </span>
-                                            <span className="book-page__spec-value">{book.pageCount} p.</span>
+                                            <span className="book-page__spec-value">{book.pageCount}</span>
                                         </div>
                                     ) : null}
 
                                     {/* Type (cartonné, relié, souple, etc.) */}
                                     {book.type && (
-                                        <div className="book-page__spec-item">
+                                        <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faBookBookmark} /> Type
+                                                <FontAwesomeIcon icon={faBox} className="book-page__spec-icon" /> Type
                                             </span>
                                             <span className="book-page__spec-value">{book.type}</span>
                                         </div>
@@ -1754,25 +1783,21 @@ export default function BookPage() {
 
                                     {/* Thèmes (justice, gotham, enquête, aventure, scifi, etc.) */}
                                     {book.themes && book.themes.length > 0 && (
-                                        <div className="book-page__spec-item book-page__spec-item--themes">
+                                        <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faTags} /> Thèmes
+                                                <FontAwesomeIcon icon={faTags} className="book-page__spec-icon" /> Thèmes
                                             </span>
-                                            <div className="book-page__themes-list">
-                                                {book.themes.map((theme: string) => (
-                                                    <span key={theme} className="book-page__theme-pill">
-                                                        {theme}
-                                                    </span>
-                                                ))}
-                                            </div>
+                                            <span className="book-page__spec-value">
+                                                {book.themes.join(", ")}
+                                            </span>
                                         </div>
                                     )}
 
                                     {/* Prix */}
                                     {book.price ? (
-                                        <div className="book-page__spec-item">
+                                        <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faTag} /> Prix
+                                                <FontAwesomeIcon icon={faTag} className="book-page__spec-icon" /> Prix
                                             </span>
                                             <span className="book-page__spec-value">{book.price} €</span>
                                         </div>
