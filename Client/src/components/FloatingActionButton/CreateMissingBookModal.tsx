@@ -20,9 +20,10 @@ import BookDTO from "../../dto/Book.dto.ts";
 interface Props {
     open: boolean;
     onClose: () => void;
+    initialTitle?: string;
 }
 
-export default function CreateMissingBookModal({ open, onClose }: Props) {
+export default function CreateMissingBookModal({ open, onClose, initialTitle }: Props) {
     const session = useSession();
     const navigate = useNavigate();
     const { enqueueSnackbar } = useSnackbar();
@@ -47,7 +48,7 @@ export default function CreateMissingBookModal({ open, onClose }: Props) {
     useEffect(() => {
         if (!open) return;
 
-        setTitle("");
+        setTitle(initialTitle || "");
         setIsbn("");
         setPrice("");
         setCoverMode("url");
@@ -59,7 +60,7 @@ export default function CreateMissingBookModal({ open, onClose }: Props) {
         setTimeout(() => {
             titleInputRef.current?.focus();
         }, 120);
-    }, [open]);
+    }, [open, initialTitle]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

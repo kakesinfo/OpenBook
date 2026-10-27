@@ -8,7 +8,8 @@ import {
     faPlus,
     faCheck,
     faBook,
-    faCalendarDays
+    faCalendarDays,
+    faPenNib
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router";
@@ -19,10 +20,10 @@ import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 interface Props {
     open: boolean;
     onClose: () => void;
-    onOpenCreateBook?: () => void;
+    onOpenCreateBook?: (initialTitle?: string) => void;
 }
 
-export default function AddBookToLibraryModal({ open, onClose }: Props) {
+export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook }: Props) {
     const session = useSession();
     const navigate = useNavigate();
     const { enqueueSnackbar } = useSnackbar();
@@ -106,6 +107,11 @@ export default function AddBookToLibraryModal({ open, onClose }: Props) {
         navigate(`/app/book/${bookId}`);
     };
 
+    const handleCreateMissing = () => {
+        onClose();
+        onOpenCreateBook?.(query.trim());
+    };
+
     return (
         <Dialog
             open={open}
@@ -126,7 +132,7 @@ export default function AddBookToLibraryModal({ open, onClose }: Props) {
                 <div className="fab-modal__header">
                     <div className="fab-modal__header-title">
                         <FontAwesomeIcon icon={faMagnifyingGlass} />
-                        <h3>Ajouter un livre existant</h3>
+                        <h3>Ajouter un livre à ma bibliothèque</h3>
                     </div>
                     <button
                         type="button"
@@ -140,16 +146,12 @@ export default function AddBookToLibraryModal({ open, onClose }: Props) {
 
                 <div className="fab-modal__body">
                     <div className="fab-form__field">
-                        <label>
-                            <FontAwesomeIcon icon={faMagnifyingGlass} />
-                            <span>Rechercher dans le catalogue par titre, série ou ISBN</span>
-                        </label>
                         <input
                             ref={inputRef}
                             type="text"
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="ex: Batman, Blackwater, Thorgal..."
+                            placeholder="Rechercher par titre, série ou ISBN..."
                             autoComplete="off"
                         />
                     </div>
@@ -161,8 +163,18 @@ export default function AddBookToLibraryModal({ open, onClose }: Props) {
                     )}
 
                     {!searching && query.trim() && books.length === 0 && (
-                        <div style={{ textAlign: "center", padding: "16px 0", color: "var(--text-muted)", fontSize: "0.875rem" }}>
-                            Aucun livre trouvé pour « {query} »
+                        <div className="fab-no-results">
+                            <p className="fab-no-results__text">
+                                Aucun livre trouvé pour « <strong>{query}</strong> »
+                            </p>
+                            <button
+                                type="button"
+                                className="fab-no-results__btn"
+                                onClick={handleCreateMissing}
+                            >
+                                <FontAwesomeIcon icon={faPenNib} />
+                                <span>Créer un livre manquant</span>
+                            </button>
                         </div>
                     )}
 
