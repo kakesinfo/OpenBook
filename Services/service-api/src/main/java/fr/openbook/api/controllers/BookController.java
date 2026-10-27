@@ -649,9 +649,28 @@ public class BookController {
         return entityToDTO(book, user, true, true, true, true, true);
     }
 
+    @Transactional
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
-        repositoryService.getBookRepository().deleteById(id);
+        BookEntity book = repositoryService.getBookRepository().findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found"));
+
+        // 1. Unlink variants
+        if (book.getVariants() != null && !book.getVariants().isEmpty()) {
+            for (BookEntity variant : book.getVariants()) {
+                variant.setParentBook(null);
+                repositoryService.getBookRepository().save(variant);
+            }
+        }
+
+        // 2. Remove user ownership references
+        repositoryService.getUserOwnsBooksRepository().deleteAllByBookId(id);
+
+        // 3. Remove book has author references
+        repositoryService.getBookHasAuthorRepository().deleteAllByBookId(id);
+
+        // 4. Delete the book
+        repositoryService.getBookRepository().delete(book);
     }
 
     private BookSummaryDTO entityToSummaryDTO(BookEntity book) {

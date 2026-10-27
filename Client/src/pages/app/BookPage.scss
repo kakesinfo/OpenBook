@@ -356,6 +356,29 @@
     &:hover {
       background: rgba(255, 255, 255, 0.08);
     }
+
+    &--danger {
+      color: #ef4444;
+
+      svg {
+        color: #ef4444;
+      }
+
+      &:hover {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+
+        svg {
+          color: #f87171;
+        }
+      }
+    }
+  }
+
+  &__dropdown-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 4px 0;
   }
 
   &__tags {

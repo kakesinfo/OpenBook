@@ -1115,6 +1115,34 @@ export default function BookPage() {
         }
     };
 
+    const [deletingBook, setDeletingBook] = useState(false);
+
+    const handleDeleteBook = async () => {
+        if (!book || !id) return;
+        const confirm = window.confirm(
+            `Êtes-vous sûr de vouloir supprimer définitivement l'album « ${book.title} » ? Cette action est irréversible.`
+        );
+        if (!confirm) return;
+
+        setDeletingBook(true);
+        try {
+            const res = await session.customFetch(`/books/${encodeURIComponent(id)}`, {
+                method: "DELETE"
+            });
+            if (res.ok) {
+                enqueueSnackbar(`Album « ${book.title} » supprimé avec succès`, { variant: "success" });
+                navigate("/app/collection");
+            } else {
+                enqueueSnackbar("Erreur lors de la suppression de l'album", { variant: "error" });
+            }
+        } catch (err) {
+            console.error("Error deleting book:", err);
+            enqueueSnackbar("Erreur réseau lors de la suppression de l'album", { variant: "error" });
+        } finally {
+            setDeletingBook(false);
+        }
+    };
+
     const handleRemoveFromSeries = async () => {
         if (!id || savingSeries) return;
         const confirm = window.confirm("Retirer cet album de sa série ?");
@@ -1390,6 +1418,19 @@ export default function BookPage() {
                                         >
                                             <FontAwesomeIcon icon={faCoins} />
                                             <span>Historique d'achat{transactions.length > 0 ? ` (${transactions.length})` : ""}</span>
+                                        </button>
+                                        <div className="book-page__dropdown-divider" />
+                                        <button
+                                            type="button"
+                                            className="book-page__dropdown-item book-page__dropdown-item--danger"
+                                            disabled={deletingBook}
+                                            onClick={() => {
+                                                setDetailsMenuOpen(false);
+                                                handleDeleteBook();
+                                            }}
+                                        >
+                                            <FontAwesomeIcon icon={faTrash} />
+                                            <span>{deletingBook ? "Suppression..." : "Supprimer"}</span>
                                         </button>
                                     </div>
                                 )}

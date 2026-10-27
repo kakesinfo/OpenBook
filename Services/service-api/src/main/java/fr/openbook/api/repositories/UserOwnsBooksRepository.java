@@ -16,4 +16,7 @@ public interface UserOwnsBooksRepository extends JpaRepository<UserOwnsBookEntit
 
     @Transactional
     void deleteAllByUserId(Long userId);
+
+    @Transactional
+    void deleteAllByBookId(Long bookId);
 }
