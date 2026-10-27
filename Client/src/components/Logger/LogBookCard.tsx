@@ -1,13 +1,24 @@
 import './LogBookCard.scss';
 import { useNavigate } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowRight, faBook } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faBook, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 
 type Props = {
     book: BookSummaryDTO;
     onClose?: () => void;
 };
+
+function formatReleaseDate(dateStr?: string): string | null {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return null;
+    return date.toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+    });
+}
 
 export default function LogBookCard({ book, onClose }: Props) {
     const navigate = useNavigate();
@@ -17,6 +28,8 @@ export default function LogBookCard({ book, onClose }: Props) {
         onClose?.();
         navigate(`/app/book/${book.id}`);
     };
+
+    const releaseDateFormatted = formatReleaseDate(book.releaseDate);
 
     return (
         <li className="logbook-card" onClick={handleClick}>
@@ -29,19 +42,27 @@ export default function LogBookCard({ book, onClose }: Props) {
             </div>
 
             <div className="logbook-card__content">
-                <div className="logbook-card__title-row">
-                    <h4 className="logbook-card__title">{book.title}</h4>
-                    {book.volume !== undefined && (
+                {book.seriesName && (
+                    <span className="logbook-card__series">
+                        {book.seriesName}
+                    </span>
+                )}
+                <h4 className="logbook-card__title" title={book.title}>
+                    {book.title}
+                </h4>
+                <div className="logbook-card__meta">
+                    {book.volume !== undefined && book.volume !== null && (
                         <span className="logbook-card__volume">
                             {book.volume > 0 ? `Tome ${book.volume}` : 'One-shot'}
                         </span>
                     )}
+                    {releaseDateFormatted && (
+                        <span className="logbook-card__date">
+                            <FontAwesomeIcon icon={faCalendarDays} style={{ fontSize: "0.7rem", opacity: 0.7 }} />
+                            <span>{releaseDateFormatted}</span>
+                        </span>
+                    )}
                 </div>
-                {book.releaseDate && (
-                    <span className="logbook-card__date">
-                        {new Date(book.releaseDate).toLocaleDateString()}
-                    </span>
-                )}
             </div>
 
             <div className="logbook-card__action">
