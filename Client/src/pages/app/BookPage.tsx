@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router";
+import { useParams, Link, useNavigate } from "react-router";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import BookDTO, { AuthorSummaryDTO } from "../../dto/Book.dto";
 import SeriesDTO from "../../dto/Series.dto.ts";
@@ -177,6 +177,7 @@ function ChangeBookStatusButton({
 
 export default function BookPage() {
     const { id } = useParams<{ id?: string }>();
+    const navigate = useNavigate();
     const session = useSession();
 
     const [book, setBook] = useState<BookDTO | null>(null);
@@ -958,10 +959,14 @@ export default function BookPage() {
         <div className="book-page">
             <WrapperHeader>
                 <div className="book-page__header-nav">
-                    <Link to="/app/home" className="book-page__back-link">
+                    <button
+                        type="button"
+                        className="book-page__back-link"
+                        onClick={() => navigate(-1)}
+                    >
                         <FontAwesomeIcon icon={faArrowLeft} />
                         <span>Retour</span>
-                    </Link>
+                    </button>
                 </div>
             </WrapperHeader>
 

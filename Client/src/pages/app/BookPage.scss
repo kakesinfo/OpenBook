@@ -20,6 +20,8 @@
     color: var(--text-secondary);
     font-size: 0.875rem;
     font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
     transition: all var(--transition-fast);
 
     &:hover {
