@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
 import { useSnackbar } from "notistack";
 import SeriesDTO, { getSeriesStatusLabel } from "../../dto/Series.dto.ts";
@@ -45,6 +45,7 @@ const DEFAULT_CATEGORIES: CategoryOption[] = [
 ];
 
 export default function SeriesPage() {
+    const navigate = useNavigate();
     const session = useSession();
     const { enqueueSnackbar } = useSnackbar();
 
@@ -207,18 +208,9 @@ export default function SeriesPage() {
             .finally(() => setSearchingBooks(false));
     });
 
-    // Open active series details
-    const openSeriesDetails = async (seriesId: number) => {
-        try {
-            const res = await session.customFetch(`/series/${seriesId}`, { method: "GET" });
-            if (res.ok) {
-                const data: SeriesDTO = await res.json();
-                setActiveSeries(data);
-            }
-        } catch (err) {
-            console.error("Error loading series detail:", err);
-        } finally {
-        }
+    // Open active series details page
+    const openSeriesDetails = (seriesId: number) => {
+        navigate(`/app/series/${seriesId}`);
     };
 
     // Toggle follow

@@ -88,6 +88,12 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
 
     List<BookEntity> findAllBySeriesIdOrderByVolumeAscIdAsc(Integer seriesId);
 
+    @Query("SELECT DISTINCT b FROM book b " +
+           "JOIN b.bookHasAuthors bha " +
+           "WHERE bha.author.id = :authorId " +
+           "ORDER BY b.releaseDate ASC, b.id ASC")
+    List<BookEntity> findAllByAuthorIdOrderByReleaseDateAsc(@Param("authorId") Integer authorId);
+
     long countByCoverUrlAndIdNot(String coverUrl, Long id);
 
     Optional<BookEntity> findByIsbnAndIdNot(String isbn, Long id);

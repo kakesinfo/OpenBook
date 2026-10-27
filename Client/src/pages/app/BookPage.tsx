@@ -1430,17 +1430,20 @@ export default function BookPage() {
                                 {book.series?.name ? (
                                     <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "4px" }}>
                                         <h2 className="book-page__series-title" style={{ margin: 0 }}>
-                                            <button
-                                                type="button"
-                                                className="book-page__entity-title-btn"
-                                                onClick={() => openFollowModal("series", book.series?.id, book.series.name)}
-                                                title={`Gérer le suivi de la série ${book.series.name}`}
-                                            >
-                                                <span>{book.series.name}</span>
-                                                {book.series?.id && followStates[`series_${book.series.id}`] && (
-                                                    <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
-                                                )}
-                                            </button>
+                                            {book.series?.id ? (
+                                                <Link
+                                                    to={`/app/series/${book.series.id}`}
+                                                    className="book-page__entity-title-btn"
+                                                    title={`Voir la série ${book.series.name}`}
+                                                >
+                                                    <span>{book.series.name}</span>
+                                                    {followStates[`series_${book.series.id}`] && (
+                                                        <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                    )}
+                                                </Link>
+                                            ) : (
+                                                <span className="book-page__entity-title-btn">{book.series.name}</span>
+                                            )}
                                         </h2>
                                     </div>
                                 ) : (
@@ -1453,7 +1456,7 @@ export default function BookPage() {
                                     <h1 className="book-page__title">{book.title}</h1>
                                 </div>
 
-                                {/* Auteurs cliquables pour Follow */}
+                                {/* Auteurs cliquables pour voir la page auteur */}
                                 {book.authors && book.authors.length > 0 && (
                                     <div className="book-page__authors-row">
                                         <span>Par</span>
@@ -1462,17 +1465,22 @@ export default function BookPage() {
                                             const isFollowed = author.id ? Boolean(followStates[`author_${author.id}`]) : false;
                                             return (
                                                 <span key={`${author.id || idx}-${author.type || idx}`} className="book-page__author-item">
-                                                    <button
-                                                        type="button"
-                                                        className="book-page__entity-inline-btn"
-                                                        onClick={() => openFollowModal("author", author.id, fullName, author.type)}
-                                                        title={`Gérer le suivi de ${fullName}`}
-                                                    >
-                                                        <span>{fullName}</span>
-                                                        {isFollowed && (
-                                                            <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
-                                                        )}
-                                                    </button>
+                                                    {author.id ? (
+                                                        <Link
+                                                            to={`/app/author/${author.id}`}
+                                                            className="book-page__entity-inline-btn"
+                                                            title={`Voir la page de ${fullName}`}
+                                                        >
+                                                            <span>{fullName}</span>
+                                                            {isFollowed && (
+                                                                <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                            )}
+                                                        </Link>
+                                                    ) : (
+                                                        <span className="book-page__entity-inline-btn">
+                                                            <span>{fullName}</span>
+                                                        </span>
+                                                    )}
                                                     {idx < (book.authors?.length || 0) - 1 && (
                                                         <span className="book-page__author-sep">,</span>
                                                     )}
@@ -1648,17 +1656,22 @@ export default function BookPage() {
                                                     const isFollowed = a.id ? Boolean(followStates[`author_${a.id}`]) : false;
                                                     return (
                                                         <span key={a.id || i} className="book-page__spec-author-item">
-                                                            <button
-                                                                type="button"
-                                                                className="book-page__spec-author-link"
-                                                                onClick={() => openFollowModal("author", a.id, name, "Scénariste")}
-                                                                title={`Gérer le suivi de ${name}`}
-                                                            >
-                                                                <span>{name}</span>
-                                                                {isFollowed && (
-                                                                    <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
-                                                                )}
-                                                            </button>
+                                                            {a.id ? (
+                                                                <Link
+                                                                    to={`/app/author/${a.id}`}
+                                                                    className="book-page__spec-author-link"
+                                                                    title={`Voir la page de ${name}`}
+                                                                >
+                                                                    <span>{name}</span>
+                                                                    {isFollowed && (
+                                                                        <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                                    )}
+                                                                </Link>
+                                                            ) : (
+                                                                <span className="book-page__spec-author-link">
+                                                                    <span>{name}</span>
+                                                                </span>
+                                                            )}
                                                             {i < scenaristes.length - 1 && <span className="book-page__spec-separator">,</span>}
                                                         </span>
                                                     );
@@ -1679,17 +1692,22 @@ export default function BookPage() {
                                                     const isFollowed = a.id ? Boolean(followStates[`author_${a.id}`]) : false;
                                                     return (
                                                         <span key={a.id || i} className="book-page__spec-author-item">
-                                                            <button
-                                                                type="button"
-                                                                className="book-page__spec-author-link"
-                                                                onClick={() => openFollowModal("author", a.id, name, "Dessinateur")}
-                                                                title={`Gérer le suivi de ${name}`}
-                                                            >
-                                                                <span>{name}</span>
-                                                                {isFollowed && (
-                                                                    <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
-                                                                )}
-                                                            </button>
+                                                            {a.id ? (
+                                                                <Link
+                                                                    to={`/app/author/${a.id}`}
+                                                                    className="book-page__spec-author-link"
+                                                                    title={`Voir la page de ${name}`}
+                                                                >
+                                                                    <span>{name}</span>
+                                                                    {isFollowed && (
+                                                                        <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                                    )}
+                                                                </Link>
+                                                            ) : (
+                                                                <span className="book-page__spec-author-link">
+                                                                    <span>{name}</span>
+                                                                </span>
+                                                            )}
                                                             {i < dessinateurs.length - 1 && <span className="book-page__spec-separator">,</span>}
                                                         </span>
                                                     );
@@ -1710,17 +1728,22 @@ export default function BookPage() {
                                                     const isFollowed = a.id ? Boolean(followStates[`author_${a.id}`]) : false;
                                                     return (
                                                         <span key={a.id || i} className="book-page__spec-author-item">
-                                                            <button
-                                                                type="button"
-                                                                className="book-page__spec-author-link"
-                                                                onClick={() => openFollowModal("author", a.id, name, "Coloriste")}
-                                                                title={`Gérer le suivi de ${name}`}
-                                                            >
-                                                                <span>{name}</span>
-                                                                {isFollowed && (
-                                                                    <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
-                                                                )}
-                                                            </button>
+                                                            {a.id ? (
+                                                                <Link
+                                                                    to={`/app/author/${a.id}`}
+                                                                    className="book-page__spec-author-link"
+                                                                    title={`Voir la page de ${name}`}
+                                                                >
+                                                                    <span>{name}</span>
+                                                                    {isFollowed && (
+                                                                        <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                                    )}
+                                                                </Link>
+                                                            ) : (
+                                                                <span className="book-page__spec-author-link">
+                                                                    <span>{name}</span>
+                                                                </span>
+                                                            )}
                                                             {i < coloristes.length - 1 && <span className="book-page__spec-separator">,</span>}
                                                         </span>
                                                     );

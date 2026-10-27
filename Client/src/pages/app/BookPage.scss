@@ -733,6 +733,7 @@
   align-items: center;
   gap: 8px;
   text-align: left;
+  text-decoration: none;
   transition: all var(--transition-fast);
 
   &:hover {
@@ -772,6 +773,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  text-decoration: none;
   transition: all var(--transition-fast);
 
   &:hover {

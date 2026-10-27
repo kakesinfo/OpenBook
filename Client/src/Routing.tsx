@@ -14,6 +14,8 @@ import HomePage from "./pages/app/HomePage.tsx";
 import CollectionPage from "./pages/app/CollectionPage.tsx";
 import SalesPage from "./pages/app/SalesPage.tsx";
 import SeriesPage from "./pages/app/SeriesPage.tsx";
+import SeriesDetailPage from "./pages/app/SeriesDetailPage.tsx";
+import AuthorDetailPage from "./pages/app/AuthorDetailPage.tsx";
 import WishlistPage from "./pages/app/WishlistPage.tsx";
 import PlanningPage from "./pages/app/PlanningPage.tsx";
 import SettingsPage from "./pages/app/SettingsPage.tsx";
@@ -77,6 +79,9 @@ export default function Routing() {
                 <Route path="ventes" element={<SalesPage key={location.pathname}/>} />
                 <Route path="collection/series" element={<SeriesPage key={location.pathname}/>} />
                 <Route path="series" element={<SeriesPage key={location.pathname}/>} />
+                <Route path="series/:id" element={<SeriesDetailPage key={location.pathname}/>} />
+                <Route path="author/:id" element={<AuthorDetailPage key={location.pathname}/>} />
+                <Route path="authors/:id" element={<AuthorDetailPage key={location.pathname}/>} />
                 <Route path="bibliotheque" element={<CollectionPage key={location.pathname}/>} />
                 <Route path="wishlist" element={<WishlistPage key={location.pathname}/>} />
                 <Route path="planning" element={<PlanningPage key={location.pathname}/>} />
