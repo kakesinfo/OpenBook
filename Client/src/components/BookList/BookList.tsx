@@ -193,9 +193,6 @@ export default function BookList({ books, onBookStatusChange }: BookListProps) {
                             <h3 className="booklist-card__title" title={book.title}>
                                 {book.title}
                             </h3>
-                            <p className="booklist-card__subtitle">
-                                {book.volume > 0 ? `Tome ${book.volume}` : `Tome unique`}
-                            </p>
                         </div>
                     </Link>
                 );

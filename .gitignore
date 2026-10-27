@@ -12,3 +12,5 @@ Cache/*
 Services/service-api/uploads/
 __pycache__/
 *.pyc
+
+skills/

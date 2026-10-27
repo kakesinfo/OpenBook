@@ -238,10 +238,9 @@
   }
 
   &__info {
-    padding: 10px 4px 4px 4px;
+    padding: 8px 4px 2px 4px;
     display: flex;
     flex-direction: column;
-    gap: 3px;
   }
 
   &__title {
@@ -255,23 +254,10 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
-    min-height: 2.7em;
     transition: color var(--transition-fast);
 
     @media (max-width: 600px) {
       font-size: 0.875rem;
-    }
-  }
-
-  &__subtitle {
-    color: var(--text-muted);
-    font-size: 0.8125rem;
-    font-weight: 500;
-    margin: 0;
-    line-height: 1.2;
-
-    @media (max-width: 600px) {
-      font-size: 0.75rem;
     }
   }
 }
