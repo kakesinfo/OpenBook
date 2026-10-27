@@ -125,8 +125,8 @@ export default function AddBookToLibraryModal({ open, onClose }: Props) {
             <div className="fab-modal">
                 <div className="fab-modal__header">
                     <div className="fab-modal__header-title">
-                        <FontAwesomeIcon icon={faBookBookmark} />
-                        <h3>Ajouter un livre à ma bibliothèque</h3>
+                        <FontAwesomeIcon icon={faMagnifyingGlass} />
+                        <h3>Ajouter un livre existant</h3>
                     </div>
                     <button
                         type="button"
@@ -142,7 +142,7 @@ export default function AddBookToLibraryModal({ open, onClose }: Props) {
                     <div className="fab-form__field">
                         <label>
                             <FontAwesomeIcon icon={faMagnifyingGlass} />
-                            <span>Rechercher l'album par titre, série ou ISBN</span>
+                            <span>Rechercher dans le catalogue par titre, série ou ISBN</span>
                         </label>
                         <input
                             ref={inputRef}

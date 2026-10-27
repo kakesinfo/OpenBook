@@ -10,7 +10,7 @@ import {
     faImage,
     faUpload,
     faLink,
-    faBolt
+    faPenNib
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router";
@@ -149,8 +149,8 @@ export default function CreateMissingBookModal({ open, onClose }: Props) {
             <div className="fab-modal">
                 <div className="fab-modal__header">
                     <div className="fab-modal__header-title">
-                        <FontAwesomeIcon icon={faBolt} />
-                        <h3>Création rapide d'un livre</h3>
+                        <FontAwesomeIcon icon={faPenNib} />
+                        <h3>Créer un livre manquant</h3>
                     </div>
                     <button
                         type="button"

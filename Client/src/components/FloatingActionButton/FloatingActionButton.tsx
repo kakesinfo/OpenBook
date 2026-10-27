@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faPlus,
-    faBookBookmark,
+    faMagnifyingGlass,
     faPenNib
 } from "@fortawesome/free-solid-svg-icons";
 import AddBookToLibraryModal from "./AddBookToLibraryModal.tsx";
@@ -75,7 +75,7 @@ export default function FloatingActionButton() {
                             <span className="fab-action-icon">
                                 <FontAwesomeIcon icon={faPenNib} />
                             </span>
-                            <span className="fab-action-text">Création rapide d'un livre</span>
+                            <span className="fab-action-text">Créer un livre manquant</span>
                         </button>
 
                         <button
@@ -84,9 +84,9 @@ export default function FloatingActionButton() {
                             onClick={handleOpenAddModal}
                         >
                             <span className="fab-action-icon">
-                                <FontAwesomeIcon icon={faBookBookmark} />
+                                <FontAwesomeIcon icon={faMagnifyingGlass} />
                             </span>
-                            <span className="fab-action-text">Ajouter à ma bibliothèque</span>
+                            <span className="fab-action-text">Ajouter un livre existant</span>
                         </button>
                     </div>
                 )}
