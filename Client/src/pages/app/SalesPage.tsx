@@ -101,7 +101,7 @@ export default function SalesPage() {
     // Sale modal state (Date and Price when marking a book as SOLD)
     const [saleModalOpen, setSaleModalOpen] = useState(false);
     const [saleTargetBook, setSaleTargetBook] = useState<BookSummaryDTO | null>(null);
-    const [saleDate, setSaleDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+    const [saleDate, setSaleDate] = useState<string>("");
     const [salePrice, setSalePrice] = useState<string>("");
     const [saleLocation, setSaleLocation] = useState<string>("");
     const [saleMemo, setSaleMemo] = useState<string>("");
@@ -111,7 +111,7 @@ export default function SalesPage() {
         e.preventDefault();
         e.stopPropagation();
         setSaleTargetBook(book);
-        setSaleDate(new Date().toISOString().split("T")[0]);
+        setSaleDate("");
         setSalePrice(book.price ? String(book.price) : "");
         setSaleLocation("");
         setSaleMemo("");
@@ -129,7 +129,7 @@ export default function SalesPage() {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    date: saleDate,
+                    date: saleDate.trim() || null,
                     price: parsedPrice,
                     location: saleLocation.trim() || null,
                     memo: saleMemo.trim() || null
@@ -805,11 +805,11 @@ export default function SalesPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faCalendarDays} />
-                                    <span>Date de vente *</span>
+                                    <span>Date de vente</span>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>(optionnel)</span>
                                 </label>
                                 <input
                                     type="date"
-                                    required
                                     value={saleDate}
                                     onChange={(e) => setSaleDate(e.target.value)}
                                 />

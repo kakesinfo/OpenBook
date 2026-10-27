@@ -591,7 +591,7 @@ export default function BookPage() {
     const [buyMemo, setBuyMemo] = useState<string>("");
 
     // Sale modal form
-    const [sellDate, setSellDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+    const [sellDate, setSellDate] = useState<string>("");
     const [sellPrice, setSellPrice] = useState<string>("");
     const [sellLocation, setSellLocation] = useState<string>("");
     const [sellMemo, setSellMemo] = useState<string>("");
@@ -656,7 +656,7 @@ export default function BookPage() {
     };
 
     const handleOpenSaleModal = () => {
-        setSellDate(new Date().toISOString().split("T")[0]);
+        setSellDate("");
         setSellPrice(book?.price ? String(book.price) : "");
         setSellLocation("");
         setSellMemo("");
@@ -675,7 +675,7 @@ export default function BookPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     type: "SOLD",
-                    date: sellDate,
+                    date: sellDate.trim() || null,
                     price: parsedPrice,
                     location: sellLocation.trim() || null,
                     memo: sellMemo.trim() || null
@@ -2812,13 +2812,7 @@ export default function BookPage() {
                                                                 month: 'short',
                                                                 year: 'numeric'
                                                             })
-                                                            : (tx.createdAt
-                                                                ? new Date(tx.createdAt).toLocaleDateString('fr-FR', {
-                                                                    day: 'numeric',
-                                                                    month: 'short',
-                                                                    year: 'numeric'
-                                                                })
-                                                                : "Date non renseignée")}
+                                                            : "Date non renseignée"}
                                                     </span>
 
                                                     {tx.location && (
@@ -3018,11 +3012,11 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faCalendarDays} />
-                                    <span>Date de vente *</span>
+                                    <span>Date de vente</span>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>(optionnel)</span>
                                 </label>
                                 <input
                                     type="date"
-                                    required
                                     value={sellDate}
                                     onChange={(e) => setSellDate(e.target.value)}
                                 />

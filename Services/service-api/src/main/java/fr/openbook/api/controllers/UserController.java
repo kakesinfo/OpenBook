@@ -757,7 +757,7 @@ public class UserController {
             tx.setUser(user);
             tx.setBook(entity.getBook());
             tx.setType("SOLD");
-            LocalDate txDate = LocalDate.now();
+            LocalDate txDate = null;
             if (request != null && request.getDate() != null && !request.getDate().trim().isEmpty()) {
                 try {
                     txDate = LocalDate.parse(request.getDate().trim());
@@ -865,11 +865,13 @@ public class UserController {
         tx.setUser(user);
         tx.setBook(book);
         tx.setType(type);
-        LocalDate txDate = LocalDate.now();
+        LocalDate txDate = null;
         if (req.getDate() != null && !req.getDate().trim().isEmpty()) {
             try {
                 txDate = LocalDate.parse(req.getDate().trim());
             } catch (Exception ignored) {}
+        } else if ("BOUGHT".equals(type)) {
+            txDate = LocalDate.now();
         }
         tx.setTransactionDate(txDate);
         tx.setPrice(req.getPrice());
