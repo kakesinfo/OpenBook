@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import BookDTO from "../../dto/Book.dto";
+import BookDTO, { AuthorSummaryDTO } from "../../dto/Book.dto";
 import SeriesDTO from "../../dto/Series.dto.ts";
 import UserBookTransactionDTO from "../../dto/UserBookTransaction.dto.ts";
 import { useSnackbar } from "notistack";
@@ -44,6 +44,8 @@ import {
     faImage,
     faUpload,
     faLink,
+    faAlignLeft,
+    faUserPlus,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
@@ -58,6 +60,17 @@ interface FollowTarget {
     id: number | string;
     name: string;
     roleOrSubtitle?: string;
+}
+
+interface MetadataAuthorOption {
+    id: number;
+    firstname: string;
+    lastname: string;
+}
+
+interface MetadataNamedOption {
+    id: number;
+    name: string;
 }
 
 function getFollowTypeIcon(type: FollowType) {
@@ -76,6 +89,28 @@ function getFollowTypeLabel(type: FollowType) {
         case "editor": return "Maison d'édition";
         case "collection": return "Collection";
     }
+}
+
+function getAuthorRoleLabel(type?: string): string {
+    const low = (type || "").toLowerCase();
+    if (low === "illustrator" || low.includes("dessin") || low.includes("pencil") || low.includes("artist")) {
+        return "Dessinateur";
+    }
+    if (low === "colorist" || low.includes("color") || low.includes("couleur")) {
+        return "Coloriste";
+    }
+    return "Scénariste";
+}
+
+function normalizeAuthorRoleValue(type?: string): "Writer" | "Illustrator" | "Colorist" {
+    const low = (type || "").toLowerCase();
+    if (low === "illustrator" || low.includes("dessin") || low.includes("pencil") || low.includes("artist")) {
+        return "Illustrator";
+    }
+    if (low === "colorist" || low.includes("color") || low.includes("couleur")) {
+        return "Colorist";
+    }
+    return "Writer";
 }
 
 function ChangeBookStatusButton({
@@ -305,6 +340,33 @@ export default function BookPage() {
     const [isDraggingCover, setIsDraggingCover] = useState(false);
     const coverInputRef = useRef<HTMLInputElement | null>(null);
 
+    // Book Info Edit Modal states
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [savingBookInfo, setSavingBookInfo] = useState(false);
+    const [editTitle, setEditTitle] = useState("");
+    const [editReleaseDate, setEditReleaseDate] = useState<string>("");
+    const [editIsbn, setEditIsbn] = useState<string>("");
+    const [editPrice, setEditPrice] = useState<string>("");
+    const [editPageCount, setEditPageCount] = useState<string>("");
+    const [editWeight, setEditWeight] = useState<string>("");
+    const [editLength, setEditLength] = useState<string>("");
+    const [editHeight, setEditHeight] = useState<string>("");
+    const [editThickness, setEditThickness] = useState<string>("");
+    const [editType, setEditType] = useState<string>("");
+    const [editEditorName, setEditEditorName] = useState<string>("");
+    const [editCollectionName, setEditCollectionName] = useState<string>("");
+    const [editDescription, setEditDescription] = useState<string>("");
+    const [editAuthors, setEditAuthors] = useState<AuthorSummaryDTO[]>([]);
+
+    // Author addition inputs inside Edit Modal
+    const [newAuthorRole, setNewAuthorRole] = useState<"Writer" | "Illustrator" | "Colorist">("Writer");
+    const [newAuthorNameInput, setNewAuthorNameInput] = useState<string>("");
+
+    // Autocomplete metadata options
+    const [authorOptions, setAuthorOptions] = useState<MetadataAuthorOption[]>([]);
+    const [editorOptions, setEditorOptions] = useState<MetadataNamedOption[]>([]);
+    const [collectionOptions, setCollectionOptions] = useState<MetadataNamedOption[]>([]);
+
     // Series Association Dialog state
     const [seriesModalOpen, setSeriesModalOpen] = useState(false);
     const [seriesListOptions, setSeriesListOptions] = useState<SeriesDTO[]>([]);
@@ -323,6 +385,184 @@ export default function BookPage() {
             }
         };
     }, [coverPreviewUrl]);
+
+    const handleOpenEditModal = async () => {
+        if (!book) return;
+        setEditTitle(book.title || "");
+        setEditReleaseDate(book.releaseDate ? book.releaseDate.substring(0, 10) : "");
+        setEditIsbn(book.isbn || "");
+        setEditPrice(book.price != null && book.price > 0 ? String(book.price) : "");
+        setEditPageCount(book.pageCount != null && book.pageCount > 0 ? String(book.pageCount) : "");
+        setEditWeight(book.weight != null && book.weight > 0 ? String(book.weight) : "");
+        setEditLength(book.length != null && book.length > 0 ? String(book.length) : "");
+        setEditHeight(book.height != null && book.height > 0 ? String(book.height) : "");
+        setEditThickness(book.thickness != null && book.thickness > 0 ? String(book.thickness) : "");
+        setEditType(book.type || "");
+        setEditEditorName(book.editor?.name || "");
+        setEditCollectionName(book.collection?.name || "");
+        setEditDescription(book.description || "");
+        setEditAuthors(
+            (book.authors || []).map((a) => ({
+                id: a.id,
+                firstname: a.firstname || "",
+                lastname: a.lastname || "",
+                type: normalizeAuthorRoleValue(a.type)
+            }))
+        );
+        setNewAuthorRole("Writer");
+        setNewAuthorNameInput("");
+        setEditModalOpen(true);
+
+        try {
+            const res = await session.customFetch("/books/metadata-options", { method: "GET" });
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data.authors)) setAuthorOptions(data.authors);
+                if (Array.isArray(data.editors)) setEditorOptions(data.editors);
+                if (Array.isArray(data.collections)) setCollectionOptions(data.collections);
+            }
+        } catch (err) {
+            console.error("Error loading metadata options:", err);
+        }
+    };
+
+    const parseFullNameToAuthor = (rawInput: string, role: "Writer" | "Illustrator" | "Colorist"): AuthorSummaryDTO | null => {
+        const trimmed = rawInput.trim();
+        if (!trimmed) return null;
+
+        // Check if matches an existing author option exactly
+        const matchedOption = authorOptions.find((opt) => {
+            const full = `${opt.firstname || ""} ${opt.lastname || ""}`.trim();
+            return full.toLowerCase() === trimmed.toLowerCase();
+        });
+
+        if (matchedOption) {
+            return {
+                id: matchedOption.id,
+                firstname: matchedOption.firstname || "",
+                lastname: matchedOption.lastname || "",
+                type: role
+            };
+        }
+
+        const lastSpace = trimmed.lastIndexOf(" ");
+        if (lastSpace > 0) {
+            return {
+                firstname: trimmed.substring(0, lastSpace).trim(),
+                lastname: trimmed.substring(lastSpace + 1).trim(),
+                type: role
+            };
+        }
+
+        return {
+            firstname: "",
+            lastname: trimmed,
+            type: role
+        };
+    };
+
+    const handleAddAuthorToEditList = () => {
+        const parsed = parseFullNameToAuthor(newAuthorNameInput, newAuthorRole);
+        if (!parsed) {
+            enqueueSnackbar("Veuillez saisir le nom du scénariste / dessinateur / coloriste", { variant: "warning" });
+            return;
+        }
+
+        const duplicate = editAuthors.some(
+            (a) =>
+                a.firstname.trim().toLowerCase() === parsed.firstname.trim().toLowerCase() &&
+                a.lastname.trim().toLowerCase() === parsed.lastname.trim().toLowerCase() &&
+                normalizeAuthorRoleValue(a.type) === parsed.type
+        );
+
+        if (duplicate) {
+            enqueueSnackbar("Cet auteur avec ce rôle est déjà présent dans la liste", { variant: "info" });
+            setNewAuthorNameInput("");
+            return;
+        }
+
+        setEditAuthors((prev) => [...prev, parsed]);
+        setNewAuthorNameInput("");
+    };
+
+    const handleRemoveAuthorFromEditList = (index: number) => {
+        setEditAuthors((prev) => prev.filter((_, idx) => idx !== index));
+    };
+
+    const handleSaveBookInfo = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!id || savingBookInfo) return;
+
+        if (!editTitle.trim()) {
+            enqueueSnackbar("Le titre de l'album est obligatoire", { variant: "warning" });
+            return;
+        }
+
+        // If user typed an author name in the input field without clicking "+ Ajouter", include it automatically
+        let finalAuthors = [...editAuthors];
+        if (newAuthorNameInput.trim()) {
+            const pendingAuthor = parseFullNameToAuthor(newAuthorNameInput, newAuthorRole);
+            if (pendingAuthor) {
+                const isDup = finalAuthors.some(
+                    (a) =>
+                        a.firstname.trim().toLowerCase() === pendingAuthor.firstname.trim().toLowerCase() &&
+                        a.lastname.trim().toLowerCase() === pendingAuthor.lastname.trim().toLowerCase() &&
+                        normalizeAuthorRoleValue(a.type) === pendingAuthor.type
+                );
+                if (!isDup) {
+                    finalAuthors.push(pendingAuthor);
+                }
+            }
+        }
+
+        setSavingBookInfo(true);
+        try {
+            const payload = {
+                title: editTitle.trim(),
+                isbn: editIsbn.trim(),
+                releaseDate: editReleaseDate || "",
+                price: editPrice.trim() !== "" ? Math.round(parseFloat(editPrice)) : 0,
+                pageCount: editPageCount.trim() !== "" ? parseInt(editPageCount, 10) : 0,
+                weight: editWeight.trim() !== "" ? parseInt(editWeight, 10) : 0,
+                length: editLength.trim() !== "" ? parseInt(editLength, 10) : 0,
+                height: editHeight.trim() !== "" ? parseInt(editHeight, 10) : 0,
+                thickness: editThickness.trim() !== "" ? parseInt(editThickness, 10) : 0,
+                type: editType.trim(),
+                editorName: editEditorName.trim(),
+                collectionName: editCollectionName.trim(),
+                description: editDescription.trim(),
+                authors: finalAuthors
+            };
+
+            const res = await session.customFetch(`/books/${encodeURIComponent(id)}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                const updated: BookDTO = await res.json();
+                setBook(updated);
+                setEditModalOpen(false);
+                setNewAuthorNameInput("");
+                enqueueSnackbar("Informations de l'album mises à jour avec succès !", { variant: "success" });
+            } else {
+                let errMsg = "Impossible de mettre à jour les informations de l'album";
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.message || errData.error || errMsg;
+                } catch {
+                    const text = await res.text().catch(() => "");
+                    if (text) errMsg = text;
+                }
+                enqueueSnackbar(`Erreur : ${errMsg}`, { variant: "error" });
+            }
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur réseau : ${err.message}`, { variant: "error" });
+        } finally {
+            setSavingBookInfo(false);
+        }
+    };
 
     const handleOpenCoverModal = () => {
         setCoverMode("file");
@@ -489,7 +729,7 @@ export default function BookPage() {
 
     const handleOpenSeriesModal = async () => {
         setSelectedSeriesId(book?.series?.id ? Number(book.series.id) : null);
-        setSelectedVolume(book?.volume != null ? book.volume : 1);
+        setSelectedVolume(book?.series && book?.volume != null ? book.volume : 1);
         setSeriesModalMode("select");
         setNewSeriesName("");
         setNewSeriesCategory(3);
@@ -540,7 +780,7 @@ export default function BookPage() {
 
                 const createdSeries: SeriesDTO = await createRes.json();
 
-                // 2. Set volume if needed
+                // 2. Set volume in the new series
                 if (selectedVolume != null) {
                     await session.customFetch(`/books/${encodeURIComponent(id)}/series`, {
                         method: "PUT",
@@ -551,11 +791,14 @@ export default function BookPage() {
 
                 enqueueSnackbar(`Nouvelle série « ${createdSeries.name} » créée et associée`, { variant: "success" });
             } else {
-                // Link to existing series
+                // Link to existing series (or unlink if selectedSeriesId is null)
                 const updateRes = await session.customFetch(`/books/${encodeURIComponent(id)}/series`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ seriesId: selectedSeriesId, volume: selectedVolume })
+                    body: JSON.stringify({
+                        seriesId: selectedSeriesId,
+                        volume: selectedSeriesId ? selectedVolume : null
+                    })
                 });
 
                 if (!updateRes.ok) {
@@ -564,11 +807,11 @@ export default function BookPage() {
                     return;
                 }
 
-                enqueueSnackbar(selectedSeriesId ? "Série associée avec succès" : "Série dissociée", { variant: "success" });
+                enqueueSnackbar(selectedSeriesId ? "Série et tomaison associées avec succès" : "Série dissociée", { variant: "success" });
             }
 
             // Reload book
-            const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1`;
+            const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1&withSeries=1`;
             const refreshRes = await session.customFetch(fetchUrl, { method: "GET" });
             if (refreshRes.ok) {
                 const refreshedBook: BookDTO = await refreshRes.json();
@@ -592,12 +835,12 @@ export default function BookPage() {
             const updateRes = await session.customFetch(`/books/${encodeURIComponent(id)}/series`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ seriesId: null })
+                body: JSON.stringify({ seriesId: null, volume: null })
             });
 
             if (updateRes.ok) {
                 enqueueSnackbar("Album retiré de la série", { variant: "info" });
-                const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1`;
+                const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1&withSeries=1`;
                 const refreshRes = await session.customFetch(fetchUrl, { method: "GET" });
                 if (refreshRes.ok) {
                     const refreshedBook: BookDTO = await refreshRes.json();
@@ -824,7 +1067,7 @@ export default function BookPage() {
                                         {getSeriesStatusLabel(book.series.status)}
                                     </span>
                                 )}
-                                {book.volume != null && (
+                                {book.series && book.volume != null && (
                                     <span className="book-page__tag book-page__tag--volume">
                                         {book.series?.totalVolumes && book.series.totalVolumes > 1
                                             ? `Tome ${book.volume} sur ${Math.max(book.volume, book.series.totalVolumes)}`
@@ -862,53 +1105,25 @@ export default function BookPage() {
                                                 )}
                                             </button>
                                         </h2>
-                                        <button
-                                            type="button"
-                                            onClick={handleOpenSeriesModal}
-                                            title="Gérer ou modifier l'association de série"
-                                            style={{
-                                                background: "rgba(255, 255, 255, 0.05)",
-                                                border: "1px solid var(--border-subtle)",
-                                                color: "var(--text-muted)",
-                                                padding: "4px 10px",
-                                                borderRadius: "6px",
-                                                fontSize: "0.75rem",
-                                                cursor: "pointer",
-                                                display: "inline-flex",
-                                                alignItems: "center",
-                                                gap: "6px"
-                                            }}
-                                        >
-                                            <FontAwesomeIcon icon={faPen} />
-                                            <span>Modifier la série</span>
-                                        </button>
                                     </div>
                                 ) : (
-                                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px", flexWrap: "wrap" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px", flexWrap: "wrap" }}>
                                         <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Aucune série associée</span>
-                                        <button
-                                            type="button"
-                                            onClick={handleOpenSeriesModal}
-                                            style={{
-                                                background: "rgba(16, 185, 129, 0.15)",
-                                                border: "1px solid var(--accent-primary)",
-                                                color: "var(--accent-primary)",
-                                                padding: "3px 10px",
-                                                borderRadius: "14px",
-                                                fontSize: "0.8rem",
-                                                fontWeight: 600,
-                                                cursor: "pointer",
-                                                display: "inline-flex",
-                                                alignItems: "center",
-                                                gap: "6px"
-                                            }}
-                                        >
-                                            <FontAwesomeIcon icon={faPlus} />
-                                            <span>Associer à une série</span>
-                                        </button>
                                     </div>
                                 )}
-                                <h1 className="book-page__title">{book.title}</h1>
+
+                                <div className="book-page__title-row">
+                                    <h1 className="book-page__title">{book.title}</h1>
+                                    <button
+                                        type="button"
+                                        className="book-page__edit-info-btn"
+                                        onClick={handleOpenEditModal}
+                                        title="Modifier les informations du livre"
+                                        aria-label="Modifier les informations du livre"
+                                    >
+                                        <FontAwesomeIcon icon={faPen} />
+                                    </button>
+                                </div>
 
                                 {/* Auteurs cliquables pour Follow */}
                                 {book.authors && book.authors.length > 0 && (
@@ -918,7 +1133,7 @@ export default function BookPage() {
                                             const fullName = `${author.firstname || ""} ${author.lastname || ""}`.trim();
                                             const isFollowed = author.id ? Boolean(followStates[`author_${author.id}`]) : false;
                                             return (
-                                                <span key={author.id || idx} className="book-page__author-item">
+                                                <span key={`${author.id || idx}-${author.type || idx}`} className="book-page__author-item">
                                                     <button
                                                         type="button"
                                                         className="book-page__entity-inline-btn"
@@ -1029,7 +1244,18 @@ export default function BookPage() {
 
                             {/* Technical Details Card */}
                             <div className="book-page__specs-card">
-                                <h3 className="book-page__specs-title">Détails techniques</h3>
+                                <div className="book-page__specs-header">
+                                    <h3 className="book-page__specs-title">Détails techniques</h3>
+                                    <button
+                                        type="button"
+                                        className="book-page__specs-edit-btn"
+                                        onClick={handleOpenEditModal}
+                                        title="Modifier les informations techniques et les auteurs"
+                                    >
+                                        <FontAwesomeIcon icon={faPen} />
+                                        <span>Modifier</span>
+                                    </button>
+                                </div>
                                 <div className="book-page__specs-list">
                                     {/* Maison d'édition (Éditeur) cliquable */}
                                     {book.editor?.name && (
@@ -1482,6 +1708,376 @@ export default function BookPage() {
                 )}
             </div>
 
+            {/* Book Information Edit Modal */}
+            <Dialog
+                open={editModalOpen}
+                onClose={() => !savingBookInfo && setEditModalOpen(false)}
+                PaperProps={{
+                    style: {
+                        backgroundColor: "var(--bg-surface, #1e1e24)",
+                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                        borderRadius: "16px",
+                        maxWidth: "600px",
+                        width: "100%",
+                        padding: "18px 20px",
+                        color: "var(--text-primary)"
+                    }
+                }}
+            >
+                <div className="book-edit-dialog">
+                    <div className="book-edit-dialog__header">
+                        <div className="book-edit-dialog__header-title">
+                            <FontAwesomeIcon icon={faPen} />
+                            <h3>Modifier les informations du livre</h3>
+                        </div>
+                        <button
+                            type="button"
+                            className="book-edit-dialog__close-btn"
+                            onClick={() => setEditModalOpen(false)}
+                            disabled={savingBookInfo}
+                            aria-label="Fermer"
+                        >
+                            <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                    </div>
+
+                    {/* Section Série & Tomaison */}
+                    <div className="book-edit-dialog__series-bar">
+                        <div className="book-edit-dialog__series-info">
+                            <span className="book-edit-dialog__series-label">
+                                <FontAwesomeIcon icon={faLayerGroup} /> Série &amp; Tomaison
+                            </span>
+                            {book?.series?.name ? (
+                                <strong className="book-edit-dialog__series-name">
+                                    {book.series.name}{book.volume != null ? ` — Tome ${book.volume}` : ""}
+                                </strong>
+                            ) : (
+                                <span className="book-edit-dialog__series-empty">Aucune série associée (pas de tomaison)</span>
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            className="book-edit-dialog__series-btn"
+                            onClick={handleOpenSeriesModal}
+                        >
+                            <FontAwesomeIcon icon={book?.series?.name ? faPen : faPlus} />
+                            <span>{book?.series?.name ? "Modifier la série / tome" : "Associer à une série"}</span>
+                        </button>
+                    </div>
+
+                    <form className="book-edit-dialog__form" onSubmit={handleSaveBookInfo}>
+                        {/* Titre de l'album */}
+                        <div className="tx-dialog__field">
+                            <label>
+                                <FontAwesomeIcon icon={faBook} />
+                                <span>Titre de l'album *</span>
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                value={editTitle}
+                                onChange={(e) => setEditTitle(e.target.value)}
+                                placeholder="Titre de l'ouvrage"
+                            />
+                        </div>
+
+                        {/* Date de sortie & ISBN / EAN sur la même ligne */}
+                        <div className="book-edit-dialog__row book-edit-dialog__row--2col">
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faCalendarDays} />
+                                    <span>Date de sortie</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={editReleaseDate}
+                                    onChange={(e) => setEditReleaseDate(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faBarcode} />
+                                    <span>ISBN / EAN</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editIsbn}
+                                    onChange={(e) => setEditIsbn(e.target.value)}
+                                    placeholder="ex: 9791026816775"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Éditeur & Collection sur la même ligne */}
+                        <div className="book-edit-dialog__row book-edit-dialog__row--2col">
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faBuilding} />
+                                    <span>Éditeur</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    list="book-edit-editors-list"
+                                    value={editEditorName}
+                                    onChange={(e) => setEditEditorName(e.target.value)}
+                                    placeholder="ex: Urban Comics, Glénat..."
+                                />
+                                <datalist id="book-edit-editors-list">
+                                    {editorOptions.map((ed) => (
+                                        <option key={ed.id} value={ed.name} />
+                                    ))}
+                                </datalist>
+                            </div>
+
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faLayerGroup} />
+                                    <span>Collection</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    list="book-edit-collections-list"
+                                    value={editCollectionName}
+                                    onChange={(e) => setEditCollectionName(e.target.value)}
+                                    placeholder="ex: DC Rebirth, DC Black Label..."
+                                />
+                                <datalist id="book-edit-collections-list">
+                                    {collectionOptions.map((col) => (
+                                        <option key={col.id} value={col.name} />
+                                    ))}
+                                </datalist>
+                            </div>
+                        </div>
+
+                        {/* Pages & Poids sur la même ligne */}
+                        <div className="book-edit-dialog__row book-edit-dialog__row--2col">
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faFileLines} />
+                                    <span>Pages</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={editPageCount}
+                                    onChange={(e) => setEditPageCount(e.target.value)}
+                                    placeholder="ex: 160"
+                                />
+                            </div>
+
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faWeightHanging} />
+                                    <span>Poids (g)</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={editWeight}
+                                    onChange={(e) => setEditWeight(e.target.value)}
+                                    placeholder="ex: 650"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Largeur / Hauteur / Épaisseur sur la même ligne */}
+                        <div className="book-edit-dialog__row book-edit-dialog__row--3col">
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faRulerCombined} />
+                                    <span>Largeur (mm)</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={editLength}
+                                    onChange={(e) => setEditLength(e.target.value)}
+                                    placeholder="ex: 185"
+                                />
+                            </div>
+
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faRulerCombined} />
+                                    <span>Hauteur (mm)</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={editHeight}
+                                    onChange={(e) => setEditHeight(e.target.value)}
+                                    placeholder="ex: 282"
+                                />
+                            </div>
+
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faRulerCombined} />
+                                    <span>Épaisseur (mm)</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={editThickness}
+                                    onChange={(e) => setEditThickness(e.target.value)}
+                                    placeholder="ex: 16"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Prix & Format / Type sur la même ligne */}
+                        <div className="book-edit-dialog__row book-edit-dialog__row--2col">
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faTag} />
+                                    <span>Prix (€)</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    value={editPrice}
+                                    onChange={(e) => setEditPrice(e.target.value)}
+                                    placeholder="ex: 20"
+                                />
+                            </div>
+
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faBookBookmark} />
+                                    <span>Format / Type</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editType}
+                                    onChange={(e) => setEditType(e.target.value)}
+                                    placeholder="ex: Comics, Cartonné, Broché..."
+                                />
+                            </div>
+                        </div>
+
+                        {/* Scénaristes / Dessinateurs / Coloristes */}
+                        <div className="book-edit-dialog__authors-section">
+                            <label className="book-edit-dialog__section-title">
+                                <FontAwesomeIcon icon={faPenNib} />
+                                <span>Scénaristes, Dessinateurs &amp; Coloristes</span>
+                            </label>
+
+                            {editAuthors.length === 0 ? (
+                                <p className="book-edit-dialog__authors-empty">
+                                    Aucun auteur renseigné pour cet album.
+                                </p>
+                            ) : (
+                                <div className="book-edit-dialog__authors-chips">
+                                    {editAuthors.map((a, idx) => {
+                                        const fullName = `${a.firstname || ""} ${a.lastname || ""}`.trim();
+                                        const roleVal = normalizeAuthorRoleValue(a.type);
+                                        const roleLabel = getAuthorRoleLabel(a.type);
+                                        return (
+                                            <span
+                                                key={`${fullName}-${roleVal}-${idx}`}
+                                                className={`book-edit-dialog__author-chip book-edit-dialog__author-chip--${roleVal.toLowerCase()}`}
+                                            >
+                                                <FontAwesomeIcon
+                                                    icon={roleVal === "Illustrator" ? faPalette : roleVal === "Colorist" ? faPaintbrush : faPenNib}
+                                                />
+                                                <span className="book-edit-dialog__author-chip-name">{fullName}</span>
+                                                <span className="book-edit-dialog__author-chip-role">{roleLabel}</span>
+                                                <button
+                                                    type="button"
+                                                    className="book-edit-dialog__author-chip-remove"
+                                                    onClick={() => handleRemoveAuthorFromEditList(idx)}
+                                                    title={`Retirer ${fullName}`}
+                                                >
+                                                    <FontAwesomeIcon icon={faXmark} />
+                                                </button>
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            <div className="book-edit-dialog__add-author-bar">
+                                <select
+                                    value={newAuthorRole}
+                                    onChange={(e) => setNewAuthorRole(e.target.value as "Writer" | "Illustrator" | "Colorist")}
+                                    className="book-edit-dialog__role-select"
+                                    aria-label="Rôle de l'auteur"
+                                >
+                                    <option value="Writer">Scénariste</option>
+                                    <option value="Illustrator">Dessinateur</option>
+                                    <option value="Colorist">Coloriste</option>
+                                </select>
+
+                                <input
+                                    type="text"
+                                    list="book-edit-authors-list"
+                                    value={newAuthorNameInput}
+                                    onChange={(e) => setNewAuthorNameInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            handleAddAuthorToEditList();
+                                        }
+                                    }}
+                                    placeholder="Nom de l'auteur (ex: Scott Snyder, Greg Capullo...)"
+                                    className="book-edit-dialog__author-input"
+                                />
+                                <datalist id="book-edit-authors-list">
+                                    {authorOptions.map((a) => {
+                                        const full = `${a.firstname || ""} ${a.lastname || ""}`.trim();
+                                        return <option key={a.id} value={full} />;
+                                    })}
+                                </datalist>
+
+                                <button
+                                    type="button"
+                                    className="book-edit-dialog__add-author-btn"
+                                    onClick={handleAddAuthorToEditList}
+                                >
+                                    <FontAwesomeIcon icon={faUserPlus} />
+                                    <span>Ajouter</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Synopsis / Description */}
+                        <div className="tx-dialog__field">
+                            <label>
+                                <FontAwesomeIcon icon={faAlignLeft} />
+                                <span>Description / Synopsis</span>
+                            </label>
+                            <textarea
+                                rows={3}
+                                value={editDescription}
+                                onChange={(e) => setEditDescription(e.target.value)}
+                                placeholder="Résumé ou description de l'album..."
+                            />
+                        </div>
+
+                        <div className="tx-dialog__actions">
+                            <button
+                                type="button"
+                                className="tx-dialog__btn-cancel"
+                                onClick={() => setEditModalOpen(false)}
+                                disabled={savingBookInfo}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={savingBookInfo}
+                                className="tx-dialog__btn-submit tx-dialog__btn-submit--bought"
+                            >
+                                <FontAwesomeIcon icon={faCheck} />
+                                <span>{savingBookInfo ? "Enregistrement..." : "Enregistrer les modifications"}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </Dialog>
+
             {/* Cover Update Modal */}
             <Dialog
                 open={coverModalOpen}
@@ -1740,26 +2336,32 @@ export default function BookPage() {
                             </select>
                         </div>
 
-                        <div>
-                            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                Numéro de tome / volume
-                            </label>
-                            <input
-                                type="number"
-                                min={1}
-                                value={selectedVolume}
-                                onChange={(e) => setSelectedVolume(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                                style={{
-                                    width: "100%",
-                                    padding: "10px 14px",
-                                    background: "rgba(255, 255, 255, 0.05)",
-                                    border: "1px solid var(--border-subtle)",
-                                    borderRadius: "8px",
-                                    color: "var(--text-primary)",
-                                    outline: "none"
-                                }}
-                            />
-                        </div>
+                        {selectedSeriesId ? (
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
+                                    Position dans la série (Tome n°)
+                                </label>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    value={selectedVolume}
+                                    onChange={(e) => setSelectedVolume(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                    style={{
+                                        width: "100%",
+                                        padding: "10px 14px",
+                                        background: "rgba(255, 255, 255, 0.05)",
+                                        border: "1px solid var(--border-subtle)",
+                                        borderRadius: "8px",
+                                        color: "var(--text-primary)",
+                                        outline: "none"
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+                                Sans série associée, cet album n'aura pas de tomaison.
+                            </p>
+                        )}
                     </div>
                 ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
@@ -1812,7 +2414,7 @@ export default function BookPage() {
 
                             <div>
                                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                    Tome de cet album
+                                    Position dans la série (Tome n°)
                                 </label>
                                 <input
                                     type="number"

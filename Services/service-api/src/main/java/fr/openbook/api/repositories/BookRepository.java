@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 public interface BookRepository extends JpaRepository<BookEntity, Long> {
 
@@ -88,4 +89,8 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
     List<BookEntity> findAllBySeriesIdOrderByVolumeAscIdAsc(Integer seriesId);
 
     long countByCoverUrlAndIdNot(String coverUrl, Long id);
+
+    Optional<BookEntity> findByIsbnAndIdNot(String isbn, Long id);
+
+    Optional<BookEntity> findByTitleIgnoreCaseAndIdNot(String title, Long id);
 }

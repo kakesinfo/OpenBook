@@ -1,21 +1,24 @@
 package fr.openbook.api.controllers;
 
+import fr.openbook.api.dtos.AuthorDTO;
 import fr.openbook.api.dtos.BookDTO;
-import fr.openbook.api.dtos.SetBookSeriesDTO;
-import fr.openbook.api.entities.SeriesEntity;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import fr.openbook.api.dtos.PageDTO;
-import fr.openbook.api.entities.SeriesHasThemeEntity;
 import fr.openbook.api.dtos.BookHasAuthorDTO;
 import fr.openbook.api.dtos.BookSummaryDTO;
+import fr.openbook.api.dtos.CollectionDTO;
+import fr.openbook.api.dtos.EditorDTO;
+import fr.openbook.api.dtos.PageDTO;
+import fr.openbook.api.dtos.SetBookSeriesDTO;
+import fr.openbook.api.dtos.UpdateBookDTO;
 import fr.openbook.api.entities.AuthorEntity;
 import fr.openbook.api.entities.AuthorTypeEntity;
 import fr.openbook.api.entities.BookEntity;
-import fr.openbook.api.entities.UserEntity;
+import fr.openbook.api.entities.BookHasAuthorEntity;
 import fr.openbook.api.entities.BookStatusEntity;
+import fr.openbook.api.entities.CollectionEntity;
+import fr.openbook.api.entities.EditorEntity;
+import fr.openbook.api.entities.SeriesEntity;
+import fr.openbook.api.entities.SeriesHasThemeEntity;
+import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
 import fr.openbook.api.entities.UserSellsBookEntity;
 import fr.openbook.api.repositories.BookRepository;
@@ -31,30 +34,37 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -90,6 +100,39 @@ public class BookController {
                 .stream()
                 .map(this::entityToSummaryDTO)
                 .collect(Collectors.toList());
+    }
+
+    @GetMapping("/metadata-options")
+    public Map<String, Object> getMetadataOptions() {
+        List<AuthorDTO> authors = repositoryService.getAuthorRepository()
+                .findAllByOrderByLastnameAscFirstnameAsc()
+                .stream()
+                .map(a -> {
+                    AuthorDTO dto = new AuthorDTO();
+                    dto.setId(a.getId() != null ? a.getId().longValue() : null);
+                    dto.setFirstname(a.getFirstname());
+                    dto.setLastname(a.getLastname());
+                    return dto;
+                })
+                .toList();
+
+        List<EditorDTO> editors = repositoryService.getEditorRepository()
+                .findAllByOrderByNameAsc()
+                .stream()
+                .map(EditorService::entityToDTO)
+                .toList();
+
+        List<CollectionDTO> collections = repositoryService.getCollectionRepository()
+                .findAllByOrderByNameAsc()
+                .stream()
+                .map(CollectionService::entityToDTO)
+                .toList();
+
+        return Map.of(
+                "authors", authors,
+                "editors", editors,
+                "collections", collections
+        );
     }
 
     @GetMapping("/newest")
@@ -315,6 +358,216 @@ public class BookController {
         return repositoryService.getBookRepository().save(book);
     }
 
+    @PutMapping("/{id}")
+    @Transactional
+    public BookDTO updateBook(
+            HttpSession session,
+            @PathVariable Long id,
+            @RequestBody UpdateBookDTO req
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        BookEntity book = repositoryService.getBookRepository().findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Album introuvable"));
+
+        if (req.getTitle() != null) {
+            String cleanTitle = req.getTitle().trim();
+            if (cleanTitle.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le titre de l'album ne peut pas être vide");
+            }
+            if (repositoryService.getBookRepository().findByTitleIgnoreCaseAndIdNot(cleanTitle, id).isPresent()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Un autre album possède déjà ce titre (« " + cleanTitle + " »)");
+            }
+            book.setTitle(cleanTitle);
+        }
+
+        if (req.getIsbn() != null) {
+            String cleanIsbn = req.getIsbn().trim();
+            if (cleanIsbn.isEmpty()) {
+                book.setIsbn(null);
+            } else {
+                if (repositoryService.getBookRepository().findByIsbnAndIdNot(cleanIsbn, id).isPresent()) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Cet ISBN / EAN (« " + cleanIsbn + " ») est déjà attribué à un autre album");
+                }
+                book.setIsbn(cleanIsbn);
+            }
+        }
+
+        book.setPageCount(req.getPageCount() != null && req.getPageCount() > 0 ? req.getPageCount() : 0);
+        book.setWeight(req.getWeight() != null && req.getWeight() > 0 ? req.getWeight() : 0);
+        book.setHeight(req.getHeight() != null && req.getHeight() > 0 ? req.getHeight() : 0);
+        book.setLength(req.getLength() != null && req.getLength() > 0 ? req.getLength() : 0);
+        book.setThickness(req.getThickness() != null && req.getThickness() > 0 ? req.getThickness() : 0);
+        book.setPrice(req.getPrice() != null && req.getPrice() >= 0 ? req.getPrice() : 0);
+
+        if (req.getType() != null) {
+            String cleanType = req.getType().trim();
+            book.setType(cleanType.isEmpty() ? null : cleanType);
+        }
+
+        if (req.getDescription() != null) {
+            String cleanDesc = req.getDescription().trim();
+            book.setDescription(cleanDesc.isEmpty() ? null : cleanDesc);
+        }
+
+        if (req.getReleaseDate() != null) {
+            String rawDate = req.getReleaseDate().trim();
+            if (rawDate.isEmpty()) {
+                book.setReleaseDate(null);
+            } else {
+                try {
+                    if (rawDate.length() >= 10) {
+                        LocalDate ld = LocalDate.parse(rawDate.substring(0, 10));
+                        book.setReleaseDate(ld.atTime(12, 0).atZone(ZoneId.of("UTC")).toInstant());
+                    } else {
+                        book.setReleaseDate(Instant.parse(rawDate));
+                    }
+                } catch (Exception e) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Format de date de sortie invalide");
+                }
+            }
+        }
+
+        // Series & volume update: no series = no volume (tomaison)
+        if (Boolean.TRUE.equals(req.getClearSeries())) {
+            book.setSeries(null);
+            book.setVolume(null);
+        } else if (req.getSeriesId() != null) {
+            SeriesEntity series = repositoryService.getSeriesRepository().findById(req.getSeriesId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Série introuvable"));
+            book.setSeries(series);
+            if (req.getVolume() != null) {
+                book.setVolume(req.getVolume());
+            }
+        } else if (book.getSeries() == null) {
+            book.setVolume(null);
+        } else if (req.getVolume() != null) {
+            book.setVolume(req.getVolume());
+        }
+
+        // Editor update
+        if (req.getEditorName() != null) {
+            String cleanEditor = req.getEditorName().trim();
+            if (cleanEditor.isEmpty()) {
+                book.setEditor(null);
+            } else {
+                EditorEntity editor = repositoryService.getEditorRepository()
+                        .findByNameIgnoreCase(cleanEditor)
+                        .orElseGet(() -> {
+                            EditorEntity newEditor = new EditorEntity();
+                            newEditor.setName(cleanEditor);
+                            return repositoryService.getEditorRepository().save(newEditor);
+                        });
+                book.setEditor(editor);
+            }
+        }
+
+        // Collection update
+        if (req.getCollectionName() != null) {
+            String cleanCollection = req.getCollectionName().trim();
+            if (cleanCollection.isEmpty()) {
+                book.setCollection(null);
+            } else {
+                CollectionEntity collection = repositoryService.getCollectionRepository()
+                        .findByNameIgnoreCase(cleanCollection)
+                        .orElseGet(() -> {
+                            CollectionEntity newCol = new CollectionEntity();
+                            newCol.setName(cleanCollection);
+                            return repositoryService.getCollectionRepository().save(newCol);
+                        });
+                book.setCollection(collection);
+            }
+        }
+
+        // Authors update (Scénaristes / Dessinateurs / Coloristes)
+        if (req.getAuthors() != null) {
+            if (book.getBookHasAuthors() == null) {
+                book.setBookHasAuthors(new ArrayList<>());
+            }
+
+            Map<String, BookHasAuthorEntity> desiredMap = new LinkedHashMap<>();
+
+            for (BookHasAuthorDTO aDto : req.getAuthors()) {
+                if (aDto == null) continue;
+                String fn = aDto.getFirstname() != null ? aDto.getFirstname().trim() : "";
+                String ln = aDto.getLastname() != null ? aDto.getLastname().trim() : "";
+
+                if (ln.isEmpty() && !fn.isEmpty()) {
+                    int lastSpace = fn.lastIndexOf(' ');
+                    if (lastSpace > 0) {
+                        ln = fn.substring(lastSpace + 1).trim();
+                        fn = fn.substring(0, lastSpace).trim();
+                    } else {
+                        ln = fn;
+                        fn = "";
+                    }
+                }
+                if (ln.isEmpty()) {
+                    continue;
+                }
+
+                final String finalFn = fn;
+                final String finalLn = ln;
+
+                AuthorEntity author = repositoryService.getAuthorRepository()
+                        .findByFirstnameIgnoreCaseAndLastnameIgnoreCase(finalFn, finalLn)
+                        .orElseGet(() -> {
+                            AuthorEntity newAuthor = new AuthorEntity();
+                            newAuthor.setFirstname(finalFn);
+                            newAuthor.setLastname(finalLn);
+                            return repositoryService.getAuthorRepository().save(newAuthor);
+                        });
+
+                String rawRole = aDto.getType() != null ? aDto.getType().trim().toLowerCase() : "writer";
+                final String targetTypeName;
+                if (rawRole.contains("illustrator") || rawRole.contains("dessin") || rawRole.contains("pencil") || rawRole.contains("artist")) {
+                    targetTypeName = "Illustrator";
+                } else if (rawRole.contains("color") || rawRole.contains("couleur")) {
+                    targetTypeName = "Colorist";
+                } else {
+                    targetTypeName = "Writer";
+                }
+
+                AuthorTypeEntity authorType = repositoryService.getAuthorTypeRepository()
+                        .findByNameIgnoreCase(targetTypeName)
+                        .orElseGet(() -> {
+                            AuthorTypeEntity newType = new AuthorTypeEntity();
+                            newType.setName(targetTypeName);
+                            return repositoryService.getAuthorTypeRepository().save(newType);
+                        });
+
+                String key = author.getId() + "_" + authorType.getId();
+                if (!desiredMap.containsKey(key)) {
+                    BookHasAuthorEntity bha = new BookHasAuthorEntity();
+                    bha.setBook(book);
+                    bha.setAuthor(author);
+                    bha.setAuthorType(authorType);
+                    desiredMap.put(key, bha);
+                }
+            }
+
+            Set<String> desiredKeys = desiredMap.keySet();
+            book.getBookHasAuthors().removeIf(existing -> {
+                if (existing.getAuthor() == null || existing.getAuthorType() == null) return true;
+                String k = existing.getAuthor().getId() + "_" + existing.getAuthorType().getId();
+                return !desiredKeys.contains(k);
+            });
+
+            Set<String> existingKeys = book.getBookHasAuthors().stream()
+                    .filter(e -> e.getAuthor() != null && e.getAuthorType() != null)
+                    .map(e -> e.getAuthor().getId() + "_" + e.getAuthorType().getId())
+                    .collect(Collectors.toSet());
+
+            for (Map.Entry<String, BookHasAuthorEntity> entry : desiredMap.entrySet()) {
+                if (!existingKeys.contains(entry.getKey())) {
+                    book.getBookHasAuthors().add(entry.getValue());
+                }
+            }
+        }
+
+        book = repositoryService.getBookRepository().save(book);
+        return entityToDTO(book, user, true, true, true, true, true);
+    }
+
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
         repositoryService.getBookRepository().deleteById(id);
@@ -324,7 +577,7 @@ public class BookController {
         BookSummaryDTO dto = new BookSummaryDTO();
         dto.setId(book.getId());
         dto.setTitle(book.getTitle());
-        dto.setVolume(book.getVolume());
+        dto.setVolume(book.getSeries() != null ? book.getVolume() : null);
         dto.setPrice(book.getPrice());
         if (book.getReleaseDate() != null) {
             dto.setReleaseDate(book.getReleaseDate().toString());
@@ -372,7 +625,7 @@ public class BookController {
         BookDTO dto = new BookDTO();
         dto.setId(bookEntity.getId());
         dto.setTitle(bookEntity.getTitle());
-        dto.setVolume(bookEntity.getVolume());
+        dto.setVolume(bookEntity.getSeries() != null ? bookEntity.getVolume() : null);
         dto.setPrice(bookEntity.getPrice());
         if (bookEntity.getReleaseDate() != null) {
             dto.setReleaseDate(bookEntity.getReleaseDate().toString());
@@ -486,9 +739,10 @@ public class BookController {
         if (withEditor)
             dto.setEditor(EditorService.entityToDTO(bookEntity.getEditor()));
 
-        if (withAuthors) {
+        if (withAuthors && bookEntity.getBookHasAuthors() != null) {
             List<BookHasAuthorDTO> authorsDTO = bookEntity.getBookHasAuthors()
                     .stream()
+                    .filter(bha -> bha.getAuthor() != null && bha.getAuthorType() != null)
                     .map(bookHasAuthor -> {
                         AuthorEntity author = bookHasAuthor.getAuthor();
                         AuthorTypeEntity authorType = bookHasAuthor.getAuthorType();
@@ -543,12 +797,12 @@ public class BookController {
             SeriesEntity series = repositoryService.getSeriesRepository().findById(req.getSeriesId().longValue())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Series not found"));
             book.setSeries(series);
+            if (req.getVolume() != null) {
+                book.setVolume(req.getVolume());
+            }
         } else {
             book.setSeries(null);
-        }
-
-        if (req.getVolume() != null) {
-            book.setVolume(req.getVolume());
+            book.setVolume(null);
         }
 
         book = repositoryService.getBookRepository().save(book);

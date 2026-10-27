@@ -230,10 +230,11 @@ public class SeriesController {
 
         Integer sId = series.getId();
 
-        // 1. Unlink all books
+        // 1. Unlink all books and clear their volume (no series = no volume)
         List<BookEntity> books = repositoryService.getBookRepository().findAllBySeriesId(sId);
         for (BookEntity book : books) {
             book.setSeries(null);
+            book.setVolume(null);
             repositoryService.getBookRepository().save(book);
         }
 
@@ -280,6 +281,7 @@ public class SeriesController {
 
         if (book.getSeries() != null && book.getSeries().getId().equals(series.getId())) {
             book.setSeries(null);
+            book.setVolume(null);
             repositoryService.getBookRepository().save(book);
         }
 
@@ -369,7 +371,7 @@ public class SeriesController {
         BookSummaryDTO dto = new BookSummaryDTO();
         dto.setId(book.getId());
         dto.setTitle(book.getTitle());
-        dto.setVolume(book.getVolume());
+        dto.setVolume(book.getSeries() != null ? book.getVolume() : null);
         dto.setPrice(book.getPrice());
         if (book.getReleaseDate() != null) {
             dto.setReleaseDate(book.getReleaseDate().toString());
