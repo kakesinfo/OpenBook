@@ -3,7 +3,7 @@ import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import "./BookList.scss";
 import { Link } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBook, faHeart, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faBook, faHeart, faCheck, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
 import { useSnackbar } from "notistack";
 
@@ -27,12 +27,24 @@ function getStatusBadge(book: BookSummaryDTO) {
     return null;
 }
 
+function formatReleaseDate(dateStr?: string): string | null {
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return null;
+    return date.toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+    });
+}
+
 interface BookListProps {
     books: BookSummaryDTO[];
     onBookStatusChange?: (bookId: string, newStatus: string | null) => void;
+    showReleaseDate?: boolean;
 }
 
-export default function BookList({ books, onBookStatusChange }: BookListProps) {
+export default function BookList({ books, onBookStatusChange, showReleaseDate = false }: BookListProps) {
     const session = useSession();
     const { enqueueSnackbar } = useSnackbar();
     const [statusOverrides, setStatusOverrides] = useState<Record<string, string | null>>({});
@@ -120,6 +132,7 @@ export default function BookList({ books, onBookStatusChange }: BookListProps) {
                 const isWishlisted = effectiveStatus === "WISHLISTED";
                 const isOwned = effectiveStatus === "OWNED";
                 const isBusy = Boolean(loadingIds[book.id]);
+                const releaseDateFormatted = showReleaseDate ? formatReleaseDate(book.releaseDate) : null;
 
                 return (
                     <Link to={`/app/book/${book.id}`} className="booklist-card" key={book.id}>
@@ -193,6 +206,12 @@ export default function BookList({ books, onBookStatusChange }: BookListProps) {
                             <h3 className="booklist-card__title" title={book.title}>
                                 {book.title}
                             </h3>
+                            {releaseDateFormatted && (
+                                <span className="booklist-card__release-date">
+                                    <FontAwesomeIcon icon={faCalendarDays} />
+                                    <span>{releaseDateFormatted}</span>
+                                </span>
+                            )}
                         </div>
                     </Link>
                 );

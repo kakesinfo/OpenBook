@@ -519,7 +519,7 @@ export default function PlanningPage() {
                         </div>
 
                         {/* Books of this Month */}
-                        <BookList books={group.books} />
+                        <BookList books={group.books} showReleaseDate={true} />
                     </section>
                 ))}
             </div>

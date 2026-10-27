@@ -260,6 +260,31 @@
       font-size: 0.875rem;
     }
   }
+
+  &__release-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8125rem;
+    color: var(--text-muted, #9ca3af);
+    margin-top: 6px;
+    line-height: 1.25;
+
+    svg {
+      font-size: 0.75rem;
+      color: var(--accent-secondary, #818cf8);
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 600px) {
+      font-size: 0.75rem;
+      gap: 4px;
+
+      svg {
+        font-size: 0.7rem;
+      }
+    }
+  }
 }
 
 .booklist-empty {
