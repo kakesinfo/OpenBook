@@ -60,6 +60,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,13 +94,65 @@ public class BookController {
         return null;
     }
 
+    private List<BookSummaryDTO> enrichWithUserStatus(List<BookSummaryDTO> dtos, UserEntity user) {
+        if (dtos == null || dtos.isEmpty()) {
+            return dtos;
+        }
+        UserEntity resolvedUser = user != null ? user : getAuthenticatedUser(null);
+        if (resolvedUser == null || resolvedUser.getId() == null) {
+            return dtos;
+        }
+
+        Map<Long, String> statusMap = new HashMap<>();
+        repositoryService.getUserOwnsBooksRepository()
+                .findAllByUserId(resolvedUser.getId())
+                .forEach(uob -> {
+                    if (uob.getBook() != null && uob.getBook().getId() != null) {
+                        statusMap.put(uob.getBook().getId(), uob.getStatus());
+                    }
+                });
+
+        repositoryService.getUserSellsBookRepository()
+                .findAllByUserId(resolvedUser.getId())
+                .forEach(usb -> {
+                    if (usb.getBook() != null && usb.getBook().getId() != null) {
+                        statusMap.putIfAbsent(usb.getBook().getId(), usb.getStatus());
+                    }
+                });
+
+        Map<Long, String> readingStatusMap = new HashMap<>();
+        repositoryService.getBookStatusRepository()
+                .findAllByUserId(resolvedUser.getId())
+                .forEach(bse -> {
+                    if (bse.getBook() != null && bse.getBook().getId() != null) {
+                        readingStatusMap.put(bse.getBook().getId(), bse.getStatus());
+                    }
+                });
+
+        for (BookSummaryDTO dto : dtos) {
+            if (dto.getId() != null) {
+                String st = statusMap.get(dto.getId());
+                if (st != null) {
+                    dto.setStatus(st);
+                }
+                String rSt = readingStatusMap.get(dto.getId());
+                if (rSt != null) {
+                    dto.setReadingStatus(rSt);
+                }
+            }
+        }
+
+        return dtos;
+    }
+
     @GetMapping
-    public List<BookSummaryDTO> getAll() {
-        return repositoryService.getBookRepository()
+    public List<BookSummaryDTO> getAll(HttpSession session) {
+        List<BookSummaryDTO> list = repositoryService.getBookRepository()
                 .findAll()
                 .stream()
                 .map(this::entityToSummaryDTO)
                 .collect(Collectors.toList());
+        return enrichWithUserStatus(list, getAuthenticatedUser(session));
     }
 
     @GetMapping("/metadata-options")
@@ -137,20 +190,22 @@ public class BookController {
 
     @GetMapping("/newest")
     public ResponseEntity<?> getAllOrderedByCreatedAtDesc(
+            HttpSession session,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false, defaultValue = "20") Integer size,
             @RequestParam(required = false, defaultValue = "100") Integer limit
     ) {
-        return getBooksOrderedByCreatedAt("desc", page, size, limit);
+        return getBooksOrderedByCreatedAt(session, "desc", page, size, limit);
     }
 
     @GetMapping("/oldest")
     public ResponseEntity<?> getAllOrderedByCreatedAtAsc(
+            HttpSession session,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false, defaultValue = "20") Integer size,
             @RequestParam(required = false, defaultValue = "100") Integer limit
     ) {
-        return getBooksOrderedByCreatedAt("asc", page, size, limit);
+        return getBooksOrderedByCreatedAt(session, "asc", page, size, limit);
     }
 
     @GetMapping("/upcoming")
@@ -164,22 +219,24 @@ public class BookController {
         Instant endOfWindow = now.toLocalDate().plusMonths(6).atTime(LocalTime.MAX).atZone(now.getZone()).toInstant();
 
         if (all) {
-            return repositoryService.getBookRepository()
+            List<BookSummaryDTO> list = repositoryService.getBookRepository()
                     .findAllByReleaseDateBetweenOrderByReleaseDateAsc(startOfTomorrow, endOfWindow)
                     .stream()
                     .map(this::entityToSummaryDTO)
                     .collect(Collectors.toList());
+            return enrichWithUserStatus(list, user);
         }
 
         if (user == null) {
             return Collections.emptyList();
         }
 
-        return repositoryService.getBookRepository()
+        List<BookSummaryDTO> list = repositoryService.getBookRepository()
                 .findPlanningUpcomingForUser(user.getId(), startOfTomorrow, endOfWindow)
                 .stream()
                 .map(this::entityToSummaryDTO)
                 .collect(Collectors.toList());
+        return enrichWithUserStatus(list, user);
     }
 
     @GetMapping("/recent")
@@ -193,26 +250,29 @@ public class BookController {
         Instant endOfToday = now.toLocalDate().atTime(LocalTime.MAX).atZone(now.getZone()).toInstant();
 
         if (all) {
-            return repositoryService.getBookRepository()
+            List<BookSummaryDTO> list = repositoryService.getBookRepository()
                     .findAllByReleaseDateBetweenOrderByReleaseDateDesc(startOfWindow, endOfToday)
                     .stream()
                     .map(this::entityToSummaryDTO)
                     .collect(Collectors.toList());
+            return enrichWithUserStatus(list, user);
         }
 
         if (user == null) {
             return Collections.emptyList();
         }
 
-        return repositoryService.getBookRepository()
+        List<BookSummaryDTO> list = repositoryService.getBookRepository()
                 .findPlanningRecentForUser(user.getId(), startOfWindow, endOfToday)
                 .stream()
                 .map(this::entityToSummaryDTO)
                 .collect(Collectors.toList());
+        return enrichWithUserStatus(list, user);
     }
 
-    private ResponseEntity<?> getBooksOrderedByCreatedAt(String order, Integer page, Integer size, Integer limit) {
+    private ResponseEntity<?> getBooksOrderedByCreatedAt(HttpSession session, String order, Integer page, Integer size, Integer limit) {
         final BookRepository repository = repositoryService.getBookRepository();
+        UserEntity user = getAuthenticatedUser(session);
 
         Sort.Direction direction = "asc".equalsIgnoreCase(order) ? Sort.Direction.ASC : Sort.Direction.DESC;
         Sort sort = Sort.by(direction, "createdAt").and(Sort.by(direction, "id"));
@@ -223,9 +283,10 @@ public class BookController {
                     : PageRequest.of(0, 100, sort);
 
             Page<BookEntity> books = repository.findAll(pageable);
-            return ResponseEntity.ok(books.getContent().stream()
+            List<BookSummaryDTO> list = books.getContent().stream()
                     .map(this::entityToSummaryDTO)
-                    .collect(Collectors.toList()));
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(enrichWithUserStatus(list, user));
         }
 
         int pageIndex = Math.max(0, page - 1);
@@ -245,9 +306,12 @@ public class BookController {
         } else {
             long remaining = effectiveTotal - startOffset;
             int countToTake = (int) Math.min(booksPage.getContent().size(), remaining);
-            content = booksPage.getContent().subList(0, Math.max(0, countToTake)).stream()
-                    .map(this::entityToSummaryDTO)
-                    .collect(Collectors.toList());
+            content = enrichWithUserStatus(
+                    booksPage.getContent().subList(0, Math.max(0, countToTake)).stream()
+                            .map(this::entityToSummaryDTO)
+                            .collect(Collectors.toList()),
+                    user
+            );
         }
 
         PageDTO<BookSummaryDTO> pageDTO = new PageDTO<>(
@@ -282,16 +346,16 @@ public class BookController {
     }
 
     @GetMapping("/search")
-    public List<BookSummaryDTO> searchWithParam(@RequestParam(name = "query", required = false) String query) {
-        return performSearch(query);
+    public List<BookSummaryDTO> searchWithParam(HttpSession session, @RequestParam(name = "query", required = false) String query) {
+        return performSearch(session, query);
     }
 
     @GetMapping("/search/{query}")
-    public List<BookSummaryDTO> searchWithPath(@PathVariable String query) {
-        return performSearch(query);
+    public List<BookSummaryDTO> searchWithPath(HttpSession session, @PathVariable String query) {
+        return performSearch(session, query);
     }
 
-    private List<BookSummaryDTO> performSearch(String rawQuery) {
+    private List<BookSummaryDTO> performSearch(HttpSession session, String rawQuery) {
         if (rawQuery == null || rawQuery.trim().isEmpty()) {
             return Collections.emptyList();
         }
@@ -317,11 +381,12 @@ public class BookController {
             cleanIsbn = cleanDigits;
         }
 
-        return repositoryService.getBookRepository()
+        List<BookSummaryDTO> list = repositoryService.getBookRepository()
                 .searchBooks(queryApos, trimmed, cleanIsbn, altIsbn)
                 .stream()
                 .map(this::entityToSummaryDTO)
                 .collect(Collectors.toList());
+        return enrichWithUserStatus(list, getAuthenticatedUser(session));
     }
 
     private static String isbn10ToIsbn13(String isbn10) {

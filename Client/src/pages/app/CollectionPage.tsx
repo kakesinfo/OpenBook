@@ -456,7 +456,14 @@ export default function CollectionPage() {
                     <>
                         {displayMode === "grid" ? (
                             /* Galerie Mode (Paginated) */
-                            <BookList books={paginatedBooks} />
+                            <BookList
+                                books={paginatedBooks}
+                                onBookStatusChange={(bookId, newStatus) => {
+                                    if (newStatus !== "OWNED") {
+                                        setBooks((prev) => prev.filter((b) => b.id !== bookId));
+                                    }
+                                }}
+                            />
                         ) : (
                             /* Compact Table/List Mode (Paginated, 0 margins between rows, cover follows cursor on title hover) */
                             <div className="collection-list">

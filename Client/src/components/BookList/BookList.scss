@@ -40,6 +40,12 @@
     .booklist-card__title {
       color: var(--accent-primary);
     }
+
+    .booklist-card__quick-actions {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
   }
 
   &__cover-wrapper {
@@ -152,6 +158,83 @@
     font-weight: 700;
     letter-spacing: 0.02em;
     z-index: 2;
+  }
+
+  /* Quick action buttons overlaid at bottom-right on hover */
+  &__quick-actions {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 3;
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+
+    @media (hover: none) {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+  }
+
+  &__action-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #f8fafc;
+    font-size: 0.85rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+    transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+    &:hover:not(:disabled) {
+      transform: scale(1.1);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    &--wishlist {
+      &:hover:not(:disabled) {
+        background: rgba(244, 63, 94, 0.9);
+        border-color: rgba(255, 255, 255, 0.35);
+        color: #fff;
+      }
+
+      &.is-active {
+        background: #f43f5e;
+        border-color: rgba(255, 255, 255, 0.4);
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(244, 63, 94, 0.5);
+      }
+    }
+
+    &--library {
+      &:hover:not(:disabled) {
+        background: rgba(16, 185, 129, 0.9);
+        border-color: rgba(255, 255, 255, 0.35);
+        color: #fff;
+      }
+
+      &.is-active {
+        background: #10b981;
+        border-color: rgba(255, 255, 255, 0.4);
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
+      }
+    }
   }
 
   &__info {

@@ -40,7 +40,14 @@ export default function WishlistPage() {
                         Chargement de votre liste de souhaits...
                     </div>
                 ) : books.length > 0 ? (
-                    <BookList books={books} />
+                    <BookList
+                        books={books}
+                        onBookStatusChange={(bookId, newStatus) => {
+                            if (newStatus !== "WISHLISTED") {
+                                setBooks((prev) => prev.filter((b) => b.id !== bookId));
+                            }
+                        }}
+                    />
                 ) : (
                     <div style={{
                         display: "flex",

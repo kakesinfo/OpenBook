@@ -101,7 +101,7 @@ public class UserController {
         BookSummaryDTO dto = new BookSummaryDTO();
         dto.setId(book.getId());
         dto.setTitle(book.getTitle());
-        dto.setVolume(book.getVolume());
+        dto.setVolume(book.getSeries() != null ? book.getVolume() : null);
         dto.setPrice(book.getPrice());
         if (book.getReleaseDate() != null) {
             dto.setReleaseDate(book.getReleaseDate().toString());
@@ -812,7 +812,11 @@ public class UserController {
         return repositoryService.getUserOwnsBooksRepository()
                 .findAllByUserIdAndStatus(user.getId(), UserOwnsBookStatus.WISHLISTED.name())
                 .stream()
-                .map(entity -> entityToSummaryDTO(entity.getBook()))
+                .map(entity -> {
+                    BookSummaryDTO dto = entityToSummaryDTO(entity.getBook());
+                    dto.setStatus(UserOwnsBookStatus.WISHLISTED.name());
+                    return dto;
+                })
                 .toList();
     }
 
