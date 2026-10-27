@@ -6,6 +6,7 @@ import fr.openbook.api.entities.SeriesEntity;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import fr.openbook.api.dtos.PageDTO;
 import fr.openbook.api.entities.SeriesHasThemeEntity;
 import fr.openbook.api.dtos.BookHasAuthorDTO;
@@ -22,6 +23,7 @@ import fr.openbook.api.services.CollectionService;
 import fr.openbook.api.services.EditorService;
 import fr.openbook.api.services.RepositoryService;
 import fr.openbook.api.services.SeriesService;
+import fr.openbook.api.services.media.MediaServiceClient;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -50,6 +53,7 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -59,6 +63,7 @@ import java.util.stream.Collectors;
 public class BookController {
 
     private final RepositoryService repositoryService;
+    private final MediaServiceClient mediaServiceClient;
 
     private UserEntity getAuthenticatedUser(HttpSession session) {
         if (session != null) {
@@ -548,5 +553,96 @@ public class BookController {
 
         book = repositoryService.getBookRepository().save(book);
         return entityToDTO(book, user, true, true, true, true, true);
+    }
+
+    private void cleanupOldCoverIfUnused(String oldCoverUrl, Long bookId) {
+        if (oldCoverUrl == null || oldCoverUrl.isBlank()) {
+            return;
+        }
+        String trimmed = oldCoverUrl.trim();
+        if (trimmed.toLowerCase().startsWith("http://") || trimmed.toLowerCase().startsWith("https://")) {
+            return;
+        }
+        long count = repositoryService.getBookRepository().countByCoverUrlAndIdNot(trimmed, bookId);
+        if (count == 0) {
+            mediaServiceClient.deleteImage(trimmed);
+        }
+    }
+
+    @PostMapping(value = "/{id}/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public BookDTO uploadBookCover(
+            HttpSession session,
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file
+    ) {
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Aucun fichier image fourni");
+        }
+
+        UserEntity user = getAuthenticatedUser(session);
+        BookEntity book = repositoryService.getBookRepository().findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Album introuvable"));
+
+        try {
+            String oldCover = book.getCoverUrl();
+            String newCoverUuid = mediaServiceClient.createVirtualImage();
+            mediaServiceClient.uploadImage(newCoverUuid, file.getBytes(), file.getContentType());
+
+            book.setCoverUrl(newCoverUuid);
+            book = repositoryService.getBookRepository().save(book);
+
+            if (oldCover != null && !oldCover.equals(newCoverUuid)) {
+                cleanupOldCoverIfUnused(oldCover, book.getId());
+            }
+
+            return entityToDTO(book, user, true, true, true, true, true);
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Erreur lors de l'envoi de l'image au service média : " + e.getMessage());
+        }
+    }
+
+    @PutMapping(value = "/{id}/cover", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public BookDTO updateBookCoverByUrlOrId(
+            HttpSession session,
+            @PathVariable Long id,
+            @RequestBody Map<String, String> payload
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        BookEntity book = repositoryService.getBookRepository().findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Album introuvable"));
+
+        String remoteUrl = payload != null ? payload.get("url") : null;
+        String coverId = payload != null ? payload.get("coverId") : null;
+
+        if ((remoteUrl == null || remoteUrl.isBlank()) && (coverId == null || coverId.isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Veuillez fournir une URL ('url') ou un identifiant d'image ('coverId')");
+        }
+
+        try {
+            String oldCover = book.getCoverUrl();
+            String newCoverUuid;
+
+            if (coverId != null && !coverId.isBlank()) {
+                newCoverUuid = coverId.trim();
+            } else {
+                newCoverUuid = mediaServiceClient.createVirtualImage();
+                mediaServiceClient.uploadRemoteUrl(newCoverUuid, remoteUrl.trim());
+            }
+
+            book.setCoverUrl(newCoverUuid);
+            book = repositoryService.getBookRepository().save(book);
+
+            if (oldCover != null && !oldCover.equals(newCoverUuid)) {
+                cleanupOldCoverIfUnused(oldCover, book.getId());
+            }
+
+            return entityToDTO(book, user, true, true, true, true, true);
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Erreur lors de la récupération de l'image via le service média : " + e.getMessage());
+        }
     }
 }

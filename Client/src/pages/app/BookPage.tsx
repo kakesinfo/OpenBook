@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import BookDTO from "../../dto/Book.dto";
 import SeriesDTO from "../../dto/Series.dto.ts";
 import UserBookTransactionDTO from "../../dto/UserBookTransaction.dto.ts";
@@ -40,6 +40,10 @@ import {
     faCartShopping,
     faStore,
     faNoteSticky,
+    faCamera,
+    faImage,
+    faUpload,
+    faLink,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
@@ -291,6 +295,16 @@ export default function BookPage() {
     const [followProcessing, setFollowProcessing] = useState(false);
     const { enqueueSnackbar } = useSnackbar();
 
+    // Cover update modal states
+    const [coverModalOpen, setCoverModalOpen] = useState(false);
+    const [coverMode, setCoverMode] = useState<"file" | "url">("file");
+    const [coverFile, setCoverFile] = useState<File | null>(null);
+    const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
+    const [coverRemoteUrl, setCoverRemoteUrl] = useState<string>("");
+    const [uploadingCover, setUploadingCover] = useState(false);
+    const [isDraggingCover, setIsDraggingCover] = useState(false);
+    const coverInputRef = useRef<HTMLInputElement | null>(null);
+
     // Series Association Dialog state
     const [seriesModalOpen, setSeriesModalOpen] = useState(false);
     const [seriesListOptions, setSeriesListOptions] = useState<SeriesDTO[]>([]);
@@ -301,6 +315,110 @@ export default function BookPage() {
     const [newSeriesCategory, setNewSeriesCategory] = useState<number>(3);
     const [newSeriesStatus, setNewSeriesStatus] = useState("ON_GOING");
     const [savingSeries, setSavingSeries] = useState(false);
+
+    useEffect(() => {
+        return () => {
+            if (coverPreviewUrl && coverPreviewUrl.startsWith("blob:")) {
+                URL.revokeObjectURL(coverPreviewUrl);
+            }
+        };
+    }, [coverPreviewUrl]);
+
+    const handleOpenCoverModal = () => {
+        setCoverMode("file");
+        setCoverFile(null);
+        if (coverPreviewUrl && coverPreviewUrl.startsWith("blob:")) {
+            URL.revokeObjectURL(coverPreviewUrl);
+        }
+        setCoverPreviewUrl(null);
+        setCoverRemoteUrl("");
+        setIsDraggingCover(false);
+        setCoverModalOpen(true);
+    };
+
+    const handleCloseCoverModal = () => {
+        if (uploadingCover) return;
+        if (coverPreviewUrl && coverPreviewUrl.startsWith("blob:")) {
+            URL.revokeObjectURL(coverPreviewUrl);
+        }
+        setCoverPreviewUrl(null);
+        setCoverFile(null);
+        setCoverRemoteUrl("");
+        setCoverModalOpen(false);
+    };
+
+    const handleSelectCoverFile = (file: File | null) => {
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            enqueueSnackbar("Veuillez sélectionner un fichier image valide (JPG, PNG, WebP...)", { variant: "warning" });
+            return;
+        }
+        if (coverPreviewUrl && coverPreviewUrl.startsWith("blob:")) {
+            URL.revokeObjectURL(coverPreviewUrl);
+        }
+        setCoverFile(file);
+        setCoverPreviewUrl(URL.createObjectURL(file));
+    };
+
+    const handleSaveCover = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!id || uploadingCover) return;
+
+        if (coverMode === "file" && !coverFile) {
+            enqueueSnackbar("Veuillez sélectionner une image depuis votre appareil", { variant: "warning" });
+            return;
+        }
+        if (coverMode === "url" && !coverRemoteUrl.trim()) {
+            enqueueSnackbar("Veuillez saisir l'URL d'une image", { variant: "warning" });
+            return;
+        }
+
+        setUploadingCover(true);
+        try {
+            let response: Response;
+            if (coverMode === "file" && coverFile) {
+                const formData = new FormData();
+                formData.append("file", coverFile);
+                response = await session.customFetch(`/books/${encodeURIComponent(id)}/cover`, {
+                    method: "POST",
+                    body: formData
+                });
+            } else {
+                response = await session.customFetch(`/books/${encodeURIComponent(id)}/cover`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url: coverRemoteUrl.trim() })
+                });
+            }
+
+            if (response.ok) {
+                const updatedBook: BookDTO = await response.json();
+                setBook(updatedBook);
+                enqueueSnackbar("Couverture mise à jour et optimisée !", { variant: "success" });
+                setCoverModalOpen(false);
+                if (coverPreviewUrl && coverPreviewUrl.startsWith("blob:")) {
+                    URL.revokeObjectURL(coverPreviewUrl);
+                }
+                setCoverPreviewUrl(null);
+                setCoverFile(null);
+                setCoverRemoteUrl("");
+            } else {
+                let errMsg = "Impossible de mettre à jour la couverture";
+                try {
+                    const errData = await response.json();
+                    errMsg = errData.message || errData.error || errMsg;
+                } catch {
+                    const text = await response.text().catch(() => "");
+                    if (text) errMsg = text;
+                }
+                enqueueSnackbar(`Erreur : ${errMsg}`, { variant: "error" });
+            }
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur réseau : ${err.message}`, { variant: "error" });
+        } finally {
+            setUploadingCover(false);
+        }
+    };
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -574,7 +692,7 @@ export default function BookPage() {
                 });
                 if (response.ok) {
                     setReadingStatus("UNREAD");
-        fetchTransactions(id);
+                    fetchTransactions(id);
                 }
             } else {
                 const response = await session.customFetch(`/user/readingStatus/${encodeURIComponent(id)}/${encodeURIComponent(newStatus)}`, {
@@ -588,6 +706,10 @@ export default function BookPage() {
             console.error("Reading status update error:", err);
         }
     };
+
+    const currentCoverPreview = coverMode === "file"
+        ? coverPreviewUrl
+        : (coverRemoteUrl.trim().startsWith("http") ? coverRemoteUrl.trim() : null);
 
     return (
         <div className="book-page">
@@ -631,6 +753,15 @@ export default function BookPage() {
                                         <span>{book.title}</span>
                                     </div>
                                 )}
+                                <button
+                                    type="button"
+                                    className="book-page__cover-edit-btn"
+                                    onClick={handleOpenCoverModal}
+                                    title="Changer l'image de couverture de cet album"
+                                >
+                                    <FontAwesomeIcon icon={faCamera} />
+                                    <span>Changer l'image</span>
+                                </button>
                             </div>
 
                             {/* Navigation précédent / suivant le tome dans la série */}
@@ -1351,7 +1482,167 @@ export default function BookPage() {
                 )}
             </div>
 
-                        {/* Series Association Modal */}
+            {/* Cover Update Modal */}
+            <Dialog
+                open={coverModalOpen}
+                onClose={handleCloseCoverModal}
+                PaperProps={{
+                    style: {
+                        backgroundColor: "var(--bg-surface, #1e1e24)",
+                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                        borderRadius: "16px",
+                        maxWidth: "500px",
+                        width: "100%",
+                        padding: "24px",
+                        color: "var(--text-primary)"
+                    }
+                }}
+            >
+                <div className="cover-dialog">
+                    <div className="cover-dialog__header">
+                        <div className="cover-dialog__header-title">
+                            <FontAwesomeIcon icon={faImage} />
+                            <h3>Changer la couverture</h3>
+                        </div>
+                        <button
+                            type="button"
+                            className="cover-dialog__close-btn"
+                            onClick={handleCloseCoverModal}
+                            disabled={uploadingCover}
+                            aria-label="Fermer"
+                        >
+                            <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                    </div>
+
+                    {book && (
+                        <p className="cover-dialog__subtitle">
+                            Choisissez une nouvelle image pour <strong>« {book.title} »</strong>. Elle sera automatiquement redimensionnée et convertie en WebP par <code>service-media</code>.
+                        </p>
+                    )}
+
+                    <div className="cover-dialog__tabs">
+                        <button
+                            type="button"
+                            className={`cover-dialog__tab ${coverMode === "file" ? "cover-dialog__tab--active" : ""}`}
+                            onClick={() => setCoverMode("file")}
+                            disabled={uploadingCover}
+                        >
+                            <FontAwesomeIcon icon={faUpload} />
+                            <span>Fichier local</span>
+                        </button>
+                        <button
+                            type="button"
+                            className={`cover-dialog__tab ${coverMode === "url" ? "cover-dialog__tab--active" : ""}`}
+                            onClick={() => setCoverMode("url")}
+                            disabled={uploadingCover}
+                        >
+                            <FontAwesomeIcon icon={faLink} />
+                            <span>Depuis une URL</span>
+                        </button>
+                    </div>
+
+                    <form className="cover-dialog__form" onSubmit={handleSaveCover}>
+                        {coverMode === "file" ? (
+                            <div
+                                className={`cover-dialog__dropzone ${isDraggingCover ? "cover-dialog__dropzone--dragging" : ""}`}
+                                onClick={() => coverInputRef.current?.click()}
+                                onDragOver={(e) => {
+                                    e.preventDefault();
+                                    setIsDraggingCover(true);
+                                }}
+                                onDragLeave={() => setIsDraggingCover(false)}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    setIsDraggingCover(false);
+                                    const file = e.dataTransfer.files?.[0] || null;
+                                    handleSelectCoverFile(file);
+                                }}
+                            >
+                                <input
+                                    ref={coverInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                                    style={{ display: "none" }}
+                                    onChange={(e) => handleSelectCoverFile(e.target.files?.[0] || null)}
+                                />
+                                <FontAwesomeIcon icon={faUpload} className="cover-dialog__dropzone-icon" />
+                                <span className="cover-dialog__dropzone-title">
+                                    {coverFile ? coverFile.name : "Cliquez ou glissez-déposez une image ici"}
+                                </span>
+                                <span className="cover-dialog__dropzone-hint">
+                                    JPG, PNG, WebP (optimisé automatiquement en WebP)
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faLink} />
+                                    <span>URL de l'image *</span>
+                                </label>
+                                <input
+                                    type="url"
+                                    placeholder="https://exemple.com/couverture.jpg"
+                                    value={coverRemoteUrl}
+                                    onChange={(e) => setCoverRemoteUrl(e.target.value)}
+                                    required
+                                />
+                            </div>
+                        )}
+
+                        <div className="cover-dialog__preview-section">
+                            <div className="cover-dialog__preview-col">
+                                <span className="cover-dialog__preview-label">Actuelle</span>
+                                <div className="cover-dialog__preview-box">
+                                    {book?.coverUrl ? (
+                                        <img src={book.coverUrl} alt="Couverture actuelle" />
+                                    ) : (
+                                        <div className="cover-dialog__preview-empty">
+                                            <FontAwesomeIcon icon={faBook} />
+                                            <span>Aucune</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="cover-dialog__preview-col">
+                                <span className="cover-dialog__preview-label">Nouvelle</span>
+                                <div className="cover-dialog__preview-box cover-dialog__preview-box--new">
+                                    {currentCoverPreview ? (
+                                        <img src={currentCoverPreview} alt="Aperçu nouvelle couverture" />
+                                    ) : (
+                                        <div className="cover-dialog__preview-empty">
+                                            <FontAwesomeIcon icon={faImage} />
+                                            <span>Aperçu</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="tx-dialog__actions">
+                            <button
+                                type="button"
+                                className="tx-dialog__btn-cancel"
+                                onClick={handleCloseCoverModal}
+                                disabled={uploadingCover}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={uploadingCover || (coverMode === "file" ? !coverFile : !coverRemoteUrl.trim())}
+                                className="tx-dialog__btn-submit tx-dialog__btn-submit--bought"
+                            >
+                                <FontAwesomeIcon icon={faCheck} />
+                                <span>{uploadingCover ? "Envoi vers service-media..." : "Enregistrer la couverture"}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </Dialog>
+
+            {/* Series Association Modal */}
             <Dialog
                 open={seriesModalOpen}
                 onClose={() => setSeriesModalOpen(false)}
@@ -1903,4 +2194,3 @@ export default function BookPage() {
         </div>
     );
 }
-

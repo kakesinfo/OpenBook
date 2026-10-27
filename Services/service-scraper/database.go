@@ -832,11 +832,21 @@ func (d *Database) UpsertBook(book *scrapers.ScrapedBook) *int {
 		}
 	}
 
-	storedCover := OptimizeCoverToMediaService(book.CoverURL)
-
 	if bookID != nil {
 		if parentBookID != nil && *parentBookID == *bookID {
 			parentBookID = nil
+		}
+
+		var existingCover string
+		_ = tx.QueryRow("SELECT COALESCE(cover_url, '') FROM book WHERE id = $1;", *bookID).Scan(&existingCover)
+		existingCover = strings.TrimSpace(existingCover)
+
+		var storedCover string
+		if existingCover == "" || strings.HasPrefix(strings.ToLower(existingCover), "http") {
+			storedCover = OptimizeCoverToMediaService(book.CoverURL)
+		} else {
+			// Preserve existing UUID cover in service-media (never overwrite custom covers)
+			storedCover = existingCover
 		}
 
 		_, err = tx.Exec(`
@@ -887,6 +897,7 @@ func (d *Database) UpsertBook(book *scrapers.ScrapedBook) *int {
 			}
 		}
 	} else {
+		storedCover := OptimizeCoverToMediaService(book.CoverURL)
 		if cleanISBN != "" {
 			var existingID int
 			if err := tx.QueryRow("SELECT id FROM book WHERE isbn = $1;", cleanISBN).Scan(&existingID); err == nil {

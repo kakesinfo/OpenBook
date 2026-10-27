@@ -83,4 +83,19 @@ public class MediaServiceClient {
 
         return restTemplate.getForEntity(url.toString(), byte[].class);
     }
+
+    /**
+     * Delete an image from the media microservice.
+     */
+    public void deleteImage(String id) {
+        if (id == null || id.isBlank()) {
+            return;
+        }
+        try {
+            String url = mediaServiceUrl + "/images/" + id.trim();
+            restTemplate.delete(url);
+        } catch (Exception e) {
+            log.warn("Could not delete image {} from media service: {}", id, e.getMessage());
+        }
+    }
 }

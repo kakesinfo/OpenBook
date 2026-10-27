@@ -39,6 +39,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/auth/login").permitAll()
                 .requestMatchers("/auth/logout").permitAll()
                 .requestMatchers("/auth/register").permitAll()
+                .requestMatchers("/error").permitAll()
                 .requestMatchers(HttpMethod.GET, "/user/avatar/**").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/user/avatar/**").permitAll()
                 .requestMatchers("/images/**").permitAll()

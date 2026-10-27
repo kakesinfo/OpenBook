@@ -86,4 +86,6 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
     List<BookEntity> findAllBySeriesId(Integer seriesId);
 
     List<BookEntity> findAllBySeriesIdOrderByVolumeAscIdAsc(Integer seriesId);
+
+    long countByCoverUrlAndIdNot(String coverUrl, Long id);
 }

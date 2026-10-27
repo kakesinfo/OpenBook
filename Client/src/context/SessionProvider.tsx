@@ -188,7 +188,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                 credentials: "include"
             });
 
-            if (response.status === 401 || response.status === 403) {
+            if (response.status === 401) {
                 clearLocalSession();
             }
 
