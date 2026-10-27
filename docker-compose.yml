@@ -68,6 +68,7 @@ services:
     environment:
       MEDIA_SERVICE_URL: http://project-media:5002
       MEDIA_PUBLIC_URL: http://localhost:8080/images
+      IMPORT_SERVICE_URL: http://project-import:5003
     volumes:
       - ./Services/service-api:/usr/src/app
       - ./Cache/service-api/.m2:/root/.m2
@@ -114,4 +115,27 @@ services:
       - ./Services/service-scraper:/usr/src/app
     ports:
       - "5001:5001"
+    working_dir: /usr/src/app
+
+  # Run import microservice (Go)
+  project-import:
+    container_name: project-import
+    build:
+      context: ./Services/service-import
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      project-liquibase:
+        condition: service_completed_successfully
+      project-media:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://strapi:strapi@project-postgres:5432/strapi?sslmode=disable
+      MEDIA_SERVICE_URL: http://project-media:5002
+      PORT: 5003
+      MAX_MEDIA_CONCURRENCY: 8
+    volumes:
+      - ./Services/service-import:/usr/src/app
+    ports:
+      - "5003:5003"
     working_dir: /usr/src/app

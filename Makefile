@@ -10,6 +10,9 @@ up-backend:
 up-scraper:
 	docker compose up --force-recreate --build -d project-scraper
 
+up-import:
+	docker compose up --force-recreate --build -d project-import
+
 up-liquibase:
 	docker compose up --force-recreate --build -d project-liquibase
 
@@ -38,4 +41,4 @@ fclean:
 
 re: down fclean up
 
-.PHONY: up up-frontend up-backend up-scraper up-liquibase up-postgres scrape-now scrape-full scrape-repair scraper-status down fclean re
+.PHONY: up up-frontend up-backend up-scraper up-import up-liquibase up-postgres scrape-now scrape-full scrape-repair scraper-status down fclean re

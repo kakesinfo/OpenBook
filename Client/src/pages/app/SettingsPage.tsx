@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from "react";
 import { enqueueSnackbar } from "notistack";
 import { useNavigate } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -12,7 +12,15 @@ import {
     faCamera,
     faTriangleExclamation,
     faXmark,
-    faCircleNotch
+    faCircleNotch,
+    faFileImport,
+    faCloudArrowUp,
+    faBook,
+    faClock,
+    faReceipt,
+    faCircleCheck,
+    faInfoCircle,
+    faArrowsRotate
 } from "@fortawesome/free-solid-svg-icons";
 
 import useSession from "../../hooks/UseSession.tsx";
@@ -21,6 +29,20 @@ import UserAvatar from "../../components/UserAvatar/UserAvatar.tsx";
 import "./SettingsPage.scss";
 
 const REQUIRED_DELETE_PHRASE = "Je veux supprimer mon compte";
+
+interface ImportJobStatus {
+    id: string;
+    user_id: number;
+    status: "pending" | "processing" | "completed" | "failed";
+    total_books: number;
+    processed_books: number;
+    created_books: number;
+    updated_books: number;
+    imported_purchases: number;
+    imported_reading_sessions: number;
+    current_step: string;
+    errors: string[];
+}
 
 export default function SettingsPage() {
     const session = useSession();
@@ -53,6 +75,11 @@ export default function SettingsPage() {
     const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
     const [deleteSaving, setDeleteSaving] = useState(false);
 
+    // Import state
+    const [importing, setImporting] = useState(false);
+    const [importJob, setImportJob] = useState<ImportJobStatus | null>(null);
+    const importPollingRef = useRef<number | null>(null);
+
     // Fetch initial profile
     useEffect(() => {
         if (session.user) {
@@ -72,6 +99,15 @@ export default function SettingsPage() {
                 console.error("Error fetching user profile:", err);
             });
     }, [session]);
+
+    // Clean up polling timer
+    useEffect(() => {
+        return () => {
+            if (importPollingRef.current) {
+                clearInterval(importPollingRef.current);
+            }
+        };
+    }, []);
 
     // Handle File Upload with Security Analysis
     const handleFileUpload = async (file: File) => {
@@ -202,6 +238,84 @@ export default function SettingsPage() {
             enqueueSnackbar("Erreur de connexion.", { variant: "error" });
         } finally {
             setProfileSaving(false);
+        }
+    };
+
+    // Bookmory Import Handler
+    const handleBookmoryFileSelected = async (file: File) => {
+        const lower = file.name.toLowerCase();
+        if (!lower.endsWith(".bookmory") && !lower.endsWith(".zip")) {
+            enqueueSnackbar("Format non valide : veuillez sélectionner un fichier .bookmory", { variant: "error" });
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        setImporting(true);
+        setImportJob(null);
+
+        try {
+            const resp = await session.customFetch("/user/import/bookmory", {
+                method: "POST",
+                body: formData
+            });
+
+            if (!resp.ok) {
+                const errText = await resp.text().catch(() => "");
+                let msg = "Erreur lors de l'envoi de l'archive.";
+                try {
+                    const parsed = JSON.parse(errText);
+                    msg = parsed.error || parsed.message || errText;
+                } catch {
+                    if (errText) msg = errText;
+                }
+                enqueueSnackbar(msg, { variant: "error" });
+                setImporting(false);
+                return;
+            }
+
+            const data = await resp.json();
+            const initialJob = data.job;
+            if (!initialJob || !initialJob.id) {
+                enqueueSnackbar("Réponse inattendue du service d'import.", { variant: "error" });
+                setImporting(false);
+                return;
+            }
+
+            setImportJob(initialJob);
+
+            // Poll status
+            if (importPollingRef.current) clearInterval(importPollingRef.current);
+            importPollingRef.current = setInterval(async () => {
+                try {
+                    const sResp = await session.customFetch(`/user/import/status/${initialJob.id}`, { method: "GET" });
+                    if (sResp.ok) {
+                        const updatedJob: ImportJobStatus = await sResp.json();
+                        setImportJob(updatedJob);
+
+                        if (updatedJob.status === "completed") {
+                            if (importPollingRef.current) clearInterval(importPollingRef.current);
+                            setImporting(false);
+                            enqueueSnackbar(
+                                `Importation Bookmory réussie ! (${updatedJob.created_books} créés, ${updatedJob.updated_books} mis à jour, ${updatedJob.imported_purchases} achats, ${updatedJob.imported_reading_sessions} temps de lecture)`,
+                                { variant: "success", autoHideDuration: 6000 }
+                            );
+                        } else if (updatedJob.status === "failed") {
+                            if (importPollingRef.current) clearInterval(importPollingRef.current);
+                            setImporting(false);
+                            enqueueSnackbar("L'importation de la sauvegarde a échoué.", { variant: "error" });
+                        }
+                    }
+                } catch (pollErr) {
+                    console.error("Error polling import status:", pollErr);
+                }
+            }, 800);
+
+        } catch (err) {
+            console.error("Bookmory import error:", err);
+            enqueueSnackbar("Erreur réseau lors de l'importation.", { variant: "error" });
+            setImporting(false);
         }
     };
 
@@ -481,7 +595,152 @@ export default function SettingsPage() {
                     </div>
                 </section>
 
-                {/* Section 2: Zone Danger */}
+                {/* Section 2: Import Bookmory */}
+                <section className="settings-card settings-import-card">
+                    <header className="settings-card__header">
+                        <div className="settings-card__header-title">
+                            <div className="settings-card__icon settings-card__icon--import">
+                                <FontAwesomeIcon icon={faFileImport} />
+                            </div>
+                            <div>
+                                <h3>Import de sauvegarde Bookmory</h3>
+                                <p className="settings-card__header-desc">
+                                    Importez vos albums, couvertures, données d'achat et temps de lecture depuis un fichier .bookmory
+                                </p>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="settings-card__body">
+                        <div className="import-info-box">
+                            <div className="import-info-box__icon">
+                                <FontAwesomeIcon icon={faInfoCircle} />
+                            </div>
+                            <div className="import-info-box__text">
+                                <p><strong>Règles d'importation :</strong></p>
+                                <ul>
+                                    <li><strong>Albums existants :</strong> mise à jour de la couverture et des informations si différentes.</li>
+                                    <li><strong>Nouveaux albums :</strong> création automatique avec métadonnées et couvertures de la sauvegarde.</li>
+                                    <li><strong>Données d'achat :</strong> prix, date d'acquisition, lieu d'achat et mémo importés dans vos transactions.</li>
+                                    <li><strong>Temps de lecture :</strong> sessions et durées chronométrées intégrées dans votre historique de lecture.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div className="import-action-zone">
+                            <label className={`import-dropzone ${importing ? "import-dropzone--disabled" : ""}`}>
+                                <div className="import-dropzone__icon">
+                                    {importing ? (
+                                        <FontAwesomeIcon icon={faCircleNotch} spin />
+                                    ) : (
+                                        <FontAwesomeIcon icon={faCloudArrowUp} />
+                                    )}
+                                </div>
+                                <div className="import-dropzone__text">
+                                    <span className="import-dropzone__title">
+                                        {importing ? "Importation en cours..." : "Sélectionner une sauvegarde .bookmory"}
+                                    </span>
+                                    <span className="import-dropzone__subtitle">
+                                        Fichiers acceptés : <strong>.bookmory</strong> (ou archive zip)
+                                    </span>
+                                </div>
+                                <input
+                                    type="file"
+                                    accept=".bookmory,.zip"
+                                    disabled={importing}
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files.length > 0) {
+                                            handleBookmoryFileSelected(e.target.files[0]);
+                                            e.target.value = "";
+                                        }
+                                    }}
+                                />
+                            </label>
+                        </div>
+
+                        {/* Live progress during import */}
+                        {importing && importJob && (
+                            <div className="import-progress-card">
+                                <div className="import-progress-card__header">
+                                    <span className="import-progress-card__step">
+                                        <FontAwesomeIcon icon={faArrowsRotate} spin /> {importJob.current_step}
+                                    </span>
+                                    <span className="import-progress-card__count">
+                                        {importJob.processed_books} / {importJob.total_books || "?"} albums
+                                    </span>
+                                </div>
+                                <div className="import-progress-bar">
+                                    <div
+                                        className="import-progress-bar__fill"
+                                        style={{
+                                            width: `${importJob.total_books > 0 ? Math.round((importJob.processed_books / importJob.total_books) * 100) : 10}%`
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Completed Job Statistics */}
+                        {!importing && importJob && importJob.status === "completed" && (
+                            <div className="import-results-card">
+                                <div className="import-results-card__header">
+                                    <FontAwesomeIcon icon={faCircleCheck} className="import-results-card__check" />
+                                    <span>Importation réussie avec succès !</span>
+                                </div>
+                                <div className="import-stats-grid">
+                                    <div className="import-stat-item import-stat-item--green">
+                                        <FontAwesomeIcon icon={faBook} />
+                                        <div className="import-stat-item__content">
+                                            <span className="import-stat-item__num">{importJob.created_books}</span>
+                                            <span className="import-stat-item__label">Nouveaux albums créés</span>
+                                        </div>
+                                    </div>
+                                    <div className="import-stat-item import-stat-item--blue">
+                                        <FontAwesomeIcon icon={faBook} />
+                                        <div className="import-stat-item__content">
+                                            <span className="import-stat-item__num">{importJob.updated_books}</span>
+                                            <span className="import-stat-item__label">Albums mis à jour</span>
+                                        </div>
+                                    </div>
+                                    <div className="import-stat-item import-stat-item--amber">
+                                        <FontAwesomeIcon icon={faReceipt} />
+                                        <div className="import-stat-item__content">
+                                            <span className="import-stat-item__num">{importJob.imported_purchases}</span>
+                                            <span className="import-stat-item__label">Achats importés</span>
+                                        </div>
+                                    </div>
+                                    <div className="import-stat-item import-stat-item--purple">
+                                        <FontAwesomeIcon icon={faClock} />
+                                        <div className="import-stat-item__content">
+                                            <span className="import-stat-item__num">{importJob.imported_reading_sessions}</span>
+                                            <span className="import-stat-item__label">Temps de lecture importés</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Errors summary if failed or warnings */}
+                        {importJob && importJob.errors && importJob.errors.length > 0 && (
+                            <div className="import-errors-box">
+                                <div className="import-errors-box__title">
+                                    <FontAwesomeIcon icon={faTriangleExclamation} />
+                                    <span>{importJob.errors.length} avertissement(s) lors de l'import :</span>
+                                </div>
+                                <ul>
+                                    {importJob.errors.slice(0, 5).map((err, idx) => (
+                                        <li key={idx}>{err}</li>
+                                    ))}
+                                    {importJob.errors.length > 5 && (
+                                        <li>... et {importJob.errors.length - 5} autre(s)</li>
+                                    )}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+                {/* Section 3: Zone Danger */}
                 <section className="settings-danger-card">
                     <header className="settings-card__header">
                         <div className="settings-card__header-title">
@@ -577,7 +836,7 @@ export default function SettingsPage() {
             {/* Popup / Modal 1: Changer d'email */}
             {isEmailModalOpen && (
                 <div className="settings-modal-backdrop" onClick={() => setIsEmailModalOpen(false)}>
-                    <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="settings-modal" onClick={(e) => e.stopPropagation()}>\
                         <header className="settings-modal__header">
                             <div className="settings-modal__title">
                                 <FontAwesomeIcon icon={faEnvelope} />
@@ -812,10 +1071,10 @@ export default function SettingsPage() {
                                 <button
                                     type="submit"
                                     className="settings-btn settings-btn--danger"
-                                    disabled={deleteSaving || deleteConfirmationText !== REQUIRED_DELETE_PHRASE || !deletePassword}
+                                    disabled={deleteSaving}
                                 >
-                                    <FontAwesomeIcon icon={deleteSaving ? faCircleNotch : faTrashCan} spin={deleteSaving} />
-                                    <span>{deleteSaving ? "Suppression en cours..." : "Supprimer définitivement mon compte"}</span>
+                                    <FontAwesomeIcon icon={deleteSaving ? faCircleNotch : faCheck} spin={deleteSaving} />
+                                    <span>{deleteSaving ? "Suppression en cours..." : "Confirmer la suppression définitive"}</span>
                                 </button>
                             </footer>
                         </form>
