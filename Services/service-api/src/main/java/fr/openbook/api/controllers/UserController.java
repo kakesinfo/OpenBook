@@ -36,6 +36,9 @@ import fr.openbook.api.dtos.stats.AuthorHighlightDTO;
 import fr.openbook.api.dtos.stats.BookHighlightDTO;
 import fr.openbook.api.dtos.stats.CategoryStatDTO;
 import fr.openbook.api.dtos.stats.CountryStatDTO;
+import fr.openbook.api.dtos.stats.PublisherStatDTO;
+import fr.openbook.api.dtos.stats.DecadeStatDTO;
+import java.time.ZoneId;
 import fr.openbook.api.dtos.user.UpdateEmailRequestDTO;
 import fr.openbook.api.dtos.user.UpdatePasswordRequestDTO;
 import fr.openbook.api.dtos.user.UpdateProfileRequestDTO;
@@ -998,15 +1001,30 @@ public class UserController {
         stats.setTotalWishlistBooks(wishlistEntities.size());
 
         if (ownedEntities.isEmpty()) {
+            stats.setTotalSeriesCount(0);
+            stats.setCompletedSeriesCount(0);
             stats.setTotalPages(0);
             stats.setTotalHeightMeters(0.0);
             stats.setTotalWeightKg(0.0);
             stats.setTotalEstimatedValue(0);
+            stats.setAveragePrice(0.0);
+            stats.setAveragePagesPerBook(0);
+            stats.setBooksReadCount(0);
+            stats.setBooksReadingCount(0);
+            stats.setBooksToReadCount(0);
+            stats.setBooksUnreadCount(0);
+            stats.setBooksAbandonedCount(0);
+            stats.setReadingProgressPercentage(0.0);
+            stats.setTotalLoggedReadingMinutes(0);
+            stats.setTotalReadingSessionsCount(0);
             stats.setHeightComparison("Votre pile est encore vide. Ajoutez vos premiers livres à votre collection !");
             stats.setWeightComparison("Votre bibliothèque est légère comme une plume !");
             stats.setCategoryBreakdown(new ArrayList<>());
             stats.setTotalCountriesCount(0);
             stats.setCountries(new ArrayList<>());
+            stats.setTopAuthors(new ArrayList<>());
+            stats.setTopPublishers(new ArrayList<>());
+            stats.setPublicationDecades(new ArrayList<>());
             return stats;
         }
 
@@ -1014,14 +1032,29 @@ public class UserController {
         int totalThicknessMm = 0;
         int totalWeightG = 0;
         int totalValue = 0;
+        int pricedBooksCount = 0;
 
         Map<String, Integer> categoryCounts = new LinkedHashMap<>();
         Map<String, Integer> countryCounts = new HashMap<>();
         Map<String, Integer> authorCounts = new HashMap<>();
         Map<String, Integer> publisherCounts = new HashMap<>();
+        Map<Integer, Integer> seriesOwnedCount = new HashMap<>();
+        Map<Integer, SeriesEntity> seriesMap = new HashMap<>();
+        Map<String, Integer> decadeCounts = new LinkedHashMap<>();
+
+        decadeCounts.put("Avant 1980", 0);
+        decadeCounts.put("1980 - 1989", 0);
+        decadeCounts.put("1990 - 1999", 0);
+        decadeCounts.put("2000 - 2009", 0);
+        decadeCounts.put("2010 - 2019", 0);
+        decadeCounts.put("2020+", 0);
 
         BookEntity oldestBookEntity = null;
         BookEntity newestBookEntity = null;
+        BookEntity thickestBookEntity = null;
+        BookEntity mostValuableBookEntity = null;
+        int maxPages = 0;
+        int maxPrice = 0;
 
         for (UserOwnsBookEntity uob : ownedEntities) {
             BookEntity book = uob.getBook();
@@ -1035,15 +1068,25 @@ public class UserController {
             }
             categoryCounts.put(category, categoryCounts.getOrDefault(category, 0) + 1);
 
-            if (book.getEditor() != null && book.getEditor().getName() != null) {
-                String edName = book.getEditor().getName();
+            if (book.getEditor() != null && book.getEditor().getName() != null && !book.getEditor().getName().isBlank()) {
+                String edName = book.getEditor().getName().trim();
                 publisherCounts.put(edName, publisherCounts.getOrDefault(edName, 0) + 1);
+            }
+
+            if (book.getSeries() != null && book.getSeries().getId() != null) {
+                seriesOwnedCount.put(book.getSeries().getId(), seriesOwnedCount.getOrDefault(book.getSeries().getId(), 0) + 1);
+                seriesMap.putIfAbsent(book.getSeries().getId(), book.getSeries());
             }
 
             int pages = (book.getPageCount() != null && book.getPageCount() > 0)
                     ? book.getPageCount()
                     : getDefaultPages(category);
             totalPages += pages;
+
+            if (pages > maxPages) {
+                maxPages = pages;
+                thickestBookEntity = book;
+            }
 
             int thickness = (book.getThickness() != null && book.getThickness() > 0)
                     ? book.getThickness()
@@ -1057,6 +1100,11 @@ public class UserController {
 
             if (book.getPrice() != null && book.getPrice() > 0) {
                 totalValue += book.getPrice();
+                pricedBooksCount++;
+                if (book.getPrice() > maxPrice) {
+                    maxPrice = book.getPrice();
+                    mostValuableBookEntity = book;
+                }
             }
 
             if (book.getReleaseDate() != null) {
@@ -1066,13 +1114,30 @@ public class UserController {
                 if (newestBookEntity == null || book.getReleaseDate().isAfter(newestBookEntity.getReleaseDate())) {
                     newestBookEntity = book;
                 }
+
+                int year = book.getReleaseDate().atZone(ZoneId.of("UTC")).getYear();
+                if (year < 1980) {
+                    decadeCounts.put("Avant 1980", decadeCounts.get("Avant 1980") + 1);
+                } else if (year < 1990) {
+                    decadeCounts.put("1980 - 1989", decadeCounts.get("1980 - 1989") + 1);
+                } else if (year < 2000) {
+                    decadeCounts.put("1990 - 1999", decadeCounts.get("1990 - 1999") + 1);
+                } else if (year < 2010) {
+                    decadeCounts.put("2000 - 2009", decadeCounts.get("2000 - 2009") + 1);
+                } else if (year < 2020) {
+                    decadeCounts.put("2010 - 2019", decadeCounts.get("2010 - 2019") + 1);
+                } else {
+                    decadeCounts.put("2020+", decadeCounts.get("2020+") + 1);
+                }
             }
 
             if (book.getBookHasAuthors() != null) {
                 for (var bha : book.getBookHasAuthors()) {
                     if (bha.getAuthor() != null) {
                         String authorName = (bha.getAuthor().getFirstname() + " " + bha.getAuthor().getLastname()).trim();
-                        authorCounts.put(authorName, authorCounts.getOrDefault(authorName, 0) + 1);
+                        if (!authorName.isBlank()) {
+                            authorCounts.put(authorName, authorCounts.getOrDefault(authorName, 0) + 1);
+                        }
                     }
                 }
             }
@@ -1084,17 +1149,80 @@ public class UserController {
             countryCounts.put(cCode.toUpperCase(), countryCounts.getOrDefault(cCode.toUpperCase(), 0) + 1);
         }
 
+        int totalOwned = ownedEntities.size();
         stats.setTotalPages(totalPages);
         double heightM = Math.round((totalThicknessMm / 1000.0) * 100.0) / 100.0;
         double weightKg = Math.round((totalWeightG / 1000.0) * 10.0) / 10.0;
         stats.setTotalHeightMeters(heightM);
         stats.setTotalWeightKg(weightKg);
         stats.setTotalEstimatedValue(totalValue);
+        stats.setAveragePrice(pricedBooksCount > 0 ? Math.round((totalValue * 1.0 / pricedBooksCount) * 100.0) / 100.0 : 0.0);
+        stats.setAveragePagesPerBook(totalOwned > 0 ? (int) Math.round((double) totalPages / totalOwned) : 0);
 
+        stats.setTotalSeriesCount(seriesMap.size());
+        int completedSeries = 0;
+        for (var entry : seriesOwnedCount.entrySet()) {
+            SeriesEntity se = seriesMap.get(entry.getKey());
+            if (se != null && se.getTotalVolumes() != null && se.getTotalVolumes() > 0 && entry.getValue() >= se.getTotalVolumes()) {
+                completedSeries++;
+            }
+        }
+        stats.setCompletedSeriesCount(completedSeries);
+
+        // Reading status breakdown
+        List<BookStatusEntity> statusEntities = repositoryService.getBookStatusRepository().findAllByUserId(user.getId());
+        Map<Long, String> readingStatuses = new HashMap<>();
+        for (BookStatusEntity bse : statusEntities) {
+            if (bse.getBook() != null) {
+                readingStatuses.put(bse.getBook().getId(), bse.getStatus());
+            }
+        }
+        int readCount = 0;
+        int readingCount = 0;
+        int toReadCount = 0;
+        int unreadCount = 0;
+        int abandonedCount = 0;
+
+        for (UserOwnsBookEntity uob : ownedEntities) {
+            BookEntity book = uob.getBook();
+            if (book == null) continue;
+            String st = readingStatuses.get(book.getId());
+            if (st == null) {
+                unreadCount++;
+            } else {
+                switch (st.toUpperCase()) {
+                    case "READ" -> readCount++;
+                    case "READING" -> readingCount++;
+                    case "TO_READ" -> toReadCount++;
+                    case "ABANDONED" -> abandonedCount++;
+                    default -> unreadCount++;
+                }
+            }
+        }
+        stats.setBooksReadCount(readCount);
+        stats.setBooksReadingCount(readingCount);
+        stats.setBooksToReadCount(toReadCount);
+        stats.setBooksUnreadCount(unreadCount);
+        stats.setBooksAbandonedCount(abandonedCount);
+        double progressPct = totalOwned > 0 ? Math.round((readCount * 100.0 / totalOwned) * 10.0) / 10.0 : 0.0;
+        stats.setReadingProgressPercentage(progressPct);
+
+        // Reading sessions
+        List<ReadingSessionEntity> sessions = repositoryService.getReadingSessionRepository().findAllByUserIdOrderByCreatedAtAsc(user.getId());
+        int totalMinutes = 0;
+        for (ReadingSessionEntity rs : sessions) {
+            if (rs.getMinutesRead() != null) {
+                totalMinutes += rs.getMinutesRead();
+            }
+        }
+        stats.setTotalLoggedReadingMinutes(totalMinutes);
+        stats.setTotalReadingSessionsCount(sessions.size());
+
+        // Keep comparisons populated for DTO compatibility
         stats.setHeightComparison(computeHeightComparison(heightM));
         stats.setWeightComparison(computeWeightComparison(weightKg));
 
-        int totalOwned = ownedEntities.size();
+        // Category breakdown
         List<CategoryStatDTO> categoryList = new ArrayList<>();
         Map<String, String> categoryColors = Map.of(
             "Comics", "#3b82f6",
@@ -1112,6 +1240,7 @@ public class UserController {
         categoryList.sort((a, b) -> Integer.compare(b.getCount(), a.getCount()));
         stats.setCategoryBreakdown(categoryList);
 
+        // Countries
         List<CountryStatDTO> countryList = new ArrayList<>();
         for (var entry : countryCounts.entrySet()) {
             String code = entry.getKey();
@@ -1123,41 +1252,110 @@ public class UserController {
         stats.setCountries(countryList);
         stats.setTotalCountriesCount(countryList.size());
 
-        if (!authorCounts.isEmpty()) {
-            var topEntry = authorCounts.entrySet().stream().max(Map.Entry.comparingByValue()).orElse(null);
-            if (topEntry != null) {
-                stats.setTopAuthor(new AuthorHighlightDTO(topEntry.getKey(), topEntry.getValue(), "Auteur"));
-            }
+        // Authors (Top 5)
+        List<AuthorHighlightDTO> topAuthorsList = new ArrayList<>();
+        var sortedAuthors = authorCounts.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .toList();
+
+        for (int i = 0; i < Math.min(5, sortedAuthors.size()); i++) {
+            var entry = sortedAuthors.get(i);
+            double pct = Math.round((entry.getValue() * 100.0 / totalOwned) * 10.0) / 10.0;
+            topAuthorsList.add(new AuthorHighlightDTO(entry.getKey(), entry.getValue(), "Auteur", pct));
+        }
+        stats.setTopAuthors(topAuthorsList);
+        if (!topAuthorsList.isEmpty()) {
+            stats.setTopAuthor(topAuthorsList.get(0));
         }
 
-        if (!publisherCounts.isEmpty()) {
-            var topPub = publisherCounts.entrySet().stream().max(Map.Entry.comparingByValue()).orElse(null);
-            if (topPub != null) {
-                stats.setTopPublisher(topPub.getKey() + " (" + topPub.getValue() + " livres)");
-            }
+        // Publishers (Top 5)
+        List<PublisherStatDTO> topPubList = new ArrayList<>();
+        var sortedPubs = publisherCounts.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .toList();
+
+        for (int i = 0; i < Math.min(5, sortedPubs.size()); i++) {
+            var entry = sortedPubs.get(i);
+            double pct = Math.round((entry.getValue() * 100.0 / totalOwned) * 10.0) / 10.0;
+            topPubList.add(new PublisherStatDTO(entry.getKey(), entry.getValue(), pct));
+        }
+        stats.setTopPublishers(topPubList);
+        if (!topPubList.isEmpty()) {
+            stats.setTopPublisher(topPubList.get(0).getName() + " (" + topPubList.get(0).getCount() + " livres)");
         }
 
+        // Publication Decades
+        List<DecadeStatDTO> decadeList = new ArrayList<>();
+        for (var entry : decadeCounts.entrySet()) {
+            if (entry.getValue() > 0) {
+                double pct = Math.round((entry.getValue() * 100.0 / totalOwned) * 10.0) / 10.0;
+                decadeList.add(new DecadeStatDTO(entry.getKey(), entry.getValue(), pct));
+            }
+        }
+        stats.setPublicationDecades(decadeList);
+
+        // Oldest & Newest
         if (oldestBookEntity != null) {
             String cat = (oldestBookEntity.getSeries() != null && oldestBookEntity.getSeries().getCategory() != null)
                     ? oldestBookEntity.getSeries().getCategory().getName() : "";
+            int year = oldestBookEntity.getReleaseDate() != null ? oldestBookEntity.getReleaseDate().atZone(ZoneId.of("UTC")).getYear() : 0;
             stats.setOldestBook(new BookHighlightDTO(
                 oldestBookEntity.getId(),
                 oldestBookEntity.getTitle(),
-                oldestBookEntity.getReleaseDate().toString(),
+                oldestBookEntity.getReleaseDate() != null ? oldestBookEntity.getReleaseDate().toString() : "",
                 oldestBookEntity.getCoverUrl(),
-                cat
+                cat,
+                oldestBookEntity.getPageCount(),
+                oldestBookEntity.getPrice(),
+                year > 0 ? "Paru en " + year : ""
             ));
         }
 
         if (newestBookEntity != null) {
             String cat = (newestBookEntity.getSeries() != null && newestBookEntity.getSeries().getCategory() != null)
                     ? newestBookEntity.getSeries().getCategory().getName() : "";
+            int year = newestBookEntity.getReleaseDate() != null ? newestBookEntity.getReleaseDate().atZone(ZoneId.of("UTC")).getYear() : 0;
             stats.setNewestBook(new BookHighlightDTO(
                 newestBookEntity.getId(),
                 newestBookEntity.getTitle(),
-                newestBookEntity.getReleaseDate().toString(),
+                newestBookEntity.getReleaseDate() != null ? newestBookEntity.getReleaseDate().toString() : "",
                 newestBookEntity.getCoverUrl(),
-                cat
+                cat,
+                newestBookEntity.getPageCount(),
+                newestBookEntity.getPrice(),
+                year > 0 ? "Paru en " + year : ""
+            ));
+        }
+
+        // Thickest Book
+        if (thickestBookEntity != null && maxPages > 0) {
+            String cat = (thickestBookEntity.getSeries() != null && thickestBookEntity.getSeries().getCategory() != null)
+                    ? thickestBookEntity.getSeries().getCategory().getName() : "";
+            stats.setThickestBook(new BookHighlightDTO(
+                thickestBookEntity.getId(),
+                thickestBookEntity.getTitle(),
+                thickestBookEntity.getReleaseDate() != null ? thickestBookEntity.getReleaseDate().toString() : "",
+                thickestBookEntity.getCoverUrl(),
+                cat,
+                maxPages,
+                thickestBookEntity.getPrice(),
+                maxPages + " pages"
+            ));
+        }
+
+        // Most Valuable Book
+        if (mostValuableBookEntity != null && maxPrice > 0) {
+            String cat = (mostValuableBookEntity.getSeries() != null && mostValuableBookEntity.getSeries().getCategory() != null)
+                    ? mostValuableBookEntity.getSeries().getCategory().getName() : "";
+            stats.setMostValuableBook(new BookHighlightDTO(
+                mostValuableBookEntity.getId(),
+                mostValuableBookEntity.getTitle(),
+                mostValuableBookEntity.getReleaseDate() != null ? mostValuableBookEntity.getReleaseDate().toString() : "",
+                mostValuableBookEntity.getCoverUrl(),
+                cat,
+                mostValuableBookEntity.getPageCount(),
+                maxPrice,
+                maxPrice + " €"
             ));
         }
 

@@ -4,6 +4,8 @@ import fr.openbook.api.dtos.stats.AuthorHighlightDTO;
 import fr.openbook.api.dtos.stats.BookHighlightDTO;
 import fr.openbook.api.dtos.stats.CategoryStatDTO;
 import fr.openbook.api.dtos.stats.CountryStatDTO;
+import fr.openbook.api.dtos.stats.DecadeStatDTO;
+import fr.openbook.api.dtos.stats.PublisherStatDTO;
 import lombok.Data;
 
 import java.util.List;
@@ -13,12 +15,26 @@ public class UserStatisticsDTO {
     // Totals
     private int totalOwnedBooks;
     private int totalWishlistBooks;
+    private int totalSeriesCount;
+    private int completedSeriesCount;
     private int totalPages;
     private double totalHeightMeters;
     private double totalWeightKg;
     private int totalEstimatedValue;
+    private double averagePrice;
+    private int averagePagesPerBook;
 
-    // Fun comparisons
+    // Reading Status breakdown
+    private int booksReadCount;
+    private int booksReadingCount;
+    private int booksToReadCount; // Pile à lire (PAL)
+    private int booksUnreadCount;
+    private int booksAbandonedCount;
+    private double readingProgressPercentage;
+    private int totalLoggedReadingMinutes;
+    private int totalReadingSessionsCount;
+
+    // Fun comparisons (kept for backwards compatibility)
     private String heightComparison;
     private String weightComparison;
 
@@ -29,9 +45,18 @@ public class UserStatisticsDTO {
     private int totalCountriesCount;
     private List<CountryStatDTO> countries;
 
-    // Highlights
+    // Authors & Publishers
     private AuthorHighlightDTO topAuthor;
+    private List<AuthorHighlightDTO> topAuthors;
+    private String topPublisher;
+    private List<PublisherStatDTO> topPublishers;
+
+    // Publication eras
+    private List<DecadeStatDTO> publicationDecades;
+
+    // Highlights / Records
     private BookHighlightDTO oldestBook;
     private BookHighlightDTO newestBook;
-    private String topPublisher;
+    private BookHighlightDTO thickestBook;
+    private BookHighlightDTO mostValuableBook;
 }

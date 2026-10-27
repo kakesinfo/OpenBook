@@ -14,6 +14,17 @@ public class BookHighlightDTO {
     private String releaseDate;
     private String coverUrl;
     private String category;
+    private Integer pageCount;
+    private Integer price;
+    private String highlightValue;
+
+    public BookHighlightDTO(Long id, String title, String releaseDate, String coverUrl, String category) {
+        this.id = id;
+        this.title = title;
+        this.releaseDate = releaseDate;
+        this.coverUrl = coverUrl;
+        this.category = category;
+    }
 
     public String getCoverUrl() {
         return MediaUrlUtils.formatCoverUrl(this.coverUrl);
