@@ -34,11 +34,14 @@ scraper-status:
 down:
 	docker compose down
 
+restart:
+	docker compose restart
+
 fclean:
 	rm -rf Cache/postgresql-data
 	rm -rf Cache/service-api/.m2
 	rm -rf Services/backend/target
 
-re: down fclean up
+re: down up
 
-.PHONY: up up-frontend up-backend up-scraper up-import up-liquibase up-postgres scrape-now scrape-full scrape-repair scraper-status down fclean re
+.PHONY: up up-frontend up-backend up-scraper up-import up-liquibase up-postgres scrape-now scrape-full scrape-repair scraper-status down restart fclean re

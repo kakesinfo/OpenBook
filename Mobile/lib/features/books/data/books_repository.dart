@@ -9,6 +9,29 @@ class BooksRepository {
 
   final ApiClientNotifier _apiClient;
 
+  static final _uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+
+  static String resolveCoverUrl(String? rawCover, String baseUrl) {
+    final cover = (rawCover ?? '').trim();
+    if (cover.isEmpty) return '';
+
+    if (cover.startsWith('/')) {
+      return '$baseUrl$cover';
+    }
+
+    final uri = Uri.tryParse(cover);
+    if (uri != null && uri.hasScheme && (uri.host == 'localhost' || uri.host == '127.0.0.1')) {
+      final pathWithQuery = uri.hasQuery ? '${uri.path}?${uri.query}' : uri.path;
+      return '$baseUrl$pathWithQuery';
+    }
+
+    if (_uuidRegex.hasMatch(cover)) {
+      return '$baseUrl/images/$cover/blob';
+    }
+
+    return cover;
+  }
+
   Future<List<Book>> getAllBooks() async {
     final response = await _apiClient.get('/user/books');
     if (response.statusCode != 200) {
@@ -34,10 +57,7 @@ class BooksRepository {
   }
 
   Book _bookFromSummary(Map<String, dynamic> item) {
-    var cover = (item['coverUrl'] as String? ?? '').trim();
-    if (cover.isNotEmpty && cover.startsWith('/')) {
-      cover = '${_apiClient.baseUrl}$cover';
-    }
+    final cover = resolveCoverUrl(item['coverUrl'] as String?, _apiClient.baseUrl);
 
     final rawStatus = (item['status'] as String? ?? 'OWNED').toUpperCase();
     final rawReading = (item['readingStatus'] as String? ?? 'UNREAD').toUpperCase();

@@ -77,5 +77,41 @@ void main() {
       final manualBook = Book(title: 'Manual Book', status: BookStatus.unread);
       expect(() => repo.saveBook(manualBook), throwsUnsupportedError);
     });
+
+    test('resolveCoverUrl handles relative, localhost, UUID and remote urls', () {
+      const baseUrl = 'http://192.168.1.100:8080';
+
+      // Relative path
+      expect(
+        BooksRepository.resolveCoverUrl('/images/abc-123/blob', baseUrl),
+        'http://192.168.1.100:8080/images/abc-123/blob',
+      );
+
+      // Localhost / 127.0.0.1 rewrite
+      expect(
+        BooksRepository.resolveCoverUrl('http://localhost:8080/images/abc-123/blob', baseUrl),
+        'http://192.168.1.100:8080/images/abc-123/blob',
+      );
+      expect(
+        BooksRepository.resolveCoverUrl('http://127.0.0.1:8080/images/abc-123/blob', baseUrl),
+        'http://192.168.1.100:8080/images/abc-123/blob',
+      );
+
+      // Raw UUID
+      expect(
+        BooksRepository.resolveCoverUrl('a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d', baseUrl),
+        'http://192.168.1.100:8080/images/a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d/blob',
+      );
+
+      // Remote URL remains unchanged
+      expect(
+        BooksRepository.resolveCoverUrl('https://example.com/cover.jpg', baseUrl),
+        'https://example.com/cover.jpg',
+      );
+
+      // Empty/null
+      expect(BooksRepository.resolveCoverUrl('', baseUrl), '');
+      expect(BooksRepository.resolveCoverUrl(null, baseUrl), '');
+    });
   });
 }

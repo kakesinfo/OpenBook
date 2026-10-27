@@ -2,6 +2,7 @@ services:
   project-postgres:
     container_name: project-postgres
     image: postgres:alpine3.20
+    restart: unless-stopped
     environment:
       POSTGRES_USER: strapi
       POSTGRES_PASSWORD: strapi
@@ -60,6 +61,7 @@ services:
   project-backend:
     container_name: project-backend
     image: maven:3.9-eclipse-temurin-21
+    restart: unless-stopped
     depends_on:
       project-liquibase:
         condition: service_completed_successfully
@@ -67,8 +69,10 @@ services:
         condition: service_started
     environment:
       MEDIA_SERVICE_URL: http://project-media:5002
-      MEDIA_PUBLIC_URL: http://localhost:8080/images
+      MEDIA_PUBLIC_URL: /images
       IMPORT_SERVICE_URL: http://project-import:5003
+      JWT_SECRET_KEY: 3cfa76ef14937c1c0ea519f8fc057a80fcd04a7420f8e8bcd0a7567c272e007b
+      JWT_EXPIRATION_TIME: 2592000000
     volumes:
       - ./Services/service-api:/usr/src/app
       - ./Cache/service-api/.m2:/root/.m2
@@ -81,6 +85,7 @@ services:
   project-frontend:
       container_name: project-frontend
       image: node:20-alpine
+      restart: unless-stopped
       depends_on:
         project-liquibase:
           condition: service_completed_successfully

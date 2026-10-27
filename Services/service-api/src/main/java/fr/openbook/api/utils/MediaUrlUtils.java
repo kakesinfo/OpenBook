@@ -10,9 +10,9 @@ public class MediaUrlUtils {
 
     private static final Pattern UUID_PATTERN = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
-    private static String publicUrl = "http://localhost:8080/images";
+    private static String publicUrl = "/images";
 
-    @Value("${media.public.url:http://localhost:8080/images}")
+    @Value("${media.public.url:/images}")
     public void setPublicUrl(String url) {
         if (url != null && !url.isBlank()) {
             MediaUrlUtils.publicUrl = url.trim().replaceAll("/+$", "");
