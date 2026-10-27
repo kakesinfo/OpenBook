@@ -70,23 +70,23 @@ export default function FloatingActionButton() {
                         <button
                             type="button"
                             className="fab-action-item"
-                            onClick={handleOpenCreateModal}
-                        >
-                            <span className="fab-action-icon">
-                                <FontAwesomeIcon icon={faPenNib} />
-                            </span>
-                            <span className="fab-action-text">Créer un livre manquant</span>
-                        </button>
-
-                        <button
-                            type="button"
-                            className="fab-action-item"
                             onClick={handleOpenAddModal}
                         >
                             <span className="fab-action-icon">
                                 <FontAwesomeIcon icon={faMagnifyingGlass} />
                             </span>
                             <span className="fab-action-text">Ajouter un livre existant</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            className="fab-action-item"
+                            onClick={handleOpenCreateModal}
+                        >
+                            <span className="fab-action-icon">
+                                <FontAwesomeIcon icon={faPenNib} />
+                            </span>
+                            <span className="fab-action-text">Créer un livre manquant</span>
                         </button>
                     </div>
                 )}
