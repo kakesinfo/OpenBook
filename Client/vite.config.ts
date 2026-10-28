@@ -8,7 +8,8 @@ export default defineConfig({
     host: true,
     port: 3000,
     watch: {
-      usePolling: true
+      usePolling: true,
+      interval: 100,
     },
     proxy: {
       '/images': {

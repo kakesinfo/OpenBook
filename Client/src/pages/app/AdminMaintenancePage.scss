@@ -64,8 +64,8 @@
     }
 
     &--series {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
     }
 
     &--editors {
@@ -110,9 +110,9 @@
     animation: fadeIn 0.25s ease-out;
 
     &--success {
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      color: #34d399;
+      background: var(--accent-primary-light);
+      border: 1px solid var(--border-focus);
+      color: var(--accent-primary);
     }
 
     &--error {
@@ -234,14 +234,14 @@
     }
 
     &--all {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
       color: #fff;
-      box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
+      box-shadow: 0 2px 10px var(--accent-primary-glow);
 
       &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+        background: linear-gradient(135deg, var(--accent-primary-hover) 0%, var(--accent-primary) 100%);
         transform: translateY(-1px);
-        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
+        box-shadow: 0 4px 14px var(--accent-primary-glow);
       }
     }
   }
@@ -258,8 +258,8 @@
 
     thead {
       tr {
-        background: rgba(255, 255, 255, 0.03);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--bg-elevated);
+        border-bottom: 1px solid var(--border-subtle);
 
         th {
           padding: 12px 16px;
@@ -275,7 +275,7 @@
 
     tbody {
       tr.admin-maintenance__row {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid var(--border-subtle);
         cursor: pointer;
         transition: background-color 0.15s ease;
 
@@ -284,14 +284,14 @@
         }
 
         &:hover {
-          background: rgba(255, 255, 255, 0.03);
+          background: var(--bg-elevated);
         }
 
         &.is-selected {
-          background: rgba(99, 102, 241, 0.09);
+          background: var(--accent-secondary-light);
 
           &:hover {
-            background: rgba(99, 102, 241, 0.13);
+            background: var(--accent-secondary-light);
           }
         }
 
@@ -326,8 +326,8 @@
     }
 
     &--dedup {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
     }
 
     &--bnf {
@@ -394,9 +394,9 @@
     }
 
     &--success {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
+      border: 1px solid var(--border-focus);
     }
 
     &--error {
@@ -415,14 +415,14 @@
     font-size: 0.825rem;
     font-weight: 600;
     cursor: pointer;
-    background: rgba(255, 255, 255, 0.06);
-    color: #e5e7eb;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
     transition: all var(--transition-fast);
 
     &:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.12);
-      border-color: rgba(255, 255, 255, 0.22);
+      background: var(--bg-card);
+      border-color: var(--border-focus);
       transform: translateY(-1px);
     }
 
@@ -466,9 +466,9 @@
 }
 
 .admin-maintenance__badge--clean {
-  background: rgba(16, 185, 129, 0.18);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: var(--accent-primary-light);
+  color: var(--accent-primary);
+  border: 1px solid var(--accent-primary-glow);
 }
 
 .admin-maintenance__btn-action--refresh {
@@ -507,7 +507,7 @@
 
 .admin-maintenance__empty-icon {
   font-size: 36px;
-  color: #10b981;
+  color: var(--accent-primary);
 }
 
 .admin-maintenance__conflicts-list {

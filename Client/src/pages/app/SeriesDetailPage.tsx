@@ -691,7 +691,7 @@ export default function SeriesDetailPage() {
                                 }}
                             >
                                 {categories.map((c) => (
-                                    <option key={c.id} value={c.id} style={{ background: "#1f2937", color: "#fff" }}>
+                                    <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>
                                         {c.name}
                                     </option>
                                 ))}
@@ -715,10 +715,10 @@ export default function SeriesDetailPage() {
                                     outline: "none"
                                 }}
                             >
-                                <option value="ON_GOING" style={{ background: "#1f2937", color: "#fff" }}>En cours</option>
-                                <option value="FINISHED" style={{ background: "#1f2937", color: "#fff" }}>Terminée</option>
-                                <option value="ANNOUNCED" style={{ background: "#1f2937", color: "#fff" }}>Annoncée</option>
-                                <option value="CANCELLED" style={{ background: "#1f2937", color: "#fff" }}>Annulée</option>
+                                <option value="ON_GOING" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>En cours</option>
+                                <option value="FINISHED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Terminée</option>
+                                <option value="ANNOUNCED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Annoncée</option>
+                                <option value="CANCELLED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Annulée</option>
                             </select>
                         </div>
                     </div>

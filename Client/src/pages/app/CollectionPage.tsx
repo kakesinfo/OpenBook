@@ -410,8 +410,8 @@ export default function CollectionPage() {
                             width: "72px",
                             height: "72px",
                             borderRadius: "50%",
-                            backgroundColor: "rgba(16, 185, 129, 0.1)",
-                            border: "1px solid rgba(16, 185, 129, 0.2)",
+                            backgroundColor: "var(--accent-primary-light)",
+                            border: "1px solid var(--border-focus)",
                             color: "var(--accent-primary)",
                             display: "flex",
                             alignItems: "center",
@@ -436,11 +436,11 @@ export default function CollectionPage() {
                                 height: "42px",
                                 padding: "0 22px",
                                 borderRadius: "var(--radius-full)",
-                                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%)",
                                 color: "#fff",
                                 fontWeight: 600,
                                 fontSize: "0.875rem",
-                                boxShadow: "0 4px 14px 0 rgba(16, 185, 129, 0.35)",
+                                boxShadow: "0 4px 14px 0 var(--accent-primary-glow)",
                                 textDecoration: "none"
                             }}
                         >

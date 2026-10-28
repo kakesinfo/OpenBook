@@ -313,9 +313,9 @@ export default function AdminIndexationPage() {
                         borderRadius: "20px",
                         fontSize: "0.85rem",
                         fontWeight: 600,
-                        background: serverConnected ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.12)",
-                        color: serverConnected ? "#10b981" : "#ef4444",
-                        border: `1px solid ${serverConnected ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"}`
+                        background: serverConnected ? "var(--accent-primary-light)" : "rgba(239, 68, 68, 0.12)",
+                        color: serverConnected ? "var(--accent-primary)" : "#ef4444",
+                        border: `1px solid ${serverConnected ? "var(--border-focus)" : "rgba(239, 68, 68, 0.3)"}`
                     }}>
                         <FontAwesomeIcon icon={serverConnected ? faCircleCheck : faTriangleExclamation} />
                         <span>{serverConnected ? "Microservice Scraper Connecté" : "Microservice Injoignable"}</span>
@@ -333,9 +333,9 @@ export default function AdminIndexationPage() {
                         gap: "10px",
                         fontSize: "0.9rem",
                         fontWeight: 500,
-                        background: triggerMessage.type === "success" ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)",
-                        border: `1px solid ${triggerMessage.type === "success" ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
-                        color: triggerMessage.type === "success" ? "#34d399" : "#f87171"
+                        background: triggerMessage.type === "success" ? "var(--accent-primary-light)" : "rgba(239, 68, 68, 0.15)",
+                        border: `1px solid ${triggerMessage.type === "success" ? "var(--border-focus)" : "rgba(239, 68, 68, 0.3)"}`,
+                        color: triggerMessage.type === "success" ? "var(--accent-primary)" : "#f87171"
                     }}>
                         <FontAwesomeIcon icon={triggerMessage.type === "success" ? faCheck : faTriangleExclamation} />
                         <span>{triggerMessage.text}</span>
@@ -349,13 +349,14 @@ export default function AdminIndexationPage() {
                     gap: "16px"
                 }}>
                     <div style={{
-                        background: "var(--card-bg, #1e1e24)",
-                        border: "1px solid var(--border-color, #2a2a32)",
+                        background: "var(--bg-surface)",
+                        border: "1px solid var(--border-subtle)",
                         borderRadius: "14px",
                         padding: "18px 20px",
                         display: "flex",
                         alignItems: "center",
-                        gap: "16px"
+                        gap: "16px",
+                        boxShadow: "var(--shadow-sm)"
                     }}>
                         <div style={{
                             width: "48px",
@@ -371,30 +372,31 @@ export default function AdminIndexationPage() {
                             <FontAwesomeIcon icon={faBookOpen} />
                         </div>
                         <div>
-                            <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #9ca3af)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+                            <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
                                 Albums indexés
                             </div>
-                            <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text-primary, #fff)" }}>
+                            <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text-primary)" }}>
                                 {totalBooks}
                             </div>
                         </div>
                     </div>
 
                     <div style={{
-                        background: "var(--card-bg, #1e1e24)",
-                        border: "1px solid var(--border-color, #2a2a32)",
+                        background: "var(--bg-surface)",
+                        border: "1px solid var(--border-subtle)",
                         borderRadius: "14px",
                         padding: "18px 20px",
                         display: "flex",
                         alignItems: "center",
-                        gap: "16px"
+                        gap: "16px",
+                        boxShadow: "var(--shadow-sm)"
                     }}>
                         <div style={{
                             width: "48px",
                             height: "48px",
                             borderRadius: "12px",
-                            background: isScanRunning ? "rgba(245, 158, 11, 0.15)" : "rgba(16, 185, 129, 0.15)",
-                            color: isScanRunning ? "#f59e0b" : "#10b981",
+                            background: isScanRunning ? "rgba(245, 158, 11, 0.15)" : "var(--accent-primary-light)",
+                            color: isScanRunning ? "var(--accent-amber)" : "var(--accent-primary)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -403,22 +405,22 @@ export default function AdminIndexationPage() {
                             <FontAwesomeIcon icon={faRotate} spin={isScanRunning || loading} />
                         </div>
                         <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #9ca3af)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+                            <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
                                 État du robot
                             </div>
                             {isScanRunning ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "2px" }}>
-                                    <div style={{ fontSize: "1rem", fontWeight: 700, color: "#f59e0b", display: "flex", alignItems: "center", gap: "6px" }}>
+                                    <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--accent-amber)", display: "flex", alignItems: "center", gap: "6px" }}>
                                         <span>Scan :</span>
                                         <span style={{
-                                            color: liveScan?.current_source_color || "#f59e0b",
+                                            color: liveScan?.current_source_color || "var(--accent-amber)",
                                             fontWeight: 800
                                         }}>
                                             {liveScan?.current_source_name || liveScan?.current_source || "En cours"}
                                         </span>
                                     </div>
-                                    <div style={{ fontSize: "0.85rem", color: "var(--text-muted, #9ca3af)", fontWeight: 500 }}>
-                                        <strong style={{ color: "#fff", fontWeight: 700 }}>{liveScan?.total_found ?? 0}</strong> {((liveScan?.total_found ?? 0) > 1) ? "livres trouvés" : "livre trouvé"}
+                                    <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 500 }}>
+                                        <strong style={{ color: "var(--text-primary)", fontWeight: 700 }}>{liveScan?.total_found ?? 0}</strong> {((liveScan?.total_found ?? 0) > 1) ? "livres trouvés" : "livre trouvé"}
                                     </div>
                                 </div>
                             ) : liveScan?.last_error ? (
@@ -431,7 +433,7 @@ export default function AdminIndexationPage() {
                                     </div>
                                 </div>
                             ) : (
-                                <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#10b981", marginTop: "2px" }}>
+                                <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--accent-primary)", marginTop: "2px" }}>
                                     En veille (Prêt)
                                 </div>
                             )}
@@ -439,13 +441,14 @@ export default function AdminIndexationPage() {
                     </div>
 
                     <div style={{
-                        background: "var(--card-bg, #1e1e24)",
-                        border: "1px solid var(--border-color, #2a2a32)",
+                        background: "var(--bg-surface)",
+                        border: "1px solid var(--border-subtle)",
                         borderRadius: "14px",
                         padding: "18px 20px",
                         display: "flex",
                         alignItems: "center",
-                        gap: "16px"
+                        gap: "16px",
+                        boxShadow: "var(--shadow-sm)"
                     }}>
                         <div style={{
                             width: "48px",
@@ -461,23 +464,24 @@ export default function AdminIndexationPage() {
                             <FontAwesomeIcon icon={faClock} />
                         </div>
                         <div>
-                            <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #9ca3af)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+                            <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
                                 Planification auto
                             </div>
-                            <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-primary, #fff)" }}>
+                            <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-primary)" }}>
                                 Quotidien à {status?.schedule?.daily_at || "03:00"}
                             </div>
                         </div>
                     </div>
 
                     <div style={{
-                        background: "var(--card-bg, #1e1e24)",
-                        border: "1px solid var(--border-color, #2a2a32)",
+                        background: "var(--bg-surface)",
+                        border: "1px solid var(--border-subtle)",
                         borderRadius: "14px",
                         padding: "18px 20px",
                         display: "flex",
                         alignItems: "center",
-                        gap: "16px"
+                        gap: "16px",
+                        boxShadow: "var(--shadow-sm)"
                     }}>
                         <div style={{
                             width: "48px",
@@ -493,11 +497,11 @@ export default function AdminIndexationPage() {
                             <FontAwesomeIcon icon={faServer} />
                         </div>
                         <div>
-                            <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #9ca3af)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
+                            <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
                                 Sources configurées
                             </div>
-                            <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--text-primary, #fff)" }}>
-                                {activeCount} / {sources.length} <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-muted, #9ca3af)" }}>actives</span>
+                            <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--text-primary)" }}>
+                                {activeCount} / {sources.length} <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-muted)" }}>actives</span>
                             </div>
                         </div>
                     </div>

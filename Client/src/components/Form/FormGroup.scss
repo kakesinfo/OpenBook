@@ -23,7 +23,7 @@
     font-size: 0.9375rem;
     font-family: inherit;
 
-    background-color: rgba(11, 15, 23, 0.8);
+    background-color: var(--bg-primary);
     border: 1px solid var(--border-subtle);
     outline: none;
     color: var(--text-primary);
@@ -34,12 +34,12 @@
     }
 
     &:hover {
-      border-color: rgba(255, 255, 255, 0.16);
+      border-color: var(--border-focus);
     }
 
     &:focus {
       border-color: var(--accent-primary);
-      background-color: rgba(11, 15, 23, 0.95);
+      background-color: var(--bg-surface);
       box-shadow: 0 0 0 3px var(--accent-primary-light);
     }
 
@@ -69,22 +69,22 @@
     font-weight: 600;
     font-family: inherit;
 
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
     color: #ffffff;
     border: none;
     cursor: pointer;
-    box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.35);
+    box-shadow: 0 4px 14px 0 var(--accent-primary-glow);
     transition: all var(--transition-fast);
 
     &:hover:not(:disabled) {
-      background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
-      box-shadow: 0 6px 20px 0 rgba(16, 185, 129, 0.45);
+      background: linear-gradient(135deg, var(--accent-primary-hover) 0%, var(--accent-primary) 100%);
+      box-shadow: 0 6px 20px 0 var(--accent-primary-glow);
       transform: translateY(-1px);
     }
 
     &:active:not(:disabled) {
       transform: translateY(1px);
-      box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.3);
+      box-shadow: 0 2px 8px 0 var(--accent-primary-glow);
     }
 
     &:disabled {

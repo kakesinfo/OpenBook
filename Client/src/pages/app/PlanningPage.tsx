@@ -246,8 +246,8 @@ export default function PlanningPage() {
             <div className="planning-page__content">
                 {/* Top Period Toggle: "Parus récemment" vs "À venir" */}
                 <div style={{
-                    background: "var(--card-bg, #1e1e24)",
-                    border: "1px solid var(--border-color, #2a2a32)",
+                    background: "var(--card-bg, var(--bg-surface))",
+                    border: "1px solid var(--border-subtle)",
                     borderRadius: "16px",
                     padding: "20px 24px",
                     display: "flex",
@@ -263,10 +263,10 @@ export default function PlanningPage() {
                     }}>
                         <div style={{
                             display: "inline-flex",
-                            background: "rgba(255, 255, 255, 0.05)",
+                            background: "var(--bg-primary)",
                             padding: "4px",
                             borderRadius: "12px",
-                            border: "1px solid rgba(255, 255, 255, 0.08)",
+                            border: "1px solid var(--border-subtle)",
                             gap: "4px"
                         }}>
                             <button
@@ -284,10 +284,10 @@ export default function PlanningPage() {
                                     cursor: "pointer",
                                     transition: "all 0.2s ease",
                                     background: timeFilter === "recent"
-                                        ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)"
+                                        ? "var(--accent-primary)"
                                         : "transparent",
-                                    color: timeFilter === "recent" ? "#ffffff" : "var(--text-muted, #9ca3af)",
-                                    boxShadow: timeFilter === "recent" ? "0 4px 12px rgba(99, 102, 241, 0.3)" : "none"
+                                    color: timeFilter === "recent" ? "#ffffff" : "var(--text-secondary)",
+                                    boxShadow: timeFilter === "recent" ? "var(--shadow-sm)" : "none"
                                 }}
                             >
                                 <FontAwesomeIcon icon={faClockRotateLeft} />
@@ -296,8 +296,8 @@ export default function PlanningPage() {
                                     padding: "2px 8px",
                                     borderRadius: "12px",
                                     fontSize: "0.75rem",
-                                    background: timeFilter === "recent" ? "rgba(255, 255, 255, 0.25)" : "rgba(255, 255, 255, 0.08)",
-                                    color: "#ffffff"
+                                    background: timeFilter === "recent" ? "rgba(255, 255, 255, 0.25)" : "var(--bg-elevated)",
+                                    color: timeFilter === "recent" ? "#ffffff" : "var(--text-muted)"
                                 }}>
                                     {loadingRecent ? "..." : totalRecentCount}
                                 </span>
@@ -318,10 +318,10 @@ export default function PlanningPage() {
                                     cursor: "pointer",
                                     transition: "all 0.2s ease",
                                     background: timeFilter === "upcoming"
-                                        ? "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)"
+                                        ? "var(--accent-primary)"
                                         : "transparent",
-                                    color: timeFilter === "upcoming" ? "#ffffff" : "var(--text-muted, #9ca3af)",
-                                    boxShadow: timeFilter === "upcoming" ? "0 4px 12px rgba(99, 102, 241, 0.3)" : "none"
+                                    color: timeFilter === "upcoming" ? "#ffffff" : "var(--text-secondary)",
+                                    boxShadow: timeFilter === "upcoming" ? "var(--shadow-sm)" : "none"
                                 }}
                             >
                                 <FontAwesomeIcon icon={faCalendarDays} />
@@ -330,8 +330,8 @@ export default function PlanningPage() {
                                     padding: "2px 8px",
                                     borderRadius: "12px",
                                     fontSize: "0.75rem",
-                                    background: timeFilter === "upcoming" ? "rgba(255, 255, 255, 0.25)" : "rgba(255, 255, 255, 0.08)",
-                                    color: "#ffffff"
+                                    background: timeFilter === "upcoming" ? "rgba(255, 255, 255, 0.25)" : "var(--bg-elevated)",
+                                    color: timeFilter === "upcoming" ? "#ffffff" : "var(--text-muted)"
                                 }}>
                                     {loadingUpcoming ? "..." : totalUpcomingCount}
                                 </span>
@@ -340,12 +340,12 @@ export default function PlanningPage() {
 
                         <div style={{
                             fontSize: "0.85rem",
-                            color: "var(--text-muted, #9ca3af)",
+                            color: "var(--text-muted)",
                             display: "flex",
                             alignItems: "center",
                             gap: "8px"
                         }}>
-                            <FontAwesomeIcon icon={faCalendarCheck} style={{ color: "var(--accent-secondary, #818cf8)" }} />
+                            <FontAwesomeIcon icon={faCalendarCheck} style={{ color: "var(--accent-primary)" }} />
                             <span>
                                 {timeFilter === "recent"
                                     ? "Fenêtre : sorties des 2 derniers mois"
@@ -363,7 +363,7 @@ export default function PlanningPage() {
                             fontSize: "0.8rem",
                             textTransform: "uppercase",
                             letterSpacing: "0.05em",
-                            color: "var(--text-muted, #9ca3af)",
+                            color: "var(--text-muted)",
                             fontWeight: 600
                         }}>
                             <FontAwesomeIcon icon={faFilter} />
@@ -392,14 +392,14 @@ export default function PlanningPage() {
                                             padding: "8px 16px",
                                             borderRadius: "20px",
                                             border: isSelected
-                                                ? "1px solid var(--accent-secondary, #818cf8)"
-                                                : "1px solid rgba(255, 255, 255, 0.1)",
+                                                ? "1px solid var(--accent-primary)"
+                                                : "1px solid var(--border-subtle)",
                                             background: isSelected
-                                                ? "rgba(99, 102, 241, 0.15)"
-                                                : "rgba(255, 255, 255, 0.03)",
+                                                ? "var(--accent-primary-light)"
+                                                : "var(--bg-primary)",
                                             color: isSelected
-                                                ? "var(--accent-secondary, #818cf8)"
-                                                : "var(--text-primary, #e5e7eb)",
+                                                ? "var(--accent-primary)"
+                                                : "var(--text-secondary)",
                                             fontWeight: isSelected ? 700 : 500,
                                             fontSize: "0.85rem",
                                             cursor: "pointer",
@@ -413,9 +413,9 @@ export default function PlanningPage() {
                                             padding: "1px 6px",
                                             borderRadius: "10px",
                                             background: isSelected
-                                                ? "rgba(99, 102, 241, 0.3)"
-                                                : "rgba(255, 255, 255, 0.08)",
-                                            color: isSelected ? "#fff" : "var(--text-muted, #9ca3af)"
+                                                ? "var(--accent-primary)"
+                                                : "var(--bg-elevated)",
+                                            color: isSelected ? "#ffffff" : "var(--text-muted)"
                                         }}>
                                             {count}
                                         </span>
@@ -438,8 +438,8 @@ export default function PlanningPage() {
                 {/* Empty State */}
                 {!isCurrentLoading && monthGroups.length === 0 && (
                     <div style={{
-                        background: "var(--card-bg, #1e1e24)",
-                        border: "1px dashed var(--border-color, #2a2a32)",
+                        background: "var(--card-bg, var(--bg-surface))",
+                        border: "1px dashed var(--border-subtle)",
                         borderRadius: "16px",
                         padding: "48px 24px",
                         textAlign: "center",

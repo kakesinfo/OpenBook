@@ -145,7 +145,7 @@ export default function StatisticsPage() {
                                 gap: "8px",
                                 padding: "10px 20px",
                                 borderRadius: "10px",
-                                background: "var(--accent-primary, #10b981)",
+                                background: "var(--accent-primary)",
                                 color: "#ffffff",
                                 fontWeight: 600,
                                 textDecoration: "none"
@@ -197,7 +197,7 @@ export default function StatisticsPage() {
 
                             {/* Pages */}
                             <div className="stats-page__metric-card stats-page__metric-card--emerald">
-                                <div className="stats-page__metric-icon" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#34d399" }}>
+                                <div className="stats-page__metric-icon" style={{ background: "var(--accent-primary-light)", color: "var(--accent-primary)" }}>
                                     <FontAwesomeIcon icon={faFileLines} />
                                 </div>
                                 <div className="stats-page__metric-body">
@@ -265,7 +265,7 @@ export default function StatisticsPage() {
                             <div className="stats-page__section-header">
                                 <div>
                                     <h3>
-                                        <FontAwesomeIcon icon={faBookOpen} style={{ color: "#10b981" }} />
+                                        <FontAwesomeIcon icon={faBookOpen} style={{ color: "var(--accent-primary)" }} />
                                         <span>Progression de lecture</span>
                                     </h3>
                                     <p>Suivi de vos lectures et état de votre Pile À Lire (PAL)</p>
@@ -277,9 +277,9 @@ export default function StatisticsPage() {
                                     gap: "8px",
                                     padding: "6px 14px",
                                     borderRadius: "12px",
-                                    background: "rgba(16, 185, 129, 0.12)",
-                                    border: "1px solid rgba(16, 185, 129, 0.25)",
-                                    color: "#34d399",
+                                    background: "var(--accent-primary-light)",
+                                    border: "1px solid var(--border-focus)",
+                                    color: "var(--accent-primary)",
                                     fontSize: "0.95rem",
                                     fontWeight: 700
                                 }}>
@@ -323,7 +323,7 @@ export default function StatisticsPage() {
                                 {/* Status Chips */}
                                 <div className="stats-page__status-chips">
                                     <div className="stats-page__status-chip">
-                                        <div className="stats-page__status-chip-dot" style={{ background: "#10b981", boxShadow: "0 0 8px rgba(16, 185, 129, 0.4)" }} />
+                                        <div className="stats-page__status-chip-dot" style={{ background: "var(--accent-primary)", boxShadow: "0 0 8px var(--accent-primary-glow)" }} />
                                         <div className="stats-page__status-chip-body">
                                             <span className="stats-page__status-chip-count">{stats.booksReadCount}</span>
                                             <span className="stats-page__status-chip-label">
@@ -436,8 +436,8 @@ export default function StatisticsPage() {
                                             width: "38px",
                                             height: "38px",
                                             borderRadius: "10px",
-                                            background: "rgba(16, 185, 129, 0.15)",
-                                            color: "#34d399",
+                                            background: "var(--accent-primary-light)",
+                                            color: "var(--accent-primary)",
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: "center",
@@ -445,7 +445,7 @@ export default function StatisticsPage() {
                                         }}>
                                             <FontAwesomeIcon icon={faWeightHanging} />
                                         </div>
-                                        <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "#34d399" }}>
+                                        <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "var(--accent-primary)" }}>
                                             {stats.totalWeightKg} kg
                                         </div>
                                     </div>
@@ -731,7 +731,7 @@ export default function StatisticsPage() {
                                 {/* Newest Book */}
                                 {stats.newestBook && (
                                     <div className="stats-page__record-card">
-                                        <div className="stats-page__record-header" style={{ color: "#10b981" }}>
+                                        <div className="stats-page__record-header" style={{ color: "var(--accent-primary)" }}>
                                             <FontAwesomeIcon icon={faCalendarDays} />
                                             <span>Dernière parution</span>
                                         </div>
@@ -766,7 +766,7 @@ export default function StatisticsPage() {
                                         <Link
                                             to={`/app/book/${stats.newestBook.id}`}
                                             className="stats-page__record-link"
-                                            style={{ color: "#10b981" }}
+                                            style={{ color: "var(--accent-primary)" }}
                                         >
                                             <span>Consulter la fiche</span>
                                             <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.75rem" }} />

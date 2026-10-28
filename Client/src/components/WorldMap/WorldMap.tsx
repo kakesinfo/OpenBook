@@ -67,7 +67,7 @@ export default function WorldMap({ countries, totalBooks }: WorldMapProps) {
                 flexWrap: "wrap",
                 gap: "10px"
             }}>
-                <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
+                <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-primary)" }}>
                     Origine géographique des parutions
                 </div>
                 <div style={{
@@ -76,9 +76,9 @@ export default function WorldMap({ countries, totalBooks }: WorldMapProps) {
                     gap: "8px",
                     padding: "4px 12px",
                     borderRadius: "14px",
-                    background: "rgba(16, 185, 129, 0.15)",
-                    border: "1px solid rgba(16, 185, 129, 0.3)",
-                    color: "#34d399",
+                    background: "var(--accent-primary-light)",
+                    border: "1px solid var(--border-focus)",
+                    color: "var(--accent-primary)",
                     fontSize: "0.85rem",
                     fontWeight: 600
                 }}>
@@ -90,11 +90,12 @@ export default function WorldMap({ countries, totalBooks }: WorldMapProps) {
             <div style={{
                 position: "relative",
                 width: "100%",
-                background: "rgba(11, 15, 23, 0.65)",
+                background: "var(--map-bg, var(--bg-card))",
                 borderRadius: "16px",
-                border: "1px solid var(--border-color, #2a2a32)",
+                border: "1px solid var(--border-subtle)",
                 padding: "16px",
-                overflow: "hidden"
+                overflow: "hidden",
+                boxShadow: "var(--shadow-sm)"
             }}>
                 <svg
                     viewBox="0 0 1000 540"
@@ -102,13 +103,13 @@ export default function WorldMap({ countries, totalBooks }: WorldMapProps) {
                         width: "100%",
                         height: "auto",
                         display: "block",
-                        filter: "drop-shadow(0 4px 16px rgba(0, 0, 0, 0.4))"
+                        filter: "drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15))"
                     }}
                     onMouseMove={handleMouseMove}
                 >
                     <defs>
                         <radialGradient id="ocean-glow" cx="50%" cy="50%" r="50%">
-                            <stop offset="0%" stopColor="rgba(99, 102, 241, 0.05)" />
+                            <stop offset="0%" stopColor="var(--map-ocean, rgba(99, 102, 241, 0.05))" />
                             <stop offset="100%" stopColor="transparent" />
                         </radialGradient>
                     </defs>
@@ -126,12 +127,12 @@ export default function WorldMap({ countries, totalBooks }: WorldMapProps) {
                                 key={country.id + country.name}
                                 d={country.d}
                                 fill={isOwned
-                                    ? (isCurrentlyHovered ? "#34d399" : "#10b981")
-                                    : (isCurrentlyHovered ? "rgba(255, 255, 255, 0.18)" : "rgba(255, 255, 255, 0.06)")
+                                    ? (isCurrentlyHovered ? "var(--accent-primary-hover)" : "var(--accent-primary)")
+                                    : (isCurrentlyHovered ? "var(--map-unowned-hover)" : "var(--map-unowned)")
                                 }
                                 stroke={isOwned
-                                    ? "#6ee7b7"
-                                    : "rgba(255, 255, 255, 0.12)"
+                                    ? "var(--accent-primary)"
+                                    : "var(--map-stroke)"
                                 }
                                 strokeWidth={isOwned ? (isCurrentlyHovered ? 1.5 : 1.0) : 0.6}
                                 style={{
@@ -152,12 +153,12 @@ export default function WorldMap({ countries, totalBooks }: WorldMapProps) {
                         left: `${Math.min(Math.max(hover.x + 12, 10), 820)}px`,
                         top: `${Math.max(hover.y - 45, 10)}px`,
                         pointerEvents: "none",
-                        background: "rgba(19, 25, 38, 0.95)",
+                        background: "var(--bg-surface)",
                         backdropFilter: "blur(12px)",
-                        border: `1px solid ${hover.stat ? "#10b981" : "rgba(255, 255, 255, 0.15)"}`,
+                        border: `1px solid ${hover.stat ? "var(--accent-primary)" : "var(--border-subtle)"}`,
                         borderRadius: "10px",
                         padding: "8px 14px",
-                        boxShadow: "0 6px 20px rgba(0, 0, 0, 0.5)",
+                        boxShadow: "var(--shadow-lg)",
                         zIndex: 30,
                         display: "flex",
                         flexDirection: "column",
@@ -169,14 +170,14 @@ export default function WorldMap({ countries, totalBooks }: WorldMapProps) {
                             gap: "6px",
                             fontSize: "0.9rem",
                             fontWeight: 700,
-                            color: "#ffffff"
+                            color: "var(--text-primary)"
                         }}>
                             {hover.stat?.flag && <span>{hover.stat.flag}</span>}
                             <span>{hover.name}</span>
                         </div>
                         <div style={{
                             fontSize: "0.8rem",
-                            color: hover.stat ? "#34d399" : "var(--text-muted, #9ca3af)",
+                            color: hover.stat ? "var(--accent-primary)" : "var(--text-muted)",
                             fontWeight: hover.stat ? 600 : 400
                         }}>
                             {hover.stat
@@ -205,10 +206,10 @@ export default function WorldMap({ countries, totalBooks }: WorldMapProps) {
                                 gap: "8px",
                                 padding: "6px 14px",
                                 borderRadius: "20px",
-                                background: "rgba(255, 255, 255, 0.04)",
-                                border: "1px solid rgba(16, 185, 129, 0.3)",
+                                background: "var(--bg-elevated)",
+                                border: "1px solid var(--border-subtle)",
                                 fontSize: "0.85rem",
-                                color: "var(--text-primary, #ffffff)"
+                                color: "var(--text-primary)"
                             }}
                         >
                             <span style={{ fontSize: "1.1rem" }}>{c.flag}</span>
@@ -217,8 +218,8 @@ export default function WorldMap({ countries, totalBooks }: WorldMapProps) {
                                 fontSize: "0.75rem",
                                 padding: "2px 6px",
                                 borderRadius: "8px",
-                                background: "rgba(16, 185, 129, 0.2)",
-                                color: "#34d399",
+                                background: "var(--accent-primary-light)",
+                                color: "var(--accent-primary)",
                                 fontWeight: 700
                             }}>
                                 {c.count} ({c.percentage}%)

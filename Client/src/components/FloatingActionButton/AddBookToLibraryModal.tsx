@@ -118,8 +118,10 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook 
             onClose={onClose}
             PaperProps={{
                 style: {
-                    backgroundColor: "var(--bg-surface, #131926)",
-                    border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                    backgroundColor: "var(--bg-surface)",
+                    border: "1px solid var(--border-subtle)",
+                    boxShadow: "var(--shadow-lg)",
+                    color: "var(--text-primary)",
                     borderRadius: "16px",
                     maxWidth: "560px",
                     width: "100%",
