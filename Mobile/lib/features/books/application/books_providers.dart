@@ -163,6 +163,26 @@ class BooksController extends AsyncNotifier<List<Book>> {
     await reload();
   }
 
+  Future<Book> quickCreateBook({
+    required String title,
+    String? isbn,
+    int? price,
+    String? coverUrl,
+    String? localCoverPath,
+    BookStatus status = BookStatus.unread,
+  }) async {
+    final created = await _repository.quickCreateBook(
+      title: title,
+      isbn: isbn,
+      price: price,
+      coverUrl: coverUrl,
+      localCoverPath: localCoverPath,
+      status: status,
+    );
+    await reload();
+    return created;
+  }
+
   Future<void> updateBookStatus(Book book, BookStatus status) async {
     final bookId = book.id;
     if (bookId == null) return;

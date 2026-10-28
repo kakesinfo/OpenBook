@@ -340,6 +340,24 @@ class ApiClientNotifier extends Notifier<ApiClientState> {
     return response;
   }
 
+  Future<http.Response> postMultipart(
+    String path, {
+    required String fieldName,
+    required String filePath,
+  }) async {
+    final url = Uri.parse('$baseUrl$path');
+    final request = http.MultipartRequest('POST', url);
+    if (state.token != null && state.token!.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer ${state.token}';
+    }
+    request.headers['Accept'] = 'application/json';
+    request.files.add(await http.MultipartFile.fromPath(fieldName, filePath));
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    _checkUnauthorized(response);
+    return response;
+  }
+
   void _checkUnauthorized(http.Response response) {
     if (response.statusCode == 401) {
       logout();

@@ -162,6 +162,102 @@ class BooksRepository {
     await _apiClient.post('/user/readingStatus/$bookId/$status');
   }
 
+  Future<Book> quickCreateBook({
+    required String title,
+    String? isbn,
+    int? price,
+    String? coverUrl,
+    String? localCoverPath,
+    BookStatus status = BookStatus.unread,
+  }) async {
+    final cleanTitle = title.trim();
+    if (cleanTitle.isEmpty) {
+      throw ArgumentError('Le titre ne peut pas être vide.');
+    }
+
+    final cleanIsbn = isbn?.trim();
+    final cleanCoverUrl = coverUrl?.trim();
+
+    final payload = <String, dynamic>{
+      'title': cleanTitle,
+      if (cleanIsbn != null && cleanIsbn.isNotEmpty) 'isbn': cleanIsbn,
+      if (price != null && price >= 0) 'price': price,
+      if (cleanCoverUrl != null && cleanCoverUrl.isNotEmpty) 'coverUrl': cleanCoverUrl,
+      'addToLibrary': status != BookStatus.wishlist,
+    };
+
+    final response = await _apiClient.post('/books', body: payload);
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      if (response.statusCode == 409 && cleanIsbn != null && cleanIsbn.isNotEmpty) {
+        // Le livre existe déjà dans le catalogue global : on l'associe directement à l'utilisateur
+        try {
+          final existing = await searchBooks(cleanIsbn);
+          if (existing.isNotEmpty && existing.first.id != null) {
+            final bookId = existing.first.id!;
+            await addBookToUser(bookId, status: status);
+
+            if (localCoverPath != null && localCoverPath.trim().isNotEmpty) {
+              try {
+                await _apiClient.postMultipart(
+                  '/books/$bookId/cover',
+                  fieldName: 'file',
+                  filePath: localCoverPath.trim(),
+                );
+              } catch (_) {}
+            }
+
+            return existing.first.copyWith(
+              status: status == BookStatus.wishlist ? BookStatus.wishlist : BookStatus.unread,
+            );
+          }
+        } catch (_) {}
+      }
+
+      String errorMessage = 'Erreur lors de la création du livre (${response.statusCode})';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map) {
+          if (decoded['detail'] != null && decoded['detail'].toString().trim().isNotEmpty) {
+            errorMessage = decoded['detail'].toString();
+          } else if (decoded['message'] != null && decoded['message'].toString().trim().isNotEmpty) {
+            errorMessage = decoded['message'].toString();
+          }
+        }
+      } catch (_) {}
+      throw Exception(errorMessage);
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final bookId = (data['id'] as num?)?.toInt();
+
+    if (bookId != null && localCoverPath != null && localCoverPath.trim().isNotEmpty) {
+      try {
+        final coverResponse = await _apiClient.postMultipart(
+          '/books/$bookId/cover',
+          fieldName: 'file',
+          filePath: localCoverPath.trim(),
+        );
+        if (coverResponse.statusCode == 200 || coverResponse.statusCode == 201) {
+          try {
+            final updatedData = jsonDecode(coverResponse.body) as Map<String, dynamic>;
+            data['coverUrl'] = updatedData['coverUrl'];
+          } catch (_) {}
+        }
+      } catch (_) {
+        // Book was created even if cover upload failed
+      }
+    }
+
+    if (bookId != null && status == BookStatus.wishlist) {
+      try {
+        await addBookToUser(bookId, status: BookStatus.wishlist);
+        data['status'] = 'WISHLISTED';
+      } catch (_) {}
+    }
+
+    return _bookFromSummary(data);
+  }
+
   Future<void> saveBook(Book book) async {
     if (book.id == null) {
       throw UnsupportedError('La création manuelle de livres a été supprimée.');

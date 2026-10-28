@@ -27,7 +27,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Cette application utilise l'appareil photo pour scanner les codes-barres ISBN de vos livres.</string>
+	<string>Cette application utilise l'appareil photo pour scanner les codes-barres ISBN et prendre en photo les couvertures de vos livres.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Cette application utilise votre galerie de photos pour sélectionner la couverture de vos livres.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
