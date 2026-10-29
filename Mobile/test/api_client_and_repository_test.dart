@@ -78,6 +78,12 @@ void main() {
       expect(() => repo.saveBook(manualBook), throwsUnsupportedError);
     });
 
+    test('quickCreateBook validates title is non-empty', () async {
+      final repo = BooksRepository(ApiClientNotifier());
+      expect(() => repo.quickCreateBook(title: ''), throwsArgumentError);
+      expect(() => repo.quickCreateBook(title: '   '), throwsArgumentError);
+    });
+
     test('resolveCoverUrl handles relative, localhost, UUID and remote urls', () {
       const baseUrl = 'http://192.168.1.100:8080';
 

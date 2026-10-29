@@ -8,6 +8,7 @@ import '../../../../app/theme.dart';
 import '../../application/books_providers.dart';
 import '../../data/book.dart';
 import 'book_cover.dart';
+import 'quick_create_book_sheet.dart';
 
 enum AddBookMode { search, scan }
 
@@ -176,6 +177,16 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
       _scannedBook = null;
       _scanNotFound = false;
     });
+  }
+
+  Future<void> _openQuickCreate({String? initialTitle, String? initialIsbn}) async {
+    Navigator.of(context).pop();
+    await showQuickCreateBookSheet(
+      context,
+      initialTitle: initialTitle,
+      initialIsbn: initialIsbn,
+      initialStatus: widget.initialStatus,
+    );
   }
 
   Future<void> _addBookToUser(Book book, BookStatus status) async {
@@ -409,7 +420,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                     )
                   : _searchController.text.trim().isNotEmpty && _searchResults.isEmpty
                       ? Center(
-                          child: Padding(
+                          child: SingleChildScrollView(
                             padding: const EdgeInsets.all(24),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -421,11 +432,37 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
                                 ),
-                                const SizedBox(height: 16),
+                                const SizedBox(height: 20),
+                                // Bouton principal Création Rapide
+                                FilledButton.icon(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppTheme.accentPrimary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    final q = _searchController.text.trim();
+                                    final isIsbn = RegExp(r'^[0-9Xx\-]+$').hasMatch(q) &&
+                                        q.replaceAll(RegExp(r'[^0-9Xx]'), '').length >= 10;
+                                    _openQuickCreate(
+                                      initialTitle: isIsbn ? null : q,
+                                      initialIsbn: isIsbn ? _cleanBarcode(q) : null,
+                                    );
+                                  },
+                                  icon: const Icon(Icons.bolt_rounded, size: 20),
+                                  label: const Text(
+                                    'Créer ce livre (Création rapide)',
+                                    style: TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
                                 OutlinedButton.icon(
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppTheme.accentPrimary,
-                                    side: const BorderSide(color: AppTheme.accentPrimary),
+                                    foregroundColor: AppTheme.textSecondary,
+                                    side: const BorderSide(color: AppTheme.borderSubtle),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                                     ),
@@ -447,9 +484,14 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                           ? _buildSearchEmptyPlaceholder()
                           : ListView.separated(
                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                              itemCount: _searchResults.length,
+                              itemCount: _searchResults.length + 1,
                               separatorBuilder: (_, _) => const SizedBox(height: 10),
                               itemBuilder: (context, index) {
+                                if (index == _searchResults.length) {
+                                  // Footer tile proposing quick creation
+                                  return _buildQuickCreateFooterTile(_searchController.text.trim());
+                                }
+
                                 final book = _searchResults[index];
                                 final existing = userBooks.where((b) => b.id == book.id).firstOrNull;
 
@@ -463,6 +505,71 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                             ),
         ),
       ],
+    );
+  }
+
+  Widget _buildQuickCreateFooterTile(String query) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.bgElevated,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.borderSubtle, width: 1),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppTheme.accentPrimaryLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.bolt_rounded, color: AppTheme.accentPrimary, size: 20),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Livre manquant dans le catalogue ?',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Ajoutez-le directement avec la création rapide',
+                  style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.accentPrimary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: () {
+              final isIsbn = RegExp(r'^[0-9Xx\-]+$').hasMatch(query) &&
+                  query.replaceAll(RegExp(r'[^0-9Xx]'), '').length >= 10;
+              _openQuickCreate(
+                initialTitle: isIsbn ? null : query,
+                initialIsbn: isIsbn ? _cleanBarcode(query) : null,
+              );
+            },
+            child: const Text('Créer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -505,14 +612,30 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                     height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
+                // Bouton Création rapide direct
                 FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.accentPrimaryLight,
-                    foregroundColor: AppTheme.accentPrimary,
+                    backgroundColor: AppTheme.accentPrimary,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                     ),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  ),
+                  onPressed: () => _openQuickCreate(),
+                  icon: const Icon(Icons.bolt_rounded, size: 18),
+                  label: const Text('Création rapide d\'un livre manquant'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.textPrimary,
+                    side: const BorderSide(color: AppTheme.borderSubtle),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                   ),
                   onPressed: () {
                     setState(() {
@@ -521,7 +644,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                     });
                   },
                   icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
-                  label: const Text('Ou scanner le code-barres'),
+                  label: const Text('Scanner le code-barres'),
                 ),
               ],
             ),
@@ -672,6 +795,16 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                           ),
                         ),
                       ],
+                      const SizedBox(height: 8),
+                      // Option création rapide si pas la bonne édition
+                      TextButton.icon(
+                        onPressed: () => _openQuickCreate(initialIsbn: _scannedCode, initialTitle: book.title),
+                        icon: const Icon(Icons.bolt_rounded, size: 16, color: AppTheme.textMuted),
+                        label: const Text(
+                          'Pas la bonne édition ? Création rapide',
+                          style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -719,6 +852,24 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                 ),
               ),
               const SizedBox(height: 24),
+              // Option de création rapide proposée directement avec le code scanné
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.accentPrimary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                  ),
+                ),
+                onPressed: () => _openQuickCreate(initialIsbn: _scannedCode),
+                icon: const Icon(Icons.bolt_rounded, size: 20),
+                label: const Text(
+                  'Création rapide avec cet ISBN',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+              ),
+              const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -732,10 +883,10 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                     label: const Text('Réessayer'),
                   ),
                   const SizedBox(width: 12),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppTheme.accentPrimary,
-                      foregroundColor: Colors.white,
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.textPrimary,
+                      side: const BorderSide(color: AppTheme.borderSubtle),
                     ),
                     onPressed: () {
                       setState(() {
@@ -809,11 +960,11 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
           ),
         ),
 
-        // Controls at bottom
+        // Controls at bottom (Flash, Changer de caméra, Création rapide)
         Positioned(
           bottom: 24,
-          left: 0,
-          right: 0,
+          left: 20,
+          right: 20,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -827,7 +978,25 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                 onPressed: () => _scannerController.toggleTorch(),
                 tooltip: 'Flash',
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.black87,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                    side: const BorderSide(color: AppTheme.accentPrimary, width: 1),
+                  ),
+                ),
+                onPressed: () => _openQuickCreate(),
+                icon: const Icon(Icons.bolt_rounded, size: 18, color: AppTheme.accentPrimary),
+                label: const Text(
+                  'Création rapide',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(width: 14),
               IconButton(
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.black54,

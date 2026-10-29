@@ -33,6 +33,7 @@ import FormGroup from "../components/Form/FormGroup.tsx";
 import LogBookCard from "../components/Logger/LogBookCard.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import BookSummaryDTO from "../dto/BookSummary.dto.ts";
+import FloatingActionButton from "../components/FloatingActionButton/FloatingActionButton.tsx";
 
 export default function App() {
     const [open, setOpen] = useState(false);
@@ -117,6 +118,8 @@ export default function App() {
             <WrapperContent>
                 <Outlet />
             </WrapperContent>
+
+            <FloatingActionButton />
 
             <Dialog
                 open={open}
