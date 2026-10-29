@@ -77,7 +77,7 @@ class BookDetailsPage extends ConsumerWidget {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'delete',
                 child: Row(
                   children: [
@@ -147,7 +147,7 @@ class BookDetailsPage extends ConsumerWidget {
             child: Text(
               activeBook.title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
                 color: AppTheme.textPrimary,
@@ -161,7 +161,7 @@ class BookDetailsPage extends ConsumerWidget {
               child: Text(
                 'Par ${activeBook.author}',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: AppTheme.textSecondary,
@@ -237,7 +237,7 @@ class BookDetailsPage extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
                     Icon(Icons.tune_rounded, size: 18, color: AppTheme.accentPrimary),
                     SizedBox(width: 8),
@@ -628,7 +628,7 @@ class _SpecItem extends StatelessWidget {
           const SizedBox(width: 10),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
               color: AppTheme.textSecondary,
@@ -637,7 +637,7 @@ class _SpecItem extends StatelessWidget {
           const Spacer(),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,

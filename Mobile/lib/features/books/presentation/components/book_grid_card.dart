@@ -63,7 +63,7 @@ class BookGridCard extends StatelessWidget {
                     ),
                     child: Text(
                       badgeLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.textPrimary,
@@ -80,7 +80,7 @@ class BookGridCard extends StatelessWidget {
             book.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
@@ -93,7 +93,7 @@ class BookGridCard extends StatelessWidget {
               subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
                 color: AppTheme.textMuted,

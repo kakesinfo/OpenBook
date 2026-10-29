@@ -23,16 +23,16 @@ class _BooksShellState extends State<BooksShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      const HomePage(),
-      const LibraryPage(),
+      HomePage(),
+      LibraryPage(),
       WishlistPage(onExploreCatalogue: () => _goToTab(1)),
-      const SettingsPage(),
+      SettingsPage(),
     ];
 
     return Scaffold(
       body: IndexedStack(index: _index, children: pages),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppTheme.bgSurface,
           border: Border(
             top: BorderSide(color: AppTheme.borderSubtle, width: 1),
@@ -43,7 +43,7 @@ class _BooksShellState extends State<BooksShell> {
           onDestinationSelected: _goToTab,
           backgroundColor: AppTheme.bgSurface,
           indicatorColor: AppTheme.accentPrimaryLight,
-          destinations: const [
+          destinations: [
             NavigationDestination(
               icon: Icon(Icons.newspaper_outlined),
               selectedIcon: Icon(Icons.newspaper_rounded, color: AppTheme.accentPrimary),

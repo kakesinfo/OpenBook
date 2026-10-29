@@ -25,7 +25,7 @@ class LibraryPage extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Ajouter un livre',
-            icon: const Icon(Icons.add, color: AppTheme.accentPrimary),
+            icon: Icon(Icons.add, color: AppTheme.accentPrimary),
             onPressed: () {
               showAddBookSheet(context);
             },
@@ -78,7 +78,7 @@ class LibraryPage extends ConsumerWidget {
             ),
           ),
           booksAsync.when(
-            loading: () => const SliverFillRemaining(
+            loading: () => SliverFillRemaining(
               child: Center(
                 child: CircularProgressIndicator(color: AppTheme.accentPrimary),
               ),
@@ -89,7 +89,7 @@ class LibraryPage extends ConsumerWidget {
                   padding: const EdgeInsets.all(24),
                   child: Text(
                     'Erreur : $error',
-                    style: const TextStyle(color: AppTheme.accentRed),
+                    style: TextStyle(color: AppTheme.accentRed),
                   ),
                 ),
               ),
@@ -115,7 +115,7 @@ class LibraryPage extends ConsumerWidget {
                                 width: 1,
                               ),
                             ),
-                            child: const Center(
+                            child: Center(
                               child: Icon(
                                 Icons.collections_bookmark_rounded,
                                 size: 30,
@@ -124,7 +124,7 @@ class LibraryPage extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          const Text(
+                          Text(
                             'Votre collection est encore vide',
                             textAlign: TextAlign.center,
                             style: TextStyle(
@@ -137,7 +137,7 @@ class LibraryPage extends ConsumerWidget {
                           const SizedBox(height: 8),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 340),
-                            child: const Text(
+                            child: Text(
                               'Ajoutez vos premiers livres ou BD pour constituer et suivre votre collection.',
                               textAlign: TextAlign.center,
                               style: TextStyle(

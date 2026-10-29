@@ -27,7 +27,7 @@ class BookReadingHistoryPage extends ConsumerWidget {
         children: [
           Text(
             book.title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
               color: AppTheme.textPrimary,
@@ -35,7 +35,7 @@ class BookReadingHistoryPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Toutes les sessions de lecture enregistrées pour cet ouvrage.',
             style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
           ),
@@ -57,13 +57,13 @@ class _ReadingSessionsHistoryCard extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: sessionsAsync.when(
-        loading: () => const SizedBox(
+        loading: () => SizedBox(
           height: 56,
           child: Center(child: CircularProgressIndicator(color: AppTheme.accentPrimary)),
         ),
         error: (error, _) => Text(
           'Impossible de charger les sessions : $error',
-          style: const TextStyle(color: AppTheme.accentRed),
+          style: TextStyle(color: AppTheme.accentRed),
         ),
         data: (sessions) {
           if (sessions.isEmpty) {
@@ -74,7 +74,7 @@ class _ReadingSessionsHistoryCard extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 border: Border.all(color: AppTheme.borderSubtle, width: 1),
               ),
-              child: const Column(
+              child: Column(
                 children: [
                   Icon(Icons.history_rounded, size: 36, color: AppTheme.textMuted),
                   SizedBox(height: 12),
@@ -174,7 +174,7 @@ class _ReadingSessionsHistoryCard extends ConsumerWidget {
                                     Expanded(
                                       child: Text(
                                         '$day/$month/$year à $hour:$minute',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w600,
                                           color: AppTheme.textPrimary,
@@ -205,7 +205,7 @@ class _ReadingSessionsHistoryCard extends ConsumerWidget {
                                     if (isStart || isEnd)
                                       IconButton(
                                         tooltip: 'Supprimer la session',
-                                        icon: const Icon(
+                                        icon: Icon(
                                           Icons.delete_outline_rounded,
                                           size: 18,
                                           color: AppTheme.textMuted,
@@ -227,7 +227,7 @@ class _ReadingSessionsHistoryCard extends ConsumerWidget {
                                       Expanded(
                                         child: Text(
                                           'Page ${session.currentPage}',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12,
                                             color: AppTheme.textSecondary,
                                             fontWeight: FontWeight.w500,
@@ -236,14 +236,14 @@ class _ReadingSessionsHistoryCard extends ConsumerWidget {
                                       ),
                                       Text(
                                         durationLabel,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
                                           color: AppTheme.textMuted,
                                         ),
                                       ),
                                       IconButton(
                                         tooltip: 'Supprimer la session',
-                                        icon: const Icon(
+                                        icon: Icon(
                                           Icons.delete_outline_rounded,
                                           size: 18,
                                           color: AppTheme.textMuted,

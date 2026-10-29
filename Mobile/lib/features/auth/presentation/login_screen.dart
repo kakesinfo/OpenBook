@@ -105,7 +105,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ],
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Icon(
                               Icons.menu_book_rounded,
                               size: 32,
@@ -115,7 +115,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      const Text(
+                      Text(
                         'Yet Another Library',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -126,7 +126,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Connectez-vous pour synchroniser votre bibliothèque',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -152,7 +152,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               Container(
                                 width: 8,
                                 height: 8,
-                                decoration: const BoxDecoration(
+                                decoration: BoxDecoration(
                                   color: AppTheme.accentPrimary,
                                   shape: BoxShape.circle,
                                 ),
@@ -162,13 +162,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Serveur actif',
                                       style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
                                     ),
                                     Text(
                                       'http://${client.host}:${client.port}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                         color: AppTheme.textPrimary,
@@ -184,7 +184,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   minimumSize: Size.zero,
                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                child: const Text(
+                                child: Text(
                                   'Modifier',
                                   style: TextStyle(
                                     color: AppTheme.accentPrimary,
@@ -229,7 +229,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.error_outline_rounded,
                                       size: 18,
                                       color: AppTheme.accentRed,
@@ -238,7 +238,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     Expanded(
                                       child: Text(
                                         _errorMessage!,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,
                                           color: AppTheme.accentRed,
@@ -251,7 +251,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               const SizedBox(height: 16),
                             ],
 
-                            const Text(
+                            Text(
                               'Adresse Email ou Pseudo',
                               style: TextStyle(
                                 fontSize: 12,
@@ -267,25 +267,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               autocorrect: false,
                               autofillHints: const [AutofillHints.username, AutofillHints.email],
                               textInputAction: TextInputAction.next,
-                              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                               decoration: InputDecoration(
                                 hintText: 'ex: votre@email.com ou votre_pseudo',
-                                hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
-                                prefixIcon: const Icon(Icons.person_outline_rounded, size: 20, color: AppTheme.textMuted),
+                                hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                                prefixIcon: Icon(Icons.person_outline_rounded, size: 20, color: AppTheme.textMuted),
                                 filled: true,
                                 fillColor: AppTheme.bgElevated,
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                  borderSide: const BorderSide(color: AppTheme.borderSubtle),
+                                  borderSide: BorderSide(color: AppTheme.borderSubtle),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                  borderSide: const BorderSide(color: AppTheme.borderSubtle),
+                                  borderSide: BorderSide(color: AppTheme.borderSubtle),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                  borderSide: const BorderSide(color: AppTheme.accentPrimary),
+                                  borderSide: BorderSide(color: AppTheme.accentPrimary),
                                 ),
                               ),
                               validator: (val) {
@@ -296,7 +296,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               },
                             ),
                             const SizedBox(height: 16),
-                            const Text(
+                            Text(
                               'Mot de passe',
                               style: TextStyle(
                                 fontSize: 12,
@@ -313,11 +313,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               autofillHints: const [AutofillHints.password],
                               textInputAction: TextInputAction.done,
                               onFieldSubmitted: (_) => _handleLogin(),
-                              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                               decoration: InputDecoration(
                                 hintText: 'Mot de passe',
-                                hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
-                                prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20, color: AppTheme.textMuted),
+                                hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                                prefixIcon: Icon(Icons.lock_outline_rounded, size: 20, color: AppTheme.textMuted),
                                 suffixIcon: IconButton(
                                   icon: Icon(
                                     _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -335,15 +335,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                  borderSide: const BorderSide(color: AppTheme.borderSubtle),
+                                  borderSide: BorderSide(color: AppTheme.borderSubtle),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                  borderSide: const BorderSide(color: AppTheme.borderSubtle),
+                                  borderSide: BorderSide(color: AppTheme.borderSubtle),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                  borderSide: const BorderSide(color: AppTheme.accentPrimary),
+                                  borderSide: BorderSide(color: AppTheme.accentPrimary),
                                 ),
                               ),
                               validator: (val) {

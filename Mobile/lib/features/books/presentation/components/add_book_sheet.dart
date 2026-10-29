@@ -269,7 +269,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                 Expanded(
                   child: Text(
                     sheetTitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.textPrimary,
@@ -277,7 +277,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted),
+                  icon: Icon(Icons.close_rounded, color: AppTheme.textMuted),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
@@ -356,26 +356,26 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
               controller: _searchController,
               focusNode: _searchFocusNode,
               onChanged: _onSearchChanged,
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Rechercher par titre, ISBN, auteur...',
-                hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 14),
+                hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 14),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.accentPrimary, size: 22),
+                prefixIcon: Icon(Icons.search_rounded, color: AppTheme.accentPrimary, size: 22),
                 suffixIcon: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (_searchController.text.isNotEmpty)
                       IconButton(
-                        icon: const Icon(Icons.clear_rounded, color: AppTheme.textMuted, size: 20),
+                        icon: Icon(Icons.clear_rounded, color: AppTheme.textMuted, size: 20),
                         onPressed: () {
                           _searchController.clear();
                           _onSearchChanged('');
                         },
                       ),
                     IconButton(
-                      icon: const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.accentPrimary, size: 22),
+                      icon: Icon(Icons.qr_code_scanner_rounded, color: AppTheme.accentPrimary, size: 22),
                       tooltip: 'Scanner un code-barres',
                       onPressed: () {
                         setState(() {
@@ -394,7 +394,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
         // Results or Status
         Expanded(
           child: _isSearching
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -414,7 +414,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                         child: Text(
                           _searchError!,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: AppTheme.accentRed, fontSize: 14),
+                          style: TextStyle(color: AppTheme.accentRed, fontSize: 14),
                         ),
                       ),
                     )
@@ -425,12 +425,12 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.search_off_rounded, color: AppTheme.textMuted, size: 48),
+                                Icon(Icons.search_off_rounded, color: AppTheme.textMuted, size: 48),
                                 const SizedBox(height: 12),
                                 Text(
                                   'Aucun livre trouvé pour « ${_searchController.text.trim()} »',
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+                                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 15),
                                 ),
                                 const SizedBox(height: 20),
                                 // Bouton principal Création Rapide
@@ -462,7 +462,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                                 OutlinedButton.icon(
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: AppTheme.textSecondary,
-                                    side: const BorderSide(color: AppTheme.borderSubtle),
+                                    side: BorderSide(color: AppTheme.borderSubtle),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                                     ),
@@ -526,10 +526,10 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
               color: AppTheme.accentPrimaryLight,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.bolt_rounded, color: AppTheme.accentPrimary, size: 20),
+            child: Icon(Icons.bolt_rounded, color: AppTheme.accentPrimary, size: 20),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -588,13 +588,13 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
             ),
             child: Column(
               children: [
-                const Icon(
+                Icon(
                   Icons.auto_stories_rounded,
                   color: AppTheme.accentPrimary,
                   size: 42,
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Recherche dans le catalogue',
                   style: TextStyle(
                     color: AppTheme.textPrimary,
@@ -603,7 +603,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Tapez le titre d\'un livre, le nom d\'un auteur ou un numéro ISBN ci-dessus.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -631,7 +631,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.textPrimary,
-                    side: const BorderSide(color: AppTheme.borderSubtle),
+                    side: BorderSide(color: AppTheme.borderSubtle),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                     ),
@@ -672,11 +672,11 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.check_circle_rounded, color: AppTheme.accentPrimary, size: 18),
+                  Icon(Icons.check_circle_rounded, color: AppTheme.accentPrimary, size: 18),
                   const SizedBox(width: 8),
                   Text(
                     'Code détecté : $_scannedCode',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppTheme.accentPrimary,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
@@ -705,7 +705,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                         textAlign: TextAlign.center,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.textPrimary,
@@ -716,7 +716,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                         Text(
                           book.author,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             color: AppTheme.textSecondary,
                           ),
@@ -727,7 +727,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                         Text(
                           '${book.series}${book.volume != null ? ' - Tome ${book.volume}' : ''}',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             color: AppTheme.textMuted,
                           ),
@@ -781,7 +781,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                           child: OutlinedButton.icon(
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppTheme.accentRose,
-                              side: const BorderSide(color: AppTheme.accentRoseBorder),
+                              side: BorderSide(color: AppTheme.accentRoseBorder),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -799,8 +799,8 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                       // Option création rapide si pas la bonne édition
                       TextButton.icon(
                         onPressed: () => _openQuickCreate(initialIsbn: _scannedCode, initialTitle: book.title),
-                        icon: const Icon(Icons.bolt_rounded, size: 16, color: AppTheme.textMuted),
-                        label: const Text(
+                        icon: Icon(Icons.bolt_rounded, size: 16, color: AppTheme.textMuted),
+                        label: Text(
                           'Pas la bonne édition ? Création rapide',
                           style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
                         ),
@@ -813,8 +813,8 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
             const SizedBox(height: 12),
             TextButton.icon(
               onPressed: _resumeScanning,
-              icon: const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.accentPrimary),
-              label: const Text(
+              icon: Icon(Icons.qr_code_scanner_rounded, color: AppTheme.accentPrimary),
+              label: Text(
                 'Scanner un autre livre',
                 style: TextStyle(color: AppTheme.accentPrimary, fontWeight: FontWeight.w600),
               ),
@@ -831,9 +831,9 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline_rounded, color: AppTheme.accentRed, size: 56),
+              Icon(Icons.error_outline_rounded, color: AppTheme.accentRed, size: 56),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Livre introuvable',
                 style: TextStyle(
                   color: AppTheme.textPrimary,
@@ -845,7 +845,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
               Text(
                 'Aucun livre correspondant au code-barres\n« $_scannedCode »\nn\'a été trouvé dans le catalogue.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppTheme.textMuted,
                   fontSize: 14,
                   height: 1.4,
@@ -876,7 +876,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.textPrimary,
-                      side: const BorderSide(color: AppTheme.borderSubtle),
+                      side: BorderSide(color: AppTheme.borderSubtle),
                     ),
                     onPressed: _resumeScanning,
                     icon: const Icon(Icons.refresh_rounded, size: 18),
@@ -886,7 +886,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.textPrimary,
-                      side: const BorderSide(color: AppTheme.borderSubtle),
+                      side: BorderSide(color: AppTheme.borderSubtle),
                     ),
                     onPressed: () {
                       setState(() {
@@ -986,11 +986,11 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                    side: const BorderSide(color: AppTheme.accentPrimary, width: 1),
+                    side: BorderSide(color: AppTheme.accentPrimary, width: 1),
                   ),
                 ),
                 onPressed: () => _openQuickCreate(),
-                icon: const Icon(Icons.bolt_rounded, size: 18, color: AppTheme.accentPrimary),
+                icon: Icon(Icons.bolt_rounded, size: 18, color: AppTheme.accentPrimary),
                 label: const Text(
                   'Création rapide',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
@@ -1014,7 +1014,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
         if (_isProcessingScan && !_scanNotFound && _scannedBook == null)
           Container(
             color: Colors.black87,
-            child: const Center(
+            child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1118,7 +1118,7 @@ class _BookResultTile extends StatelessWidget {
                   book.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
@@ -1131,7 +1131,7 @@ class _BookResultTile extends StatelessWidget {
                     book.author,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: AppTheme.textSecondary,
                     ),
@@ -1143,7 +1143,7 @@ class _BookResultTile extends StatelessWidget {
                     '${book.series}${book.volume != null ? ' - Tome ${book.volume}' : ''}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       color: AppTheme.textMuted,
                     ),
@@ -1226,11 +1226,11 @@ class _BookResultTile extends StatelessWidget {
               color: AppTheme.bgElevated,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                side: const BorderSide(color: AppTheme.borderSubtle),
+                side: BorderSide(color: AppTheme.borderSubtle),
               ),
               onSelected: onAdd,
               itemBuilder: (context) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: BookStatus.unread,
                   child: Row(
                     children: [
@@ -1240,7 +1240,7 @@ class _BookResultTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: BookStatus.wishlist,
                   child: Row(
                     children: [
