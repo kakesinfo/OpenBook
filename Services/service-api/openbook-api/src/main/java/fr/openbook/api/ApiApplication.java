@@ -5,9 +5,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
-@SpringBootApplication
-@EntityScan(basePackages = "fr.openbook.api.entities")
-@EnableJpaRepositories(basePackages = "fr.openbook.api.repositories")
+@SpringBootApplication(scanBasePackages = {"fr.openbook"})
+@EntityScan(basePackages = {"fr.openbook.api.entities", "fr.openbook.media.entity"})
+@EnableJpaRepositories(basePackages = {"fr.openbook.api.repositories", "fr.openbook.media.repository"})
 public class ApiApplication {
 
 	public static void main(String[] args) {

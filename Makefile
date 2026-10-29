@@ -13,6 +13,9 @@ up-scraper:
 up-import:
 	docker compose up --force-recreate --build -d project-backend
 
+up-media:
+	docker compose up --force-recreate --build -d project-backend
+
 up-liquibase:
 	docker compose up --force-recreate --build -d project-liquibase
 

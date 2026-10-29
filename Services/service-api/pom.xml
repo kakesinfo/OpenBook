@@ -18,6 +18,7 @@
 
 	<modules>
 		<module>openbook-core</module>
+		<module>openbook-media</module>
 		<module>openbook-import</module>
 		<module>openbook-api</module>
 	</modules>
@@ -28,6 +29,9 @@
 		<spring-security.version>6.4.2</spring-security.version>
 		<jjwt.version>0.11.5</jjwt.version>
 		<sqlite-jdbc.version>3.45.3.0</sqlite-jdbc.version>
+		<webp-imageio.version>0.1.6</webp-imageio.version>
+		<twelvemonkeys.version>3.11.0</twelvemonkeys.version>
+		<thumbnailator.version>0.4.20</thumbnailator.version>
 	</properties>
 
 	<dependencyManagement>
@@ -39,8 +43,28 @@
 			</dependency>
 			<dependency>
 				<groupId>fr.openbook</groupId>
+				<artifactId>openbook-media</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>fr.openbook</groupId>
 				<artifactId>openbook-import</artifactId>
 				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.sejda.imageio</groupId>
+				<artifactId>webp-imageio</artifactId>
+				<version>${webp-imageio.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.twelvemonkeys.imageio</groupId>
+				<artifactId>imageio-webp</artifactId>
+				<version>${twelvemonkeys.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>net.coobird</groupId>
+				<artifactId>thumbnailator</artifactId>
+				<version>${thumbnailator.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>org.xerial</groupId>

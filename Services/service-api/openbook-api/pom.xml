@@ -21,6 +21,10 @@
 		</dependency>
 		<dependency>
 			<groupId>fr.openbook</groupId>
+			<artifactId>openbook-media</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>fr.openbook</groupId>
 			<artifactId>openbook-import</artifactId>
 		</dependency>
 		<dependency>

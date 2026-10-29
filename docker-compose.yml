@@ -35,28 +35,6 @@ services:
       - "--changeLogFile=db.changelog-master.xml"
       - "update"
 
-  # Run media microservice (Go)
-  project-media:
-    container_name: project-media
-    build:
-      context: ./Services/service-media
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    depends_on:
-      project-postgres:
-        condition: service_healthy
-    environment:
-      PORT: 5002
-      DATA_DIR: /data/media
-      MAX_WIDTH: 640
-      MAX_HEIGHT: 960
-      WEBP_QUALITY: 82
-      DATABASE_URL: postgresql://strapi:strapi@project-postgres:5432/strapi?sslmode=disable
-    volumes:
-      - ./Cache/media-data:/data/media
-    ports:
-      - "5002:5002"
-
   # Run spring boot api using maven and jdk 21
   project-backend:
     container_name: project-backend
@@ -65,16 +43,18 @@ services:
     depends_on:
       project-liquibase:
         condition: service_completed_successfully
-      project-media:
-        condition: service_started
     environment:
-      MEDIA_SERVICE_URL: http://project-media:5002
+      DATA_DIR: /data/media
+      MAX_WIDTH: 640
+      MAX_HEIGHT: 960
+      WEBP_QUALITY: 82
       MEDIA_PUBLIC_URL: /images
       JWT_SECRET_KEY: 3cfa76ef14937c1c0ea519f8fc057a80fcd04a7420f8e8bcd0a7567c272e007b
       JWT_EXPIRATION_TIME: 2592000000
     volumes:
       - ./Services/service-api:/usr/src/app
       - ./Cache/service-api/.m2:/root/.m2
+      - ./Cache/media-data:/data/media
     ports:
       - "8080:8080"
     working_dir: /usr/src/app
@@ -105,11 +85,11 @@ services:
     depends_on:
       project-liquibase:
         condition: service_completed_successfully
-      project-media:
+      project-backend:
         condition: service_started
     environment:
       DATABASE_URL: postgresql://strapi:strapi@project-postgres:5432/strapi?sslmode=disable
-      MEDIA_SERVICE_URL: http://project-media:5002
+      MEDIA_SERVICE_URL: http://project-backend:8080
       PORT: 5001
       SCHEDULE_HOUR: 3
       SCHEDULE_MINUTE: 0

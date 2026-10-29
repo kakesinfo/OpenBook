@@ -27,7 +27,7 @@ import fr.openbook.api.services.CollectionService;
 import fr.openbook.api.services.EditorService;
 import fr.openbook.api.services.RepositoryService;
 import fr.openbook.api.services.SeriesService;
-import fr.openbook.api.services.media.MediaServiceClient;
+import fr.openbook.api.services.media.MediaService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,7 +76,7 @@ import java.util.stream.Collectors;
 public class BookController {
 
     private final RepositoryService repositoryService;
-    private final MediaServiceClient mediaServiceClient;
+    private final MediaService mediaServiceClient;
 
     private UserEntity getAuthenticatedUser(HttpSession session) {
         if (session != null) {

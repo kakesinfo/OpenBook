@@ -12,7 +12,7 @@ import java.util.Map;
 
 @Slf4j
 @Service
-public class MediaServiceClient {
+public class MediaServiceClient implements MediaService {
 
     private final RestTemplate restTemplate;
     private final String mediaServiceUrl;

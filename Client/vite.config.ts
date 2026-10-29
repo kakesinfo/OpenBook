@@ -13,7 +13,7 @@ export default defineConfig({
     },
     proxy: {
       '/images': {
-        target: 'http://project-media:5002',
+        target: 'http://project-backend:8080',
         changeOrigin: true
       }
     }

@@ -1,6 +1,6 @@
 package fr.openbook.api.importing.service;
 
-import fr.openbook.api.services.media.MediaServiceClient;
+import fr.openbook.api.services.media.MediaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -14,10 +14,10 @@ import java.util.zip.ZipFile;
 @Service
 public class ImportMediaService {
 
-    private final MediaServiceClient mediaServiceClient;
+    private final MediaService mediaServiceClient;
     private final Map<String, String> cache = new ConcurrentHashMap<>();
 
-    public ImportMediaService(MediaServiceClient mediaServiceClient) {
+    public ImportMediaService(MediaService mediaServiceClient) {
         this.mediaServiceClient = mediaServiceClient;
     }
 
