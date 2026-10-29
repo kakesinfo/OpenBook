@@ -54,6 +54,10 @@ class AppTheme {
   static const Color darkTextSecondary = Color(0xFF94A3B8);
   static const Color darkTextMuted = Color(0xFF64748B);
 
+  static const Color darkBadgeVolumeBg = Color(0xE60F172A);
+  static const Color darkBadgeVolumeBorder = Color(0x33FFFFFF);
+  static const Color darkBadgeVolumeText = Color(0xFFF8FAFC);
+
   // ----------------------------------------------------
   // Raw Color Constants for Beige Theme
   // ----------------------------------------------------
@@ -89,6 +93,10 @@ class AppTheme {
   static const Color beigeTextSecondary = Color(0xFF57534E); // #57534e
   static const Color beigeTextMuted = Color(0xFF736C64); // #736c64
 
+  static const Color beigeBadgeVolumeBg = Color(0xF2F5F0E8); // #f5f0e8 with 95% opacity
+  static const Color beigeBadgeVolumeBorder = Color(0x4DB45309);
+  static const Color beigeBadgeVolumeText = Color(0xFF92400E);
+
   // ----------------------------------------------------
   // Dynamic Getters adapting to active theme
   // ----------------------------------------------------
@@ -123,6 +131,10 @@ class AppTheme {
   static Color get textPrimary => _currentMode == AppThemeMode.beige ? beigeTextPrimary : darkTextPrimary;
   static Color get textSecondary => _currentMode == AppThemeMode.beige ? beigeTextSecondary : darkTextSecondary;
   static Color get textMuted => _currentMode == AppThemeMode.beige ? beigeTextMuted : darkTextMuted;
+
+  static Color get badgeVolumeBg => _currentMode == AppThemeMode.beige ? beigeBadgeVolumeBg : darkBadgeVolumeBg;
+  static Color get badgeVolumeBorder => _currentMode == AppThemeMode.beige ? beigeBadgeVolumeBorder : darkBadgeVolumeBorder;
+  static Color get badgeVolumeText => _currentMode == AppThemeMode.beige ? beigeBadgeVolumeText : darkBadgeVolumeText;
 
   // Border Radii
   static const double radiusSm = 8.0;

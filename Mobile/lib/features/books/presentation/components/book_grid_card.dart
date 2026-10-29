@@ -54,10 +54,10 @@ class BookGridCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
-                      color: const Color(0xE60F172A),
+                      color: AppTheme.badgeVolumeBg,
                       borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                       border: Border.all(
-                        color: const Color(0x33FFFFFF),
+                        color: AppTheme.badgeVolumeBorder,
                         width: 1,
                       ),
                     ),
@@ -66,7 +66,7 @@ class BookGridCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary,
+                        color: AppTheme.badgeVolumeText,
                         letterSpacing: 0.2,
                       ),
                     ),
