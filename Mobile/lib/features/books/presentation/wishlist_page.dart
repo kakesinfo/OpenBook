@@ -29,7 +29,7 @@ class WishlistPage extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Ajouter un souhait',
-            icon: const Icon(Icons.add, color: AppTheme.accentPrimary),
+            icon: Icon(Icons.add, color: AppTheme.accentPrimary),
             onPressed: () {
               showAddBookSheet(context, initialStatus: BookStatus.wishlist);
             },
@@ -44,7 +44,7 @@ class WishlistPage extends ConsumerWidget {
         label: const Text('Ajouter un souhait'),
       ),
       body: booksAsync.when(
-        loading: () => const Center(
+        loading: () => Center(
           child: CircularProgressIndicator(color: AppTheme.accentPrimary),
         ),
         error: (error, _) => Center(
@@ -53,7 +53,7 @@ class WishlistPage extends ConsumerWidget {
             child: Text(
               'Erreur : $error',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.accentRed),
+              style: TextStyle(color: AppTheme.accentRed),
             ),
           ),
         ),
@@ -78,7 +78,7 @@ class WishlistPage extends ConsumerWidget {
                           width: 1,
                         ),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Icon(
                           Icons.favorite_rounded,
                           size: 30,
@@ -87,7 +87,7 @@ class WishlistPage extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       'Aucun livre dans vos souhaits',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -100,7 +100,7 @@ class WishlistPage extends ConsumerWidget {
                     const SizedBox(height: 8),
                     ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 340),
-                      child: const Text(
+                      child: Text(
                         'Retrouvez ici tous les ouvrages que vous aimeriez acquérir ou lire plus tard.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -117,9 +117,9 @@ class WishlistPage extends ConsumerWidget {
                       decoration: BoxDecoration(
                         gradient: AppTheme.primaryGradient,
                         borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Color(0x5910B981),
+                            color: AppTheme.accentPrimaryGlow,
                             blurRadius: 14,
                             offset: Offset(0, 4),
                           ),

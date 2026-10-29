@@ -151,7 +151,7 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
         children: [
           Text(
             widget.book.title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
               color: AppTheme.textPrimary,
@@ -159,7 +159,7 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Renseignez la durée et la progression de votre session de lecture.',
             style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
           ),
@@ -196,9 +196,9 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
             decoration: BoxDecoration(
               gradient: AppTheme.primaryGradient,
               borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-              boxShadow: const [
+              boxShadow: [
                 BoxShadow(
-                  color: Color(0x4D10B981),
+                  color: AppTheme.accentPrimaryGlow,
                   blurRadius: 14,
                   offset: Offset(0, 4),
                 ),
@@ -274,7 +274,7 @@ class _SessionOptionCard extends StatelessWidget {
         ),
         title: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: AppTheme.textPrimary,
@@ -282,9 +282,9 @@ class _SessionOptionCard extends StatelessWidget {
         ),
         subtitle: Text(
           subtitle,
-          style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
+          style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
         ),
-        trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
+        trailing: Icon(Icons.chevron_right_rounded, color: AppTheme.textMuted),
       ),
     );
   }
@@ -344,7 +344,7 @@ class _DurationBottomSheetState extends State<_DurationBottomSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Temps de lecture',
               style: TextStyle(
                 fontSize: 18,
@@ -436,7 +436,7 @@ class _PageWheelBottomSheetState extends State<_PageWheelBottomSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Pages lues',
               style: TextStyle(
                 fontSize: 18,

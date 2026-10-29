@@ -153,13 +153,13 @@
     }
 
     &--active {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      border-color: #10b981;
+      background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
+      border-color: var(--accent-primary);
       color: #ffffff;
-      box-shadow: 0 4px 12px 0 rgba(16, 185, 129, 0.35);
+      box-shadow: 0 4px 12px 0 var(--accent-primary-glow);
 
       &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+        background: linear-gradient(135deg, var(--accent-primary-hover) 0%, var(--accent-primary) 100%);
         color: #ffffff;
       }
     }

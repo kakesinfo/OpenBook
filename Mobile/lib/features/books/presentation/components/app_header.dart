@@ -27,7 +27,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppTheme.bgSurface,
         border: Border(
           bottom: BorderSide(color: AppTheme.borderSubtle, width: 1),
@@ -57,7 +57,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                           width: 1,
                         ),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Icon(
                           Icons.menu_book_rounded,
                           size: 18,
@@ -74,7 +74,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.02,
@@ -87,7 +87,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                           const SizedBox(height: 2),
                           Text(
                             subtitle!,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               color: AppTheme.textMuted,
                             ),

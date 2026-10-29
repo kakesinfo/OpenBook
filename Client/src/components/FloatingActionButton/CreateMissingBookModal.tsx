@@ -136,14 +136,15 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
             onClose={() => !submitting && onClose()}
             PaperProps={{
                 style: {
-                    backgroundColor: "var(--bg-surface, #131926)",
-                    border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.12))",
+                    backgroundColor: "var(--bg-surface)",
+                    border: "1px solid var(--border-subtle)",
+                    color: "var(--text-primary)",
                     borderRadius: "16px",
                     maxWidth: "520px",
                     width: "100%",
                     padding: "22px 24px",
                     margin: "16px",
-                    boxShadow: "0 20px 48px rgba(0, 0, 0, 0.6)"
+                    boxShadow: "var(--shadow-lg)"
                 }
             }}
         >

@@ -88,11 +88,11 @@ export default function WishlistPage() {
                                 height: "42px",
                                 padding: "0 22px",
                                 borderRadius: "var(--radius-full)",
-                                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                                background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%)",
                                 color: "#fff",
                                 fontWeight: 600,
                                 fontSize: "0.875rem",
-                                boxShadow: "0 4px 14px 0 rgba(16, 185, 129, 0.35)"
+                                boxShadow: "0 4px 14px 0 var(--accent-primary-glow)",
                             }}
                         >
                             <FontAwesomeIcon icon={faCompass} />

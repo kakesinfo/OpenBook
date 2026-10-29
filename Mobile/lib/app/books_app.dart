@@ -6,16 +6,18 @@ import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/server_config_screen.dart';
 import '../features/books/presentation/components/books_shell.dart';
 import 'theme.dart';
+import 'theme_provider.dart';
 
-class BooksApp extends StatelessWidget {
+class BooksApp extends ConsumerWidget {
   const BooksApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(appThemeModeProvider);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Yet Another Library',
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.themeFor(themeMode),
       home: const _AppRootGate(),
     );
   }
@@ -110,7 +112,7 @@ class AppLoadingScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         Icons.menu_book_rounded,
                         size: 28,
@@ -119,7 +121,7 @@ class AppLoadingScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
+                  Text(
                     'Yet Another Library',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -130,7 +132,7 @@ class AppLoadingScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     'Connexion au serveur...',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -139,8 +141,8 @@ class AppLoadingScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(999)),
+                  ClipRRect(
+                    borderRadius: const BorderRadius.all(Radius.circular(999)),
                     child: LinearProgressIndicator(
                       minHeight: 4,
                       backgroundColor: AppTheme.borderSubtle,

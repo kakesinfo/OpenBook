@@ -41,7 +41,7 @@
   &__filters {
     display: inline-flex;
     align-items: center;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-primary);
     border: 1px solid var(--border-subtle);
     border-radius: 18px;
     padding: 2px;
@@ -57,7 +57,7 @@
     border-radius: 14px;
     border: none;
     background: transparent;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: 0.78rem;
     font-weight: 600;
     cursor: pointer;
@@ -69,11 +69,11 @@
 
     &.is-active {
       background: rgba(245, 158, 11, 0.18);
-      color: #f59e0b;
+      color: var(--accent-amber);
       font-weight: 700;
 
       .sales-page__filter-count {
-        background: #f59e0b;
+        background: var(--accent-amber);
         color: #fff;
       }
     }
@@ -83,7 +83,7 @@
     font-size: 0.72rem;
     padding: 1px 6px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--bg-elevated);
     color: var(--text-muted);
     font-weight: 600;
     transition: all var(--transition-fast);
@@ -100,7 +100,7 @@
     display: flex;
     align-items: center;
     gap: 3px;
-    background: rgba(0, 0, 0, 0.25);
+    background: var(--bg-primary);
     border: 1px solid var(--border-subtle);
     border-radius: 18px;
     padding: 2px;
@@ -114,7 +114,7 @@
     border-radius: 14px;
     border: none;
     background: transparent;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: 0.78rem;
     font-weight: 600;
     cursor: pointer;
@@ -125,8 +125,9 @@
     }
 
     &.is-active {
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
     }
   }
 
@@ -147,7 +148,7 @@
       height: 34px;
       padding: 0 12px 0 34px;
       border-radius: 17px;
-      background: rgba(0, 0, 0, 0.25);
+      background: var(--bg-primary);
       border: 1px solid var(--border-subtle);
       color: var(--text-primary);
       font-size: 0.835rem;
@@ -157,8 +158,8 @@
 
       &:focus {
         width: 210px;
-        border-color: #f59e0b;
-        box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+        border-color: var(--accent-amber);
+        box-shadow: 0 0 0 2px var(--accent-amber-light);
       }
 
       &::placeholder {
@@ -169,7 +170,7 @@
 
   &__view-toggle {
     display: flex;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-primary);
     border: 1px solid var(--border-subtle);
     border-radius: 18px;
     padding: 2px;
@@ -184,7 +185,7 @@
     border-radius: 14px;
     border: none;
     background: transparent;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: 0.78rem;
     font-weight: 600;
     cursor: pointer;
@@ -195,8 +196,9 @@
     }
 
     &.is-active {
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-sm);
     }
   }
 }
@@ -214,22 +216,23 @@
   letter-spacing: 0.3px;
 
   &--forsale {
-    background: rgba(245, 158, 11, 0.18);
-    color: #f59e0b;
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    background: var(--accent-amber-light);
+    color: var(--accent-amber);
+    border: 1px solid var(--accent-amber);
   }
 
   &--sold {
-    background: rgba(100, 116, 139, 0.2);
-    color: #94a3b8;
-    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(100, 116, 139, 0.15);
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
   }
 
   &--volume {
-    background: rgba(0, 0, 0, 0.65);
-    color: #fff;
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: var(--badge-volume-bg, var(--bg-surface));
+    color: var(--badge-volume-text, var(--text-primary));
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--badge-volume-border, var(--border-subtle));
+    box-shadow: var(--shadow-sm);
   }
 }
 
@@ -270,7 +273,7 @@
     width: 100%;
     aspect-ratio: 2 / 3;
     overflow: hidden;
-    background: #000;
+    background: var(--bg-elevated);
     display: block;
 
     img {
@@ -327,7 +330,7 @@
     overflow: hidden;
 
     &:hover {
-      color: #f59e0b;
+      color: var(--accent-amber);
     }
   }
 
@@ -399,19 +402,20 @@
     }
 
     &--sold {
-      color: #10b981;
-      border-color: rgba(16, 185, 129, 0.3);
-      background: rgba(16, 185, 129, 0.08);
+      color: var(--accent-primary);
+      border-color: var(--border-focus);
+      background: var(--accent-primary-light);
 
       &:hover {
-        background: rgba(16, 185, 129, 0.18);
-        border-color: #10b981;
+        background: var(--accent-primary);
+        border-color: var(--accent-primary);
+        color: #ffffff;
       }
     }
 
     &--relist {
-      color: #f59e0b;
-      border-color: rgba(245, 158, 11, 0.3);
+      color: var(--accent-amber);
+      border-color: var(--accent-amber);
       background: rgba(245, 158, 11, 0.08);
 
       &:hover {
@@ -449,7 +453,7 @@
     align-items: center;
     gap: 12px;
     padding: 9px 14px;
-    background: rgba(0, 0, 0, 0.35);
+    background: var(--bg-elevated);
     border-bottom: 1px solid var(--border-subtle);
     font-size: 0.72rem;
     font-weight: 700;
@@ -523,7 +527,7 @@
       cursor: pointer;
 
       &:hover .sales-row__title {
-        color: #f59e0b;
+        color: var(--accent-amber);
         text-decoration: underline;
       }
     }
@@ -559,6 +563,12 @@
     font-size: 0.65rem;
     font-weight: 600;
     flex-shrink: 0;
+
+    [data-theme="beige"] & {
+      color: #6d28d9;
+      background: rgba(109, 40, 217, 0.1);
+      border-color: rgba(109, 40, 217, 0.28);
+    }
   }
 
   &__series-name {
@@ -572,7 +582,8 @@
   &__volume-badge {
     padding: 1px 6px;
     border-radius: 4px;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
     color: var(--text-primary);
     font-size: 0.7rem;
     font-weight: 700;
@@ -624,18 +635,19 @@
     transition: all var(--transition-fast);
 
     &--sold {
-      color: #10b981;
-      border-color: rgba(16, 185, 129, 0.3);
+      color: var(--accent-primary);
+      border-color: var(--border-focus);
 
       &:hover {
-        background: rgba(16, 185, 129, 0.18);
-        border-color: #10b981;
+        background: var(--accent-primary);
+        border-color: var(--accent-primary);
+        color: #ffffff;
       }
     }
 
     &--relist {
-      color: #f59e0b;
-      border-color: rgba(245, 158, 11, 0.3);
+      color: var(--accent-amber);
+      border-color: var(--accent-amber);
 
       &:hover {
         background: rgba(245, 158, 11, 0.18);
@@ -661,10 +673,10 @@
   z-index: 9999;
   pointer-events: none;
   width: 96px;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-lg);
   padding: 4px;
   display: flex;
   flex-direction: column;
@@ -834,21 +846,21 @@
     transition: all var(--transition-fast);
 
     &--bought {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+      background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
+      box-shadow: 0 4px 14px var(--accent-primary-glow);
 
       &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+        background: linear-gradient(135deg, var(--accent-primary-hover) 0%, var(--accent-primary) 100%);
         transform: translateY(-1px);
       }
     }
 
     &--sold {
-      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+      background: linear-gradient(135deg, var(--accent-amber) 0%, #78350f 100%);
+      box-shadow: 0 4px 14px var(--accent-amber-light);
 
       &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        background: linear-gradient(135deg, #b45309 0%, var(--accent-amber) 100%);
         transform: translateY(-1px);
       }
     }

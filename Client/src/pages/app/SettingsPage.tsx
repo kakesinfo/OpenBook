@@ -20,12 +20,14 @@ import {
     faReceipt,
     faCircleCheck,
     faInfoCircle,
-    faArrowsRotate
+    faArrowsRotate,
+    faPalette
 } from "@fortawesome/free-solid-svg-icons";
 
 import useSession from "../../hooks/UseSession.tsx";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import UserAvatar from "../../components/UserAvatar/UserAvatar.tsx";
+import ThemeSelector from "../../components/ThemeSelector/ThemeSelector.tsx";
 import "./SettingsPage.scss";
 
 const REQUIRED_DELETE_PHRASE = "Je veux supprimer mon compte";
@@ -592,6 +594,27 @@ export default function SettingsPage() {
                                 <span>{profileSaving ? "Enregistrement..." : "Enregistrer le pseudonyme"}</span>
                             </button>
                         </form>
+                    </div>
+                </section>
+
+                {/* Section: Thème & Apparence */}
+                <section className="settings-card">
+                    <header className="settings-card__header">
+                        <div className="settings-card__header-title">
+                            <div className="settings-card__icon settings-card__icon--primary">
+                                <FontAwesomeIcon icon={faPalette} />
+                            </div>
+                            <div>
+                                <h3>Thème & Apparence</h3>
+                                <p className="settings-card__header-desc">
+                                    Choisissez le thème graphique appliqué à l'ensemble du site
+                                </p>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="settings-card__body">
+                        <ThemeSelector />
                     </div>
                 </section>
 

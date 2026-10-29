@@ -66,7 +66,7 @@ class BookCover extends StatelessWidget {
     return Container(
       width: width,
       height: height,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: AppTheme.coverFallbackGradient,
       ),
       padding: const EdgeInsets.all(8),
@@ -74,7 +74,7 @@ class BookCover extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             Icons.menu_book_rounded,
             size: 26,
             color: AppTheme.accentPrimary,
@@ -85,7 +85,7 @@ class BookCover extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
               color: AppTheme.textSecondary,

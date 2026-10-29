@@ -193,7 +193,7 @@
     }
 
     &.is-active {
-      background: rgba(16, 185, 129, 0.15);
+      background: var(--accent-primary-light);
       border-color: var(--accent-primary);
       color: var(--accent-primary);
       font-weight: 700;
@@ -212,17 +212,29 @@
       background: rgba(59, 130, 246, 0.15);
       color: #60a5fa;
       border: 1px solid rgba(59, 130, 246, 0.3);
+
+      [data-theme="beige"] & {
+        background: rgba(37, 99, 235, 0.12);
+        color: #1d4ed8;
+        border-color: rgba(37, 99, 235, 0.25);
+      }
     }
 
     &--status {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
+      border: 1px solid var(--border-focus);
 
       &.status-finished {
         background: rgba(107, 114, 128, 0.2);
         color: #9ca3af;
         border-color: rgba(107, 114, 128, 0.3);
+
+        [data-theme="beige"] & {
+          background: rgba(120, 95, 70, 0.14);
+          color: var(--text-secondary);
+          border-color: rgba(120, 95, 70, 0.25);
+        }
       }
     }
   }
@@ -494,8 +506,8 @@
     font-weight: 600;
 
     &.owned {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
     }
 
     &.wishlisted {
@@ -523,7 +535,7 @@
     align-items: center;
     height: 34px;
     padding: 0 16px;
-    background: rgba(0, 0, 0, 0.25);
+    background: var(--bg-elevated);
     border-bottom: 1px solid var(--border-subtle);
     font-size: 0.7rem;
     font-weight: 700;
@@ -714,9 +726,9 @@
     }
 
     &--status {
-      background: rgba(16, 185, 129, 0.12);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.25);
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
+      border: 1px solid var(--border-focus);
 
       &.status-finished {
         background: rgba(107, 114, 128, 0.15);
@@ -759,7 +771,7 @@
     }
 
     &.is-followed {
-      background: rgba(16, 185, 129, 0.15);
+      background: var(--accent-primary-light);
       border-color: var(--accent-primary);
       color: var(--accent-primary);
       font-weight: 600;

@@ -1,6 +1,6 @@
 .card {
   background-color: var(--bg-surface);
-  background: linear-gradient(145deg, rgba(22, 29, 46, 0.95), rgba(15, 20, 32, 0.9));
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 24px;
@@ -9,6 +9,10 @@
   backdrop-filter: blur(12px);
   position: relative;
   overflow: hidden;
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+  }
 
   @media (max-width: 600px) {
     padding: 20px 16px;

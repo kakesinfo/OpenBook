@@ -99,6 +99,7 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
     const location = useLocation();
     const isSettingsActive = location.pathname.startsWith('/app/settings');
 
+
     return (
         <>
             {/* Desktop Sidebar */}

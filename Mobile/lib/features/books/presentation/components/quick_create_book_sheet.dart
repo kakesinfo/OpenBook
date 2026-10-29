@@ -293,7 +293,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -317,14 +317,14 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted),
+                  icon: Icon(Icons.close_rounded, color: AppTheme.textMuted),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
             ),
           ),
 
-          const Divider(color: AppTheme.borderSubtle, height: 1),
+          Divider(color: AppTheme.borderSubtle, height: 1),
 
           // Form fields
           Expanded(
@@ -340,13 +340,13 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
                     const SizedBox(height: 6),
                     TextFormField(
                       controller: _titleController,
-                      style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                      style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                       textCapitalization: TextCapitalization.sentences,
                       decoration: InputDecoration(
                         hintText: 'ex: Watchmen, Tome 1...',
                         suffixIcon: _titleController.text.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear_rounded, size: 18, color: AppTheme.textMuted),
+                                icon: Icon(Icons.clear_rounded, size: 18, color: AppTheme.textMuted),
                                 onPressed: () {
                                   setState(() {
                                     _titleController.clear();
@@ -381,11 +381,11 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
                               TextFormField(
                                 controller: _isbnController,
                                 keyboardType: TextInputType.text,
-                                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                                style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                                 decoration: InputDecoration(
                                   hintText: 'ex: 9782809499872',
                                   suffixIcon: IconButton(
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.qr_code_scanner_rounded,
                                       color: AppTheme.accentPrimary,
                                       size: 22,
@@ -411,7 +411,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
                                 controller: _priceController,
                                 keyboardType: TextInputType.number,
                                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                                style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                                 decoration: const InputDecoration(
                                   hintText: 'ex: 20',
                                 ),
@@ -484,7 +484,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
           // Footer buttons
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppTheme.bgSurface,
               border: Border(top: BorderSide(color: AppTheme.borderSubtle, width: 1)),
             ),
@@ -543,7 +543,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
             color: AppTheme.textSecondary,
@@ -623,7 +623,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
                             color: AppTheme.accentPrimaryLight,
                             borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.check_circle_rounded, size: 14, color: AppTheme.accentPrimary),
@@ -719,7 +719,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
           ] else ...[
             TextFormField(
               controller: _coverUrlController,
-              style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
               decoration: const InputDecoration(
                 hintText: 'https://exemple.com/couverture.jpg',
                 contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -736,7 +736,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
                     height: 100,
                     width: 70,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Text(
+                    errorBuilder: (context, error, stackTrace) => Text(
                       'Lien d\'image non valide',
                       style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
                     ),
@@ -949,7 +949,7 @@ class _QuickIsbnScannerModalState extends State<_QuickIsbnScannerModal> {
                       color: Colors.black87,
                       borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.qr_code_scanner_rounded, color: AppTheme.accentPrimary, size: 18),

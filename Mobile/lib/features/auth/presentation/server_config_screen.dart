@@ -132,7 +132,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                             ),
                           ],
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Icon(
                             Icons.dns_rounded,
                             size: 32,
@@ -142,7 +142,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
+                    Text(
                       'Configuration du Serveur',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -153,7 +153,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Entrez l\'adresse IP ainsi que le port de votre serveur backend (port 8080).',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -182,7 +182,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Hôte / Adresse IP',
                             style: TextStyle(
                               fontSize: 12,
@@ -197,25 +197,25 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                             textCapitalization: TextCapitalization.none,
                             autocorrect: false,
                             textInputAction: TextInputAction.next,
-                            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                            style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                             decoration: InputDecoration(
                               hintText: 'ex: 192.168.1.161 ou localhost',
-                              hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
-                              prefixIcon: const Icon(Icons.language_rounded, size: 20, color: AppTheme.textMuted),
+                              hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                              prefixIcon: Icon(Icons.language_rounded, size: 20, color: AppTheme.textMuted),
                               filled: true,
                               fillColor: AppTheme.bgElevated,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                borderSide: const BorderSide(color: AppTheme.borderSubtle),
+                                borderSide: BorderSide(color: AppTheme.borderSubtle),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                borderSide: const BorderSide(color: AppTheme.borderSubtle),
+                                borderSide: BorderSide(color: AppTheme.borderSubtle),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                borderSide: const BorderSide(color: AppTheme.accentPrimary),
+                                borderSide: BorderSide(color: AppTheme.accentPrimary),
                               ),
                             ),
                             validator: (val) {
@@ -226,7 +226,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                             },
                           ),
                           const SizedBox(height: 16),
-                          const Text(
+                          Text(
                             'Port Backend (8080)',
                             style: TextStyle(
                               fontSize: 12,
@@ -239,25 +239,25 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                             controller: _portController,
                             keyboardType: TextInputType.number,
                             textInputAction: TextInputAction.done,
-                            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                            style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                             decoration: InputDecoration(
                               hintText: '8080',
-                              hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
-                              prefixIcon: const Icon(Icons.tag_rounded, size: 20, color: AppTheme.textMuted),
+                              hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                              prefixIcon: Icon(Icons.tag_rounded, size: 20, color: AppTheme.textMuted),
                               filled: true,
                               fillColor: AppTheme.bgElevated,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                borderSide: const BorderSide(color: AppTheme.borderSubtle),
+                                borderSide: BorderSide(color: AppTheme.borderSubtle),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                borderSide: const BorderSide(color: AppTheme.borderSubtle),
+                                borderSide: BorderSide(color: AppTheme.borderSubtle),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                borderSide: const BorderSide(color: AppTheme.accentPrimary),
+                                borderSide: BorderSide(color: AppTheme.accentPrimary),
                               ),
                             ),
                             validator: (val) {
@@ -319,7 +319,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                             child: OutlinedButton.icon(
                               onPressed: _isTesting ? null : _testConnection,
                               icon: _isTesting
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       width: 16,
                                       height: 16,
                                       child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentPrimary),
@@ -328,7 +328,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                               label: Text(_isTesting ? 'Test en cours...' : 'Tester la connexion'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppTheme.textPrimary,
-                                side: const BorderSide(color: AppTheme.borderMedium),
+                                side: BorderSide(color: AppTheme.borderMedium),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                                 ),

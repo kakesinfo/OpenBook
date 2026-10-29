@@ -28,7 +28,7 @@ class HomePage extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Ajouter un livre',
-            icon: const Icon(Icons.add, color: AppTheme.accentPrimary),
+            icon: Icon(Icons.add, color: AppTheme.accentPrimary),
             onPressed: () {
               showAddBookSheet(context);
             },
@@ -37,7 +37,7 @@ class HomePage extends ConsumerWidget {
       ),
       body: CustomScrollView(
         slivers: [
-          const SliverPadding(
+          SliverPadding(
             padding: EdgeInsets.fromLTRB(20, 20, 20, 16),
             sliver: SliverToBoxAdapter(
               child: Column(
@@ -133,7 +133,7 @@ class HomePage extends ConsumerWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Lectures en cours',
                     style: TextStyle(
                       fontSize: 18,
@@ -155,7 +155,7 @@ class HomePage extends ConsumerWidget {
                       ),
                       child: Text(
                         '${readingBooks.length}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppTheme.accentPrimary,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -256,7 +256,7 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
               color: AppTheme.textPrimary,
@@ -266,7 +266,7 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
               color: AppTheme.textMuted,
@@ -285,7 +285,7 @@ class _LoadingHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SizedBox(
+    return SizedBox(
       height: 100,
       child: Center(child: CircularProgressIndicator(color: AppTheme.accentPrimary)),
     );
@@ -320,7 +320,7 @@ class _EmptyHero extends StatelessWidget {
                   color: AppTheme.accentPrimaryLight,
                   borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                 ),
-                child: const Center(
+                child: Center(
                   child: Icon(
                     Icons.auto_stories_rounded,
                     color: AppTheme.accentPrimary,
@@ -332,7 +332,7 @@ class _EmptyHero extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
@@ -344,7 +344,7 @@ class _EmptyHero extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             subtitle,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               color: AppTheme.textMuted,
               height: 1.4,

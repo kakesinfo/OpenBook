@@ -30,7 +30,7 @@ export default function PieChart({ data, totalCount, title = "Répartition par g
                     width: "120px",
                     height: "120px",
                     borderRadius: "50%",
-                    border: "2px dashed var(--border-color, #2a2a32)",
+                    border: "2px dashed var(--border-subtle)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",

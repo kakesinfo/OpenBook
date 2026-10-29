@@ -286,9 +286,9 @@ export default function AdminConflictsPage() {
                         borderRadius: "20px",
                         fontSize: "0.85rem",
                         fontWeight: 600,
-                        background: serverConnected ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.12)",
-                        color: serverConnected ? "#10b981" : "#ef4444",
-                        border: `1px solid ${serverConnected ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"}`
+                        background: serverConnected ? "var(--accent-primary-light)" : "rgba(239, 68, 68, 0.12)",
+                        color: serverConnected ? "var(--accent-primary)" : "#ef4444",
+                        border: `1px solid ${serverConnected ? "var(--border-focus)" : "rgba(239, 68, 68, 0.3)"}`
                     }}>
                         <FontAwesomeIcon icon={serverConnected ? faCircleCheck : faTriangleExclamation} />
                         <span>{serverConnected ? "Microservice Connecté" : "Microservice Injoignable"}</span>

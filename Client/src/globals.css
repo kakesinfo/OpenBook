@@ -1,40 +1,5 @@
-:root {
-  --bg-primary: #0b0f17;
-  --bg-surface: #131926;
-  --bg-elevated: #1a2234;
-  --bg-card: rgba(22, 29, 46, 0.75);
-  
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(16, 185, 129, 0.4);
-  
-  --accent-primary: #10b981;
-  --accent-primary-hover: #059669;
-  --accent-primary-light: rgba(16, 185, 129, 0.12);
-  --accent-primary-glow: rgba(16, 185, 129, 0.25);
-  
-  --accent-secondary: #6366f1;
-  --accent-secondary-light: rgba(99, 102, 241, 0.12);
-  
-  --accent-amber: #f59e0b;
-  --accent-amber-light: rgba(245, 158, 11, 0.12);
-
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-full: 9999px;
-  
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 12px 28px -6px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 25px -4px var(--accent-primary-glow);
-  
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-}
+@import './themes/default.css';
+@import './themes/beige.css';
 
 * {
   box-sizing: border-box;
@@ -56,6 +21,7 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
 /* Custom modern scrollbar */
@@ -69,12 +35,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--scrollbar-thumb, rgba(255, 255, 255, 0.15));
   border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--scrollbar-thumb-hover, rgba(255, 255, 255, 0.25));
 }
 
 /* Links */

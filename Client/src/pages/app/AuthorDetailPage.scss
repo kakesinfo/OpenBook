@@ -59,9 +59,9 @@
     }
 
     &.is-followed {
-      background: rgba(16, 185, 129, 0.15);
-      border-color: rgba(16, 185, 129, 0.4);
-      color: #34d399;
+      background: var(--accent-primary-light);
+      border-color: var(--border-focus);
+      color: var(--accent-primary);
 
       &:hover {
         background: rgba(239, 68, 68, 0.15);
@@ -233,9 +233,9 @@
     }
 
     &--owned {
-      border-color: rgba(16, 185, 129, 0.3);
+      border-color: var(--border-focus);
       strong {
-        color: #34d399;
+        color: var(--accent-primary);
       }
     }
 
@@ -274,7 +274,7 @@
   &__filter-pills {
     display: flex;
     gap: 6px;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--bg-surface);
     padding: 3px;
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
@@ -420,7 +420,7 @@
     height: 48px;
     border-radius: 4px;
     overflow: hidden;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-surface);
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -493,9 +493,9 @@
     font-weight: 600;
 
     &.owned {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
+      border: 1px solid var(--border-focus);
     }
 
     &.wishlisted {

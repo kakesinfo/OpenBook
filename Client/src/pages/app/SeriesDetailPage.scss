@@ -59,9 +59,9 @@
     }
 
     &.is-followed {
-      background: rgba(16, 185, 129, 0.15);
-      border-color: rgba(16, 185, 129, 0.4);
-      color: #34d399;
+      background: var(--accent-primary-light);
+      border-color: var(--border-focus);
+      color: var(--accent-primary);
 
       &:hover {
         background: rgba(239, 68, 68, 0.15);
@@ -241,9 +241,9 @@
       border: 1px solid rgba(245, 158, 11, 0.3);
 
       &.status-finished {
-        background: rgba(16, 185, 129, 0.15);
-        color: #34d399;
-        border-color: rgba(16, 185, 129, 0.3);
+        background: var(--accent-primary-light);
+        color: var(--accent-primary);
+        border-color: var(--border-focus);
       }
     }
 
@@ -304,7 +304,7 @@
     color: var(--text-primary);
 
     strong {
-      color: #34d399;
+      color: var(--accent-primary);
     }
   }
 
@@ -318,7 +318,7 @@
 
   &__progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #10b981, #6366f1);
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
     border-radius: 999px;
     transition: width 0.4s ease;
   }
@@ -461,11 +461,11 @@
     gap: 4px;
     padding: 4px 8px;
     border-radius: 6px;
-    background: rgba(99, 102, 241, 0.15);
-    color: #818cf8;
+    background: var(--accent-secondary-light);
+    color: var(--accent-secondary);
     font-size: 0.8rem;
     font-weight: 700;
-    border: 1px solid rgba(99, 102, 241, 0.25);
+    border: 1px solid var(--border-subtle);
     cursor: pointer;
   }
 
@@ -474,7 +474,7 @@
     height: 48px;
     border-radius: 4px;
     overflow: hidden;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--bg-surface);
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -534,9 +534,9 @@
     font-weight: 600;
 
     &.owned {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
+      border: 1px solid var(--border-focus);
     }
 
     &.wishlisted {

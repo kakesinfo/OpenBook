@@ -48,12 +48,12 @@ class BookCard extends ConsumerWidget {
               Expanded(
                 child: Row(
                   children: [
-                    const Icon(Icons.timer_outlined, size: 14, color: AppTheme.textMuted),
+                    Icon(Icons.timer_outlined, size: 14, color: AppTheme.textMuted),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         daysReading <= 0 ? 'Début non défini' : '$daysReading jours en lecture',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.textMuted,
                           fontWeight: FontWeight.w600,
@@ -78,7 +78,7 @@ class BookCard extends ConsumerWidget {
                 ),
                 child: Text(
                   totalPages <= 0 ? 'p. $currentPage' : 'p. $currentPage / $totalPages',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppTheme.accentPrimary,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -127,7 +127,7 @@ class BookCard extends ConsumerWidget {
                           value: totalPages <= 0 ? 0.0 : progress.progress,
                           minHeight: 4,
                           backgroundColor: AppTheme.borderSubtle,
-                          valueColor: const AlwaysStoppedAnimation<Color>(
+                          valueColor: AlwaysStoppedAnimation<Color>(
                             AppTheme.accentPrimary,
                           ),
                         ),
@@ -142,7 +142,7 @@ class BookCard extends ConsumerWidget {
                         children: [
                           Text(
                             book.title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               color: AppTheme.textPrimary,
@@ -154,7 +154,7 @@ class BookCard extends ConsumerWidget {
                           const SizedBox(height: 4),
                           Text(
                             seriesText,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               color: AppTheme.textSecondary,
                               fontWeight: FontWeight.w500,
@@ -165,7 +165,7 @@ class BookCard extends ConsumerWidget {
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.access_time_rounded,
                                 size: 13,
                                 color: AppTheme.textMuted,
@@ -176,7 +176,7 @@ class BookCard extends ConsumerWidget {
                                   remainingTime == null
                                       ? 'Temps restant indéfini'
                                       : '${Duration(seconds: remainingTime).inHours}h ${Duration(seconds: remainingTime).inMinutes.remainder(60)}m restants',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     color: AppTheme.textMuted,
                                   ),

@@ -445,7 +445,7 @@ function SeriesSearchableSelect({
                                     onClick={() => handleSelect(Number(s.id))}
                                 >
                                     <span>
-                                        {s.name} <small style={{ color: "var(--text-muted)" }}>({s.category || "Comics"})</small>
+                                        {s.name} <small style={{ color: "var(--text-secondary)" }}>({s.category || "Comics"})</small>
                                     </span>
                                     {isSelected && <FontAwesomeIcon icon={faCheck} className="searchable-select__check" />}
                                 </button>
@@ -2406,14 +2406,14 @@ export default function BookPage() {
                     <button
                         type="button"
                         onClick={() => setSeriesModalOpen(false)}
-                        style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "1.1rem" }}
+                        style={{ background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: "1.1rem" }}
                     >
                         <FontAwesomeIcon icon={faXmark} />
                     </button>
                 </div>
 
                 {/* Tabs: Choose existing vs Create new */}
-                <div style={{ display: "flex", gap: "8px", background: "rgba(255, 255, 255, 0.04)", padding: "4px", borderRadius: "8px", marginBottom: "16px" }}>
+                <div style={{ display: "flex", gap: "8px", background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)", padding: "4px", borderRadius: "8px", marginBottom: "16px" }}>
                     <button
                         type="button"
                         onClick={() => setSeriesModalMode("select")}
@@ -2421,7 +2421,7 @@ export default function BookPage() {
                             flex: 1,
                             padding: "6px 12px",
                             background: seriesModalMode === "select" ? "var(--accent-primary)" : "transparent",
-                            color: seriesModalMode === "select" ? "#fff" : "var(--text-muted)",
+                            color: seriesModalMode === "select" ? "#fff" : "var(--text-primary)",
                             border: "none",
                             borderRadius: "6px",
                             fontWeight: 600,
@@ -2438,7 +2438,7 @@ export default function BookPage() {
                             flex: 1,
                             padding: "6px 12px",
                             background: seriesModalMode === "create" ? "var(--accent-primary)" : "transparent",
-                            color: seriesModalMode === "create" ? "#fff" : "var(--text-muted)",
+                            color: seriesModalMode === "create" ? "#fff" : "var(--text-primary)",
                             border: "none",
                             borderRadius: "6px",
                             fontWeight: 600,
@@ -2480,7 +2480,7 @@ export default function BookPage() {
                                     style={{
                                         width: "100%",
                                         padding: "10px 14px",
-                                        background: "rgba(255, 255, 255, 0.05)",
+                                        background: "var(--input-bg, #ffffff)",
                                         border: "1px solid var(--border-subtle)",
                                         borderRadius: "8px",
                                         color: "var(--text-primary)",
@@ -2489,7 +2489,7 @@ export default function BookPage() {
                                 />
                             </div>
                         ) : (
-                            <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+                            <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)", fontStyle: "italic" }}>
                                 Sans série associée, cet album n'aura pas de tomaison.
                             </p>
                         )}
@@ -2508,7 +2508,7 @@ export default function BookPage() {
                                 style={{
                                     width: "100%",
                                     padding: "10px 14px",
-                                    background: "rgba(255, 255, 255, 0.05)",
+                                        background: "var(--input-bg, #ffffff)",
                                     border: "1px solid var(--border-subtle)",
                                     borderRadius: "8px",
                                     color: "var(--text-primary)",
@@ -2528,18 +2528,18 @@ export default function BookPage() {
                                     style={{
                                         width: "100%",
                                         padding: "10px 14px",
-                                        background: "rgba(255, 255, 255, 0.05)",
+                                        background: "var(--input-bg, #ffffff)",
                                         border: "1px solid var(--border-subtle)",
                                         borderRadius: "8px",
                                         color: "var(--text-primary)",
                                         outline: "none"
                                     }}
                                 >
-                                    <option value={3} style={{ background: "#1f2937", color: "#fff" }}>Comics</option>
-                                    <option value={2} style={{ background: "#1f2937", color: "#fff" }}>Bande dessinée</option>
-                                    <option value={4} style={{ background: "#1f2937", color: "#fff" }}>Manga</option>
-                                    <option value={5} style={{ background: "#1f2937", color: "#fff" }}>Roman Graphique</option>
-                                    <option value={1} style={{ background: "#1f2937", color: "#fff" }}>Roman</option>
+                                    <option value={3} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Comics</option>
+                                    <option value={2} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Bande dessinée</option>
+                                    <option value={4} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Manga</option>
+                                    <option value={5} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Roman Graphique</option>
+                                    <option value={1} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Roman</option>
                                 </select>
                             </div>
 
@@ -2555,7 +2555,7 @@ export default function BookPage() {
                                     style={{
                                         width: "100%",
                                         padding: "10px 14px",
-                                        background: "rgba(255, 255, 255, 0.05)",
+                                        background: "var(--input-bg, #ffffff)",
                                         border: "1px solid var(--border-subtle)",
                                         borderRadius: "8px",
                                         color: "var(--text-primary)",
@@ -2576,7 +2576,7 @@ export default function BookPage() {
                                 padding: "8px 14px",
                                 background: "rgba(239, 68, 68, 0.15)",
                                 border: "1px solid rgba(239, 68, 68, 0.3)",
-                                color: "#ef4444",
+                                color: "#dc2626",
                                 borderRadius: "8px",
                                 cursor: "pointer",
                                 fontWeight: 600,
@@ -2597,9 +2597,9 @@ export default function BookPage() {
                             onClick={() => setSeriesModalOpen(false)}
                             style={{
                                 padding: "8px 16px",
-                                background: "transparent",
+                                background: "var(--bg-card)",
                                 border: "1px solid var(--border-subtle)",
-                                color: "var(--text-muted)",
+                                color: "var(--text-secondary)",
                                 borderRadius: "8px",
                                 cursor: "pointer",
                                 fontWeight: 600
@@ -2765,7 +2765,7 @@ export default function BookPage() {
                             {hasBought && hasSold && (
                                 <div className="book-page__summary-pill">
                                     <span>Solde :</span>
-                                    <strong style={{ color: totalSold >= totalBought ? "#34d399" : "#f87171" }}>
+                                    <strong style={{ color: totalSold >= totalBought ? "var(--accent-primary)" : "#f87171" }}>
                                         {(totalSold - totalBought >= 0 ? "+" : "") + (totalSold - totalBought).toFixed(2).replace('.', ',')} €
                                     </strong>
                                 </div>
@@ -2873,7 +2873,7 @@ export default function BookPage() {
                 <div className="tx-dialog">
                     <div className="tx-dialog__header">
                         <div className="tx-dialog__header-title">
-                            <FontAwesomeIcon icon={faCartShopping} style={{ color: "#10b981" }} />
+                            <FontAwesomeIcon icon={faCartShopping} style={{ color: "var(--accent-primary)" }} />
                             <h3>Ajouter un achat</h3>
                         </div>
                         <button

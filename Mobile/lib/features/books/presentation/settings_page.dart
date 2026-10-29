@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_application_1/app/theme.dart';
+import 'package:flutter_application_1/app/theme_provider.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../auth/presentation/server_config_screen.dart';
@@ -12,6 +13,7 @@ class SettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final client = ref.watch(apiClientProvider);
+    final themeMode = ref.watch(appThemeModeProvider);
 
     final displayName = (client.userName != null && client.userName!.isNotEmpty)
         ? client.userName!
@@ -67,7 +69,7 @@ class SettingsPage extends ConsumerWidget {
                     children: [
                       Text(
                         displayName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.textPrimary,
@@ -76,7 +78,7 @@ class SettingsPage extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         displayEmail,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.textMuted,
                         ),
@@ -90,7 +92,7 @@ class SettingsPage extends ConsumerWidget {
                     color: AppTheme.accentPrimaryLight,
                     borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.verified_rounded,
                     color: AppTheme.accentPrimary,
                     size: 18,
@@ -101,7 +103,7 @@ class SettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
 
-          const Text(
+          Text(
             'Serveur & Synchronisation',
             style: TextStyle(
               fontSize: 14,
@@ -127,7 +129,7 @@ class SettingsPage extends ConsumerWidget {
                       color: AppTheme.accentSecondaryLight,
                       borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         Icons.dns_rounded,
                         color: AppTheme.accentSecondary,
@@ -135,7 +137,7 @@ class SettingsPage extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  title: const Text(
+                  title: Text(
                     'Serveur Backend API',
                     style: TextStyle(
                       fontSize: 14,
@@ -147,7 +149,7 @@ class SettingsPage extends ConsumerWidget {
                     client.hasServerConfig
                         ? 'http://${client.host}:${client.port}'
                         : 'Non configuré',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -174,7 +176,7 @@ class SettingsPage extends ConsumerWidget {
                       color: AppTheme.accentAmberLight,
                       borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         Icons.settings_ethernet_rounded,
                         color: AppTheme.accentAmber,
@@ -182,7 +184,7 @@ class SettingsPage extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  title: const Text(
+                  title: Text(
                     'Changer de serveur',
                     style: TextStyle(
                       fontSize: 14,
@@ -190,11 +192,11 @@ class SettingsPage extends ConsumerWidget {
                       color: AppTheme.textPrimary,
                     ),
                   ),
-                  subtitle: const Text(
+                  subtitle: Text(
                     'Modifier l\'adresse ou le port du serveur',
                     style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
-                  trailing: const Icon(
+                  trailing: Icon(
                     Icons.chevron_right_rounded,
                     color: AppTheme.textMuted,
                   ),
@@ -219,7 +221,7 @@ class SettingsPage extends ConsumerWidget {
                       color: AppTheme.accentRedLight,
                       borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         Icons.logout_rounded,
                         color: AppTheme.accentRed,
@@ -227,7 +229,7 @@ class SettingsPage extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  title: const Text(
+                  title: Text(
                     'Déconnexion',
                     style: TextStyle(
                       fontSize: 14,
@@ -235,7 +237,7 @@ class SettingsPage extends ConsumerWidget {
                       color: AppTheme.accentRed,
                     ),
                   ),
-                  subtitle: const Text(
+                  subtitle: Text(
                     'Se déconnecter de la session actuelle',
                     style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
@@ -246,20 +248,20 @@ class SettingsPage extends ConsumerWidget {
                         backgroundColor: AppTheme.bgSurface,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                          side: const BorderSide(color: AppTheme.borderSubtle),
+                          side: BorderSide(color: AppTheme.borderSubtle),
                         ),
-                        title: const Text(
+                        title: Text(
                           'Déconnexion',
                           style: TextStyle(color: AppTheme.textPrimary, fontSize: 18),
                         ),
-                        content: const Text(
+                        content: Text(
                           'Voulez-vous vraiment vous déconnecter ?',
                           style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                         ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(dialogCtx).pop(false),
-                            child: const Text('Annuler', style: TextStyle(color: AppTheme.textMuted)),
+                            child: Text('Annuler', style: TextStyle(color: AppTheme.textMuted)),
                           ),
                           ElevatedButton(
                             onPressed: () => Navigator.of(dialogCtx).pop(true),
@@ -283,7 +285,7 @@ class SettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
 
-          const Text(
+          Text(
             'Application',
             style: TextStyle(
               fontSize: 14,
@@ -300,6 +302,7 @@ class SettingsPage extends ConsumerWidget {
               border: Border.all(color: AppTheme.borderSubtle, width: 1),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ListTile(
                   leading: Container(
@@ -309,7 +312,7 @@ class SettingsPage extends ConsumerWidget {
                       color: AppTheme.accentPrimaryLight,
                       borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         Icons.palette_outlined,
                         color: AppTheme.accentPrimary,
@@ -317,7 +320,7 @@ class SettingsPage extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  title: const Text(
+                  title: Text(
                     'Thème visuel',
                     style: TextStyle(
                       fontSize: 14,
@@ -325,17 +328,41 @@ class SettingsPage extends ConsumerWidget {
                       color: AppTheme.textPrimary,
                     ),
                   ),
-                  subtitle: const Text(
-                    'Sombre (Émeraude & Slate)',
+                  subtitle: Text(
+                    themeMode.displayName,
                     style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
-                  trailing: const Text(
-                    'Web Style',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.accentPrimary,
-                    ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _ThemeOptionCard(
+                          title: 'Sombre',
+                          subtitle: 'Émeraude & Slate',
+                          isSelected: themeMode == AppThemeMode.dark,
+                          bgColor: AppTheme.darkBgPrimary,
+                          accentColor: AppTheme.darkAccentPrimary,
+                          onTap: () {
+                            ref.read(appThemeModeProvider.notifier).setTheme(AppThemeMode.dark);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _ThemeOptionCard(
+                          title: 'Beige',
+                          subtitle: 'Chaud & Marron',
+                          isSelected: themeMode == AppThemeMode.beige,
+                          bgColor: AppTheme.beigeBgPrimary,
+                          accentColor: AppTheme.beigeAccentPrimary,
+                          onTap: () {
+                            ref.read(appThemeModeProvider.notifier).setTheme(AppThemeMode.beige);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const Divider(height: 1, indent: 64),
@@ -347,7 +374,7 @@ class SettingsPage extends ConsumerWidget {
                       color: const Color(0x1A94A3B8),
                       borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         Icons.info_outline_rounded,
                         color: AppTheme.textSecondary,
@@ -355,7 +382,7 @@ class SettingsPage extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  title: const Text(
+                  title: Text(
                     'Version',
                     style: TextStyle(
                       fontSize: 14,
@@ -363,7 +390,7 @@ class SettingsPage extends ConsumerWidget {
                       color: AppTheme.textPrimary,
                     ),
                   ),
-                  subtitle: const Text(
+                  subtitle: Text(
                     'Yet Another Library Mobile v0.2.0 (Backend API)',
                     style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
@@ -372,6 +399,109 @@ class SettingsPage extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ThemeOptionCard extends StatelessWidget {
+  const _ThemeOptionCard({
+    required this.title,
+    required this.subtitle,
+    required this.isSelected,
+    required this.bgColor,
+    required this.accentColor,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool isSelected;
+  final Color bgColor;
+  final Color accentColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.accentPrimaryLight : AppTheme.bgCard,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(
+            color: isSelected ? AppTheme.accentPrimary : AppTheme.borderSubtle,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: accentColor, width: 2),
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: accentColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                if (isSelected)
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: AppTheme.accentPrimary,
+                    size: 18,
+                  )
+                else
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppTheme.borderMedium, width: 1.5),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textMuted,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
