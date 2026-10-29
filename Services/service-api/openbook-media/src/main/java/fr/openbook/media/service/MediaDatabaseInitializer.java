@@ -65,6 +65,10 @@ public class MediaDatabaseInitializer {
     }
 
     private void backfillFromDisk() {
+        if (!"local".equalsIgnoreCase(properties.getStorageType())) {
+            return;
+        }
+
         Path base = Paths.get(properties.getDataDir());
         if (!Files.exists(base) || !Files.isDirectory(base)) {
             return;
