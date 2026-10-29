@@ -302,6 +302,7 @@ class SettingsPage extends ConsumerWidget {
               border: Border.all(color: AppTheme.borderSubtle, width: 1),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ListTile(
                   leading: Container(
@@ -349,14 +350,55 @@ class SettingsPage extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: AppTheme.textMuted,
+                      const SizedBox(width: 4),
+                      Switch.adaptive(
+                        value: themeMode == AppThemeMode.beige,
+                        activeTrackColor: AppTheme.accentPrimaryLight,
+                        activeThumbColor: AppTheme.accentPrimary,
+                        onChanged: (isBeige) {
+                          ref.read(appThemeModeProvider.notifier).setTheme(
+                            isBeige ? AppThemeMode.beige : AppThemeMode.dark,
+                          );
+                        },
                       ),
                     ],
                   ),
-                  onTap: () => _showThemeSelector(context, ref, themeMode),
+                  onTap: () {
+                    final next = themeMode == AppThemeMode.dark ? AppThemeMode.beige : AppThemeMode.dark;
+                    ref.read(appThemeModeProvider.notifier).setTheme(next);
+                  },
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _ThemeOptionCard(
+                          title: 'Sombre',
+                          subtitle: 'Émeraude & Slate',
+                          isSelected: themeMode == AppThemeMode.dark,
+                          bgColor: AppTheme.darkBgPrimary,
+                          accentColor: AppTheme.darkAccentPrimary,
+                          onTap: () {
+                            ref.read(appThemeModeProvider.notifier).setTheme(AppThemeMode.dark);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _ThemeOptionCard(
+                          title: 'Beige',
+                          subtitle: 'Chaud & Marron',
+                          isSelected: themeMode == AppThemeMode.beige,
+                          bgColor: AppTheme.beigeBgPrimary,
+                          accentColor: AppTheme.beigeAccentPrimary,
+                          onTap: () {
+                            ref.read(appThemeModeProvider.notifier).setTheme(AppThemeMode.beige);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const Divider(height: 1, indent: 64),
                 ListTile(
@@ -395,128 +437,107 @@ class SettingsPage extends ConsumerWidget {
       ),
     );
   }
+}
 
-  void _showThemeSelector(BuildContext context, WidgetRef ref, AppThemeMode currentMode) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppTheme.bgSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+class _ThemeOptionCard extends StatelessWidget {
+  const _ThemeOptionCard({
+    required this.title,
+    required this.subtitle,
+    required this.isSelected,
+    required this.bgColor,
+    required this.accentColor,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool isSelected;
+  final Color bgColor;
+  final Color accentColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.accentPrimaryLight : AppTheme.bgCard,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(
+            color: isSelected ? AppTheme.accentPrimary : AppTheme.borderSubtle,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Choisir un thème',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary,
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: accentColor, width: 2),
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: accentColor,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                    IconButton(
-                      icon: Icon(Icons.close_rounded, color: AppTheme.textMuted),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                ...AppThemeMode.values.map((mode) {
-                  final isSelected = mode == currentMode;
-                  final isBeige = mode == AppThemeMode.beige;
-                  final primaryColor = isBeige ? AppTheme.beigeAccentPrimary : AppTheme.darkAccentPrimary;
-                  final bgColor = isBeige ? AppTheme.beigeBgPrimary : AppTheme.darkBgPrimary;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: InkWell(
-                      onTap: () {
-                        ref.read(appThemeModeProvider.notifier).setTheme(mode);
-                        Navigator.of(ctx).pop();
-                      },
-                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppTheme.accentPrimaryLight : AppTheme.bgCard,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                          border: Border.all(
-                            color: isSelected ? AppTheme.accentPrimary : AppTheme.borderSubtle,
-                            width: isSelected ? 2 : 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: bgColor,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: primaryColor, width: 2),
-                              ),
-                              child: Center(
-                                child: Container(
-                                  width: 14,
-                                  height: 14,
-                                  decoration: BoxDecoration(
-                                    color: primaryColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    mode.displayName,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                                      color: AppTheme.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    isBeige
-                                        ? 'Palette claire chaude, touches marron ambré'
-                                        : 'Palette sombre ardoise, touches émeraude',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.textMuted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (isSelected)
-                              Icon(
-                                Icons.check_circle_rounded,
-                                color: AppTheme.accentPrimary,
-                                size: 22,
-                              ),
-                          ],
-                        ),
-                      ),
+                const Spacer(),
+                if (isSelected)
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: AppTheme.accentPrimary,
+                    size: 18,
+                  )
+                else
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppTheme.borderMedium, width: 1.5),
                     ),
-                  );
-                }),
+                  ),
               ],
             ),
-          ),
-        );
-      },
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textMuted,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

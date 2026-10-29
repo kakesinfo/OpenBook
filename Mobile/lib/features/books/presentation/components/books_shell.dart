@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_application_1/app/theme.dart';
+import 'package:flutter_application_1/app/theme_provider.dart';
 
 import '../home_page.dart';
 import '../library_page.dart';
 import '../settings_page.dart';
 import '../wishlist_page.dart';
 
-class BooksShell extends StatefulWidget {
+class BooksShell extends ConsumerStatefulWidget {
   const BooksShell({super.key});
 
   @override
-  State<BooksShell> createState() => _BooksShellState();
+  ConsumerState<BooksShell> createState() => _BooksShellState();
 }
 
-class _BooksShellState extends State<BooksShell> {
+class _BooksShellState extends ConsumerState<BooksShell> {
   int _index = 0;
 
   void _goToTab(int index) {
@@ -22,11 +24,16 @@ class _BooksShellState extends State<BooksShell> {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(appThemeModeProvider);
+
     final pages = [
-      HomePage(),
-      LibraryPage(),
-      WishlistPage(onExploreCatalogue: () => _goToTab(1)),
-      SettingsPage(),
+      HomePage(key: ValueKey('home_${themeMode.name}')),
+      LibraryPage(key: ValueKey('library_${themeMode.name}')),
+      WishlistPage(
+        key: ValueKey('wishlist_${themeMode.name}'),
+        onExploreCatalogue: () => _goToTab(1),
+      ),
+      SettingsPage(key: ValueKey('settings_${themeMode.name}')),
     ];
 
     return Scaffold(
