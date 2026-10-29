@@ -135,7 +135,7 @@ class BookDetailsPage extends ConsumerWidget {
                   _TagPill(
                     label: activeBook.series,
                     color: AppTheme.textSecondary,
-                    bgColor: const Color(0x1AFFFFFF),
+                    bgColor: AppTheme.bgElevated,
                   ),
               ],
             ),
@@ -295,9 +295,9 @@ class BookDetailsPage extends ConsumerWidget {
               decoration: BoxDecoration(
                 gradient: AppTheme.primaryGradient,
                 borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
-                    color: Color(0x4D10B981),
+                    color: AppTheme.accentPrimaryGlow,
                     blurRadius: 14,
                     offset: Offset(0, 4),
                   ),
@@ -336,9 +336,9 @@ class BookDetailsPage extends ConsumerWidget {
               decoration: BoxDecoration(
                 gradient: AppTheme.primaryGradient,
                 borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
-                    color: Color(0x4D10B981),
+                    color: AppTheme.accentPrimaryGlow,
                     blurRadius: 14,
                     offset: Offset(0, 4),
                   ),

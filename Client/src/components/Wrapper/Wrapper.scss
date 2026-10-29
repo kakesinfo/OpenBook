@@ -318,10 +318,22 @@
   cursor: pointer;
   transition: all var(--transition-fast);
 
+  [data-theme="beige"] & {
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.2);
+  }
+
   &:hover {
     background: rgba(239, 68, 68, 0.16);
     border-color: rgba(239, 68, 68, 0.3);
     color: #fca5a5;
+
+    [data-theme="beige"] & {
+      color: #b91c1c;
+      background: rgba(220, 38, 38, 0.14);
+      border-color: rgba(220, 38, 38, 0.35);
+    }
   }
 
   &--compact {

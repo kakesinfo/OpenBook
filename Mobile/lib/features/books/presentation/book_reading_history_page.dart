@@ -112,19 +112,19 @@ class _ReadingSessionsHistoryCard extends ConsumerWidget {
                 final itemColor = isStart
                     ? AppTheme.accentPrimaryLight
                     : isEnd
-                        ? const Color(0x1F10B981)
+                        ? AppTheme.accentPrimaryLight
                         : AppTheme.bgSurface;
 
                 final chipColor = isStart
                     ? AppTheme.accentPrimaryLight
                     : isEnd
-                        ? const Color(0x2810B981)
-                        : const Color(0x1AFFFFFF);
+                        ? AppTheme.accentPrimaryLight
+                        : AppTheme.bgElevated;
 
                 final chipTextColor = isStart
                     ? AppTheme.accentPrimary
                     : isEnd
-                        ? const Color(0xFF34D399)
+                        ? AppTheme.accentPrimary
                         : AppTheme.textSecondary;
 
                 final leadingIcon = isStart

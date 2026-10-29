@@ -332,41 +332,6 @@ class SettingsPage extends ConsumerWidget {
                     themeMode.displayName,
                     style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.accentPrimaryLight,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                        ),
-                        child: Text(
-                          themeMode == AppThemeMode.beige ? 'Beige' : 'Sombre',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.accentPrimary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Switch.adaptive(
-                        value: themeMode == AppThemeMode.beige,
-                        activeTrackColor: AppTheme.accentPrimaryLight,
-                        activeThumbColor: AppTheme.accentPrimary,
-                        onChanged: (isBeige) {
-                          ref.read(appThemeModeProvider.notifier).setTheme(
-                            isBeige ? AppThemeMode.beige : AppThemeMode.dark,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  onTap: () {
-                    final next = themeMode == AppThemeMode.dark ? AppThemeMode.beige : AppThemeMode.dark;
-                    ref.read(appThemeModeProvider.notifier).setTheme(next);
-                  },
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),

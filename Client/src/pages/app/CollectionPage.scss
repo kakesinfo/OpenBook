@@ -558,6 +558,32 @@
     border: 1px solid rgba(239, 68, 68, 0.3);
   }
 
+  [data-theme="beige"] & {
+    &--toread {
+      background: rgba(37, 99, 235, 0.12);
+      color: #1d4ed8;
+      border-color: rgba(37, 99, 235, 0.3);
+    }
+
+    &--reading {
+      background: var(--accent-amber-light);
+      color: var(--accent-amber);
+      border-color: var(--accent-amber);
+    }
+
+    &--forsale {
+      background: rgba(219, 39, 119, 0.12);
+      color: #be185d;
+      border-color: rgba(219, 39, 119, 0.3);
+    }
+
+    &--abandoned {
+      background: rgba(220, 38, 38, 0.12);
+      color: #b91c1c;
+      border-color: rgba(220, 38, 38, 0.3);
+    }
+  }
+
   &--unread {
     background: rgba(255, 255, 255, 0.04);
     color: var(--text-muted);

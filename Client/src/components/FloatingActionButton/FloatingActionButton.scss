@@ -852,6 +852,10 @@
       height: 42px;
       padding-right: 52px !important;
       cursor: text;
+      background: var(--input-bg, #ffffff);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
     }
 
     &--open input {

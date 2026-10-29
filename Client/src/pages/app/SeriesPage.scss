@@ -212,6 +212,12 @@
       background: rgba(59, 130, 246, 0.15);
       color: #60a5fa;
       border: 1px solid rgba(59, 130, 246, 0.3);
+
+      [data-theme="beige"] & {
+        background: rgba(37, 99, 235, 0.12);
+        color: #1d4ed8;
+        border-color: rgba(37, 99, 235, 0.25);
+      }
     }
 
     &--status {
@@ -223,6 +229,12 @@
         background: rgba(107, 114, 128, 0.2);
         color: #9ca3af;
         border-color: rgba(107, 114, 128, 0.3);
+
+        [data-theme="beige"] & {
+          background: rgba(120, 95, 70, 0.14);
+          color: var(--text-secondary);
+          border-color: rgba(120, 95, 70, 0.25);
+        }
       }
     }
   }

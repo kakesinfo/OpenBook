@@ -153,9 +153,9 @@ class LibraryPage extends ConsumerWidget {
                             decoration: BoxDecoration(
                               gradient: AppTheme.primaryGradient,
                               borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                              boxShadow: const [
+                              boxShadow: [
                                 BoxShadow(
-                                  color: Color(0x5910B981),
+                                  color: AppTheme.accentPrimaryGlow,
                                   blurRadius: 14,
                                   offset: Offset(0, 4),
                                 ),
