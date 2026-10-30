@@ -9,6 +9,5 @@ import java.io.Serializable;
 @Setter
 public class SetupAdminRequestDTO implements Serializable {
     private String username;
-    private String email;
     private String password;
 }

@@ -133,15 +133,15 @@ export function WrapperNavigation({ title = "Yet Another Library", badge, childr
                     >
                         <UserAvatar
                             avatar={session.user?.avatar}
-                            name={session.user?.username || session.user?.email}
+                            name={session.user?.username || "Lecteur"}
                             size="md"
                         />
                         <div className="wrapper-navigation__user-info">
                             <span className="wrapper-navigation__user-name">
                                 {session.user?.username || "Lecteur"}
                             </span>
-                            <span className="wrapper-navigation__user-email">
-                                {session.user?.email || ""}
+                            <span className="wrapper-navigation__user-role">
+                                {session.isAdmin ? "Administrateur" : "Lecteur"}
                             </span>
                         </div>
                         <span className="wrapper-navigation__user-gear">
@@ -183,7 +183,7 @@ export function WrapperNavigation({ title = "Yet Another Library", badge, childr
                     >
                         <UserAvatar
                             avatar={session.user?.avatar}
-                            name={session.user?.username || session.user?.email}
+                            name={session.user?.username || "Lecteur"}
                             size="sm"
                         />
                     </Link>

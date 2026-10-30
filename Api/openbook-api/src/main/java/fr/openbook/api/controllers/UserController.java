@@ -42,7 +42,6 @@ import fr.openbook.api.dtos.stats.CountryStatDTO;
 import fr.openbook.api.dtos.stats.PublisherStatDTO;
 import fr.openbook.api.dtos.stats.DecadeStatDTO;
 import java.time.ZoneId;
-import fr.openbook.api.dtos.user.UpdateEmailRequestDTO;
 import fr.openbook.api.dtos.user.UpdatePasswordRequestDTO;
 import fr.openbook.api.dtos.user.UpdateProfileRequestDTO;
 import fr.openbook.api.dtos.user.DeleteAccountRequestDTO;
@@ -148,7 +147,6 @@ public class UserController {
 
         UserProfileDTO userProfileDTO = new UserProfileDTO();
         userProfileDTO.setUsername(user.getRealUsername());
-        userProfileDTO.setEmail(user.getEmail());
         userProfileDTO.setAvatar(user.getAvatar());
         userProfileDTO.setRole(user.getRole());
         userProfileDTO.setBooksCount(0);
@@ -182,7 +180,6 @@ public class UserController {
 
         HashMap<String, Object> claims = new HashMap<>();
         claims.put("username", user.getRealUsername());
-        claims.put("email", user.getEmail());
         claims.put("role", user.getRole());
         if (user.getAvatar() != null) {
             claims.put("avatar", user.getAvatar());
@@ -192,7 +189,6 @@ public class UserController {
 
         UserProfileDTO profileDTO = new UserProfileDTO();
         profileDTO.setUsername(user.getRealUsername());
-        profileDTO.setEmail(user.getEmail());
         profileDTO.setAvatar(user.getAvatar());
         profileDTO.setRole(user.getRole());
 
@@ -224,7 +220,6 @@ public class UserController {
 
             HashMap<String, Object> claims = new HashMap<>();
             claims.put("username", user.getRealUsername());
-            claims.put("email", user.getEmail());
             claims.put("role", user.getRole());
             claims.put("avatar", user.getAvatar());
 
@@ -260,51 +255,6 @@ public class UserController {
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
                 .header("X-Content-Type-Options", "nosniff")
                 .body(resource);
-    }
-
-    @PutMapping("/email")
-    public ResponseEntity<?> updateEmail(@RequestBody UpdateEmailRequestDTO request, HttpSession session) {
-        UserEntity user = getAuthenticatedUser(session);
-
-        if (request.getCurrentPassword() == null || request.getCurrentPassword().isEmpty()) {
-            return ResponseEntity.badRequest().body("Le mot de passe actuel est requis pour confirmer la modification de l'email.");
-        }
-
-        if (!bCryptPasswordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            return ResponseEntity.badRequest().body("Mot de passe actuel incorrect.");
-        }
-
-        if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("La nouvelle adresse email est requise.");
-        }
-
-        String newEmail = request.getEmail().trim();
-        if (repositoryService.getUserRepository().existsByEmailAndIdNot(newEmail, user.getId())) {
-            return ResponseEntity.badRequest().body("Cette adresse email est déjà utilisée.");
-        }
-
-        user.setEmail(newEmail);
-        user = repositoryService.getUserRepository().save(user);
-
-        if (session != null) {
-            session.setAttribute("user", user);
-        }
-
-        HashMap<String, Object> claims = new HashMap<>();
-        claims.put("username", user.getRealUsername());
-        claims.put("email", user.getEmail());
-        claims.put("role", user.getRole());
-        if (user.getAvatar() != null) {
-            claims.put("avatar", user.getAvatar());
-        }
-
-        String newToken = jwtService.generateToken(claims, user);
-
-        return ResponseEntity.ok(Map.of(
-                "message", "Adresse email modifiée avec succès.",
-                "email", newEmail,
-                "token", newToken
-        ));
     }
 
     @PutMapping("/password")

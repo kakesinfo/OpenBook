@@ -1521,4 +1521,10 @@
             <column name="role" />
         </createIndex>
     </changeSet>
+    <changeSet id="31" author="Axel">
+        <dropNotNullConstraint tableName="user" columnName="email" columnDataType="varchar(255)"/>
+    </changeSet>
+    <changeSet id="32" author="Axel">
+        <dropColumn tableName="user" columnName="email"/>
+    </changeSet>
 </databaseChangeLog>

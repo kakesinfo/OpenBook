@@ -10,7 +10,7 @@ import FormGroup from "../components/Form/FormGroup.tsx";
 import "./Auth.scss";
 
 export default function Login() {
-    const [email, setEmail] = useState<string>("");
+    const [username, setUsername] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -21,18 +21,18 @@ export default function Login() {
         if (e) e.preventDefault();
         if (loading) return;
 
-        const trimmedEmail = email.trim();
-        if (!trimmedEmail || !password) {
-            return enqueueSnackbar("Veuillez saisir votre email et mot de passe", { variant: "error" });
+        const trimmedUsername = username.trim();
+        if (!trimmedUsername || !password) {
+            return enqueueSnackbar("Veuillez saisir votre nom d'utilisateur et mot de passe", { variant: "error" });
         }
 
         setLoading(true);
         try {
-            const result = await session.login(trimmedEmail, password);
+            const result = await session.login(trimmedUsername, password);
 
             if (!result.success) {
                 setPassword("");
-                return enqueueSnackbar(result.error || "Email ou mot de passe invalide", { variant: "error" });
+                return enqueueSnackbar(result.error || "Nom d'utilisateur ou mot de passe invalide", { variant: "error" });
             }
 
             navigate('/app');
@@ -59,15 +59,15 @@ export default function Login() {
                 <Card>
                     <form onSubmit={handleLogin}>
                         <FormGroup>
-                            <label htmlFor="email">Email</label>
+                            <label htmlFor="username">Nom d'utilisateur</label>
                             <input
-                                id="email"
-                                type="email"
-                                name="email"
-                                autoComplete="email"
-                                placeholder="bruce.wayne@gotham.us"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                id="username"
+                                type="text"
+                                name="username"
+                                autoComplete="username"
+                                placeholder="ex: admin"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
                                 required
                             />
                         </FormGroup>

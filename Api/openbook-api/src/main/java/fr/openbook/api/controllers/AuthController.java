@@ -50,7 +50,6 @@ public class AuthController
 
         HashMap<String, Object> claims = new HashMap<>();
         claims.put("username", result.getRealUsername());
-        claims.put("email", result.getEmail());
         claims.put("avatar", result.getAvatar());
         claims.put("role", result.getRole());
 

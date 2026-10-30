@@ -1,7 +1,6 @@
 import { createContext, useContext } from "react";
 
 export interface SessionUser {
-    email?: string;
     username?: string;
     avatar?: string;
     sub?: string;
@@ -16,8 +15,8 @@ export interface SessionContextType {
     isAdmin: boolean;
     setupRequired: boolean | null;
     checkSetupStatus: () => Promise<boolean>;
-    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-    register: (username: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<boolean>;
     customFetch: (url: string, options?: RequestInit) => Promise<Response>;
     updateToken: (newToken: string | null) => void;

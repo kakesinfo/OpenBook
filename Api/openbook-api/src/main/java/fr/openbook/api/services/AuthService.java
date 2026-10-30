@@ -28,12 +28,15 @@ public class AuthService
     private AuthenticationManager authenticationManager;
 
     public RegisterResponseDTO register(@NonNull RegisterRequestDTO user) {
-        if (repositoryService.getUserRepository().existsByUsernameOrEmail(user.getUsername(), user.getEmail()))
+        if (user.getUsername() == null || user.getUsername().trim().isEmpty())
+            return null;
+
+        String username = user.getUsername().trim();
+        if (repositoryService.getUserRepository().existsByUsername(username))
             return null;
 
         UserEntity userEntity = new UserEntity();
-        userEntity.setUsername(user.getUsername());
-        userEntity.setEmail(user.getEmail());
+        userEntity.setUsername(username);
         userEntity.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
 
         userEntity = repositoryService.getUserRepository().save(userEntity);
@@ -42,11 +45,11 @@ public class AuthService
     }
 
     public UserEntity login(@NonNull LoginRequestDTO loginDTO) {
-        String identifier = loginDTO.getEmail() != null ? loginDTO.getEmail().trim() : "";
-        Optional<UserEntity> result = repositoryService.getUserRepository().findByEmailIgnoreCase(identifier);
-        if (result.isEmpty()) {
-            result = repositoryService.getUserRepository().findByUsernameIgnoreCase(identifier);
-        }
+        if (loginDTO.getUsername() == null || loginDTO.getUsername().trim().isEmpty())
+            return null;
+
+        String identifier = loginDTO.getUsername().trim();
+        Optional<UserEntity> result = repositoryService.getUserRepository().findByUsernameIgnoreCase(identifier);
 
         if (result.isEmpty())
             return null;
@@ -57,7 +60,7 @@ public class AuthService
             return null;
 
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-            userEntity.getEmail(),
+            userEntity.getUsername(),
             loginDTO.getPassword()
         ));
 

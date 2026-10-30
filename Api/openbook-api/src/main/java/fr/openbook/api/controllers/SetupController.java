@@ -51,21 +51,13 @@ public class SetupController {
         }
 
         String username = request.getUsername().trim();
-        String email = (request.getEmail() != null && !request.getEmail().trim().isEmpty())
-                ? request.getEmail().trim()
-                : (username.toLowerCase() + "@openbook.local");
 
         if (userRepository.findByUsernameIgnoreCase(username).isPresent()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ce nom d'utilisateur est déjà utilisé.");
         }
 
-        if (userRepository.findByEmailIgnoreCase(email).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cette adresse e-mail est déjà utilisée.");
-        }
-
         UserEntity admin = new UserEntity();
         admin.setUsername(username);
-        admin.setEmail(email);
         admin.setPassword(passwordEncoder.encode(request.getPassword()));
         admin.setRole("ROLE_ADMIN");
 
@@ -73,7 +65,6 @@ public class SetupController {
 
         HashMap<String, Object> claims = new HashMap<>();
         claims.put("username", savedAdmin.getRealUsername());
-        claims.put("email", savedAdmin.getEmail());
         claims.put("avatar", savedAdmin.getAvatar());
         claims.put("role", savedAdmin.getRole());
 
@@ -84,7 +75,6 @@ public class SetupController {
         response.put("expiresIn", jwtService.getExpirationTime());
         response.put("role", savedAdmin.getRole());
         response.put("username", savedAdmin.getRealUsername());
-        response.put("email", savedAdmin.getEmail());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

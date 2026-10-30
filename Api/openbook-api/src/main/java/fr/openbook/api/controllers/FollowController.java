@@ -28,7 +28,6 @@ public class FollowController {
         String username = authentication.getName();
         return repositoryService.getUserRepository()
                 .findByUsername(username)
-                .or(() -> repositoryService.getUserRepository().findByEmail(username))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 

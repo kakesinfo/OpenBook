@@ -30,7 +30,6 @@ public class SeriesController {
         String username = authentication.getName();
         return repositoryService.getUserRepository()
                 .findByUsername(username)
-                .or(() -> repositoryService.getUserRepository().findByEmail(username))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -41,8 +40,7 @@ public class SeriesController {
         }
         String username = authentication.getName();
         return repositoryService.getUserRepository()
-                .findByUsername(username)
-                .or(() -> repositoryService.getUserRepository().findByEmail(username));
+                .findByUsername(username);
     }
 
     @GetMapping

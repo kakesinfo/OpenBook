@@ -9,7 +9,6 @@ import { faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import "./Auth.scss";
 
 export default function Register() {
-    const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const [username, setUsername] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);
@@ -21,16 +20,15 @@ export default function Register() {
         if (e) e.preventDefault();
         if (loading) return;
 
-        const trimmedEmail = email.trim();
         const trimmedUsername = username.trim();
 
-        if (!trimmedEmail || !password || !trimmedUsername) {
+        if (!trimmedUsername || !password) {
             return enqueueSnackbar("Tous les champs sont requis", { variant: "error" });
         }
 
         setLoading(true);
         try {
-            const result = await session.register(trimmedUsername, trimmedEmail, password);
+            const result = await session.register(trimmedUsername, password);
 
             if (!result.success) {
                 return enqueueSnackbar(result.error || "Échec de l'inscription", { variant: "error" });
@@ -69,20 +67,6 @@ export default function Register() {
                                 placeholder="Batman"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
-                                required
-                            />
-                        </FormGroup>
-
-                        <FormGroup>
-                            <label htmlFor="email">Email</label>
-                            <input
-                                id="email"
-                                type="email"
-                                name="email"
-                                autoComplete="email"
-                                placeholder="bruce.wayne@gotham.us"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
                                 required
                             />
                         </FormGroup>

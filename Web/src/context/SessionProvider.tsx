@@ -100,7 +100,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return () => window.removeEventListener("storage", handleStorageChange);
     }, []);
 
-    const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
         try {
             const response = await fetch(`${API_URL}/auth/login`, {
                 method: "POST",
@@ -108,7 +108,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                     "Content-Type": "application/json"
                 },
                 credentials: "include",
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ username, password }),
             });
 
             if (response.ok) {
@@ -140,7 +140,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
     }, [updateToken]);
 
-    const register = useCallback(async (username: string, email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    const register = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
         try {
             const response = await fetch(`${API_URL}/auth/register`, {
                 method: "POST",
@@ -148,7 +148,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                     "Content-Type": "application/json"
                 },
                 credentials: "include",
-                body: JSON.stringify({ email, password, username }),
+                body: JSON.stringify({ username, password }),
             });
 
             if (response.ok) {

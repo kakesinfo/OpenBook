@@ -8,7 +8,6 @@ import {
     faSpinner,
     faUser,
     faLock,
-    faEnvelope,
     faArrowRight
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../hooks/UseSession.tsx";
@@ -19,7 +18,6 @@ import "./SetupPage.scss";
 
 export default function SetupPage() {
     const [username, setUsername] = useState("admin");
-    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [loading, setLoading] = useState(false);
@@ -32,7 +30,6 @@ export default function SetupPage() {
         if (loading) return;
 
         const trimmedUser = username.trim();
-        const trimmedEmail = email.trim();
 
         if (!trimmedUser || trimmedUser.length < 3) {
             return enqueueSnackbar("Le nom d'utilisateur doit contenir au moins 3 caractères.", { variant: "error" });
@@ -55,7 +52,6 @@ export default function SetupPage() {
                 },
                 body: JSON.stringify({
                     username: trimmedUser,
-                    email: trimmedEmail || undefined,
                     password: password
                 })
             });
@@ -119,22 +115,6 @@ export default function SetupPage() {
                                 placeholder="ex: admin"
                                 required
                                 autoComplete="username"
-                            />
-                        </FormGroup>
-
-                        <FormGroup>
-                            <label htmlFor="admin-email" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                <FontAwesomeIcon icon={faEnvelope} style={{ fontSize: "0.8rem", color: "var(--text-muted)" }} />
-                                <span>Adresse e-mail (optionnelle)</span>
-                            </label>
-                            <input
-                                id="admin-email"
-                                type="email"
-                                name="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="admin@exemple.com (laisser vide pour valeur auto)"
-                                autoComplete="email"
                             />
                         </FormGroup>
 
