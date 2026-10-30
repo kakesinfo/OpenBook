@@ -22,7 +22,8 @@ import {
     faChartPie,
     faRotate,
     faWrench,
-    faCodeBranch
+    faCodeBranch,
+    faUserPen
 } from '@fortawesome/free-solid-svg-icons';
 import { useState } from "react";
 import useSession from "../hooks/UseSession.tsx";
@@ -31,13 +32,19 @@ import { Dialog } from "@mui/material";
 import Card from "../components/Card/Card.tsx";
 import FormGroup from "../components/Form/FormGroup.tsx";
 import LogBookCard from "../components/Logger/LogBookCard.tsx";
+import LogSeriesCard from "../components/Logger/LogSeriesCard.tsx";
+import LogAuthorCard from "../components/Logger/LogAuthorCard.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import BookSummaryDTO from "../dto/BookSummary.dto.ts";
+import SeriesDTO from "../dto/Series.dto.ts";
+import AuthorDTO from "../dto/Author.dto.ts";
 import FloatingActionButton from "../components/FloatingActionButton/FloatingActionButton.tsx";
 
 export default function App() {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
+    const [series, setSeries] = useState<SeriesDTO[]>([]);
+    const [authors, setAuthors] = useState<AuthorDTO[]>([]);
     const [books, setBooks] = useState<BookSummaryDTO[]>([]);
     const [searching, setSearching] = useState(false);
 
@@ -45,6 +52,8 @@ export default function App() {
 
     const handleInit = () => {
         setSearch("");
+        setSeries([]);
+        setAuthors([]);
         setBooks([]);
         setSearching(false);
     };
@@ -73,25 +82,38 @@ export default function App() {
     useDebounce(search, 300, (value) => {
         const trimmedValue = value?.trim();
         if (!trimmedValue || trimmedValue.length === 0) {
+            setSeries([]);
+            setAuthors([]);
             setBooks([]);
             setSearching(false);
             return;
         }
 
         setSearching(true);
-        session.customFetch(`/books/search?query=${encodeURIComponent(trimmedValue)}`, {
-            method: "GET",
-        }).then(async (data) => {
-            if (data.ok) {
-                const results = await data.json();
-                setBooks(results);
-            }
-        }).catch(err => {
+        const encoded = encodeURIComponent(trimmedValue);
+
+        Promise.all([
+            session.customFetch(`/series?query=${encoded}`, { method: "GET" })
+                .then(async (res) => (res.ok ? await res.json() : []))
+                .catch(() => []),
+            session.customFetch(`/authors?query=${encoded}`, { method: "GET" })
+                .then(async (res) => (res.ok ? await res.json() : []))
+                .catch(() => []),
+            session.customFetch(`/books/search?query=${encoded}`, { method: "GET" })
+                .then(async (res) => (res.ok ? await res.json() : []))
+                .catch(() => [])
+        ]).then(([seriesData, authorsData, booksData]) => {
+            setSeries(Array.isArray(seriesData) ? seriesData : []);
+            setAuthors(Array.isArray(authorsData) ? authorsData : []);
+            setBooks(Array.isArray(booksData) ? booksData : []);
+        }).catch((err) => {
             console.error("Search error:", err);
         }).finally(() => {
             setSearching(false);
         });
     });
+
+    const totalResults = series.length + authors.length + books.length;
 
     return (
         <Wrapper>
@@ -130,7 +152,7 @@ export default function App() {
                         boxShadow: "none",
                         color: "var(--text-primary)",
                         width: "100%",
-                        maxWidth: "540px",
+                        maxWidth: "560px",
                         margin: "16px",
                     }
                 }}
@@ -165,7 +187,7 @@ export default function App() {
                             autoComplete="off"
                             value={search}
                             onChange={handleChange}
-                            placeholder="Rechercher par titre, auteur, tome..."
+                            placeholder="Rechercher une série, un auteur, un album..."
                         />
                     </FormGroup>
 
@@ -175,17 +197,58 @@ export default function App() {
                         </p>
                     )}
 
-                    {!searching && search.trim() && books.length === 0 && (
+                    {!searching && search.trim() && totalResults === 0 && (
                         <p style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px 0", fontSize: "0.875rem" }}>
-                            Aucun livre trouvé pour « {search} »
+                            Aucun résultat trouvé pour « {search} »
                         </p>
                     )}
 
-                    <ul style={{ maxHeight: "360px", overflowY: "auto", margin: 0 }}>
-                        {books.map((book) => (
-                            <LogBookCard key={book.id} book={book} onClose={handleClose} />
-                        ))}
-                    </ul>
+                    <div style={{ maxHeight: "460px", overflowY: "auto", margin: 0, paddingRight: "4px" }}>
+                        {/* Séries (affichées en priorité devant les albums) */}
+                        {series.length > 0 && (
+                            <div className="search-dialog-section">
+                                <div className="search-dialog-section__title">
+                                    <FontAwesomeIcon icon={faLayerGroup} style={{ color: "#3b82f6" }} />
+                                    <span>Séries ({series.length})</span>
+                                </div>
+                                <ul className="search-dialog-section__list">
+                                    {series.map((s) => (
+                                        <LogSeriesCard key={`series-${s.id}`} series={s} onClose={handleClose} />
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {/* Auteurs (affichés en priorité devant les albums) */}
+                        {authors.length > 0 && (
+                            <div className="search-dialog-section">
+                                <div className="search-dialog-section__title">
+                                    <FontAwesomeIcon icon={faUserPen} style={{ color: "#a855f7" }} />
+                                    <span>Auteurs ({authors.length})</span>
+                                </div>
+                                <ul className="search-dialog-section__list">
+                                    {authors.map((a) => (
+                                        <LogAuthorCard key={`author-${a.id}`} author={a} onClose={handleClose} />
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {/* Albums */}
+                        {books.length > 0 && (
+                            <div className="search-dialog-section">
+                                <div className="search-dialog-section__title">
+                                    <FontAwesomeIcon icon={faBook} style={{ color: "var(--accent-primary)" }} />
+                                    <span>Albums ({books.length})</span>
+                                </div>
+                                <ul className="search-dialog-section__list">
+                                    {books.map((book) => (
+                                        <LogBookCard key={`book-${book.id}`} book={book} onClose={handleClose} />
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
                 </Card>
             </Dialog>
         </Wrapper>
