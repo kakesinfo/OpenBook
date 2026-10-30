@@ -61,7 +61,7 @@ export default function Pagination({
                     </span>
                 )}
 
-                {pageSize && onPageSizeChange && (
+                {pageSize !== undefined && pageSize !== null && onPageSizeChange && (
                     <div className="pagination__size-selector">
                         <span>Par page :</span>
                         <select
@@ -71,7 +71,7 @@ export default function Pagination({
                         >
                             {pageSizeOptions.map((opt) => (
                                 <option key={opt} value={opt}>
-                                    {opt}
+                                    {opt === 0 ? "Tous" : opt}
                                 </option>
                             ))}
                         </select>
@@ -79,82 +79,84 @@ export default function Pagination({
                 )}
             </div>
 
-            <div className="pagination__controls">
-                {/* Première page */}
-                <button
-                    type="button"
-                    className="pagination__btn pagination__btn--nav"
-                    onClick={() => onPageChange(1)}
-                    disabled={currentPage <= 1}
-                    title="Première page"
-                    aria-label="Première page"
-                >
-                    <FontAwesomeIcon icon={faAnglesLeft} />
-                </button>
+            {totalPages > 1 && (
+                <div className="pagination__controls">
+                    {/* Première page */}
+                    <button
+                        type="button"
+                        className="pagination__btn pagination__btn--nav"
+                        onClick={() => onPageChange(1)}
+                        disabled={currentPage <= 1}
+                        title="Première page"
+                        aria-label="Première page"
+                    >
+                        <FontAwesomeIcon icon={faAnglesLeft} />
+                    </button>
 
-                {/* Page précédente */}
-                <button
-                    type="button"
-                    className="pagination__btn pagination__btn--nav"
-                    onClick={() => onPageChange(currentPage - 1)}
-                    disabled={currentPage <= 1}
-                    title="Page précédente"
-                    aria-label="Page précédente"
-                >
-                    <FontAwesomeIcon icon={faChevronLeft} />
-                </button>
+                    {/* Page précédente */}
+                    <button
+                        type="button"
+                        className="pagination__btn pagination__btn--nav"
+                        onClick={() => onPageChange(currentPage - 1)}
+                        disabled={currentPage <= 1}
+                        title="Page précédente"
+                        aria-label="Page précédente"
+                    >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                    </button>
 
-                {/* Numéros de page */}
-                <div className="pagination__pages">
-                    {pages.map((p, idx) => {
-                        if (typeof p === "string") {
+                    {/* Numéros de page */}
+                    <div className="pagination__pages">
+                        {pages.map((p, idx) => {
+                            if (typeof p === "string") {
+                                return (
+                                    <span key={`ellipsis-${idx}`} className="pagination__ellipsis" aria-hidden="true">
+                                        &hellip;
+                                    </span>
+                                );
+                            }
+
+                            const isCurrent = p === currentPage;
                             return (
-                                <span key={`ellipsis-${idx}`} className="pagination__ellipsis" aria-hidden="true">
-                                    &hellip;
-                                </span>
+                                <button
+                                    key={p}
+                                    type="button"
+                                    className={`pagination__btn pagination__btn--page ${isCurrent ? "is-active" : ""}`}
+                                    onClick={() => onPageChange(p)}
+                                    aria-current={isCurrent ? "page" : undefined}
+                                    aria-label={`Page ${p}`}
+                                >
+                                    {p}
+                                </button>
                             );
-                        }
+                        })}
+                    </div>
 
-                        const isCurrent = p === currentPage;
-                        return (
-                            <button
-                                key={p}
-                                type="button"
-                                className={`pagination__btn pagination__btn--page ${isCurrent ? "is-active" : ""}`}
-                                onClick={() => onPageChange(p)}
-                                aria-current={isCurrent ? "page" : undefined}
-                                aria-label={`Page ${p}`}
-                            >
-                                {p}
-                            </button>
-                        );
-                    })}
+                    {/* Page suivante */}
+                    <button
+                        type="button"
+                        className="pagination__btn pagination__btn--nav"
+                        onClick={() => onPageChange(currentPage + 1)}
+                        disabled={currentPage >= totalPages}
+                        title="Page suivante"
+                        aria-label="Page suivante"
+                    >
+                        <FontAwesomeIcon icon={faChevronRight} />
+                    </button>
+
+                    {/* Dernière page */}
+                    <button
+                        type="button"
+                        className="pagination__btn pagination__btn--nav"
+                        onClick={() => onPageChange(totalPages)}
+                        disabled={currentPage >= totalPages}
+                        title="Dernière page"
+                        aria-label="Dernière page"
+                    >
+                        <FontAwesomeIcon icon={faAnglesRight} />
+                    </button>
                 </div>
-
-                {/* Page suivante */}
-                <button
-                    type="button"
-                    className="pagination__btn pagination__btn--nav"
-                    onClick={() => onPageChange(currentPage + 1)}
-                    disabled={currentPage >= totalPages}
-                    title="Page suivante"
-                    aria-label="Page suivante"
-                >
-                    <FontAwesomeIcon icon={faChevronRight} />
-                </button>
-
-                {/* Dernière page */}
-                <button
-                    type="button"
-                    className="pagination__btn pagination__btn--nav"
-                    onClick={() => onPageChange(totalPages)}
-                    disabled={currentPage >= totalPages}
-                    title="Dernière page"
-                    aria-label="Dernière page"
-                >
-                    <FontAwesomeIcon icon={faAnglesRight} />
-                </button>
-            </div>
+            )}
         </nav>
     );
 }

@@ -29,7 +29,8 @@
   &:hover {
     transform: translateY(-4px);
 
-    .booklist-card__cover {
+    .booklist-card__cover,
+    .async-cover__img {
       transform: scale(1.04);
     }
 

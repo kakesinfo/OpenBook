@@ -129,8 +129,19 @@ function getReadingStatusBadge(book: BookSummaryDTO) {
 
 export default function CollectionPage() {
     const session = useSession();
-    const [books, setBooks] = useState<BookSummaryDTO[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [books, setBooks] = useState<BookSummaryDTO[]>(() => {
+        try {
+            const cached = localStorage.getItem("openbook_user_collection_cache");
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    return parsed;
+                }
+            }
+        } catch (_) {}
+        return [];
+    });
+    const [loading, setLoading] = useState<boolean>(() => books.length === 0);
 
     const [selectedStatus, setSelectedStatus] = useState<TomeStatusFilter>("all");
     const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
@@ -143,10 +154,24 @@ export default function CollectionPage() {
         }
     });
 
-    // Pagination states: 24 for gallery mode, 50 for list mode
+    // Pagination states: 0 = "Tous" (display all books by default)
     const [currentPage, setCurrentPage] = useState<number>(1);
-    const [gridPageSize, setGridPageSize] = useState<number>(24);
-    const [listPageSize, setListPageSize] = useState<number>(50);
+    const [gridPageSize, setGridPageSize] = useState<number>(() => {
+        try {
+            const saved = localStorage.getItem("collection_grid_page_size");
+            return saved !== null ? Number(saved) : 0;
+        } catch {
+            return 0;
+        }
+    });
+    const [listPageSize, setListPageSize] = useState<number>(() => {
+        try {
+            const saved = localStorage.getItem("collection_list_page_size");
+            return saved !== null ? Number(saved) : 0;
+        } catch {
+            return 0;
+        }
+    });
 
     // Floating cover preview on cursor hover
     const [hoveredCover, setHoveredCover] = useState<HoveredCoverState | null>(null);
@@ -181,24 +206,37 @@ export default function CollectionPage() {
     };
 
     useEffect(() => {
-        setLoading(true);
+        let isCancelled = false;
 
         session.customFetch("/user/collection", { method: "GET" })
             .then(async (res) => {
                 if (res.ok) {
                     const data: BookSummaryDTO[] = await res.json();
-                    setBooks(data);
-                } else {
+                    if (!isCancelled) {
+                        setBooks(data);
+                        try {
+                            localStorage.setItem("openbook_user_collection_cache", JSON.stringify(data));
+                        } catch (_) {}
+                    }
+                } else if (!isCancelled && books.length === 0) {
                     setBooks([]);
                 }
             })
             .catch((err) => {
                 console.error("Collection fetch error:", err);
-                setBooks([]);
+                if (!isCancelled && books.length === 0) {
+                    setBooks([]);
+                }
             })
             .finally(() => {
-                setLoading(false);
+                if (!isCancelled) {
+                    setLoading(false);
+                }
             });
+
+        return () => {
+            isCancelled = true;
+        };
     }, [session]);
 
     // Reset page to 1 whenever filters change
@@ -252,17 +290,20 @@ export default function CollectionPage() {
     const totalOwned = books.length;
     const totalFiltered = filteredBooks.length;
 
-    // Pagination calculations
+    // Pagination calculations (0 = "Tous", affiche tous les livres)
     const pageSize = displayMode === "grid" ? gridPageSize : listPageSize;
-    const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
-    const activePage = Math.min(currentPage, totalPages);
+    const isAll = pageSize === 0 || pageSize >= 9999;
+    const effectivePageSize = isAll ? Math.max(1, totalFiltered) : pageSize;
+    const totalPages = isAll ? 1 : Math.max(1, Math.ceil(totalFiltered / effectivePageSize));
+    const activePage = isAll ? 1 : Math.min(currentPage, totalPages);
 
-    const startIndex = totalFiltered === 0 ? 0 : (activePage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + pageSize, totalFiltered);
+    const startIndex = totalFiltered === 0 ? 0 : (activePage - 1) * effectivePageSize;
+    const endIndex = isAll ? totalFiltered : Math.min(startIndex + effectivePageSize, totalFiltered);
 
     const paginatedBooks = useMemo(() => {
+        if (isAll) return filteredBooks;
         return filteredBooks.slice(startIndex, endIndex);
-    }, [filteredBooks, startIndex, endIndex]);
+    }, [filteredBooks, startIndex, endIndex, isAll]);
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
@@ -272,8 +313,14 @@ export default function CollectionPage() {
     const handlePageSizeChange = (size: number) => {
         if (displayMode === "grid") {
             setGridPageSize(size);
+            try {
+                localStorage.setItem("collection_grid_page_size", String(size));
+            } catch (_) {}
         } else {
             setListPageSize(size);
+            try {
+                localStorage.setItem("collection_list_page_size", String(size));
+            } catch (_) {}
         }
         setCurrentPage(1);
     };
@@ -460,7 +507,13 @@ export default function CollectionPage() {
                                 books={paginatedBooks}
                                 onBookStatusChange={(bookId, newStatus) => {
                                     if (newStatus !== "OWNED") {
-                                        setBooks((prev) => prev.filter((b) => b.id !== bookId));
+                                        setBooks((prev) => {
+                                            const updated = prev.filter((b) => b.id !== bookId);
+                                            try {
+                                                localStorage.setItem("openbook_user_collection_cache", JSON.stringify(updated));
+                                            } catch (_) {}
+                                            return updated;
+                                        });
                                     }
                                 }}
                             />
@@ -566,7 +619,7 @@ export default function CollectionPage() {
                             endIndex={endIndex}
                             pageSize={pageSize}
                             onPageSizeChange={handlePageSizeChange}
-                            pageSizeOptions={displayMode === "grid" ? [12, 24, 48, 96] : [10, 25, 50, 100]}
+                            pageSizeOptions={displayMode === "grid" ? [0, 24, 48, 96] : [0, 25, 50, 100]}
                         />
                     </>
                 )}

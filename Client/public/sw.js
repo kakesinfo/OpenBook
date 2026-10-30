@@ -39,6 +39,11 @@ function isCoverImageRequest(request) {
       return true;
     }
 
+    // Local / internal media service endpoints
+    if (url.pathname.includes('/images/') && url.pathname.includes('/blob')) {
+      return true;
+    }
+
     // Common image file extensions
     if (/\.(jpe?g|png|webp|gif|svg|avif)(\?.*)?$/i.test(url.pathname)) {
       return true;

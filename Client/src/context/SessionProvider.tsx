@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, ReactNode, useCallback } from "react";
+import { useEffect, useState, useRef, ReactNode, useCallback, useMemo } from "react";
 import { jwtDecode } from "jwt-decode";
 import { API_URL } from "../config/api.ts";
 import { SessionContext, SessionUser } from "./SessionContext.tsx";
@@ -199,18 +199,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
     }, [token, clearLocalSession]);
 
+    const sessionValue = useMemo(() => ({
+        token,
+        user,
+        isAuthenticated: !!token,
+        login,
+        register,
+        logout,
+        customFetch,
+        updateToken,
+        updateUser
+    }), [token, user, login, register, logout, customFetch, updateToken, updateUser]);
+
     return (
-        <SessionContext.Provider value={{
-            token,
-            user,
-            isAuthenticated: !!token,
-            login,
-            register,
-            logout,
-            customFetch,
-            updateToken,
-            updateUser
-        }}>
+        <SessionContext.Provider value={sessionValue}>
             {children}
         </SessionContext.Provider>
     );

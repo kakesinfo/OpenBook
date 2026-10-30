@@ -188,17 +188,6 @@ public class MediaServiceImpl implements MediaService {
             return ResponseEntity.badRequest().build();
         }
 
-        Optional<byte[]> masterOpt = storageService.getMasterImageBytes(id);
-        if (masterOpt.isEmpty()) {
-            Optional<ImageMetadataDto> meta = storageService.getMetadata(id);
-            if (meta.isPresent() && !"ready".equalsIgnoreCase(meta.get().getStatus())) {
-                log.debug("[MediaService] Image {} requested but status is '{}' (not ready)", id, meta.get().getStatus());
-                return ResponseEntity.status(HttpStatus.CONFLICT).build();
-            }
-            log.warn("[MediaService] Image {} master file not found", id);
-            return ResponseEntity.notFound().build();
-        }
-
         int targetW = 0;
         int targetH = 0;
         if (size != null && !size.isBlank()) {
@@ -212,28 +201,49 @@ public class MediaServiceImpl implements MediaService {
         if (height != null && height > 0) targetH = height;
 
         byte[] serveBytes;
-        if (targetW <= 0 && targetH <= 0) {
-            log.debug("[CACHE] Distribution de l'image maître originale pour {}: taille={} octets", id, masterOpt.get().length);
-            serveBytes = masterOpt.get();
-        } else {
+
+        // 1. If variant requested, check cache directly first without reading master image
+        if (targetW > 0 || targetH > 0) {
             Optional<byte[]> cached = storageService.getVariantImageBytes(id, targetW, targetH);
             if (cached.isPresent()) {
                 log.debug("[CACHE] Distribution de la variante en cache pour {} (targetW={}, targetH={}): taille={} octets",
                         id, targetW, targetH, cached.get().length);
                 serveBytes = cached.get();
-            } else {
-                try {
-                    log.info("[CACHE] Génération à la volée de la variante requise pour {} (targetW={}, targetH={})",
-                            id, targetW, targetH);
-                    serveBytes = processingService.resizeFromMaster(masterOpt.get(), targetW, targetH);
-                    storageService.saveVariantImage(id, targetW, targetH, serveBytes);
-                } catch (Exception e) {
-                    log.error("[REDIMENSIONNEMENT] Échec du redimensionnement de l'image {} vers {}x{}: {}", id, targetW, targetH, e.getMessage());
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-                }
+                return buildImageResponse(serveBytes);
             }
         }
 
+        // 2. Master or variant cache MISS: load master image
+        Optional<byte[]> masterOpt = storageService.getMasterImageBytes(id);
+        if (masterOpt.isEmpty()) {
+            Optional<ImageMetadataDto> meta = storageService.getMetadata(id);
+            if (meta.isPresent() && !"ready".equalsIgnoreCase(meta.get().getStatus())) {
+                log.debug("[MediaService] Image {} requested but status is '{}' (not ready)", id, meta.get().getStatus());
+                return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            }
+            log.warn("[MediaService] Image {} master file not found", id);
+            return ResponseEntity.notFound().build();
+        }
+
+        if (targetW <= 0 && targetH <= 0) {
+            log.debug("[CACHE] Distribution de l'image maître originale pour {}: taille={} octets", id, masterOpt.get().length);
+            serveBytes = masterOpt.get();
+        } else {
+            try {
+                log.info("[CACHE] Génération à la volée de la variante requise pour {} (targetW={}, targetH={})",
+                        id, targetW, targetH);
+                serveBytes = processingService.resizeFromMaster(masterOpt.get(), targetW, targetH);
+                storageService.saveVariantImage(id, targetW, targetH, serveBytes);
+            } catch (Exception e) {
+                log.error("[REDIMENSIONNEMENT] Échec du redimensionnement de l'image {} vers {}x{}: {}", id, targetW, targetH, e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            }
+        }
+
+        return buildImageResponse(serveBytes);
+    }
+
+    private ResponseEntity<byte[]> buildImageResponse(byte[] serveBytes) {
         String etag = "\"" + DigestUtils.md5DigestAsHex(serveBytes) + "\"";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("image/webp"));

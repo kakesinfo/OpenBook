@@ -2,13 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { Dialog } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-    faBookBookmark,
     faXmark,
     faMagnifyingGlass,
     faPlus,
     faCheck,
     faBook,
-    faCalendarDays,
     faPenNib
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
@@ -31,8 +29,8 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook 
     const [query, setQuery] = useState("");
     const [books, setBooks] = useState<BookSummaryDTO[]>([]);
     const [searching, setSearching] = useState(false);
-    const [addingIds, setAddingIds] = useState<Set<number>>(new Set());
-    const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
+    const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
+    const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
     const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -102,7 +100,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook 
         }
     };
 
-    const handleBookClick = (bookId: number) => {
+    const handleBookClick = (bookId: string | number) => {
         onClose();
         navigate(`/app/book/${bookId}`);
     };

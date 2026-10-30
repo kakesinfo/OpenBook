@@ -1,4 +1,6 @@
 package fr.openbook.api.controllers;
+import java.util.Objects;
+import java.util.Collections;
 
 import fr.openbook.api.dtos.BookStatusDTO;
 import fr.openbook.api.dtos.ReadingSessionDTO;
@@ -101,6 +103,10 @@ public class UserController {
     }
 
     private BookSummaryDTO entityToSummaryDTO(BookEntity book) {
+        return entityToSummaryDTO(book, null);
+    }
+
+    private BookSummaryDTO entityToSummaryDTO(BookEntity book, List<String> preloadedAuthors) {
         BookSummaryDTO dto = new BookSummaryDTO();
         dto.setId(book.getId());
         dto.setTitle(book.getTitle());
@@ -120,7 +126,9 @@ public class UserController {
             }
         }
         dto.setPageCount(book.getPageCount());
-        if (book.getBookHasAuthors() != null && !book.getBookHasAuthors().isEmpty()) {
+        if (preloadedAuthors != null) {
+            dto.setAuthor(String.join(", ", preloadedAuthors));
+        } else if (book.getBookHasAuthors() != null && !book.getBookHasAuthors().isEmpty()) {
             String authorStr = book.getBookHasAuthors().stream()
                     .filter(bha -> bha.getAuthor() != null)
                     .map(bha -> ((bha.getAuthor().getFirstname() != null ? bha.getAuthor().getFirstname() : "") + " "
@@ -553,22 +561,45 @@ public class UserController {
     @GetMapping({"/collection", "/library", "/bibliotheque"})
     public List<BookSummaryDTO> getCollection(HttpSession session) {
         UserEntity user = getAuthenticatedUser(session);
+        if (user == null) {
+            return Collections.emptyList();
+        }
 
         List<UserOwnsBookEntity> ownedEntries = repositoryService.getUserOwnsBooksRepository()
-                .findAllByUserId(user.getId()).stream()
-                .filter(uob -> UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(uob.getStatus()))
+                .findAllByUserIdAndStatusWithDetails(user.getId(), UserOwnsBookStatus.OWNED.name());
+
+        if (ownedEntries.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> bookIds = ownedEntries.stream()
+                .map(uob -> uob.getBook().getId())
+                .filter(Objects::nonNull)
                 .toList();
 
+        Map<Long, List<String>> authorsByBookId = repositoryService.getBookHasAuthorRepository()
+                .findAllByBookIdInWithAuthor(bookIds).stream()
+                .filter(bha -> bha.getBook() != null && bha.getAuthor() != null)
+                .collect(Collectors.groupingBy(
+                        bha -> bha.getBook().getId(),
+                        Collectors.mapping(
+                                bha -> ((bha.getAuthor().getFirstname() != null ? bha.getAuthor().getFirstname() : "") + " "
+                                        + (bha.getAuthor().getLastname() != null ? bha.getAuthor().getLastname() : "")).trim(),
+                                Collectors.filtering(s -> !s.isEmpty(), Collectors.toList())
+                        )
+                ));
+
         Map<Long, String> readingStatusMap = repositoryService.getBookStatusRepository()
-                .findAllByUserId(user.getId()).stream()
+                .findAllByUserIdWithBook(user.getId()).stream()
                 .filter(bse -> bse.getBook() != null)
                 .collect(Collectors.toMap(bse -> bse.getBook().getId(), BookStatusEntity::getStatus, (s1, s2) -> s1));
 
         return ownedEntries.stream()
                 .map(entity -> {
-                    BookSummaryDTO dto = entityToSummaryDTO(entity.getBook());
+                    BookEntity book = entity.getBook();
+                    BookSummaryDTO dto = entityToSummaryDTO(book, authorsByBookId.get(book.getId()));
                     dto.setStatus(entity.getStatus());
-                    dto.setReadingStatus(readingStatusMap.getOrDefault(entity.getBook().getId(), "UNREAD"));
+                    dto.setReadingStatus(readingStatusMap.getOrDefault(book.getId(), "UNREAD"));
                     return dto;
                 })
                 .toList();
@@ -577,14 +608,36 @@ public class UserController {
     @GetMapping({"/collection/series", "/library/series", "/bibliotheque/series"})
     public List<UserSeriesSummaryDTO> getCollectionGroupedBySeries(HttpSession session) {
         UserEntity user = getAuthenticatedUser(session);
+        if (user == null) {
+            return Collections.emptyList();
+        }
 
         List<UserOwnsBookEntity> ownedEntries = repositoryService.getUserOwnsBooksRepository()
-                .findAllByUserId(user.getId()).stream()
-                .filter(uob -> UserOwnsBookStatus.OWNED.name().equalsIgnoreCase(uob.getStatus()))
+                .findAllByUserIdAndStatusWithDetails(user.getId(), UserOwnsBookStatus.OWNED.name());
+
+        if (ownedEntries.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> bookIds = ownedEntries.stream()
+                .map(uob -> uob.getBook().getId())
+                .filter(Objects::nonNull)
                 .toList();
 
+        Map<Long, List<String>> authorsByBookId = repositoryService.getBookHasAuthorRepository()
+                .findAllByBookIdInWithAuthor(bookIds).stream()
+                .filter(bha -> bha.getBook() != null && bha.getAuthor() != null)
+                .collect(Collectors.groupingBy(
+                        bha -> bha.getBook().getId(),
+                        Collectors.mapping(
+                                bha -> ((bha.getAuthor().getFirstname() != null ? bha.getAuthor().getFirstname() : "") + " "
+                                        + (bha.getAuthor().getLastname() != null ? bha.getAuthor().getLastname() : "")).trim(),
+                                Collectors.filtering(s -> !s.isEmpty(), Collectors.toList())
+                        )
+                ));
+
         Map<Long, String> readingStatusMap = repositoryService.getBookStatusRepository()
-                .findAllByUserId(user.getId()).stream()
+                .findAllByUserIdWithBook(user.getId()).stream()
                 .filter(bse -> bse.getBook() != null)
                 .collect(Collectors.toMap(bse -> bse.getBook().getId(), BookStatusEntity::getStatus, (s1, s2) -> s1));
 
@@ -615,7 +668,7 @@ public class UserController {
                 return dto;
             });
 
-            BookSummaryDTO bookDto = entityToSummaryDTO(book);
+            BookSummaryDTO bookDto = entityToSummaryDTO(book, authorsByBookId.get(book.getId()));
             bookDto.setStatus(uob.getStatus());
             bookDto.setReadingStatus(readingStatusMap.getOrDefault(book.getId(), "UNREAD"));
             sDto.getBooks().add(bookDto);
@@ -811,12 +864,38 @@ public class UserController {
     @GetMapping("/wishlist")
     public List<BookSummaryDTO> getWishlist(HttpSession session) {
         UserEntity user = getAuthenticatedUser(session);
+        if (user == null) {
+            return Collections.emptyList();
+        }
 
-        return repositoryService.getUserOwnsBooksRepository()
-                .findAllByUserIdAndStatus(user.getId(), UserOwnsBookStatus.WISHLISTED.name())
-                .stream()
+        List<UserOwnsBookEntity> wishlistedEntries = repositoryService.getUserOwnsBooksRepository()
+                .findAllByUserIdAndStatusWithDetails(user.getId(), UserOwnsBookStatus.WISHLISTED.name());
+
+        if (wishlistedEntries.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> bookIds = wishlistedEntries.stream()
+                .map(uob -> uob.getBook().getId())
+                .filter(Objects::nonNull)
+                .toList();
+
+        Map<Long, List<String>> authorsByBookId = repositoryService.getBookHasAuthorRepository()
+                .findAllByBookIdInWithAuthor(bookIds).stream()
+                .filter(bha -> bha.getBook() != null && bha.getAuthor() != null)
+                .collect(Collectors.groupingBy(
+                        bha -> bha.getBook().getId(),
+                        Collectors.mapping(
+                                bha -> ((bha.getAuthor().getFirstname() != null ? bha.getAuthor().getFirstname() : "") + " "
+                                        + (bha.getAuthor().getLastname() != null ? bha.getAuthor().getLastname() : "")).trim(),
+                                Collectors.filtering(s -> !s.isEmpty(), Collectors.toList())
+                        )
+                ));
+
+        return wishlistedEntries.stream()
                 .map(entity -> {
-                    BookSummaryDTO dto = entityToSummaryDTO(entity.getBook());
+                    BookEntity book = entity.getBook();
+                    BookSummaryDTO dto = entityToSummaryDTO(book, authorsByBookId.get(book.getId()));
                     dto.setStatus(UserOwnsBookStatus.WISHLISTED.name());
                     return dto;
                 })

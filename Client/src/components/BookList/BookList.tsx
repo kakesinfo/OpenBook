@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBook, faHeart, faCheck, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
 import { useSnackbar } from "notistack";
+import AsyncCoverImage from "../AsyncCoverImage/AsyncCoverImage.tsx";
 
 function getStatusBadge(book: BookSummaryDTO) {
     if (book.status === "FOR_SALE") {
@@ -137,20 +138,11 @@ export default function BookList({ books, onBookStatusChange, showReleaseDate = 
                 return (
                     <Link to={`/app/book/${book.id}`} className="booklist-card" key={book.id}>
                         <div className="booklist-card__cover-wrapper">
-                            {book.coverUrl ? (
-                                <img
-                                    className="booklist-card__cover"
-                                    src={book.coverUrl}
-                                    alt={`Couverture de ${book.title}`}
-                                    loading="lazy"
-                                    decoding="async"
-                                />
-                            ) : (
-                                <div className="booklist-card__cover-fallback">
-                                    <FontAwesomeIcon icon={faBook} />
-                                    <span>{book.title}</span>
-                                </div>
-                            )}
+                            <AsyncCoverImage
+                                src={book.coverUrl}
+                                alt={`Couverture de ${book.title}`}
+                                title={book.title}
+                            />
 
                             {/* Status Badge top-left */}
                             {getStatusBadge({ ...book, status: effectiveStatus || "" })}
