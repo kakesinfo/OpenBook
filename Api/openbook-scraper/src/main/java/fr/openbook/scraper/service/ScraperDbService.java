@@ -187,6 +187,7 @@ public class ScraperDbService {
                 List<Map<String, Object>> candidates = jdbcTemplate.queryForList("""
                     SELECT id, title FROM book
                     WHERE editor_id = ?
+                      AND COALESCE(deleted, FALSE) = FALSE
                       AND (parent_book_id IS NULL OR parent_book_id = 0)
                       AND regexp_replace(lower(title), '[^a-z0-9]', '', 'g') = regexp_replace(lower(?), '[^a-z0-9]', '', 'g')
                     ORDER BY id ASC
@@ -208,6 +209,7 @@ public class ScraperDbService {
                     List<Map<String, Object>> pRows = jdbcTemplate.queryForList("""
                         SELECT id, COALESCE(title, '') as title FROM book
                         WHERE editor_id = ? AND volume = ?
+                          AND COALESCE(deleted, FALSE) = FALSE
                           AND (parent_book_id IS NULL OR parent_book_id = 0)
                         ORDER BY id ASC;
                     """, editorId, book.getVolume());
@@ -333,6 +335,19 @@ public class ScraperDbService {
         }
 
         if (bookId != null) {
+            Boolean isDeleted = Boolean.FALSE;
+            try {
+                isDeleted = jdbcTemplate.queryForObject(
+                        "SELECT COALESCE(deleted, FALSE) FROM book WHERE id = ?;",
+                        Boolean.class,
+                        bookId
+                );
+            } catch (Exception ignored) {}
+            if (Boolean.TRUE.equals(isDeleted)) {
+                log.info("Book {} ('{}') is marked deleted; skipping upsert.", bookId, cleanTitle);
+                return null;
+            }
+
             // Update existing book
             if (parentBookId != null && parentBookId.equals(bookId)) {
                 parentBookId = null;
@@ -413,11 +428,17 @@ public class ScraperDbService {
             String storedCover = optimizeCover(book.getCoverUrl());
             if (!cleanISBN.isEmpty()) {
                 try {
-                    Integer existingWithIsbn = jdbcTemplate.queryForObject("SELECT id FROM book WHERE isbn = ? LIMIT 1;", Integer.class, cleanISBN);
-                    if (existingWithIsbn != null) {
-                        log.debug("ISBN {} already taken by book {}; inserting new book without ISBN", cleanISBN, existingWithIsbn);
-                        cleanISBN = "";
+                    Map<String, Object> existingWithIsbn = jdbcTemplate.queryForMap(
+                            "SELECT id, COALESCE(deleted, FALSE) as is_deleted FROM book WHERE isbn = ? LIMIT 1;",
+                            cleanISBN
+                    );
+                    if (Boolean.TRUE.equals(existingWithIsbn.get("is_deleted"))) {
+                        log.info("ISBN {} belongs to deleted book {}; skipping insertion.", cleanISBN, existingWithIsbn.get("id"));
+                        return null;
                     }
+                    Integer existingWithIsbnId = ((Number) existingWithIsbn.get("id")).intValue();
+                    log.debug("ISBN {} already taken by book {}; inserting new book without ISBN", cleanISBN, existingWithIsbnId);
+                    cleanISBN = "";
                 } catch (EmptyResultDataAccessException ignored) {}
             }
 
@@ -439,12 +460,12 @@ public class ScraperDbService {
                         title, series_id, editor_id, collection_id,
                         volume, isbn, page_count, price, description,
                         cover_url, release_date, type, parent_book_id,
-                        created_at, updated_at
+                        deleted, created_at, updated_at
                     ) VALUES (
                         ?, NULL, ?, ?,
                         ?, ?, ?, ?, ?,
                         ?, ?, ?, ?,
-                        NOW(), NOW()
+                        FALSE, NOW(), NOW()
                     ) RETURNING id;
                 """, Statement.RETURN_GENERATED_KEYS);
                 ps.setString(1, cleanTitle);
@@ -520,7 +541,7 @@ public class ScraperDbService {
 
         // 1. Repair books
         List<Map<String, Object>> books = jdbcTemplate.queryForList(
-                "SELECT id, COALESCE(title, '') as title, COALESCE(description, '') as description FROM book WHERE title ~ '[ÃÂ]' OR description ~ '[ÃÂ]';"
+                "SELECT id, COALESCE(title, '') as title, COALESCE(description, '') as description FROM book WHERE COALESCE(deleted, FALSE) = FALSE AND (title ~ '[ÃÂ]' OR description ~ '[ÃÂ]');"
         );
         for (Map<String, Object> b : books) {
             int id = (Integer) b.get("id");
@@ -609,9 +630,10 @@ public class ScraperDbService {
                    COALESCE(b1.description, '') as d1, COALESCE(b2.description, '') as d2
             FROM book b1
             JOIN book b2 ON b1.id < b2.id AND b1.editor_id = b2.editor_id
-            WHERE (b1.cover_url IS NOT NULL AND b1.cover_url != '' AND b1.cover_url = b2.cover_url)
-               OR (b1.isbn IS NOT NULL AND b1.isbn != '' AND b1.isbn = b2.isbn)
-               OR (regexp_replace(lower(b1.title), '[^a-z0-9]', '', 'g') = regexp_replace(lower(b2.title), '[^a-z0-9]', '', 'g'));
+            WHERE COALESCE(b1.deleted, FALSE) = FALSE AND COALESCE(b2.deleted, FALSE) = FALSE
+              AND ((b1.cover_url IS NOT NULL AND b1.cover_url != '' AND b1.cover_url = b2.cover_url)
+                OR (b1.isbn IS NOT NULL AND b1.isbn != '' AND b1.isbn = b2.isbn)
+                OR (regexp_replace(lower(b1.title), '[^a-z0-9]', '', 'g') = regexp_replace(lower(b2.title), '[^a-z0-9]', '', 'g')));
         """);
 
         int mergedCount = 0;
@@ -725,7 +747,7 @@ public class ScraperDbService {
             SELECT b.series_id, s.name as series_name, b.volume, COUNT(*) as count
             FROM book b
             JOIN series s ON b.series_id = s.id
-            WHERE b.volume IS NOT NULL AND b.parent_book_id IS NULL
+            WHERE COALESCE(b.deleted, FALSE) = FALSE AND b.volume IS NOT NULL AND b.parent_book_id IS NULL
             GROUP BY b.series_id, s.name, b.volume
             HAVING COUNT(*) > 1
             ORDER BY s.name, b.volume;
@@ -747,7 +769,7 @@ public class ScraperDbService {
                        b.parent_book_id
                 FROM book b
                 LEFT JOIN collection col ON b.collection_id = col.id
-                WHERE b.series_id = ? AND b.parent_book_id IS NULL
+                WHERE b.series_id = ? AND COALESCE(b.deleted, FALSE) = FALSE AND b.parent_book_id IS NULL
                 ORDER BY b.volume, b.release_date, b.id;
             """, sid);
 
@@ -880,7 +902,7 @@ public class ScraperDbService {
             UPDATE book
             SET parent_book_id = NULL, updated_at = NOW()
             WHERE parent_book_id IS NOT NULL
-              AND parent_book_id NOT IN (SELECT id FROM book);
+              AND parent_book_id NOT IN (SELECT id FROM book WHERE COALESCE(deleted, FALSE) = FALSE);
         """);
 
         // 2. Clean up duplicate 'Edition collector' repetitions
@@ -893,7 +915,8 @@ public class ScraperDbService {
         // 3. Append ' - Edition collector' if cover is variant but title lacked suffix
         List<Map<String, Object>> vRows = jdbcTemplate.queryForList("""
             SELECT id, COALESCE(title, '') as title, COALESCE(cover_url, '') as cover_url FROM book
-            WHERE cover_url ~* '[a-z0-9]+v_\\d+\\.(?:jpg|jpeg|png|webp)'
+            WHERE COALESCE(deleted, FALSE) = FALSE
+              AND cover_url ~* '[a-z0-9]+v_\\d+\\.(?:jpg|jpeg|png|webp)'
               AND NOT (title ~* '\\b(?:couverture\\s+variante|variant(?:e)?|collector)\\b');
         """);
         for (Map<String, Object> vb : vRows) {
@@ -906,7 +929,7 @@ public class ScraperDbService {
         List<Map<String, Object>> allRows = jdbcTemplate.queryForList("""
             SELECT b.id, COALESCE(b.title, '') as title, b.volume, b.editor_id, b.parent_book_id, COALESCE(b.cover_url, '') as cover_url
             FROM book b
-            WHERE b.editor_id IS NOT NULL
+            WHERE COALESCE(b.deleted, FALSE) = FALSE AND b.editor_id IS NOT NULL
             ORDER BY b.editor_id, b.volume NULLS LAST, b.id ASC;
         """);
 
@@ -983,7 +1006,7 @@ public class ScraperDbService {
             FROM book b
             LEFT JOIN series s ON b.series_id = s.id
             LEFT JOIN editor e ON b.editor_id = e.id
-            WHERE b.isbn IS NULL OR b.isbn = '' OR LENGTH(TRIM(b.isbn)) < 10
+            WHERE COALESCE(b.deleted, FALSE) = FALSE AND (b.isbn IS NULL OR b.isbn = '' OR LENGTH(TRIM(b.isbn)) < 10)
             ORDER BY b.id DESC
             LIMIT ?;
         """, limit);
@@ -1081,7 +1104,7 @@ public class ScraperDbService {
         List<Map<String, Object>> books = jdbcTemplate.queryForList("""
             SELECT b.id, COALESCE(b.title, '') as title, COALESCE(b.isbn, '') as isbn, b.page_count, b.collection_id
             FROM book b
-            WHERE b.isbn IS NOT NULL AND LENGTH(TRIM(b.isbn)) >= 10
+            WHERE COALESCE(b.deleted, FALSE) = FALSE AND b.isbn IS NOT NULL AND LENGTH(TRIM(b.isbn)) >= 10
             ORDER BY (CASE WHEN b.page_count IS NULL OR b.page_count = 0 THEN 0 ELSE 1 END), b.updated_at ASC
             LIMIT ?;
         """, limit);
@@ -1144,7 +1167,7 @@ public class ScraperDbService {
     public Map<String, Object> migrateCoversToUuid(Integer limit, int maxWorkers) {
         if (maxWorkers <= 0) maxWorkers = 4;
 
-        String query = "SELECT id, COALESCE(title, '') as title, COALESCE(cover_url, '') as cover_url FROM book WHERE cover_url ~* '^https?://' ORDER BY id ASC";
+        String query = "SELECT id, COALESCE(title, '') as title, COALESCE(cover_url, '') as cover_url FROM book WHERE COALESCE(deleted, FALSE) = FALSE AND cover_url ~* '^https?://' ORDER BY id ASC";
         if (limit != null && limit > 0) {
             query += " LIMIT " + limit;
         }
@@ -1191,7 +1214,7 @@ public class ScraperDbService {
 
         int remaining = 0;
         try {
-            remaining = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM book WHERE cover_url ~* '^https?://';", Integer.class);
+            remaining = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM book WHERE COALESCE(deleted, FALSE) = FALSE AND cover_url ~* '^https?://';", Integer.class);
         } catch (Exception ignored) {}
 
         String msg = String.format("Migration terminée : %d couverture(s) migrée(s) en UUID.", updates.size());
@@ -1217,11 +1240,11 @@ public class ScraperDbService {
      */
     public Map<String, Object> getMaintenanceStats() {
         int totalBooks = 0, totalSeries = 0, totalEditors = 0, totalAuthors = 0, urlCovers = 0;
-        try { totalBooks = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM book;", Integer.class); } catch (Exception ignored) {}
+        try { totalBooks = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM book WHERE COALESCE(deleted, FALSE) = FALSE;", Integer.class); } catch (Exception ignored) {}
         try { totalSeries = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM series;", Integer.class); } catch (Exception ignored) {}
         try { totalEditors = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM editor;", Integer.class); } catch (Exception ignored) {}
         try { totalAuthors = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM author;", Integer.class); } catch (Exception ignored) {}
-        try { urlCovers = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM book WHERE cover_url ~* '^https?://';", Integer.class); } catch (Exception ignored) {}
+        try { urlCovers = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM book WHERE COALESCE(deleted, FALSE) = FALSE AND cover_url ~* '^https?://';", Integer.class); } catch (Exception ignored) {}
 
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("total_books", totalBooks);
@@ -1244,6 +1267,7 @@ public class ScraperDbService {
             FROM book b
             LEFT JOIN editor e ON b.editor_id = e.id
             LEFT JOIN series s ON b.series_id = s.id
+            WHERE COALESCE(b.deleted, FALSE) = FALSE
             ORDER BY b.created_at DESC
             LIMIT ?;
         """, limit);

@@ -361,7 +361,7 @@ public class BookController {
                 .map(bookEntity -> entityToDTO(
                     bookEntity, userEntity, withSeries, withCollection, withEditor, withAuthors, withStatus
                 ))
-                .orElse(null);
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found"));
     }
 
     @GetMapping("/search")
@@ -837,11 +837,12 @@ public class BookController {
         // 2. Remove user ownership references
         repositoryService.getUserOwnsBooksRepository().deleteAllByBookId(id);
 
-        // 3. Remove book has author references
-        repositoryService.getBookHasAuthorRepository().deleteAllByBookId(id);
+        // 3. Remove reading status references
+        repositoryService.getBookStatusRepository().deleteAllByBookId(id);
 
-        // 4. Delete the book
-        repositoryService.getBookRepository().delete(book);
+        // 4. Soft-delete the book
+        book.setDeleted(true);
+        repositoryService.getBookRepository().save(book);
     }
 
     private BookSummaryDTO entityToSummaryDTO(BookEntity book) {

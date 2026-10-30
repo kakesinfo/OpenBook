@@ -1501,4 +1501,14 @@
             WHERE UPPER(status) = 'SOLD';
         </sql>
     </changeSet>
+    <changeSet id="29" author="Axel">
+        <addColumn tableName="book">
+            <column name="deleted" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+        <createIndex tableName="book" indexName="idx_book_deleted">
+            <column name="deleted" />
+        </createIndex>
+    </changeSet>
 </databaseChangeLog>

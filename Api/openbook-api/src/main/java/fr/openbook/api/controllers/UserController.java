@@ -511,7 +511,7 @@ public class UserController {
         List<UserOwnsBookEntity> ownedBooks = repositoryService.getUserOwnsBooksRepository()
                 .findAll().stream().filter(uob -> uob.getUser() != null && uob.getUser().getId().equals(userId)).toList();
         for (UserOwnsBookEntity uob : ownedBooks) {
-            if (uob.getBook() != null) {
+            if (uob.getBook() != null && !Boolean.TRUE.equals(uob.getBook().getDeleted())) {
                 BookSummaryDTO dto = entityToSummaryDTO(uob.getBook());
                 dto.setStatus(uob.getStatus());
                 bookMap.put(uob.getBook().getId(), dto);
@@ -521,7 +521,7 @@ public class UserController {
         // 2. Reading statuses from book_status
         List<BookStatusEntity> readingStatuses = repositoryService.getBookStatusRepository().findAllByUserId(userId);
         for (BookStatusEntity bse : readingStatuses) {
-            if (bse.getBook() != null) {
+            if (bse.getBook() != null && !Boolean.TRUE.equals(bse.getBook().getDeleted())) {
                 Long bId = bse.getBook().getId();
                 BookSummaryDTO dto = bookMap.computeIfAbsent(bId, k -> {
                     BookSummaryDTO d = entityToSummaryDTO(bse.getBook());
@@ -535,7 +535,7 @@ public class UserController {
         // 3. Books from reading sessions
         List<ReadingSessionEntity> sessions = repositoryService.getReadingSessionRepository().findAllByUserIdOrderByCreatedAtAsc(userId);
         for (ReadingSessionEntity rse : sessions) {
-            if (rse.getBook() != null) {
+            if (rse.getBook() != null && !Boolean.TRUE.equals(rse.getBook().getDeleted())) {
                 Long bId = rse.getBook().getId();
                 bookMap.computeIfAbsent(bId, k -> {
                     BookSummaryDTO d = entityToSummaryDTO(rse.getBook());
@@ -1416,7 +1416,7 @@ public class UserController {
         List<BookStatusEntity> statusEntities = repositoryService.getBookStatusRepository().findAllByUserId(user.getId());
         Map<Long, String> readingStatuses = new HashMap<>();
         for (BookStatusEntity bse : statusEntities) {
-            if (bse.getBook() != null) {
+            if (bse.getBook() != null && !Boolean.TRUE.equals(bse.getBook().getDeleted())) {
                 readingStatuses.put(bse.getBook().getId(), bse.getStatus());
             }
         }

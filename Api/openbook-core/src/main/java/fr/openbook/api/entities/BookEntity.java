@@ -14,6 +14,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -24,6 +26,8 @@ import java.util.List;
 @Getter
 @Setter
 @Entity(name = "book")
+@SQLRestriction("deleted = false")
+@SQLDelete(sql = "UPDATE book SET deleted = true, updated_at = NOW() WHERE id = ?")
 public class BookEntity {
     @Id
     @Column(name = "id", nullable = false)
@@ -92,6 +96,8 @@ public class BookEntity {
 
     @OneToMany(mappedBy = "book", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BookHasAuthorEntity> bookHasAuthors;
+    @Column(name = "deleted", nullable = false)
+    private Boolean deleted = false;
 
     @Column(name = "release_date", nullable = false)
     private Instant releaseDate;

@@ -4,6 +4,7 @@ import fr.openbook.api.entities.BookStatusEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,4 +22,7 @@ public interface BookStatusRepository extends JpaRepository<BookStatusEntity, Lo
         WHERE bse.user.id = :userId
     """)
     List<BookStatusEntity> findAllByUserIdWithBook(@Param("userId") Long userId);
+
+    @Transactional
+    void deleteAllByBookId(Long bookId);
 }

@@ -24,6 +24,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -181,7 +182,7 @@ public class BookmoryDbService {
         if (!cleanISBN.isBlank()) {
             String digitsOnly = RE_NON_ISBN.matcher(cleanISBN).replaceAll("");
             if (!digitsOnly.isBlank()) {
-                String sql = SELECT_BOOK_COLS + "WHERE regexp_replace(isbn, '[^0-9Xx]', '', 'g') = ? AND isbn IS NOT NULL AND isbn != '' LIMIT 1";
+                String sql = SELECT_BOOK_COLS + "WHERE COALESCE(deleted, FALSE) = FALSE AND regexp_replace(isbn, '[^0-9Xx]', '', 'g') = ? AND isbn IS NOT NULL AND isbn != '' LIMIT 1";
                 try {
                     return jdbcTemplate.queryForObject(sql, this::mapExistingBook, digitsOnly);
                 } catch (EmptyResultDataAccessException ignored) {}
@@ -190,7 +191,7 @@ public class BookmoryDbService {
 
         // 2. Match by exact title
         if (!cleanT.isBlank()) {
-            String sql = SELECT_BOOK_COLS + "WHERE LOWER(title) = LOWER(?) LIMIT 1";
+            String sql = SELECT_BOOK_COLS + "WHERE COALESCE(deleted, FALSE) = FALSE AND LOWER(title) = LOWER(?) LIMIT 1";
             try {
                 return jdbcTemplate.queryForObject(sql, this::mapExistingBook, cleanT);
             } catch (EmptyResultDataAccessException ignored) {}
@@ -198,7 +199,7 @@ public class BookmoryDbService {
 
         // 3. Match by normalized alphanumeric title
         if (!cleanT.isBlank()) {
-            String sql = SELECT_BOOK_COLS + "WHERE regexp_replace(lower(title), '[^a-z0-9]', '', 'g') = regexp_replace(lower(?), '[^a-z0-9]', '', 'g') LIMIT 1";
+            String sql = SELECT_BOOK_COLS + "WHERE COALESCE(deleted, FALSE) = FALSE AND regexp_replace(lower(title), '[^a-z0-9]', '', 'g') = regexp_replace(lower(?), '[^a-z0-9]', '', 'g') LIMIT 1";
             try {
                 return jdbcTemplate.queryForObject(sql, this::mapExistingBook, cleanT);
             } catch (EmptyResultDataAccessException ignored) {}
@@ -354,11 +355,17 @@ public class BookmoryDbService {
         String cleanISBN = b.getIsbn() != null ? b.getIsbn().trim() : "";
         if (!cleanISBN.isBlank()) {
             try {
-                Long existingId = jdbcTemplate.queryForObject("SELECT id FROM book WHERE isbn = ? LIMIT 1", Long.class, cleanISBN);
-                if (existingId != null) {
-                    log.info("[Database] ISBN {} already exists on book {}; omitting for new book '{}'", cleanISBN, existingId, cleanT);
-                    cleanISBN = "";
+                Map<String, Object> existingWithIsbn = jdbcTemplate.queryForMap(
+                        "SELECT id, COALESCE(deleted, FALSE) as is_deleted FROM book WHERE isbn = ? LIMIT 1",
+                        cleanISBN
+                );
+                if (Boolean.TRUE.equals(existingWithIsbn.get("is_deleted"))) {
+                    log.info("[Database] ISBN {} belongs to deleted book {}; skipping creation", cleanISBN, existingWithIsbn.get("id"));
+                    return null;
                 }
+                Long existingId = ((Number) existingWithIsbn.get("id")).longValue();
+                log.info("[Database] ISBN {} already exists on book {}; omitting for new book '{}'", cleanISBN, existingId, cleanT);
+                cleanISBN = "";
             } catch (EmptyResultDataAccessException ignored) {}
         }
 
