@@ -2,6 +2,8 @@ package fr.openbook.scraper.service;
 
 import fr.openbook.api.importing.bnf.BnfBookData;
 import fr.openbook.api.importing.bnf.BnfClient;
+import fr.openbook.api.entities.AuthorEntity;
+import fr.openbook.api.services.AuthorDeduplicationService;
 import fr.openbook.api.services.media.MediaService;
 import fr.openbook.scraper.model.ScrapedAuthorDTO;
 import fr.openbook.scraper.model.ScrapedBookDTO;
@@ -56,6 +58,7 @@ public class ScraperDbService {
     private final JdbcTemplate jdbcTemplate;
     private final MediaService mediaService;
     private final BnfClient bnfClient;
+    private final AuthorDeduplicationService authorDeduplicationService;
 
     /**
      * Download and save remote cover image directly into MediaService.
@@ -478,25 +481,9 @@ public class ScraperDbService {
                     continue;
                 }
 
-                Integer authorId = null;
-                try {
-                    authorId = jdbcTemplate.queryForObject(
-                            "SELECT id FROM author WHERE LOWER(firstname) = LOWER(?) AND LOWER(lastname) = LOWER(?) LIMIT 1;",
-                            Integer.class,
-                            cleanFn, cleanLn
-                    );
-                } catch (EmptyResultDataAccessException e) {
-                    try {
-                        authorId = jdbcTemplate.queryForObject(
-                                "INSERT INTO author (firstname, lastname, created_at, updated_at) VALUES (?, ?, NOW(), NOW()) RETURNING id;",
-                                Integer.class,
-                                cleanFn, cleanLn
-                        );
-                    } catch (Exception insertEx) {
-                        log.warn("Could not insert author {} {}: {}", cleanFn, cleanLn, insertEx.getMessage());
-                        continue;
-                    }
-                }
+                AuthorEntity author = authorDeduplicationService.findOrCreateAuthor(cleanFn, cleanLn);
+                if (author == null || author.getId() == null) continue;
+                Integer authorId = author.getId().intValue();
 
                 if (authorId == null) continue;
 
@@ -595,43 +582,8 @@ public class ScraperDbService {
      */
     @Transactional
     public void repairAuthors() {
-        List<Map<String, Object>> authors = jdbcTemplate.queryForList(
-                "SELECT id, COALESCE(firstname, '') as firstname, COALESCE(lastname, '') as lastname FROM author;"
-        );
+        authorDeduplicationService.deduplicateAllAuthors();
 
-        for (Map<String, Object> a : authors) {
-            int id = (Integer) a.get("id");
-            String fn = (String) a.get("firstname");
-            String ln = (String) a.get("lastname");
-
-            String rawFull = ln;
-            if (!fn.isEmpty()) {
-                rawFull = (fn + " " + ln).trim();
-            }
-            String cleanFull = TextCleaner.cleanAuthorName(rawFull);
-            if (!cleanFull.equals(rawFull)) {
-                String[] parts = TextCleaner.splitAuthorName(cleanFull);
-                String cFname = parts[0];
-                String cLname = parts[1];
-
-                try {
-                    Integer targetId = jdbcTemplate.queryForObject(
-                            "SELECT id FROM author WHERE LOWER(firstname) = LOWER(?) AND LOWER(lastname) = LOWER(?) AND id != ? LIMIT 1;",
-                            Integer.class,
-                            cFname, cLname, id
-                    );
-                    jdbcTemplate.update("""
-                        DELETE FROM book_has_author
-                        WHERE author_id = ?
-                          AND book_id IN (SELECT book_id FROM book_has_author WHERE author_id = ?);
-                    """, id, targetId);
-                    jdbcTemplate.update("UPDATE book_has_author SET author_id = ? WHERE author_id = ?;", targetId, id);
-                    jdbcTemplate.update("DELETE FROM author WHERE id = ?;", id);
-                } catch (EmptyResultDataAccessException e) {
-                    jdbcTemplate.update("UPDATE author SET firstname = ?, lastname = ? WHERE id = ?;", cFname, cLname, id);
-                }
-            }
-        }
 
         // Remove duplicate book_has_author rows
         jdbcTemplate.update("""

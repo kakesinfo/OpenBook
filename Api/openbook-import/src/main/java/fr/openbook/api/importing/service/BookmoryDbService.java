@@ -1,5 +1,7 @@
 package fr.openbook.api.importing.service;
 
+import fr.openbook.api.entities.AuthorEntity;
+import fr.openbook.api.services.AuthorDeduplicationService;
 import fr.openbook.api.importing.model.BookmoryBook;
 import fr.openbook.api.importing.model.BookmoryPurchase;
 import fr.openbook.api.importing.model.BookmoryReadTimer;
@@ -33,9 +35,11 @@ public class BookmoryDbService {
     private static final Pattern RE_NON_ISBN = Pattern.compile("[^0-9Xx]");
 
     private final JdbcTemplate jdbcTemplate;
+    private final AuthorDeduplicationService authorDeduplicationService;
 
-    public BookmoryDbService(JdbcTemplate jdbcTemplate) {
+    public BookmoryDbService(JdbcTemplate jdbcTemplate, AuthorDeduplicationService authorDeduplicationService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.authorDeduplicationService = authorDeduplicationService;
     }
 
     public static String cleanText(String s) {
@@ -123,7 +127,7 @@ public class BookmoryDbService {
         }
     }
 
-    public Long findOrCreateAuthor(String fullName) {
+        public Long findOrCreateAuthor(String fullName) {
         String cleaned = cleanText(fullName);
         if (cleaned.isBlank()) return null;
 
@@ -139,28 +143,15 @@ public class BookmoryDbService {
         }
 
         try {
-            return jdbcTemplate.queryForObject(
-                    "SELECT id FROM author WHERE LOWER(firstname) = LOWER(?) AND LOWER(lastname) = LOWER(?) LIMIT 1",
-                    Long.class, first, last
-            );
-        } catch (EmptyResultDataAccessException ignored) {}
-
-        try {
-            return jdbcTemplate.queryForObject(
-                    "INSERT INTO author (firstname, lastname, created_at, updated_at) VALUES (?, ?, NOW(), NOW()) RETURNING id",
-                    Long.class, first, last
-            );
-        } catch (Exception ex) {
-            try {
-                return jdbcTemplate.queryForObject(
-                        "SELECT id FROM author WHERE LOWER(firstname) = LOWER(?) AND LOWER(lastname) = LOWER(?) LIMIT 1",
-                        Long.class, first, last
-                );
-            } catch (Exception e) {
-                log.warn("Failed to find or create author '{} {}': {}", first, last, e.getMessage());
-                return null;
+            AuthorEntity author = authorDeduplicationService.findOrCreateAuthor(first, last);
+            if (author != null && author.getId() != null) {
+                return author.getId().longValue();
             }
+        } catch (Exception e) {
+            log.warn("AuthorDeduplicationService failed for '{} {}': {}", first, last, e.getMessage());
         }
+
+        return null;
     }
 
     public void linkBookAuthor(Long bookId, Long authorId, int authorTypeId) {

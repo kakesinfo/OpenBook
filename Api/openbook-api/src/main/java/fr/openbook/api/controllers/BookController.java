@@ -23,6 +23,7 @@ import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
 import fr.openbook.api.entities.UserSellsBookEntity;
 import fr.openbook.api.repositories.BookRepository;
+import fr.openbook.api.services.AuthorDeduplicationService;
 import fr.openbook.api.services.CollectionService;
 import fr.openbook.api.services.EditorService;
 import fr.openbook.api.services.RepositoryService;
@@ -77,6 +78,7 @@ public class BookController {
 
     private final RepositoryService repositoryService;
     private final MediaService mediaServiceClient;
+    private final AuthorDeduplicationService authorDeduplicationService;
 
     private UserEntity getAuthenticatedUser(HttpSession session) {
         if (session != null) {
@@ -570,14 +572,7 @@ public class BookController {
                 final String finalFn = fn;
                 final String finalLn = ln;
 
-                AuthorEntity author = repositoryService.getAuthorRepository()
-                        .findByFirstnameIgnoreCaseAndLastnameIgnoreCase(finalFn, finalLn)
-                        .orElseGet(() -> {
-                            AuthorEntity newAuthor = new AuthorEntity();
-                            newAuthor.setFirstname(finalFn);
-                            newAuthor.setLastname(finalLn);
-                            return repositoryService.getAuthorRepository().save(newAuthor);
-                        });
+                AuthorEntity author = authorDeduplicationService.findOrCreateAuthor(finalFn, finalLn);
 
                 String rawRole = aDto.getType() != null ? aDto.getType().trim().toLowerCase() : "writer";
                 final String targetTypeName;
@@ -772,14 +767,7 @@ public class BookController {
                 final String finalFn = fn;
                 final String finalLn = ln;
 
-                AuthorEntity author = repositoryService.getAuthorRepository()
-                        .findByFirstnameIgnoreCaseAndLastnameIgnoreCase(finalFn, finalLn)
-                        .orElseGet(() -> {
-                            AuthorEntity newAuthor = new AuthorEntity();
-                            newAuthor.setFirstname(finalFn);
-                            newAuthor.setLastname(finalLn);
-                            return repositoryService.getAuthorRepository().save(newAuthor);
-                        });
+                AuthorEntity author = authorDeduplicationService.findOrCreateAuthor(finalFn, finalLn);
 
                 String rawRole = aDto.getType() != null ? aDto.getType().trim().toLowerCase() : "writer";
                 final String targetTypeName;

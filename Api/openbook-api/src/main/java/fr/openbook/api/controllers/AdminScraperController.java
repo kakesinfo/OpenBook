@@ -74,6 +74,11 @@ public class AdminScraperController {
         return ResponseEntity.ok(scraperService.deduplicate());
     }
 
+    @PostMapping({"/deduplicate-authors", "/maintenance/deduplicate-authors"})
+    public ResponseEntity<Map<String, Object>> deduplicateAuthors() {
+        return ResponseEntity.ok(scraperService.deduplicateAuthors());
+    }
+
     @PostMapping({"/enrich-bnf", "/maintenance/enrich-bnf"})
     public ResponseEntity<Map<String, Object>> enrichBnf(
             @RequestBody(required = false) Map<String, Object> request

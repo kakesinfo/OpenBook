@@ -11,12 +11,13 @@ import {
     faCircleCheck,
     faTriangleExclamation,
     faPlay,
-    faImage
+    faImage,
+    faUserPen
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
 import "./AdminMaintenancePage.scss";
 
-type TaskId = "utf8" | "dedup" | "bnf" | "verify_isbn" | "migrate_covers";
+type TaskId = "utf8" | "dedup" | "dedup_authors" | "bnf" | "verify_isbn" | "migrate_covers";
 
 interface MaintenanceTaskDef {
     id: TaskId;
@@ -43,6 +44,15 @@ const TASKS: MaintenanceTaskDef[] = [
         desc: "Recherche et fusionne les albums en double d'un même éditeur (même couverture, même ISBN, ou titres quasi-identiques avec variations de tirets ou casse). Réattribue automatiquement vos lectures et possessions vers le tome canonique sans perte de données.",
         icon: faClone,
         iconClass: "admin-maintenance__task-icon--dedup"
+    },
+    {
+        id: "dedup_authors",
+        title: "Fusionner les auteurs en double",
+        tag: "Auteurs & Normalisation",
+        desc: "Analyse tous les auteurs du catalogue pour identifier les doublons (inversions prénom/nom, casse, accents, variations de ponctuation comme 'TYNION IV James' vs 'James Tynion IV'). Fusionne les profils vers le plus qualitatif, réattribue les albums et abonnements sans conflit, et supprime les doublons.",
+        icon: faUserPen,
+        iconClass: "admin-maintenance__task-icon--authors"
+    
     },
     {
         id: "bnf",
@@ -92,6 +102,7 @@ export default function AdminMaintenancePage() {
     const [taskStatuses, setTaskStatuses] = useState<Record<TaskId, TaskStatusInfo>>({
         utf8: { state: "idle" },
         dedup: { state: "idle" },
+        dedup_authors: { state: "idle" },
         bnf: { state: "idle" },
         verify_isbn: { state: "idle" },
         migrate_covers: { state: "idle" }
@@ -132,7 +143,10 @@ export default function AdminMaintenancePage() {
         let taskName = "Réparation UTF-8";
         if (taskId === "dedup") {
             endpoint = "/admin/scrapers/deduplicate";
-            taskName = "Déduplication";
+            taskName = "Déduplication des albums";
+        } else if (taskId === "dedup_authors") {
+            endpoint = "/admin/scrapers/maintenance/deduplicate-authors";
+            taskName = "Fusion des auteurs";
         } else if (taskId === "bnf") {
             endpoint = "/admin/scrapers/enrich-bnf";
             taskName = "Enrichissement BnF";
@@ -222,7 +236,7 @@ export default function AdminMaintenancePage() {
 
     const handleExecuteAll = async () => {
         if (runningTasks.length > 0) return;
-        setRunningTasks(["utf8", "dedup", "bnf", "verify_isbn", "migrate_covers"]);
+        setRunningTasks(["utf8", "dedup", "dedup_authors", "bnf", "verify_isbn", "migrate_covers"]);
         setResult(null);
 
         const results: string[] = [];
@@ -235,6 +249,10 @@ export default function AdminMaintenancePage() {
         const resDedup = await runSingleTask("dedup");
         if (!resDedup.ok) anyError = true;
         results.push(resDedup.message);
+
+        const resAuthors = await runSingleTask("dedup_authors");
+        if (!resAuthors.ok) anyError = true;
+        results.push(resAuthors.message);
 
         const resBnf = await runSingleTask("bnf");
         if (!resBnf.ok) anyError = true;

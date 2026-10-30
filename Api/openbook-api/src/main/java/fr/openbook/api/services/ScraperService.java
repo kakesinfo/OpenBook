@@ -16,6 +16,7 @@ public class ScraperService {
 
     private final ScraperEngineService engineService;
     private final ScraperDbService dbService;
+    private final AuthorDeduplicationService authorDeduplicationService;
 
     public Map<String, Object> getStatus() {
         return engineService.getStatus();
@@ -44,6 +45,10 @@ public class ScraperService {
     public Map<String, Object> deduplicate() {
         int merged = dbService.deduplicateBooks();
         return Map.of("status", "success", "merged_duplicates", merged);
+    }
+
+    public Map<String, Object> deduplicateAuthors() {
+        return authorDeduplicationService.deduplicateAllAuthors();
     }
 
     public Map<String, Object> enrichFromBnf(Integer limit) {

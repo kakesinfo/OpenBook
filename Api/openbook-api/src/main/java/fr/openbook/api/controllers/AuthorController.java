@@ -7,13 +7,17 @@ import fr.openbook.api.entities.BookEntity;
 import fr.openbook.api.entities.BookStatusEntity;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
+import fr.openbook.api.services.AuthorDeduplicationService;
 import fr.openbook.api.services.RepositoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,6 +36,21 @@ import java.util.stream.Collectors;
 public class AuthorController {
 
     private final RepositoryService repositoryService;
+    private final AuthorDeduplicationService authorDeduplicationService;
+
+    @PostMapping
+    public ResponseEntity<AuthorDTO> createOrFindAuthor(@RequestBody AuthorDTO dto) {
+        if (dto == null || ((dto.getFirstname() == null || dto.getFirstname().trim().isEmpty())
+                && (dto.getLastname() == null || dto.getLastname().trim().isEmpty()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Author firstname or lastname is required");
+        }
+        AuthorEntity author = authorDeduplicationService.findOrCreateAuthor(dto.getFirstname(), dto.getLastname());
+        AuthorDTO res = new AuthorDTO();
+        res.setId(author.getId() != null ? author.getId().longValue() : null);
+        res.setFirstname(author.getFirstname());
+        res.setLastname(author.getLastname());
+        return ResponseEntity.ok(res);
+    }
 
     private Optional<UserEntity> getOptionalAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
