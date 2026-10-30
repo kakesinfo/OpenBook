@@ -22,6 +22,7 @@ import {
     faRotate,
     faWrench,
     faCodeBranch,
+    faTrashCanArrowUp,
     faUserPen
 } from '@fortawesome/free-solid-svg-icons';
 import { useState } from "react";
@@ -136,6 +137,7 @@ export default function App() {
                         <WrapperButton to={'/app/admin/indexation'} icon={faRotate}>Indexation</WrapperButton>
                         <WrapperButton to={'/app/admin/maintenance'} icon={faWrench}>Maintenance</WrapperButton>
                         <WrapperButton to={'/app/admin/conflicts'} icon={faCodeBranch}>Conflits</WrapperButton>
+                        <WrapperButton to={'/app/admin/deleted-books'} icon={faTrashCanArrowUp}>Livres supprimés</WrapperButton>
                     </>
                 )}
             </WrapperNavigation>

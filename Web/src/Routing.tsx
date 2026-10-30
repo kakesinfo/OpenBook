@@ -23,6 +23,7 @@ import SettingsPage from "./pages/app/SettingsPage.tsx";
 import AdminIndexationPage from "./pages/app/AdminIndexationPage.tsx";
 import AdminMaintenancePage from "./pages/app/AdminMaintenancePage.tsx";
 import AdminConflictsPage from "./pages/app/AdminConflictsPage.tsx";
+import AdminDeletedBooksPage from "./pages/app/AdminDeletedBooksPage.tsx";
 import StatisticsPage from "./pages/app/StatisticsPage.tsx";
 
 function ProtectedRoute({ redirectPath = "/login", children }: { redirectPath?: string, children: React.ReactNode }) {
@@ -139,11 +140,12 @@ export default function Routing() {
                 <Route path="statistics" element={<UserOnlyRoute><StatisticsPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="book/:id" element={<UserOnlyRoute><BookPage key={location.pathname}/></UserOnlyRoute>} />
 
-                {/* Routes Admin (Indexation, Maintenance, Conflits) - accessibles uniquement par l'admin */}
+                {/* Routes Admin (Indexation, Maintenance, Conflits, Livres supprimés) - accessibles uniquement par l'admin */}
                 <Route path="admin" element={<AdminOnlyRoute><Navigate replace to="/app/admin/indexation" /></AdminOnlyRoute>} />
                 <Route path="admin/indexation" element={<AdminOnlyRoute><AdminIndexationPage key={location.pathname}/></AdminOnlyRoute>} />
                 <Route path="admin/maintenance" element={<AdminOnlyRoute><AdminMaintenancePage key={location.pathname}/></AdminOnlyRoute>} />
                 <Route path="admin/conflicts" element={<AdminOnlyRoute><AdminConflictsPage key={location.pathname}/></AdminOnlyRoute>} />
+                <Route path="admin/deleted-books" element={<AdminOnlyRoute><AdminDeletedBooksPage key={location.pathname}/></AdminOnlyRoute>} />
 
                 {/* Routes communes */}
                 <Route path="settings" element={<SettingsPage key={location.pathname}/>} />

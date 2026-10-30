@@ -12,7 +12,8 @@ import {
     faChartPie,
     faRotate,
     faWrench,
-    faCodeBranch
+    faCodeBranch,
+    faTrashCanArrowUp
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useLocation } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -253,6 +254,13 @@ export function WrapperNavigation({ title = "Yet Another Library", badge, childr
                         >
                             <FontAwesomeIcon icon={faCodeBranch} />
                             <span>Conflits</span>
+                        </Link>
+                        <Link
+                            to="/app/admin/deleted-books"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/deleted-books') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faTrashCanArrowUp} />
+                            <span>Supprimés</span>
                         </Link>
                     </>
                 )}
