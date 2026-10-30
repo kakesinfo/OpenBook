@@ -6,12 +6,16 @@ export interface SessionUser {
     avatar?: string;
     sub?: string;
     exp?: number;
+    role?: string;
 }
 
 export interface SessionContextType {
     token: string | null;
     user: SessionUser | null;
     isAuthenticated: boolean;
+    isAdmin: boolean;
+    setupRequired: boolean | null;
+    checkSetupStatus: () => Promise<boolean>;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     register: (username: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<boolean>;

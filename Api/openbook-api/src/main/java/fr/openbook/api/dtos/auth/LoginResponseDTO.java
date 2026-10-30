@@ -12,4 +12,5 @@ public class LoginResponseDTO implements Serializable
 {
     private String token;
     private long expiresIn;
+    private String role;
 }

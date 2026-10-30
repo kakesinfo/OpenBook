@@ -27,6 +27,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return parseToken(localStorage.getItem("token")).user;
     });
 
+    const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
+
     const isLoggingOutRef = useRef(false);
 
     const updateToken = useCallback((newToken: string | null) => {
@@ -47,6 +49,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const clearLocalSession = useCallback(() => {
         updateToken(null);
     }, [updateToken]);
+
+    const checkSetupStatus = useCallback(async (): Promise<boolean> => {
+        try {
+            const res = await fetch(`${API_URL}/setup/status`);
+            if (res.ok) {
+                const data = await res.json();
+                const req = Boolean(data.setupRequired);
+                setSetupRequired(req);
+                return req;
+            }
+        } catch (err) {
+            console.error("Failed to check setup status:", err);
+        }
+        return false;
+    }, []);
+
+    useEffect(() => {
+        checkSetupStatus();
+    }, [checkSetupStatus]);
 
     useEffect(() => {
         const handleStorageChange = (e: StorageEvent) => {
@@ -199,17 +220,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
     }, [token, clearLocalSession]);
 
+    const isAdmin = user?.role === 'ROLE_ADMIN';
+
     const sessionValue = useMemo(() => ({
         token,
         user,
         isAuthenticated: !!token,
+        isAdmin,
+        setupRequired,
+        checkSetupStatus,
         login,
         register,
         logout,
         customFetch,
         updateToken,
         updateUser
-    }), [token, user, login, register, logout, customFetch, updateToken, updateUser]);
+    }), [token, user, isAdmin, setupRequired, checkSetupStatus, login, register, logout, customFetch, updateToken, updateUser]);
 
     return (
         <SessionContext.Provider value={sessionValue}>

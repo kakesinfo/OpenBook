@@ -52,12 +52,14 @@ public class AuthController
         claims.put("username", result.getRealUsername());
         claims.put("email", result.getEmail());
         claims.put("avatar", result.getAvatar());
+        claims.put("role", result.getRole());
 
         String jwtToken = jwtService.generateToken(claims, result);
 
         LoginResponseDTO responseDTO = new LoginResponseDTO();
         responseDTO.setToken(jwtToken);
         responseDTO.setExpiresIn(jwtService.getExpirationTime());
+        responseDTO.setRole(result.getRole());
 
         return ResponseEntity.ok().body(responseDTO);
     }

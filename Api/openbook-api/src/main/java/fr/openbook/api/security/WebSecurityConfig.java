@@ -44,7 +44,25 @@ public class WebSecurityConfig {
                 .requestMatchers(HttpMethod.HEAD, "/user/avatar/**").permitAll()
                 .requestMatchers("/health").permitAll()
                 .requestMatchers("/images", "/images/**").permitAll()
+                .requestMatchers("/setup/**").permitAll()
                 .requestMatchers("/api/import/**").permitAll()
+                .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(
+                    "/user/collection/**",
+                    "/user/bibliotheque/**",
+                    "/user/library/**",
+                    "/user/books",
+                    "/user/books/**",
+                    "/user/sales/**",
+                    "/user/ventes/**",
+                    "/user/wishlist/**",
+                    "/user/reading/**",
+                    "/user/readingStatus/**",
+                    "/user/readingSessions",
+                    "/user/readingSessions/**",
+                    "/user/statistics/**",
+                    "/books/planning/**"
+                ).hasAuthority("ROLE_USER")
                 .anyRequest().authenticated()
             )
             .cors(Customizer.withDefaults())

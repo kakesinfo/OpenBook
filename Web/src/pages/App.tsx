@@ -18,7 +18,6 @@ import {
     faCalendarDays,
     faMagnifyingGlass,
     faXmark,
-    faGear,
     faChartPie,
     faRotate,
     faWrench,
@@ -117,31 +116,35 @@ export default function App() {
 
     return (
         <Wrapper>
-            <WrapperNavigation title="Yet Another Library" onSearchClick={handleOpen}>
-                <WrapperAction icon={faMagnifyingGlass} callback={handleOpen}>Recherche</WrapperAction>
-                <WrapperButton to={'/app/home'} icon={faNewspaper}>Nouveautés</WrapperButton>
-                <WrapperButton to={'/app/collection'} icon={faBook} activeRoutes={['/app/series', '/app/collection/series', '/app/sales', '/app/ventes']}>Bibliothèque</WrapperButton>
-                <WrapperSubGroup>
-                    <WrapperSubButton to={'/app/collection'} icon={faBookOpen}>Mes Albums</WrapperSubButton>
-                    <WrapperSubButton to={'/app/series'} icon={faLayerGroup}>Mes Séries</WrapperSubButton>
-                    <WrapperSubButton to={'/app/sales'} icon={faTag}>Mes Ventes</WrapperSubButton>
-                </WrapperSubGroup>
-                <WrapperButton to={'/app/wishlist'} icon={faHeart}>Souhaits</WrapperButton>
-                <WrapperButton to={'/app/planning'} icon={faCalendarDays}>Planning</WrapperButton>
-                <WrapperButton to={'/app/statistics'} icon={faChartPie}>Statistiques</WrapperButton>
-                <WrapperButton to={'/app/admin'} icon={faGear}>Administration</WrapperButton>
-                <WrapperSubGroup>
-                    <WrapperSubButton to={'/app/admin/indexation'} icon={faRotate}>Indexation</WrapperSubButton>
-                    <WrapperSubButton to={'/app/admin/maintenance'} icon={faWrench}>Maintenance</WrapperSubButton>
-                    <WrapperSubButton to={'/app/admin/conflicts'} icon={faCodeBranch}>Conflits</WrapperSubButton>
-                </WrapperSubGroup>
+            <WrapperNavigation title="Yet Another Library" onSearchClick={!session.isAdmin ? handleOpen : undefined}>
+                {!session.isAdmin ? (
+                    <>
+                        <WrapperAction icon={faMagnifyingGlass} callback={handleOpen}>Recherche</WrapperAction>
+                        <WrapperButton to={'/app/home'} icon={faNewspaper}>Nouveautés</WrapperButton>
+                        <WrapperButton to={'/app/collection'} icon={faBook} activeRoutes={['/app/series', '/app/collection/series', '/app/sales', '/app/ventes']}>Bibliothèque</WrapperButton>
+                        <WrapperSubGroup>
+                            <WrapperSubButton to={'/app/collection'} icon={faBookOpen}>Mes Albums</WrapperSubButton>
+                            <WrapperSubButton to={'/app/series'} icon={faLayerGroup}>Mes Séries</WrapperSubButton>
+                            <WrapperSubButton to={'/app/sales'} icon={faTag}>Mes Ventes</WrapperSubButton>
+                        </WrapperSubGroup>
+                        <WrapperButton to={'/app/wishlist'} icon={faHeart}>Souhaits</WrapperButton>
+                        <WrapperButton to={'/app/planning'} icon={faCalendarDays}>Planning</WrapperButton>
+                        <WrapperButton to={'/app/statistics'} icon={faChartPie}>Statistiques</WrapperButton>
+                    </>
+                ) : (
+                    <>
+                        <WrapperButton to={'/app/admin/indexation'} icon={faRotate}>Indexation</WrapperButton>
+                        <WrapperButton to={'/app/admin/maintenance'} icon={faWrench}>Maintenance</WrapperButton>
+                        <WrapperButton to={'/app/admin/conflicts'} icon={faCodeBranch}>Conflits</WrapperButton>
+                    </>
+                )}
             </WrapperNavigation>
 
             <WrapperContent>
                 <Outlet />
             </WrapperContent>
 
-            <FloatingActionButton />
+            {!session.isAdmin && <FloatingActionButton />}
 
             <Dialog
                 open={open}
