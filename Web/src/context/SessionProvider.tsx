@@ -69,6 +69,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         checkSetupStatus();
     }, [checkSetupStatus]);
 
+    // Role recovery if token exists but claims lack role
+    useEffect(() => {
+        if (token && (!user?.role)) {
+            fetch(`${API_URL}/user/profile`, {
+                headers: { "Authorization": `Bearer ${token}` },
+                credentials: "include"
+            }).then(async res => {
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.role) {
+                        setUser(prev => prev ? { ...prev, role: data.role } : null);
+                    }
+                }
+            }).catch(() => {});
+        }
+    }, [token, user?.role]);
+
     useEffect(() => {
         const handleStorageChange = (e: StorageEvent) => {
             if (e.key === "token" || e.key === null) {

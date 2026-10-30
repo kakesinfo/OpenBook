@@ -150,6 +150,7 @@ public class UserController {
         userProfileDTO.setUsername(user.getRealUsername());
         userProfileDTO.setEmail(user.getEmail());
         userProfileDTO.setAvatar(user.getAvatar());
+        userProfileDTO.setRole(user.getRole());
         userProfileDTO.setBooksCount(0);
         userProfileDTO.setBooksToReadCount(0);
         userProfileDTO.setBooksReadThisYearCount(0);
@@ -182,6 +183,7 @@ public class UserController {
         HashMap<String, Object> claims = new HashMap<>();
         claims.put("username", user.getRealUsername());
         claims.put("email", user.getEmail());
+        claims.put("role", user.getRole());
         if (user.getAvatar() != null) {
             claims.put("avatar", user.getAvatar());
         }
@@ -192,6 +194,7 @@ public class UserController {
         profileDTO.setUsername(user.getRealUsername());
         profileDTO.setEmail(user.getEmail());
         profileDTO.setAvatar(user.getAvatar());
+        profileDTO.setRole(user.getRole());
 
         Map<String, Object> response = new HashMap<>();
         response.put("profile", profileDTO);
@@ -222,6 +225,7 @@ public class UserController {
             HashMap<String, Object> claims = new HashMap<>();
             claims.put("username", user.getRealUsername());
             claims.put("email", user.getEmail());
+            claims.put("role", user.getRole());
             claims.put("avatar", user.getAvatar());
 
             String newToken = jwtService.generateToken(claims, user);
@@ -289,6 +293,7 @@ public class UserController {
         HashMap<String, Object> claims = new HashMap<>();
         claims.put("username", user.getRealUsername());
         claims.put("email", user.getEmail());
+        claims.put("role", user.getRole());
         if (user.getAvatar() != null) {
             claims.put("avatar", user.getAvatar());
         }
