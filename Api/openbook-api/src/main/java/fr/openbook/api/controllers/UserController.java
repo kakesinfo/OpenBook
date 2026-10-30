@@ -24,6 +24,7 @@ import java.time.LocalDate;
 import org.springframework.web.bind.annotation.RequestMethod;
 import fr.openbook.api.entities.UserOwnsBookStatus;
 import org.springframework.web.server.ResponseStatusException;
+import fr.openbook.api.dtos.CollectionPageDTO;
 import fr.openbook.api.dtos.BookDTO;
 import fr.openbook.api.dtos.BookSummaryDTO;
 import fr.openbook.api.dtos.SeriesDTO;
@@ -558,43 +559,192 @@ public class UserController {
         return new ArrayList<>(bookMap.values());
     }
 
+    private String normalizeCategory(String category, String type) {
+        String raw = ((category != null ? category : "") + " " + (type != null ? type : "")).toLowerCase();
+        if (raw.contains("manga")) return "manga";
+        if (raw.contains("comic")) return "comics";
+        if (raw.contains("bande") || raw.contains("bd") || raw.contains("roman") || raw.contains("cartonné") || raw.contains("cartonne")) return "bd";
+        return "comics";
+    }
+
+    private boolean matchesTomeStatus(String readingStatus, String filter) {
+        if (filter == null || filter.equalsIgnoreCase("all") || filter.isBlank()) {
+            return true;
+        }
+        String rStatus = (readingStatus != null ? readingStatus : "UNREAD").toUpperCase();
+        if (filter.equalsIgnoreCase("toread")) {
+            return !rStatus.equals("READ") && !rStatus.equals("LU") && !rStatus.equals("ABANDONED") && !rStatus.equals("ABANDONNE");
+        }
+        if (filter.equalsIgnoreCase("read")) {
+            return rStatus.equals("READ") || rStatus.equals("LU");
+        }
+        if (filter.equalsIgnoreCase("abandoned")) {
+            return rStatus.equals("ABANDONED") || rStatus.equals("ABANDONNE");
+        }
+        return true;
+    }
+
+    private boolean matchesCategory(BookEntity b, String categoryFilter) {
+        if (categoryFilter == null || categoryFilter.equalsIgnoreCase("all") || categoryFilter.isBlank()) {
+            return true;
+        }
+        String cat = b.getSeries() != null && b.getSeries().getCategory() != null ? b.getSeries().getCategory().getName() : null;
+        String type = b.getType();
+        return normalizeCategory(cat, type).equalsIgnoreCase(categoryFilter.trim());
+    }
+
+    private boolean matchesSearch(BookEntity b, String searchQuery) {
+        if (searchQuery == null || searchQuery.isBlank()) {
+            return true;
+        }
+        String q = searchQuery.trim().toLowerCase();
+        String title = b.getTitle() != null ? b.getTitle().toLowerCase() : "";
+        String seriesName = (b.getSeries() != null && b.getSeries().getName() != null) ? b.getSeries().getName().toLowerCase() : "";
+        return title.contains(q) || seriesName.contains(q);
+    }
+
     @GetMapping({"/collection", "/library", "/bibliotheque"})
-    public List<BookSummaryDTO> getCollection(HttpSession session) {
+    public ResponseEntity<?> getCollection(
+            HttpSession session,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false, defaultValue = "24") Integer size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String status
+    ) {
         UserEntity user = getAuthenticatedUser(session);
         if (user == null) {
-            return Collections.emptyList();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         List<UserOwnsBookEntity> ownedEntries = repositoryService.getUserOwnsBooksRepository()
                 .findAllByUserIdAndStatusWithDetails(user.getId(), UserOwnsBookStatus.OWNED.name());
 
         if (ownedEntries.isEmpty()) {
-            return Collections.emptyList();
+            if (page == null) {
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+            Map<String, Long> emptyCounts = new HashMap<>();
+            emptyCounts.put("all", 0L);
+            emptyCounts.put("toread", 0L);
+            emptyCounts.put("read", 0L);
+            emptyCounts.put("abandoned", 0L);
+            return ResponseEntity.ok(new CollectionPageDTO(Collections.emptyList(), 0L, 1, 1, size != null ? size : 24, emptyCounts, 0L));
         }
-
-        List<Long> bookIds = ownedEntries.stream()
-                .map(uob -> uob.getBook().getId())
-                .filter(Objects::nonNull)
-                .toList();
-
-        Map<Long, List<String>> authorsByBookId = repositoryService.getBookHasAuthorRepository()
-                .findAllByBookIdInWithAuthor(bookIds).stream()
-                .filter(bha -> bha.getBook() != null && bha.getAuthor() != null)
-                .collect(Collectors.groupingBy(
-                        bha -> bha.getBook().getId(),
-                        Collectors.mapping(
-                                bha -> ((bha.getAuthor().getFirstname() != null ? bha.getAuthor().getFirstname() : "") + " "
-                                        + (bha.getAuthor().getLastname() != null ? bha.getAuthor().getLastname() : "")).trim(),
-                                Collectors.filtering(s -> !s.isEmpty(), Collectors.toList())
-                        )
-                ));
 
         Map<Long, String> readingStatusMap = repositoryService.getBookStatusRepository()
                 .findAllByUserIdWithBook(user.getId()).stream()
                 .filter(bse -> bse.getBook() != null)
                 .collect(Collectors.toMap(bse -> bse.getBook().getId(), BookStatusEntity::getStatus, (s1, s2) -> s1));
 
-        return ownedEntries.stream()
+        // If page is not specified, preserve legacy behavior (return all items as List<BookSummaryDTO>)
+        if (page == null) {
+            List<Long> bookIds = ownedEntries.stream()
+                    .map(uob -> uob.getBook().getId())
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            Map<Long, List<String>> authorsByBookId = repositoryService.getBookHasAuthorRepository()
+                    .findAllByBookIdInWithAuthor(bookIds).stream()
+                    .filter(bha -> bha.getBook() != null && bha.getAuthor() != null)
+                    .collect(Collectors.groupingBy(
+                            bha -> bha.getBook().getId(),
+                            Collectors.mapping(
+                                    bha -> ((bha.getAuthor().getFirstname() != null ? bha.getAuthor().getFirstname() : "") + " "
+                                            + (bha.getAuthor().getLastname() != null ? bha.getAuthor().getLastname() : "")).trim(),
+                                    Collectors.filtering(s -> !s.isEmpty(), Collectors.toList())
+                            )
+                    ));
+
+            List<BookSummaryDTO> list = ownedEntries.stream()
+                    .map(entity -> {
+                        BookEntity book = entity.getBook();
+                        BookSummaryDTO dto = entityToSummaryDTO(book, authorsByBookId.get(book.getId()));
+                        dto.setStatus(entity.getStatus());
+                        dto.setReadingStatus(readingStatusMap.getOrDefault(book.getId(), "UNREAD"));
+                        return dto;
+                    })
+                    .toList();
+            return ResponseEntity.ok(list);
+        }
+
+        // Calculate status counts over all owned books for the user
+        long allCount = ownedEntries.size();
+        long readCount = 0;
+        long abandonedCount = 0;
+        long toReadCount = 0;
+
+        for (UserOwnsBookEntity uob : ownedEntries) {
+            if (uob.getBook() == null) continue;
+            String rStatus = readingStatusMap.getOrDefault(uob.getBook().getId(), "UNREAD").toUpperCase();
+            if ("READ".equals(rStatus) || "LU".equals(rStatus)) {
+                readCount++;
+            } else if ("ABANDONED".equals(rStatus) || "ABANDONNE".equals(rStatus)) {
+                abandonedCount++;
+            } else {
+                toReadCount++;
+            }
+        }
+        Map<String, Long> statusCounts = new HashMap<>();
+        statusCounts.put("all", allCount);
+        statusCounts.put("read", readCount);
+        statusCounts.put("abandoned", abandonedCount);
+        statusCounts.put("toread", toReadCount);
+
+        // Filter by status, category, search
+        List<UserOwnsBookEntity> filteredEntries = ownedEntries.stream().filter(uob -> {
+            BookEntity b = uob.getBook();
+            if (b == null) return false;
+
+            // Reading status filter
+            String rStatus = readingStatusMap.getOrDefault(b.getId(), "UNREAD");
+            if (!matchesTomeStatus(rStatus, status)) return false;
+
+            // Category filter
+            if (!matchesCategory(b, category)) return false;
+
+            // Search query filter
+            if (!matchesSearch(b, search)) return false;
+
+            return true;
+        }).toList();
+
+        long totalElements = filteredEntries.size();
+        int pageSize = (size != null && size > 0) ? size : 24;
+        boolean isAll = (size != null && (size == 0 || size >= 9999));
+        int effectivePageSize = isAll ? Math.max(1, (int) totalElements) : pageSize;
+        int totalPages = isAll ? 1 : (int) Math.max(1, Math.ceil((double) totalElements / effectivePageSize));
+        int currentPage = Math.max(1, page);
+        if (!isAll && totalPages > 0 && currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+        int pageIndex = currentPage - 1;
+        int startIndex = totalElements == 0 ? 0 : pageIndex * effectivePageSize;
+        int endIndex = isAll ? (int) totalElements : Math.min(startIndex + effectivePageSize, (int) totalElements);
+
+        List<UserOwnsBookEntity> pagedEntries = (startIndex < totalElements && startIndex >= 0)
+                ? filteredEntries.subList(startIndex, endIndex)
+                : Collections.emptyList();
+
+        List<Long> pageBookIds = pagedEntries.stream()
+                .map(uob -> uob.getBook().getId())
+                .filter(Objects::nonNull)
+                .toList();
+
+        Map<Long, List<String>> authorsByBookId = pageBookIds.isEmpty() ? Collections.emptyMap() :
+                repositoryService.getBookHasAuthorRepository()
+                        .findAllByBookIdInWithAuthor(pageBookIds).stream()
+                        .filter(bha -> bha.getBook() != null && bha.getAuthor() != null)
+                        .collect(Collectors.groupingBy(
+                                bha -> bha.getBook().getId(),
+                                Collectors.mapping(
+                                        bha -> ((bha.getAuthor().getFirstname() != null ? bha.getAuthor().getFirstname() : "") + " "
+                                                + (bha.getAuthor().getLastname() != null ? bha.getAuthor().getLastname() : "")).trim(),
+                                        Collectors.filtering(s -> !s.isEmpty(), Collectors.toList())
+                                )
+                        ));
+
+        List<BookSummaryDTO> content = pagedEntries.stream()
                 .map(entity -> {
                     BookEntity book = entity.getBook();
                     BookSummaryDTO dto = entityToSummaryDTO(book, authorsByBookId.get(book.getId()));
@@ -603,6 +753,18 @@ public class UserController {
                     return dto;
                 })
                 .toList();
+
+        CollectionPageDTO result = new CollectionPageDTO(
+                content,
+                totalElements,
+                totalPages,
+                currentPage,
+                effectivePageSize,
+                statusCounts,
+                allCount
+        );
+
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping({"/collection/series", "/library/series", "/bibliotheque/series"})

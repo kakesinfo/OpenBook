@@ -1,10 +1,12 @@
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import useSession from "../../hooks/UseSession.tsx";
 import BookList from "../../components/BookList/BookList.tsx";
 import Pagination from "../../components/Pagination/Pagination.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
-import { Link } from "react-router";
+import CollectionPageDTO from "../../dto/CollectionPage.dto.ts";
+import { Link, useSearchParams } from "react-router";
+import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faBook,
@@ -129,23 +131,32 @@ function getReadingStatusBadge(book: BookSummaryDTO) {
 
 export default function CollectionPage() {
     const session = useSession();
-    const [books, setBooks] = useState<BookSummaryDTO[]>(() => {
-        try {
-            const cached = localStorage.getItem("openbook_user_collection_cache");
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    return parsed;
-                }
-            }
-        } catch (_) {}
-        return [];
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Read current page from URL (?page=X)
+    const pageFromUrl = searchParams.get("page");
+    const currentPage = pageFromUrl ? Math.max(1, parseInt(pageFromUrl, 10) || 1) : 1;
+
+    // Books and pagination state
+    const [books, setBooks] = useState<BookSummaryDTO[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [totalElements, setTotalElements] = useState<number>(0);
+    const [totalPages, setTotalPages] = useState<number>(1);
+    const [totalOwned, setTotalOwned] = useState<number>(0);
+    const [refreshKey, setRefreshKey] = useState<number>(0);
+
+    const [statusCounts, setStatusCounts] = useState<Record<TomeStatusFilter, number>>({
+        all: 0,
+        toread: 0,
+        read: 0,
+        abandoned: 0
     });
-    const [loading, setLoading] = useState<boolean>(() => books.length === 0);
 
     const [selectedStatus, setSelectedStatus] = useState<TomeStatusFilter>("all");
     const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
     const [searchQuery, setSearchQuery] = useState("");
+    const debouncedSearch = useDebounce(searchQuery, 300);
+
     const [displayMode, setDisplayMode] = useState<DisplayMode>(() => {
         try {
             return (localStorage.getItem("collection_display_mode") as DisplayMode) || "grid";
@@ -154,24 +165,27 @@ export default function CollectionPage() {
         }
     });
 
-    // Pagination states: 0 = "Tous" (display all books by default)
-    const [currentPage, setCurrentPage] = useState<number>(1);
+    // Default page sizes (24 for grid, 25 for list)
     const [gridPageSize, setGridPageSize] = useState<number>(() => {
         try {
             const saved = localStorage.getItem("collection_grid_page_size");
-            return saved !== null ? Number(saved) : 0;
+            const num = saved !== null ? Number(saved) : 24;
+            return num > 0 ? num : 24;
         } catch {
-            return 0;
+            return 24;
         }
     });
     const [listPageSize, setListPageSize] = useState<number>(() => {
         try {
             const saved = localStorage.getItem("collection_list_page_size");
-            return saved !== null ? Number(saved) : 0;
+            const num = saved !== null ? Number(saved) : 25;
+            return num > 0 ? num : 25;
         } catch {
-            return 0;
+            return 25;
         }
     });
+
+    const pageSize = displayMode === "grid" ? gridPageSize : listPageSize;
 
     // Floating cover preview on cursor hover
     const [hoveredCover, setHoveredCover] = useState<HoveredCoverState | null>(null);
@@ -196,118 +210,43 @@ export default function CollectionPage() {
         setHoveredCover(null);
     };
 
+    const handlePageChange = (newPage: number) => {
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set("page", String(newPage));
+            return next;
+        });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
     const handleSetDisplayMode = (mode: DisplayMode) => {
         setDisplayMode(mode);
         setHoveredCover(null);
-        setCurrentPage(1);
+        handlePageChange(1);
         try {
             localStorage.setItem("collection_display_mode", mode);
         } catch (_) {}
     };
 
-    useEffect(() => {
-        let isCancelled = false;
-
-        session.customFetch("/user/collection", { method: "GET" })
-            .then(async (res) => {
-                if (res.ok) {
-                    const data: BookSummaryDTO[] = await res.json();
-                    if (!isCancelled) {
-                        setBooks(data);
-                        try {
-                            localStorage.setItem("openbook_user_collection_cache", JSON.stringify(data));
-                        } catch (_) {}
-                    }
-                } else if (!isCancelled && books.length === 0) {
-                    setBooks([]);
-                }
-            })
-            .catch((err) => {
-                console.error("Collection fetch error:", err);
-                if (!isCancelled && books.length === 0) {
-                    setBooks([]);
-                }
-            })
-            .finally(() => {
-                if (!isCancelled) {
-                    setLoading(false);
-                }
-            });
-
-        return () => {
-            isCancelled = true;
-        };
-    }, [session]);
-
-    // Reset page to 1 whenever filters change
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [selectedStatus, selectedCategory, searchQuery]);
-
-    // Status counts over all owned books
-    const statusCounts = useMemo(() => {
-        const counts: Record<TomeStatusFilter, number> = {
-            all: books.length,
-            toread: 0,
-            read: 0,
-            abandoned: 0
-        };
-        for (const b of books) {
-            const rStatus = (b.readingStatus || "UNREAD").toUpperCase();
-            if (rStatus !== "READ" && rStatus !== "LU" && rStatus !== "ABANDONED" && rStatus !== "ABANDONNE") {
-                counts.toread++;
-            }
-            if (rStatus === "READ" || rStatus === "LU") counts.read++;
-            if (rStatus === "ABANDONED" || rStatus === "ABANDONNE") counts.abandoned++;
+    const handleStatusChange = (status: TomeStatusFilter) => {
+        setSelectedStatus(status);
+        if (currentPage !== 1) {
+            handlePageChange(1);
         }
-        return counts;
-    }, [books]);
+    };
 
-    // Filtered books
-    const filteredBooks = useMemo(() => {
-        return books.filter((b) => {
-            // Status filter
-            if (!matchesTomeStatus(b, selectedStatus)) return false;
+    const handleCategoryChange = (category: CategoryFilter) => {
+        setSelectedCategory(category);
+        if (currentPage !== 1) {
+            handlePageChange(1);
+        }
+    };
 
-            // Category filter
-            if (selectedCategory !== "all") {
-                const cat = normalizeCategory(b.category, b.type);
-                if (cat !== selectedCategory) return false;
-            }
-
-            // Search query
-            if (searchQuery.trim().length > 0) {
-                const q = searchQuery.toLowerCase().trim();
-                const matchTitle = (b.title || "").toLowerCase().includes(q);
-                const matchSeries = (b.seriesName || "").toLowerCase().includes(q);
-                if (!matchTitle && !matchSeries) return false;
-            }
-
-            return true;
-        });
-    }, [books, selectedStatus, selectedCategory, searchQuery]);
-
-    const totalOwned = books.length;
-    const totalFiltered = filteredBooks.length;
-
-    // Pagination calculations (0 = "Tous", affiche tous les livres)
-    const pageSize = displayMode === "grid" ? gridPageSize : listPageSize;
-    const isAll = pageSize === 0 || pageSize >= 9999;
-    const effectivePageSize = isAll ? Math.max(1, totalFiltered) : pageSize;
-    const totalPages = isAll ? 1 : Math.max(1, Math.ceil(totalFiltered / effectivePageSize));
-    const activePage = isAll ? 1 : Math.min(currentPage, totalPages);
-
-    const startIndex = totalFiltered === 0 ? 0 : (activePage - 1) * effectivePageSize;
-    const endIndex = isAll ? totalFiltered : Math.min(startIndex + effectivePageSize, totalFiltered);
-
-    const paginatedBooks = useMemo(() => {
-        if (isAll) return filteredBooks;
-        return filteredBooks.slice(startIndex, endIndex);
-    }, [filteredBooks, startIndex, endIndex, isAll]);
-
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-        window.scrollTo({ top: 0, behavior: "smooth" });
+    const handleSearchChange = (value: string) => {
+        setSearchQuery(value);
+        if (currentPage !== 1) {
+            handlePageChange(1);
+        }
     };
 
     const handlePageSizeChange = (size: number) => {
@@ -322,8 +261,114 @@ export default function CollectionPage() {
                 localStorage.setItem("collection_list_page_size", String(size));
             } catch (_) {}
         }
-        setCurrentPage(1);
+        handlePageChange(1);
     };
+
+    // Fetch collection slice from backend whenever page, size, filters or debounced search change
+    useEffect(() => {
+        let isCancelled = false;
+        setLoading(true);
+
+        const params = new URLSearchParams();
+        params.set("page", String(currentPage));
+        params.set("size", String(pageSize));
+        if (selectedStatus !== "all") params.set("status", selectedStatus);
+        if (selectedCategory !== "all") params.set("category", selectedCategory);
+        if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+
+        session.customFetch(`/user/collection?${params.toString()}`, { method: "GET" })
+            .then(async (res) => {
+                if (res.ok) {
+                    const data: CollectionPageDTO | BookSummaryDTO[] = await res.json();
+                    if (!isCancelled) {
+                        if (Array.isArray(data)) {
+                            // Fallback if backend returns all books as array
+                            const all = data.length;
+                            let toread = 0;
+                            let read = 0;
+                            let abandoned = 0;
+                            for (const b of data) {
+                                const r = (b.readingStatus || "UNREAD").toUpperCase();
+                                if (r === "READ" || r === "LU") read++;
+                                else if (r === "ABANDONED" || r === "ABANDONNE") abandoned++;
+                                else toread++;
+                            }
+                            setStatusCounts({ all, toread, read, abandoned });
+                            setTotalOwned(all);
+
+                            const filtered = data.filter((b) => {
+                                if (!matchesTomeStatus(b, selectedStatus)) return false;
+                                if (selectedCategory !== "all") {
+                                    const cat = normalizeCategory(b.category, b.type);
+                                    if (cat !== selectedCategory) return false;
+                                }
+                                if (debouncedSearch.trim().length > 0) {
+                                    const q = debouncedSearch.toLowerCase().trim();
+                                    const matchTitle = (b.title || "").toLowerCase().includes(q);
+                                    const matchSeries = (b.seriesName || "").toLowerCase().includes(q);
+                                    if (!matchTitle && !matchSeries) return false;
+                                }
+                                return true;
+                            });
+
+                            const isAllLocal = pageSize === 0 || pageSize >= 9999;
+                            const effectiveSizeLocal = isAllLocal ? Math.max(1, filtered.length) : pageSize;
+                            const computedTotalPages = isAllLocal ? 1 : Math.max(1, Math.ceil(filtered.length / effectiveSizeLocal));
+                            const activePage = Math.min(currentPage, computedTotalPages);
+                            const start = isAllLocal ? 0 : (activePage - 1) * effectiveSizeLocal;
+                            const end = isAllLocal ? filtered.length : Math.min(start + effectiveSizeLocal, filtered.length);
+
+                            setTotalElements(filtered.length);
+                            setTotalPages(computedTotalPages);
+                            setBooks(filtered.slice(start, end));
+                        } else if (data && Array.isArray(data.content)) {
+                            // Backend paginated CollectionPageDTO
+                            setBooks(data.content);
+                            setTotalElements(data.totalElements ?? 0);
+                            setTotalPages(data.totalPages ?? 1);
+                            if (data.totalOwned !== undefined) {
+                                setTotalOwned(data.totalOwned);
+                            }
+                            if (data.statusCounts) {
+                                setStatusCounts({
+                                    all: data.statusCounts.all ?? data.totalOwned ?? 0,
+                                    toread: data.statusCounts.toread ?? 0,
+                                    read: data.statusCounts.read ?? 0,
+                                    abandoned: data.statusCounts.abandoned ?? 0
+                                });
+                            }
+                        }
+                    }
+                } else if (!isCancelled) {
+                    setBooks([]);
+                    setTotalElements(0);
+                    setTotalPages(1);
+                }
+            })
+            .catch((err) => {
+                console.error("Collection fetch error:", err);
+                if (!isCancelled) {
+                    setBooks([]);
+                    setTotalElements(0);
+                    setTotalPages(1);
+                }
+            })
+            .finally(() => {
+                if (!isCancelled) {
+                    setLoading(false);
+                }
+            });
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [session, currentPage, pageSize, selectedStatus, selectedCategory, debouncedSearch, refreshKey]);
+
+    // Pagination calculations
+    const isAll = pageSize === 0 || pageSize >= 9999;
+    const effectivePageSize = isAll ? Math.max(1, totalElements) : pageSize;
+    const startIndex = totalElements === 0 ? 0 : (currentPage - 1) * effectivePageSize;
+    const endIndex = isAll ? totalElements : Math.min(startIndex + books.length, totalElements);
 
     // Helper to position cursor preview nicely next to the cursor
     const getCursorPreviewStyle = (x: number, y: number) => {
@@ -348,13 +393,16 @@ export default function CollectionPage() {
         };
     };
 
+    const hasAnyOwned = totalOwned > 0;
+    const isFiltering = searchQuery.trim().length > 0 || selectedStatus !== "all" || selectedCategory !== "all";
+
     return (
         <div className="collection-page">
             <WrapperHeader>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
                     <div>
                         <h2 style={{ margin: 0 }}>
-                            Mes Albums {totalOwned > 0 ? `(${totalOwned} album${totalOwned > 1 ? "s" : ""})` : ""}
+                            Mes Albums {hasAnyOwned ? `(${totalOwned} album${totalOwned > 1 ? "s" : ""})` : ""}
                         </h2>
                     </div>
                 </div>
@@ -362,19 +410,19 @@ export default function CollectionPage() {
 
             <div className="collection-page__content">
                 {/* Controls Bar: Status Tabs, Category Filter, Search, View Mode Toggle */}
-                {books.length > 0 && (
+                {(hasAnyOwned || isFiltering) && (
                     <div className="collection-page__controls">
                         {/* Status Filters */}
                         <div className="collection-page__filters">
                             {STATUS_TABS.map((tab) => {
                                 const isSelected = selectedStatus === tab.id;
-                                const count = statusCounts[tab.id];
+                                const count = statusCounts[tab.id] ?? 0;
 
                                 return (
                                     <button
                                         key={tab.id}
                                         type="button"
-                                        onClick={() => setSelectedStatus(tab.id)}
+                                        onClick={() => handleStatusChange(tab.id)}
                                         className={`collection-page__filter-btn ${isSelected ? "is-active" : ""}`}
                                     >
                                         {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
@@ -394,7 +442,7 @@ export default function CollectionPage() {
                                     <button
                                         key={tab.id}
                                         type="button"
-                                        onClick={() => setSelectedCategory(tab.id)}
+                                        onClick={() => handleCategoryChange(tab.id)}
                                         className={`collection-page__cat-btn ${selectedCategory === tab.id ? "is-active" : ""}`}
                                     >
                                         {tab.label}
@@ -408,7 +456,7 @@ export default function CollectionPage() {
                                     type="text"
                                     placeholder="Rechercher un album..."
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) => handleSearchChange(e.target.value)}
                                 />
                             </div>
 
@@ -438,11 +486,11 @@ export default function CollectionPage() {
                 )}
 
                 {/* Body Content */}
-                {loading ? (
+                {loading && books.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
                         Chargement de votre bibliothèque...
                     </div>
-                ) : books.length === 0 ? (
+                ) : !hasAnyOwned && !isFiltering ? (
                     /* Empty Collection State */
                     <div style={{
                         display: "flex",
@@ -495,30 +543,24 @@ export default function CollectionPage() {
                             <span>Découvrir les nouveautés</span>
                         </Link>
                     </div>
-                ) : totalFiltered === 0 ? (
+                ) : totalElements === 0 ? (
                     <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
                         Aucun album ne correspond à vos filtres.
                     </div>
                 ) : (
-                    <>
+                    <div style={{ opacity: loading ? 0.6 : 1, transition: "opacity 0.2s ease" }}>
                         {displayMode === "grid" ? (
-                            /* Galerie Mode (Paginated) */
+                            /* Galerie Mode (Backend Paginated) */
                             <BookList
-                                books={paginatedBooks}
-                                onBookStatusChange={(bookId, newStatus) => {
+                                books={books}
+                                onBookStatusChange={(_bookId, newStatus) => {
                                     if (newStatus !== "OWNED") {
-                                        setBooks((prev) => {
-                                            const updated = prev.filter((b) => b.id !== bookId);
-                                            try {
-                                                localStorage.setItem("openbook_user_collection_cache", JSON.stringify(updated));
-                                            } catch (_) {}
-                                            return updated;
-                                        });
+                                        setRefreshKey(prev => prev + 1);
                                     }
                                 }}
                             />
                         ) : (
-                            /* Compact Table/List Mode (Paginated, 0 margins between rows, cover follows cursor on title hover) */
+                            /* Compact Table/List Mode (Backend Paginated) */
                             <div className="collection-list">
                                 <div className="collection-list__header">
                                     <span className="collection-list__th collection-list__th--title">Titre</span>
@@ -530,7 +572,7 @@ export default function CollectionPage() {
                                     <span className="collection-list__th collection-list__th--action"></span>
                                 </div>
 
-                                {paginatedBooks.map((book) => {
+                                {books.map((book) => {
                                     const cat = book.category || book.type;
                                     return (
                                         <Link to={`/app/book/${book.id}`} className="collection-row" key={book.id}>
@@ -611,17 +653,18 @@ export default function CollectionPage() {
 
                         {/* Shared Pagination component */}
                         <Pagination
-                            currentPage={activePage}
+                            currentPage={currentPage}
                             totalPages={totalPages}
                             onPageChange={handlePageChange}
-                            totalItems={totalFiltered}
+                            totalItems={totalElements}
                             startIndex={startIndex}
                             endIndex={endIndex}
                             pageSize={pageSize}
                             onPageSizeChange={handlePageSizeChange}
-                            pageSizeOptions={displayMode === "grid" ? [0, 24, 48, 96] : [0, 25, 50, 100]}
+                            pageSizeOptions={displayMode === "grid" ? [24, 48, 96, 0] : [25, 50, 100, 0]}
+                            itemLabel="albums"
                         />
-                    </>
+                    </div>
                 )}
             </div>
 
