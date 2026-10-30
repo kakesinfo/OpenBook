@@ -6,8 +6,7 @@ out/
 
 *.iml
 
-Cache/*
-!Cache/.gitkeepuploads/
+Cache/
 
 Services/service-api/uploads/
 __pycache__/
