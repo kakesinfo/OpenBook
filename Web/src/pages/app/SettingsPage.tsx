@@ -516,9 +516,9 @@ export default function SettingsPage() {
                                 <FontAwesomeIcon icon={faUser} />
                             </div>
                             <div>
-                                <h3>Profil & Avatar</h3>
+                                <h3>{session.isAdmin ? "Profil" : "Profil & Avatar"}</h3>
                                 <p className="settings-card__header-desc">
-                                    Gérez votre image de profil et votre pseudonyme
+                                    {session.isAdmin ? "Gérez votre pseudonyme" : "Gérez votre image de profil et votre pseudonyme"}
                                 </p>
                             </div>
                         </div>
@@ -526,6 +526,7 @@ export default function SettingsPage() {
 
                     <div className="settings-card__body">
                         {/* Compact Avatar Upload Section */}
+                        {!session.isAdmin && (
                         <div className="avatar-compact">
                             <UserAvatar avatar={avatar} name={username} size="lg" />
 
@@ -570,6 +571,7 @@ export default function SettingsPage() {
                                 </div>
                             </div>
                         </div>
+                        )}
 
                         {/* Pseudo Form */}
                         <form onSubmit={handleUpdateUsername} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -619,6 +621,7 @@ export default function SettingsPage() {
                 </section>
 
                 {/* Section 2: Import Bookmory */}
+                {!session.isAdmin && (
                 <section className="settings-card settings-import-card">
                     <header className="settings-card__header">
                         <div className="settings-card__header-title">
@@ -762,6 +765,7 @@ export default function SettingsPage() {
                         )}
                     </div>
                 </section>
+                )}
 
                 {/* Section 3: Zone Danger */}
                 <section className="settings-danger-card">
