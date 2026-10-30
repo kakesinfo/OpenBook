@@ -33,8 +33,8 @@ services:
       JWT_SECRET_KEY: 3cfa76ef14937c1c0ea519f8fc057a80fcd04a7420f8e8bcd0a7567c272e007b
       JWT_EXPIRATION_TIME: 2592000000
     volumes:
-      - ./Services/service-api:/usr/src/app
-      - ./Cache/service-api/.m2:/root/.m2
+      - ./Api:/usr/src/app
+      - ./Cache/api/.m2:/root/.m2
       - ./Cache/media-data:/data/media
     ports:
       - "8080:8080"
@@ -50,7 +50,7 @@ services:
         project-backend:
           condition: service_started
       volumes:
-      - ./Client:/usr/src/app
+      - ./Web:/usr/src/app
       ports:
       - "3000:3000"
       working_dir: /usr/src/app

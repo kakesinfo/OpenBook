@@ -1,4 +1,4 @@
-CACHE_DIRS = Cache/postgresql-data Cache/service-api/.m2 Cache/media-data
+CACHE_DIRS = Cache/postgresql-data Cache/api/.m2 Cache/media-data
 
 init-cache:
 	@mkdir -p $(CACHE_DIRS)
@@ -29,7 +29,7 @@ restart:
 
 fclean:
 	rm -rf Cache
-	rm -rf Services/service-api/*/target
+	rm -rf Api/*/target
 
 re: down init-cache up
 

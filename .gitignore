@@ -8,7 +8,7 @@ out/
 
 Cache/
 
-Services/service-api/uploads/
+Api/uploads/
 __pycache__/
 *.pyc
 
