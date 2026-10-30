@@ -1,28 +1,28 @@
 services:
-  project-postgres:
-    container_name: project-postgres
+  postgres:
+    container_name: postgres
     image: postgres:alpine3.20
     restart: unless-stopped
     environment:
-      POSTGRES_USER: strapi
-      POSTGRES_PASSWORD: strapi
-      POSTGRES_DB: strapi
+      POSTGRES_USER: openbook
+      POSTGRES_PASSWORD: openbook
+      POSTGRES_DB: openbook
     volumes:
       - ./Cache/postgresql-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U strapi" ]
+      test: [ "CMD-SHELL", "pg_isready -U openbook" ]
       interval: 2s
       retries: 20
 
   # Run spring boot api using maven and jdk 21
-  project-backend:
-    container_name: project-backend
+  openbook-api:
+    container_name: openbook-api
     image: maven:3.9-eclipse-temurin-21
     restart: unless-stopped
     depends_on:
-      project-postgres:
+      postgres:
         condition: service_healthy
     environment:
       DATA_DIR: /data/media
@@ -42,16 +42,16 @@ services:
     entrypoint: ["sh", "-c", "mvn install -DskipTests && mvn -f openbook-api/pom.xml spring-boot:run"]
 
   # Run frontend using node 20
-  project-frontend:
-      container_name: project-frontend
-      image: node:20-alpine
-      restart: unless-stopped
-      depends_on:
-        project-backend:
-          condition: service_started
-      volumes:
+  openbook-web:
+    container_name: openbook-web
+    image: node:20-alpine
+    restart: unless-stopped
+    depends_on:
+      openbook-api:
+        condition: service_started
+    volumes:
       - ./Web:/usr/src/app
-      ports:
+    ports:
       - "3000:3000"
-      working_dir: /usr/src/app
-      entrypoint: ["sh", "-c", "npm ci && npm run dev"]
+    working_dir: /usr/src/app
+    entrypoint: ["sh", "-c", "npm ci && npm run dev"]

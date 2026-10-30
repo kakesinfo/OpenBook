@@ -13,7 +13,7 @@ export default defineConfig({
     },
     proxy: {
       '/images': {
-        target: 'http://project-backend:8080',
+        target: 'http://openbook-api:8080',
         changeOrigin: true
       }
     }

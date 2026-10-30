@@ -18,12 +18,12 @@ public class MediaServiceClient implements MediaService {
     private final String mediaServiceUrl;
 
     public MediaServiceClient(RestTemplateBuilder builder,
-                              @Value("${media.service.url:http://project-media:5002}") String mediaServiceUrl) {
+                              @Value("${media.service.url:http://localhost:8080}") String mediaServiceUrl) {
         this.restTemplate = builder
                 .setConnectTimeout(Duration.ofSeconds(10))
                 .setReadTimeout(Duration.ofSeconds(30))
                 .build();
-        this.mediaServiceUrl = mediaServiceUrl != null ? mediaServiceUrl.replaceAll("/+$", "") : "http://project-media:5002";
+        this.mediaServiceUrl = mediaServiceUrl != null ? mediaServiceUrl.replaceAll("/+$", "") : "http://localhost:8080";
     }
 
     /**

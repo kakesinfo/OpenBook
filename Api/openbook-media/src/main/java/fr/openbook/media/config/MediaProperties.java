@@ -45,7 +45,7 @@ public class MediaProperties {
     @Setter
     public static class S3Properties {
         /**
-         * S3 / MinIO endpoint URL (e.g. "http://localhost:9000" or "http://project-minio:9000").
+         * S3 / MinIO endpoint URL (e.g. "http://localhost:9000" or "http://minio:9000").
          */
         private String endpoint = "http://localhost:9000";
 

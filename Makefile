@@ -6,20 +6,20 @@ init-cache:
 up: init-cache
 	docker compose up --build
 
-up-frontend:
-	docker compose up --force-recreate --build -d project-frontend
+up-web:
+	docker compose up --force-recreate --build -d openbook-web
 
-up-backend: init-cache
-	docker compose up --force-recreate --build -d project-backend
+up-frontend: up-web
 
-up-import: init-cache
-	docker compose up --force-recreate --build -d project-backend
+up-api: init-cache
+	docker compose up --force-recreate --build -d openbook-api
 
-up-media: init-cache
-	docker compose up --force-recreate --build -d project-backend
+up-backend: up-api
+up-import: up-api
+up-media: up-api
 
 up-postgres: init-cache
-	docker compose up --force-recreate --build -d project-postgres
+	docker compose up --force-recreate --build -d postgres
 
 down:
 	docker compose down
@@ -33,4 +33,4 @@ fclean:
 
 re: down init-cache up
 
-.PHONY: init-cache up up-frontend up-backend up-import up-media up-postgres down restart fclean re
+.PHONY: init-cache up up-web up-frontend up-api up-backend up-import up-media up-postgres down restart fclean re
