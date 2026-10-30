@@ -388,7 +388,7 @@ public class MonsieurToussaintLouvertureSource extends AbstractHttpSource {
         if (vm.find()) {
             try {
                 int v = Integer.parseInt(vm.group(1));
-                seriesName = title.substring(0, vm.start()).replaceAll("^[ –-:,]+|[ –-:,]+$", "").trim();
+                seriesName = title.substring(0, vm.start()).replaceAll("^[ –\\-:,]+|[ –\\-:,]+$", "").trim();
                 return new SeriesVolume(seriesName, v);
             } catch (NumberFormatException ignored) {}
         }
@@ -400,7 +400,7 @@ public class MonsieurToussaintLouvertureSource extends AbstractHttpSource {
                 int v = Integer.parseInt(fm.group(1));
                 Matcher fms = RE_MTL_FRAC_S.matcher(title);
                 if (fms.find()) {
-                    seriesName = fms.group(1).replaceAll("^[ –-:,]+|[ –-:,]+$", "").trim();
+                    seriesName = fms.group(1).replaceAll("^[ –\\-:,]+|[ –\\-:,]+$", "").trim();
                 }
                 return new SeriesVolume(seriesName, v);
             } catch (NumberFormatException ignored) {}
@@ -425,7 +425,7 @@ public class MonsieurToussaintLouvertureSource extends AbstractHttpSource {
                     v = Integer.parseInt(val);
                 } catch (NumberFormatException ignored) {}
             }
-            seriesName = title.substring(0, om.start()).replaceAll("^[ –-:,]+|[ –-:,]+$", "").trim();
+            seriesName = title.substring(0, om.start()).replaceAll("^[ –\\-:,]+|[ –\\-:,]+$", "").trim();
             return new SeriesVolume(seriesName, v);
         }
 

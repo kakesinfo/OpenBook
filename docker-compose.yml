@@ -16,33 +16,14 @@ services:
       interval: 2s
       retries: 20
 
-  project-liquibase:
-    container_name: project-liquibase
-    image: liquibase/liquibase
-    depends_on:
-      project-postgres:
-        condition: service_healthy
-    environment:
-      LIQUIBASE_COMMAND_URL: jdbc:postgresql://project-postgres:5432/strapi
-      LIQUIBASE_COMMAND_USERNAME: strapi
-      LIQUIBASE_COMMAND_PASSWORD: strapi
-    volumes:
-      - ./Migrations/db.changelog-master.xml:/liquibase/db.changelog-master.xml
-      - ./Drivers/postgresql-42.7.8.jar:/liquibase/lib/postgresql-42.7.8.jar
-    entrypoint:
-      - "liquibase"
-      - "--classpath=/liquibase/lib/postgresql-42.7.8.jar"
-      - "--changeLogFile=db.changelog-master.xml"
-      - "update"
-
   # Run spring boot api using maven and jdk 21
   project-backend:
     container_name: project-backend
     image: maven:3.9-eclipse-temurin-21
     restart: unless-stopped
     depends_on:
-      project-liquibase:
-        condition: service_completed_successfully
+      project-postgres:
+        condition: service_healthy
     environment:
       DATA_DIR: /data/media
       MAX_WIDTH: 640
@@ -66,8 +47,8 @@ services:
       image: node:20-alpine
       restart: unless-stopped
       depends_on:
-        project-liquibase:
-          condition: service_completed_successfully
+        project-backend:
+          condition: service_started
       volumes:
       - ./Client:/usr/src/app
       ports:
