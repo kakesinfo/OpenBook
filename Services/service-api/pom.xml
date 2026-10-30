@@ -20,6 +20,7 @@
 		<module>openbook-core</module>
 		<module>openbook-media</module>
 		<module>openbook-import</module>
+		<module>openbook-scraper</module>
 		<module>openbook-api</module>
 	</modules>
 
@@ -32,6 +33,7 @@
 		<webp-imageio.version>0.1.6</webp-imageio.version>
 		<twelvemonkeys.version>3.11.0</twelvemonkeys.version>
 		<thumbnailator.version>0.4.20</thumbnailator.version>
+		<jsoup.version>1.18.1</jsoup.version>
 	</properties>
 
 	<dependencyManagement>
@@ -50,6 +52,16 @@
 				<groupId>fr.openbook</groupId>
 				<artifactId>openbook-import</artifactId>
 				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>fr.openbook</groupId>
+				<artifactId>openbook-scraper</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.jsoup</groupId>
+				<artifactId>jsoup</artifactId>
+				<version>${jsoup.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>org.sejda.imageio</groupId>

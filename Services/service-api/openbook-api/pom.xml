@@ -28,6 +28,10 @@
 			<artifactId>openbook-import</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>fr.openbook</groupId>
+			<artifactId>openbook-scraper</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>

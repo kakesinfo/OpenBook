@@ -45,6 +45,7 @@ public class BnfClient {
     private static final Pattern RE_BNF_FULL_DATE = Pattern.compile("(\\d{4})-(\\d{2})-(\\d{2})");
     private static final Pattern RE_BNF_ISBN_IDENTIFIER = Pattern.compile("(?:ISBN|EAN)\\s*([0-9Xx\\-]{10,17})");
     private static final Pattern RE_BNF_NON_ISBN = Pattern.compile("[^0-9Xx]");
+    private static final Pattern RE_BNF_COLLECTION = Pattern.compile("(?i)Collection\\s*:\\s*([^;,\\n]+)");
 
     private final RestTemplate restTemplate;
 
@@ -93,86 +94,139 @@ public class BnfClient {
         }
 
         for (Element rec : records) {
-            List<String> titles = getTagValues(rec, "title");
-            if (titles.isEmpty()) continue;
-
-            List<String> types = getTagValues(rec, "type");
-            boolean isNonBook = false;
-            for (String t : types) {
-                String lt = t.toLowerCase();
-                if (lt.contains("enregistrement sonore") || lt.contains("sound recording") || lt.contains("vidéo") || lt.contains("carte") || lt.contains("musique")) {
-                    isNonBook = true;
-                    break;
-                }
+            BnfBookData data = parseRecord(rec, volume);
+            if (data != null) {
+                return data;
             }
-            if (isNonBook) continue;
-
-            List<String> identifiers = getTagValues(rec, "identifier");
-            List<String> isbns = new ArrayList<>();
-            for (String idTxt : identifiers) {
-                Matcher m = RE_BNF_ISBN_IDENTIFIER.matcher(idTxt);
-                if (m.find()) {
-                    String cleanISBN = RE_BNF_NON_ISBN.matcher(m.group(1)).replaceAll("");
-                    if (cleanISBN.length() == 10 || cleanISBN.length() == 13) {
-                        isbns.add(cleanISBN);
-                    }
-                }
-            }
-            if (isbns.isEmpty()) continue;
-
-            Integer pageCount = null;
-            List<String> formats = getTagValues(rec, "format");
-            for (String fmtStr : formats) {
-                Integer pc = parseBnfPageCount(fmtStr);
-                if (pc != null) {
-                    pageCount = pc;
-                    break;
-                }
-            }
-
-            Instant releaseDate = null;
-            List<String> dates = getTagValues(rec, "date");
-            if (!dates.isEmpty()) {
-                releaseDate = parseBnfDate(dates.get(0));
-            }
-
-            List<String> authors = new ArrayList<>();
-            List<String> allCreators = new ArrayList<>();
-            allCreators.addAll(getTagValues(rec, "creator"));
-            allCreators.addAll(getTagValues(rec, "contributor"));
-            for (String cr : allCreators) {
-                String auth = parseBnfCreator(cr);
-                if (!auth.isBlank()) {
-                    authors.add(auth);
-                }
-            }
-
-            String docType = "";
-            List<String> descriptions = getTagValues(rec, "description");
-            List<String> subjects = getTagValues(rec, "subject");
-            String fullMeta = (String.join(" ", titles) + " " + String.join(" ", formats) + " " + String.join(" ", descriptions) + " " + String.join(" ", subjects)).toLowerCase();
-
-            if (fullMeta.contains("bande dessinée") || fullMeta.contains("bandes dessinées") || fullMeta.contains("bande-dessinée")) {
-                docType = "Bande dessinée";
-            } else if (fullMeta.contains("manga")) {
-                docType = "Manga";
-            } else if (fullMeta.contains("comic")) {
-                docType = "Comics";
-            } else if (fullMeta.contains("roman") || fullMeta.contains("fiction") || fullMeta.contains("nouvelles") || fullMeta.contains("récit")) {
-                docType = "Roman";
-            }
-
-            BnfBookData bookData = new BnfBookData();
-            bookData.setIsbn(isbns.get(0));
-            bookData.setTitle(cleanText(titles.get(0)));
-            bookData.setVolume(volume);
-            bookData.setPageCount(pageCount);
-            bookData.setReleaseDate(releaseDate);
-            bookData.setAuthors(authors);
-            bookData.setDocType(docType);
-            return bookData;
         }
 
+        return null;
+    }
+
+    public BnfBookData lookupByIsbn(String isbn) {
+        if (isbn == null || isbn.isBlank()) {
+            return null;
+        }
+        String cleanISBN = RE_BNF_NON_ISBN.matcher(isbn).replaceAll("");
+        if (cleanISBN.length() != 10 && cleanISBN.length() != 13) {
+            return null;
+        }
+
+        List<Element> records;
+        try {
+            records = fetchBnfRecords(String.format("bib.isbn all \"%s\"", cleanISBN), 5);
+        } catch (Exception e) {
+            log.warn("BNF ISBN lookup failed for {}: {}", cleanISBN, e.getMessage());
+            return null;
+        }
+
+        for (Element rec : records) {
+            BnfBookData data = parseRecord(rec, null);
+            if (data != null) {
+                return data;
+            }
+        }
+        return null;
+    }
+
+    private BnfBookData parseRecord(Element rec, Integer volume) {
+        List<String> titles = getTagValues(rec, "title");
+        if (titles.isEmpty()) return null;
+
+        List<String> types = getTagValues(rec, "type");
+        for (String t : types) {
+            String lt = t.toLowerCase();
+            if (lt.contains("enregistrement sonore") || lt.contains("sound recording") || lt.contains("vidéo") || lt.contains("carte") || lt.contains("musique")) {
+                return null;
+            }
+        }
+
+        List<String> identifiers = getTagValues(rec, "identifier");
+        List<String> isbns = new ArrayList<>();
+        for (String idTxt : identifiers) {
+            Matcher m = RE_BNF_ISBN_IDENTIFIER.matcher(idTxt);
+            if (m.find()) {
+                String cleanISBN = RE_BNF_NON_ISBN.matcher(m.group(1)).replaceAll("");
+                if (cleanISBN.length() == 10 || cleanISBN.length() == 13) {
+                    isbns.add(cleanISBN);
+                }
+            }
+        }
+        if (isbns.isEmpty()) return null;
+
+        Integer pageCount = null;
+        List<String> formats = getTagValues(rec, "format");
+        for (String fmtStr : formats) {
+            Integer pc = parseBnfPageCount(fmtStr);
+            if (pc != null) {
+                pageCount = pc;
+                break;
+            }
+        }
+
+        Instant releaseDate = null;
+        List<String> dates = getTagValues(rec, "date");
+        if (!dates.isEmpty()) {
+            releaseDate = parseBnfDate(dates.get(0));
+        }
+
+        List<String> authors = new ArrayList<>();
+        List<String> allCreators = new ArrayList<>();
+        allCreators.addAll(getTagValues(rec, "creator"));
+        allCreators.addAll(getTagValues(rec, "contributor"));
+        for (String cr : allCreators) {
+            String auth = parseBnfCreator(cr);
+            if (!auth.isBlank()) {
+                authors.add(auth);
+            }
+        }
+
+        String docType = "";
+        List<String> descriptions = getTagValues(rec, "description");
+        List<String> subjects = getTagValues(rec, "subject");
+        String fullMeta = (String.join(" ", titles) + " " + String.join(" ", formats) + " " + String.join(" ", descriptions) + " " + String.join(" ", subjects)).toLowerCase();
+
+        if (fullMeta.contains("bande dessinée") || fullMeta.contains("bandes dessinées") || fullMeta.contains("bande-dessinée")) {
+            docType = "Bande dessinée";
+        } else if (fullMeta.contains("manga")) {
+            docType = "Manga";
+        } else if (fullMeta.contains("comic")) {
+            docType = "Comics";
+        } else if (fullMeta.contains("roman") || fullMeta.contains("fiction") || fullMeta.contains("nouvelles") || fullMeta.contains("récit")) {
+            docType = "Roman";
+        }
+
+        String collectionName = parseBnfCollection(descriptions);
+
+        BnfBookData bookData = new BnfBookData();
+        bookData.setIsbn(isbns.get(0));
+        bookData.setTitle(cleanText(titles.get(0)));
+        bookData.setVolume(volume);
+        bookData.setPageCount(pageCount);
+        bookData.setReleaseDate(releaseDate);
+        bookData.setAuthors(authors);
+        bookData.setDocType(docType);
+        bookData.setCollectionName(collectionName);
+        return bookData;
+    }
+
+    private String parseBnfCollection(List<String> descriptions) {
+        for (String desc : descriptions) {
+            Matcher m = RE_BNF_COLLECTION.matcher(desc);
+            if (m.find()) {
+                String col = cleanText(m.group(1)).replaceAll("^[\\s.]+|[\\s.]+$", "");
+                if (col.contains(".")) {
+                    String[] parts = col.split("\\.");
+                    for (int i = parts.length - 1; i >= 0; i--) {
+                        String p = parts[i].trim();
+                        if (!p.isBlank()) {
+                            return p;
+                        }
+                    }
+                }
+                return col;
+            }
+        }
         return null;
     }
 
