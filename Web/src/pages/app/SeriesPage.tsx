@@ -50,9 +50,7 @@ export default function SeriesPage() {
     const session = useSession();
     const { enqueueSnackbar } = useSnackbar();
 
-    const [scope, setScope] = useState<"my" | "all">("my");
     const [mySeries, setMySeries] = useState<SeriesDTO[]>([]);
-    const [allSeries, setAllSeries] = useState<SeriesDTO[]>([]);
     const [categories, setCategories] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
     const [loading, setLoading] = useState(true);
 
@@ -178,29 +176,9 @@ export default function SeriesPage() {
         }
     };
 
-    // Fetch all series
-    const fetchAllSeries = async () => {
-        setLoading(true);
-        try {
-            const res = await session.customFetch("/series", { method: "GET" });
-            if (res.ok) {
-                const data: SeriesDTO[] = await res.json();
-                setAllSeries(data);
-            }
-        } catch (err) {
-            console.error("Error fetching all series:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        if (scope === "my") {
-            fetchUserSeries();
-        } else {
-            fetchAllSeries();
-        }
-    }, [scope, session]);
+        fetchUserSeries();
+    }, [session]);
 
     // Debounced book search in Add Book Dialog
     useDebounce(bookSearchQuery, 300, (value) => {
@@ -236,7 +214,6 @@ export default function SeriesPage() {
             list.map((s) => (s.id === seriesId ? { ...s, isFollowed: !s.isFollowed } : s));
 
         setMySeries(updateFollowState);
-        setAllSeries(updateFollowState);
         if (activeSeries && activeSeries.id === seriesId) {
             setActiveSeries({ ...activeSeries, isFollowed: !activeSeries.isFollowed });
         }
@@ -251,7 +228,6 @@ export default function SeriesPage() {
                 const syncState = (list: SeriesDTO[]) =>
                     list.map((s) => (s.id === seriesId ? { ...s, isFollowed: followed } : s));
                 setMySeries(syncState);
-                setAllSeries(syncState);
                 if (activeSeries && activeSeries.id === seriesId) {
                     setActiveSeries((prev) => (prev ? { ...prev, isFollowed: followed } : null));
                 }
@@ -363,7 +339,6 @@ export default function SeriesPage() {
                 enqueueSnackbar("Série supprimée avec succès", { variant: "success" });
                 setActiveSeries(null);
                 fetchUserSeries();
-                if (scope === "all") fetchAllSeries();
             } else {
                 enqueueSnackbar("Erreur lors de la suppression de la série", { variant: "error" });
             }
@@ -474,11 +449,7 @@ export default function SeriesPage() {
 
     // Filter displayed series
     const displayedSeries = useMemo(() => {
-        let list = scope === "my" ? mySeries : allSeries;
-        if (scope === "my") {
-            list = list.filter((s) => (s.ownedCount || 0) > 0);
-        }
-        return list.filter((s) => {
+        return mySeries.filter((s) => {
             if (selectedCategories.length > 0) {
                 if (!s.category || !selectedCategories.some((cat) => cat.toLowerCase() === s.category!.toLowerCase())) {
                     return false;
@@ -492,12 +463,12 @@ export default function SeriesPage() {
             }
             return true;
         });
-    }, [scope, mySeries, allSeries, selectedCategories, searchQuery]);
+    }, [mySeries, selectedCategories, searchQuery]);
 
     // Reset page to 1 whenever filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [scope, selectedCategories, searchQuery]);
+    }, [selectedCategories, searchQuery]);
 
     // Pagination calculations
     const totalFiltered = displayedSeries.length;
@@ -545,7 +516,7 @@ export default function SeriesPage() {
             <div className="series-page__content">
                 {/* Controls: Scope tabs, Search, Categories */}
                 <div className="series-page__controls">
-                    {/* Left: Category Dropdown + Scope Tabs */}
+                    {/* Left: Category Dropdown */}
                     <div className="series-page__left-controls">
                         <CategoryMultiSelect
                             options={seriesCategoryOptions}
@@ -556,39 +527,10 @@ export default function SeriesPage() {
                             }}
                             allLabel="Toutes les catégories"
                         />
-
-                        <div className="series-page__filters">
-                            <button
-                                type="button"
-                                className={`series-page__filter-btn ${scope === "my" ? "is-active" : ""}`}
-                                onClick={() => {
-                                    setScope("my");
-                                    setCurrentPage(1);
-                                }}
-                            >
-                                <FontAwesomeIcon icon={faBook} />
-                                <span>Mes Séries</span>
-                                <span className="series-page__filter-count">{mySeries.length}</span>
-                            </button>
-                            <button
-                                type="button"
-                                className={`series-page__filter-btn ${scope === "all" ? "is-active" : ""}`}
-                                onClick={() => {
-                                    setScope("all");
-                                    setCurrentPage(1);
-                                }}
-                            >
-                                <FontAwesomeIcon icon={faLayerGroup} />
-                                <span>Toutes les séries</span>
-                                {scope === "all" && allSeries.length > 0 && (
-                                    <span className="series-page__filter-count">{allSeries.length}</span>
-                                )}
-                            </button>
-                        </div>
                     </div>
 
-                    {/* Center: Search input */}
-                    <div className="series-page__center-controls">
+                    {/* Right: Search input */}
+                    <div className="series-page__right-controls">
                         <div className="series-page__search">
                             <FontAwesomeIcon icon={faMagnifyingGlass} />
                             <input
@@ -732,9 +674,9 @@ export default function SeriesPage() {
                 {!loading && displayedSeries.length === 0 && (
                     <div className="series-page__empty">
                         <FontAwesomeIcon icon={faLayerGroup} className="series-page__empty-icon" />
-                        <h3>{scope === "my" ? "Aucune série dans vos albums" : "Aucune série trouvée"}</h3>
+                        <h3>{mySeries.length === 0 ? "Aucune série dans vos albums" : "Aucune série trouvée"}</h3>
                         <p>
-                            {scope === "my"
+                            {mySeries.length === 0
                                 ? "Vous ne possédez actuellement aucun album associé à une série dans vos albums. Vous pouvez créer une série et y associer vos albums !"
                                 : "Aucune série ne correspond à votre filtre de recherche. Créez-la en un clic !"}
                         </p>

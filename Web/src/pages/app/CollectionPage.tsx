@@ -405,11 +405,27 @@ export default function CollectionPage() {
     return (
         <div className="collection-page">
             <WrapperHeader>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
-                    <div>
-                        <h2 style={{ margin: 0 }}>
-                            Mes Albums {hasAnyOwned ? `(${totalOwned} album${totalOwned > 1 ? "s" : ""})` : ""}
-                        </h2>
+                <div className="collection-page__header-center">
+                    <div className="collection-page__filters">
+                        {STATUS_TABS.map((tab) => {
+                            const isSelected = selectedStatus === tab.id;
+                            const count = statusCounts[tab.id] ?? 0;
+
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => handleStatusChange(tab.id)}
+                                    className={`collection-page__filter-btn ${isSelected ? "is-active" : ""}`}
+                                >
+                                    {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
+                                    <span>{tab.label}</span>
+                                    <span className="collection-page__filter-count">
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             </WrapperHeader>
@@ -418,7 +434,7 @@ export default function CollectionPage() {
                 {/* Controls Bar: Status Tabs, Category Filter, Search, View Mode Toggle */}
                 {(hasAnyOwned || isFiltering) && (
                     <div className="collection-page__controls">
-                        {/* Left: Category Filter + Status Tabs */}
+                        {/* Left: Category Filter */}
                         <div className="collection-page__left-controls">
                             <CategoryMultiSelect
                                 options={availableCategories}
@@ -426,28 +442,6 @@ export default function CollectionPage() {
                                 onChange={handleCategoriesChange}
                                 allLabel="Toutes les catégories"
                             />
-
-                            <div className="collection-page__filters">
-                                {STATUS_TABS.map((tab) => {
-                                    const isSelected = selectedStatus === tab.id;
-                                    const count = statusCounts[tab.id] ?? 0;
-
-                                    return (
-                                        <button
-                                            key={tab.id}
-                                            type="button"
-                                            onClick={() => handleStatusChange(tab.id)}
-                                            className={`collection-page__filter-btn ${isSelected ? "is-active" : ""}`}
-                                        >
-                                            {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
-                                            <span>{tab.label}</span>
-                                            <span className="collection-page__filter-count">
-                                                {count}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
                         </div>
 
                         {/* Center: Search input */}

@@ -315,7 +315,6 @@ export default function SalesPage() {
         });
     }, [books, selectedStatus, selectedCategories, searchQuery]);
 
-    const totalSales = books.length;
     const totalFiltered = filteredBooks.length;
 
     // Pagination calculations
@@ -370,11 +369,27 @@ export default function SalesPage() {
     return (
         <div className="sales-page">
             <WrapperHeader>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
-                    <div>
-                        <h2 style={{ margin: 0 }}>
-                            Mes Ventes {totalSales > 0 ? `(${totalSales} album${totalSales > 1 ? "s" : ""})` : ""}
-                        </h2>
+                <div className="sales-page__header-center">
+                    <div className="sales-page__filters">
+                        {STATUS_TABS.map((tab) => {
+                            const isSelected = selectedStatus === tab.id;
+                            const count = statusCounts[tab.id];
+
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setSelectedStatus(tab.id)}
+                                    className={`sales-page__filter-btn ${isSelected ? "is-active" : ""}`}
+                                >
+                                    {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
+                                    <span>{tab.label}</span>
+                                    <span className="sales-page__filter-count">
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             </WrapperHeader>
@@ -383,7 +398,7 @@ export default function SalesPage() {
                 {/* Controls Bar: Status Tabs, Category Filter, Search, View Mode Toggle */}
                 {books.length > 0 && (
                     <div className="sales-page__controls">
-                        {/* Left: Category Dropdown + Status Filters */}
+                        {/* Left: Category Dropdown */}
                         <div className="sales-page__left-controls">
                             <CategoryMultiSelect
                                 options={availableCategories}
@@ -394,28 +409,6 @@ export default function SalesPage() {
                                 }}
                                 allLabel="Toutes les catégories"
                             />
-
-                            <div className="sales-page__filters">
-                                {STATUS_TABS.map((tab) => {
-                                    const isSelected = selectedStatus === tab.id;
-                                    const count = statusCounts[tab.id];
-
-                                    return (
-                                        <button
-                                            key={tab.id}
-                                            type="button"
-                                            onClick={() => setSelectedStatus(tab.id)}
-                                            className={`sales-page__filter-btn ${isSelected ? "is-active" : ""}`}
-                                        >
-                                            {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
-                                            <span>{tab.label}</span>
-                                            <span className="sales-page__filter-count">
-                                                {count}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
                         </div>
 
                         {/* Center: Search input */}
