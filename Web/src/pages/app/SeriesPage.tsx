@@ -615,13 +615,6 @@ export default function SeriesPage() {
                             )}
                         </div>
                     </div>
-
-                    {/* Right: Series count badge */}
-                    <div className="series-page__right-controls">
-                        <span className="series-page__series-badge">
-                            {displayedSeries.length} série{displayedSeries.length > 1 ? "s" : ""}
-                        </span>
-                    </div>
                 </div>
 
                 {/* Loading state */}
