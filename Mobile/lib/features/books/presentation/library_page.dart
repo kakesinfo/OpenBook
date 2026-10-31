@@ -9,18 +9,37 @@ import 'components/app_header.dart';
 import 'components/add_book_sheet.dart';
 import 'components/book_grid_card.dart';
 
-class LibraryPage extends ConsumerWidget {
+class LibraryPage extends ConsumerStatefulWidget {
   const LibraryPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryPage> createState() => _LibraryPageState();
+}
+
+class _LibraryPageState extends ConsumerState<LibraryPage> {
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController(text: ref.read(bookSearchQueryProvider));
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final booksAsync = ref.watch(booksControllerProvider);
     final books = ref.watch(filteredBooksProvider);
     final selectedFilter = ref.watch(bookFilterProvider);
 
     return Scaffold(
       appBar: AppHeader(
-        title: 'Ma Collection',
+        title: 'Mes Albums',
         subtitle: 'Bibliothèque & Filtres',
         actions: [
           IconButton(
@@ -41,9 +60,48 @@ class LibraryPage extends ConsumerWidget {
       ),
       body: CustomScrollView(
         slivers: [
+          // Search Bar
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.bgSurface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  border: Border.all(color: AppTheme.borderSubtle, width: 1),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) {
+                    ref.read(bookSearchQueryProvider.notifier).setQuery(val);
+                    setState(() {});
+                  },
+                  style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher un album, une série, un auteur...',
+                    hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    prefixIcon: Icon(Icons.search_rounded, color: AppTheme.accentPrimary, size: 20),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear_rounded, color: AppTheme.textMuted, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              ref.read(bookSearchQueryProvider.notifier).clear();
+                              setState(() {});
+                            },
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           // Filter Chips Row
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             sliver: SliverToBoxAdapter(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -96,6 +154,65 @@ class LibraryPage extends ConsumerWidget {
             ),
             data: (_) {
               if (books.isEmpty) {
+                final query = ref.watch(bookSearchQueryProvider).trim();
+                if (query.isNotEmpty) {
+                  return SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppTheme.bgElevated,
+                                border: Border.all(color: AppTheme.borderSubtle),
+                              ),
+                              child: Icon(Icons.search_off_rounded, size: 32, color: AppTheme.textMuted),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Aucun album trouvé',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Aucun album ne correspond à « $query »',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.textMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            TextButton.icon(
+                              onPressed: () {
+                                _searchController.clear();
+                                ref.read(bookSearchQueryProvider.notifier).clear();
+                                setState(() {});
+                              },
+                              icon: const Icon(Icons.close_rounded, size: 16),
+                              label: const Text('Effacer la recherche'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppTheme.accentPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
                 return SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(

@@ -252,7 +252,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ],
 
                             Text(
-                              'Adresse Email ou Pseudo',
+                              'Pseudo',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -262,14 +262,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             const SizedBox(height: 6),
                             TextFormField(
                               controller: _identifierController,
-                              keyboardType: TextInputType.emailAddress,
+                              keyboardType: TextInputType.text,
                               textCapitalization: TextCapitalization.none,
                               autocorrect: false,
-                              autofillHints: const [AutofillHints.username, AutofillHints.email],
+                              autofillHints: const [AutofillHints.username],
                               textInputAction: TextInputAction.next,
                               style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
                               decoration: InputDecoration(
-                                hintText: 'ex: votre@email.com ou votre_pseudo',
+                                hintText: 'ex: votre_pseudo',
                                 hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 13),
                                 prefixIcon: Icon(Icons.person_outline_rounded, size: 20, color: AppTheme.textMuted),
                                 filled: true,
@@ -290,7 +290,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                               validator: (val) {
                                 if (val == null || val.trim().isEmpty) {
-                                  return 'Veuillez saisir votre email ou pseudo';
+                                  return 'Veuillez saisir votre pseudo';
                                 }
                                 return null;
                               },

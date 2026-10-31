@@ -22,6 +22,29 @@ final bookFilterProvider =
   BookFilterNotifier.new,
 );
 
+final bookSearchQueryProvider =
+    NotifierProvider<BookSearchQueryNotifier, String>(
+  BookSearchQueryNotifier.new,
+);
+
+final bookDetailsProvider = FutureProvider.family<Map<String, dynamic>, int>((ref, bookId) async {
+  final repository = ref.watch(booksRepositoryProvider);
+  return repository.getBookDetails(bookId);
+});
+
+class BookSearchQueryNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void setQuery(String query) {
+    state = query;
+  }
+
+  void clear() {
+    state = '';
+  }
+}
+
 final booksControllerProvider =
     AsyncNotifierProvider<BooksController, List<Book>>(BooksController.new);
 
@@ -71,7 +94,16 @@ final readingSessionsForBookProvider = FutureProvider.family<List<ReadingSession
 final filteredBooksProvider = Provider<List<Book>>((ref) {
   final books = ref.watch(booksControllerProvider).value ?? const <Book>[];
   final filter = ref.watch(bookFilterProvider);
-  return books.where(filter.matches).toList()
+  final searchQuery = ref.watch(bookSearchQueryProvider).trim().toLowerCase();
+
+  return books.where((book) {
+    if (!filter.matches(book)) return false;
+    if (searchQuery.isEmpty) return true;
+    final titleMatch = book.title.toLowerCase().contains(searchQuery);
+    final authorMatch = book.author.toLowerCase().contains(searchQuery);
+    final seriesMatch = book.series.toLowerCase().contains(searchQuery);
+    return titleMatch || authorMatch || seriesMatch;
+  }).toList()
     ..sort((left, right) => left.title.toLowerCase().compareTo(right.title.toLowerCase()));
 });
 
@@ -187,6 +219,30 @@ class BooksController extends AsyncNotifier<List<Book>> {
     final bookId = book.id;
     if (bookId == null) return;
     await _repository.updateBookStatus(bookId, status);
+    await reload();
+  }
+
+  Future<void> updateBookInfo({
+    required int bookId,
+    required String title,
+    String? seriesName,
+    int? volume,
+    String? author,
+    int? pageCount,
+    String? isbn,
+    String? description,
+  }) async {
+    await _repository.updateBookInfo(
+      bookId: bookId,
+      title: title,
+      seriesName: seriesName,
+      volume: volume,
+      author: author,
+      pageCount: pageCount,
+      isbn: isbn,
+      description: description,
+    );
+    ref.invalidate(bookDetailsProvider(bookId));
     await reload();
   }
 

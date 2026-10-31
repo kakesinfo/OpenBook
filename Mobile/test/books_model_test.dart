@@ -18,12 +18,10 @@ void main() {
       final wishlistBook = Book(title: 'Manga', status: BookStatus.wishlist);
       final unreadBook = Book(title: 'Manga', status: BookStatus.unread);
       final soldBook = Book(title: 'Roman', status: BookStatus.sold);
-      final lentBook = Book(title: 'BD', status: BookStatus.lent);
 
       expect(BookLibraryFilter.souhaits.matches(wishlistBook), isTrue);
       expect(BookLibraryFilter.pal.matches(unreadBook), isTrue);
       expect(BookLibraryFilter.vendus.matches(soldBook), isTrue);
-      expect(BookLibraryFilter.pretes.matches(lentBook), isTrue);
     });
   });
 

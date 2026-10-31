@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_client.dart';
 import '../application/books_providers.dart';
 import '../data/book.dart';
+import '../data/books_repository.dart';
 import 'book_reading_history_page.dart';
 import 'book_reading_session_page.dart';
 import 'components/book_cover.dart';
+import 'components/edit_book_sheet.dart';
 
 class BookDetailsPage extends ConsumerWidget {
   const BookDetailsPage({
@@ -16,6 +19,41 @@ class BookDetailsPage extends ConsumerWidget {
 
   final Book book;
 
+  void _navigateToBook(
+    BuildContext context,
+    WidgetRef ref,
+    int targetBookId,
+    Map<String, dynamic>? summaryData,
+  ) {
+    final loadedBooks = ref.read(booksControllerProvider).value ?? const <Book>[];
+    Book? targetBook;
+    for (final b in loadedBooks) {
+      if (b.id == targetBookId) {
+        targetBook = b;
+        break;
+      }
+    }
+
+    targetBook ??= Book(
+      id: targetBookId,
+      title: summaryData?['title']?.toString() ?? 'Album',
+      author: summaryData?['author']?.toString() ?? '',
+      series: summaryData?['seriesName']?.toString() ?? '',
+      volume: (summaryData?['volume'] as num?)?.toInt(),
+      coverUrl: BooksRepository.resolveCoverUrl(
+        summaryData?['coverUrl']?.toString(),
+        ref.read(apiClientProvider).baseUrl,
+      ),
+      status: BookStatus.unread,
+    );
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => BookDetailsPage(book: targetBook!),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final loadedBooks = ref.watch(booksControllerProvider).value ?? const <Book>[];
@@ -24,8 +62,49 @@ class BookDetailsPage extends ConsumerWidget {
       orElse: () => book,
     );
 
+    final bookDetailsAsync = activeBook.id != null
+        ? ref.watch(bookDetailsProvider(activeBook.id!))
+        : const AsyncValue<Map<String, dynamic>>.data({});
+    final bookDetails = bookDetailsAsync.value;
+
+    int? prevId = (bookDetails?['previousBookId'] as num?)?.toInt();
+    Map<String, dynamic>? prevBook = bookDetails?['previousBook'] as Map<String, dynamic>?;
+    int? nextId = (bookDetails?['nextBookId'] as num?)?.toInt();
+    Map<String, dynamic>? nxtBook = bookDetails?['nextBook'] as Map<String, dynamic>?;
+
+    if (prevId == null && activeBook.series.isNotEmpty && activeBook.volume != null && activeBook.volume! > 1) {
+      for (final b in loadedBooks) {
+        if (b.series.toLowerCase() == activeBook.series.toLowerCase() && b.volume == activeBook.volume! - 1) {
+          prevId = b.id;
+          prevBook = {'title': b.title, 'volume': b.volume, 'coverUrl': b.coverUrl};
+          break;
+        }
+      }
+    }
+    if (nextId == null && activeBook.series.isNotEmpty && activeBook.volume != null) {
+      for (final b in loadedBooks) {
+        if (b.series.toLowerCase() == activeBook.series.toLowerCase() && b.volume == activeBook.volume! + 1) {
+          nextId = b.id;
+          nxtBook = {'title': b.title, 'volume': b.volume, 'coverUrl': b.coverUrl};
+          break;
+        }
+      }
+    }
+
+    final seriesMap = bookDetails?['series'] as Map<String, dynamic>?;
+    final totalVolumes = (seriesMap?['totalVolumes'] as num?)?.toInt();
+
+    final hasPrevious = prevId != null;
+    final canHavePrevious = activeBook.series.isNotEmpty && activeBook.volume != null && activeBook.volume! > 1;
+    final showPrevious = hasPrevious || canHavePrevious;
+
+    final hasNext = nextId != null;
+    final canHaveNext = activeBook.series.isNotEmpty &&
+        activeBook.volume != null &&
+        (totalVolumes != null ? activeBook.volume! < totalVolumes : true);
+    final showNext = hasNext || canHaveNext;
+
     final isWishlisted = activeBook.status == BookStatus.wishlist;
-    final isOwned = activeBook.isOwned;
 
     return Scaffold(
       appBar: AppBar(
@@ -43,10 +122,17 @@ class BookDetailsPage extends ConsumerWidget {
             },
           ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
+            icon: const Icon(Icons.menu_rounded),
+            tooltip: 'Menu de l\'album',
             color: AppTheme.bgElevated,
             onSelected: (value) async {
-              if (value == 'delete') {
+              if (value == 'edit') {
+                showEditBookSheet(
+                  context,
+                  book: activeBook,
+                  initialDetails: bookDetails,
+                );
+              } else if (value == 'delete') {
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
@@ -78,12 +164,28 @@ class BookDetailsPage extends ConsumerWidget {
             },
             itemBuilder: (context) => [
               PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_outlined, color: AppTheme.accentPrimary, size: 20),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Modifier les informations',
+                      style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
                 value: 'delete',
                 child: Row(
                   children: [
                     Icon(Icons.delete_outline_rounded, color: AppTheme.accentRed, size: 20),
-                    SizedBox(width: 8),
-                    Text('Supprimer le livre', style: TextStyle(color: AppTheme.accentRed)),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Supprimer le livre',
+                      style: TextStyle(color: AppTheme.accentRed, fontWeight: FontWeight.w500),
+                    ),
                   ],
                 ),
               ),
@@ -94,16 +196,56 @@ class BookDetailsPage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
         children: [
-          // Centered Cover with shadow
-          Center(
-            child: BookCover(
-              book: activeBook,
-              width: 170,
-              height: 250,
-              borderRadius: AppTheme.radiusLg,
-            ),
+          // Centered Cover with previous / next volume arrows on each side
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (showPrevious || showNext) ...[
+                _VolumeNavArrow(
+                  icon: Icons.chevron_left_rounded,
+                  tooltip: hasPrevious
+                      ? (prevBook?['title'] != null
+                          ? 'Tome précédent : ${prevBook!['title']}'
+                          : 'Tome précédent')
+                      : (canHavePrevious
+                          ? 'Tome précédent non disponible dans la bibliothèque'
+                          : ''),
+                  isEnabled: hasPrevious,
+                  isVisible: showPrevious,
+                  onPressed: hasPrevious
+                      ? () => _navigateToBook(context, ref, prevId!, prevBook)
+                      : null,
+                ),
+                const SizedBox(width: 12),
+              ],
+              BookCover(
+                book: activeBook,
+                width: 170,
+                height: 250,
+                borderRadius: AppTheme.radiusLg,
+              ),
+              if (showPrevious || showNext) ...[
+                const SizedBox(width: 12),
+                _VolumeNavArrow(
+                  icon: Icons.chevron_right_rounded,
+                  tooltip: hasNext
+                      ? (nxtBook?['title'] != null
+                          ? 'Tome suivant : ${nxtBook!['title']}'
+                          : 'Tome suivant')
+                      : (canHaveNext
+                          ? 'Tome suivant non disponible dans la bibliothèque'
+                          : ''),
+                  isEnabled: hasNext,
+                  isVisible: showNext,
+                  onPressed: hasNext
+                      ? () => _navigateToBook(context, ref, nextId!, nxtBook)
+                      : null,
+                ),
+              ],
+            ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // Badges / Tags row (similar to BookPage.tsx)
           Center(
@@ -171,50 +313,7 @@ class BookDetailsPage extends ConsumerWidget {
           ],
           const SizedBox(height: 24),
 
-          // Action Buttons matching Web Client (Wishlist toggle & Collection toggle)
-          Row(
-            children: [
-              Expanded(
-                child: _BookActionButton(
-                  icon: Icons.favorite_rounded,
-                  label: isWishlisted ? 'Dans les souhaits' : 'Liste de souhaits',
-                  isActive: isWishlisted,
-                  activeColor: AppTheme.accentRose,
-                  activeBgColor: AppTheme.accentRoseLight,
-                  activeBorderColor: AppTheme.accentRoseBorder,
-                  onPressed: () async {
-                    final targetStatus =
-                        isWishlisted ? BookStatus.unread : BookStatus.wishlist;
-                    await ref.read(booksControllerProvider.notifier).updateBookStatus(
-                          activeBook,
-                          targetStatus,
-                        );
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _BookActionButton(
-                  icon: Icons.collections_bookmark_rounded,
-                  label: isOwned ? 'Dans la collection' : 'Ajouter à la collection',
-                  isActive: isOwned,
-                  activeColor: AppTheme.accentPrimary,
-                  activeBgColor: AppTheme.accentPrimaryLight,
-                  activeBorderColor: AppTheme.accentPrimary.withValues(alpha: 0.3),
-                  onPressed: () async {
-                    final targetStatus = isOwned ? BookStatus.wishlist : BookStatus.unread;
-                    await ref.read(booksControllerProvider.notifier).updateBookStatus(
-                          activeBook,
-                          targetStatus,
-                        );
-                  },
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Detailed Status Buttons
+          // Status Action Buttons (Collection, Souhaits, Lu, En cours, Vendu)
           _BookStatusActions(
             book: activeBook,
             onStatusSelected: (status) async {
@@ -240,7 +339,7 @@ class BookDetailsPage extends ConsumerWidget {
                 Row(
                   children: [
                     Icon(Icons.tune_rounded, size: 18, color: AppTheme.accentPrimary),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Text(
                       'Détails techniques',
                       style: TextStyle(
@@ -276,8 +375,16 @@ class BookDetailsPage extends ConsumerWidget {
                   label: 'Pages totales',
                   value: activeBook.totalPages != null && activeBook.totalPages! > 0
                       ? '${activeBook.totalPages} pages'
-                      : 'Non renseigné',
+                      : (bookDetails?['pageCount'] != null && (bookDetails!['pageCount'] as num) > 0
+                          ? '${bookDetails['pageCount']} pages'
+                          : 'Non renseigné'),
                 ),
+                if (bookDetails?['isbn'] != null && bookDetails!['isbn'].toString().trim().isNotEmpty)
+                  _SpecItem(
+                    icon: Icons.qr_code_rounded,
+                    label: 'ISBN / EAN',
+                    value: bookDetails['isbn'].toString().trim(),
+                  ),
                 _SpecItem(
                   icon: Icons.flag_outlined,
                   label: 'Statut',
@@ -299,7 +406,7 @@ class BookDetailsPage extends ConsumerWidget {
                   BoxShadow(
                     color: AppTheme.accentPrimaryGlow,
                     blurRadius: 14,
-                    offset: Offset(0, 4),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -340,7 +447,7 @@ class BookDetailsPage extends ConsumerWidget {
                   BoxShadow(
                     color: AppTheme.accentPrimaryGlow,
                     blurRadius: 14,
-                    offset: Offset(0, 4),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -412,70 +519,78 @@ class _TagPill extends StatelessWidget {
   }
 }
 
-class _BookActionButton extends StatelessWidget {
-  const _BookActionButton({
+class _VolumeNavArrow extends StatelessWidget {
+  const _VolumeNavArrow({
     required this.icon,
-    required this.label,
-    required this.isActive,
-    required this.activeColor,
-    required this.activeBgColor,
-    required this.activeBorderColor,
+    required this.tooltip,
+    required this.isEnabled,
+    required this.isVisible,
     required this.onPressed,
   });
 
   final IconData icon;
-  final String label;
-  final bool isActive;
-  final Color activeColor;
-  final Color activeBgColor;
-  final Color activeBorderColor;
-  final VoidCallback onPressed;
+  final String tooltip;
+  final bool isEnabled;
+  final bool isVisible;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    if (!isVisible) {
+      return const SizedBox(width: 44, height: 44);
+    }
+
+    Widget button = Container(
+      width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: isActive ? activeBgColor : AppTheme.bgSurface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        shape: BoxShape.circle,
+        color: isEnabled
+            ? AppTheme.bgSurface
+            : AppTheme.bgSurface.withValues(alpha: 0.35),
         border: Border.all(
-          color: isActive ? activeBorderColor : AppTheme.borderSubtle,
+          color: isEnabled
+              ? AppTheme.borderMedium
+              : AppTheme.borderSubtle.withValues(alpha: 0.5),
           width: 1,
         ),
+        boxShadow: isEnabled
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: Material(
         color: Colors.transparent,
+        shape: const CircleBorder(),
         child: InkWell(
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          onTap: onPressed,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  isActive ? Icons.check_rounded : icon,
-                  size: 18,
-                  color: isActive ? activeColor : AppTheme.textSecondary,
-                ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      color: isActive ? activeColor : AppTheme.textPrimary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+          customBorder: const CircleBorder(),
+          onTap: isEnabled ? onPressed : null,
+          child: Center(
+            child: Icon(
+              icon,
+              size: 26,
+              color: isEnabled
+                  ? AppTheme.accentPrimary
+                  : AppTheme.textMuted.withValues(alpha: 0.3),
             ),
           ),
         ),
       ),
     );
+
+    if (tooltip.isNotEmpty) {
+      button = Tooltip(
+        message: tooltip,
+        child: button,
+      );
+    }
+
+    return button;
   }
 }
 
@@ -490,63 +605,95 @@ class _BookStatusActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final actions = <_StatusActionData>[
-      const _StatusActionData(
-        status: BookStatus.read,
-        label: 'Lu',
-        icon: Icons.check_circle_outline,
-      ),
-      const _StatusActionData(
-        status: BookStatus.reading,
-        label: 'En cours',
-        icon: Icons.auto_stories_outlined,
-      ),
-      const _StatusActionData(
-        status: BookStatus.lent,
-        label: 'Prêté',
-        icon: Icons.handshake_outlined,
-      ),
-      const _StatusActionData(
-        status: BookStatus.sold,
-        label: 'Vendu',
-        icon: Icons.sell_outlined,
-      ),
-    ];
+    final isWishlisted = book.status == BookStatus.wishlist;
+    final isOwned = book.isOwned;
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 8,
-      alignment: WrapAlignment.center,
-      children: actions
-          .map(
-            (action) => _RoundStatusButton(
-              label: action.label,
-              icon: action.icon,
-              selected: book.status == action.status,
-              onPressed: () async {
-                final targetStatus =
-                    action.status == BookStatus.read && book.status == BookStatus.read
-                        ? BookStatus.unread
-                        : action.status;
-                await onStatusSelected(targetStatus);
-              },
-            ),
-          )
-          .toList(),
+    return Center(
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        alignment: WrapAlignment.center,
+        children: [
+          _RoundStatusButton(
+            label: 'Collection',
+            icon: isOwned
+                ? Icons.collections_bookmark_rounded
+                : Icons.collections_bookmark_outlined,
+            selected: isOwned,
+            activeColor: AppTheme.accentPrimary,
+            activeBgColor: AppTheme.accentPrimaryLight,
+            onPressed: () async {
+              final targetStatus = isOwned
+                  ? (book.status == BookStatus.unread
+                      ? BookStatus.wishlist
+                      : BookStatus.unread)
+                  : BookStatus.unread;
+              await onStatusSelected(targetStatus);
+            },
+          ),
+          _RoundStatusButton(
+            label: 'Souhaits',
+            icon: isWishlisted
+                ? Icons.favorite_rounded
+                : Icons.favorite_border_rounded,
+            selected: isWishlisted,
+            activeColor: AppTheme.accentRose,
+            activeBgColor: AppTheme.accentRoseLight,
+            onPressed: () async {
+              final targetStatus =
+                  isWishlisted ? BookStatus.unread : BookStatus.wishlist;
+              await onStatusSelected(targetStatus);
+            },
+          ),
+          _RoundStatusButton(
+            label: 'Lu',
+            icon: book.status == BookStatus.read
+                ? Icons.check_circle_rounded
+                : Icons.check_circle_outline_rounded,
+            selected: book.status == BookStatus.read,
+            activeColor: AppTheme.accentPrimary,
+            activeBgColor: AppTheme.accentPrimaryLight,
+            onPressed: () async {
+              final targetStatus = book.status == BookStatus.read
+                  ? BookStatus.unread
+                  : BookStatus.read;
+              await onStatusSelected(targetStatus);
+            },
+          ),
+          _RoundStatusButton(
+            label: 'En cours',
+            icon: book.status == BookStatus.reading
+                ? Icons.auto_stories_rounded
+                : Icons.auto_stories_outlined,
+            selected: book.status == BookStatus.reading,
+            activeColor: AppTheme.accentAmber,
+            activeBgColor: AppTheme.accentAmberLight,
+            onPressed: () async {
+              final targetStatus = book.status == BookStatus.reading
+                  ? BookStatus.unread
+                  : BookStatus.reading;
+              await onStatusSelected(targetStatus);
+            },
+          ),
+          _RoundStatusButton(
+            label: 'Vendu',
+            icon: book.status == BookStatus.sold
+                ? Icons.sell_rounded
+                : Icons.sell_outlined,
+            selected: book.status == BookStatus.sold,
+            activeColor: AppTheme.accentSecondary,
+            activeBgColor: AppTheme.accentSecondaryLight,
+            onPressed: () async {
+              final targetStatus = book.status == BookStatus.sold
+                  ? BookStatus.unread
+                  : BookStatus.sold;
+              await onStatusSelected(targetStatus);
+            },
+          ),
+        ],
+      ),
     );
   }
-}
-
-class _StatusActionData {
-  const _StatusActionData({
-    required this.status,
-    required this.label,
-    required this.icon,
-  });
-
-  final BookStatus status;
-  final String label;
-  final IconData icon;
 }
 
 class _RoundStatusButton extends StatelessWidget {
@@ -555,54 +702,76 @@ class _RoundStatusButton extends StatelessWidget {
     required this.icon,
     required this.selected,
     required this.onPressed,
+    this.activeColor,
+    this.activeBgColor,
   });
 
   final String label;
   final IconData icon;
   final bool selected;
   final VoidCallback onPressed;
+  final Color? activeColor;
+  final Color? activeBgColor;
 
   @override
   Widget build(BuildContext context) {
-    final fillColor = selected ? AppTheme.accentPrimaryLight : AppTheme.bgSurface;
-    final iconColor = selected ? AppTheme.accentPrimary : AppTheme.textMuted;
+    final effectiveActiveColor = activeColor ?? AppTheme.accentPrimary;
+    final effectiveActiveBg = activeBgColor ?? AppTheme.accentPrimaryLight;
+
+    final fillColor = selected ? effectiveActiveBg : AppTheme.bgSurface;
+    final iconColor = selected ? effectiveActiveColor : AppTheme.textMuted;
     final borderColor = selected
-        ? AppTheme.accentPrimary.withValues(alpha: 0.4)
+        ? effectiveActiveColor.withValues(alpha: 0.4)
         : AppTheme.borderSubtle;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: fillColor,
-            shape: BoxShape.circle,
-            border: Border.all(color: borderColor, width: 1),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: onPressed,
-              child: Center(
-                child: Icon(icon, color: iconColor, size: 22),
+    return SizedBox(
+      width: 58,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: fillColor,
+              shape: BoxShape.circle,
+              border: Border.all(color: borderColor, width: 1.5),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: effectiveActiveColor.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              shape: const CircleBorder(),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: onPressed,
+                child: Center(
+                  child: Icon(icon, color: iconColor, size: 22),
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: selected ? AppTheme.accentPrimary : AppTheme.textSecondary,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          const SizedBox(height: 6),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              color: selected ? effectiveActiveColor : AppTheme.textSecondary,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -655,5 +824,3 @@ bool _canStartReading(BookStatus status) {
       status != BookStatus.lent &&
       status != BookStatus.wishlist;
 }
-
-

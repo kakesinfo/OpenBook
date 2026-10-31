@@ -56,6 +56,16 @@ class BooksRepository {
     return list.map((item) => _bookFromSummary(item as Map<String, dynamic>)).toList();
   }
 
+  Future<Map<String, dynamic>> getBookDetails(int id) async {
+    final response = await _apiClient.get(
+      '/books/$id?withSeries=true&withCollection=true&withEditor=true&withAuthors=true&withStatus=true',
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Impossible de charger les détails de l\'album (${response.statusCode})');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   Book _bookFromSummary(Map<String, dynamic> item) {
     final cover = resolveCoverUrl(item['coverUrl'] as String?, _apiClient.baseUrl);
 
@@ -189,7 +199,6 @@ class BooksRepository {
     final response = await _apiClient.post('/books', body: payload);
     if (response.statusCode != 200 && response.statusCode != 201) {
       if (response.statusCode == 409 && cleanIsbn != null && cleanIsbn.isNotEmpty) {
-        // Le livre existe déjà dans le catalogue global : on l'associe directement à l'utilisateur
         try {
           final existing = await searchBooks(cleanIsbn);
           if (existing.isNotEmpty && existing.first.id != null) {
@@ -243,9 +252,7 @@ class BooksRepository {
             data['coverUrl'] = updatedData['coverUrl'];
           } catch (_) {}
         }
-      } catch (_) {
-        // Book was created even if cover upload failed
-      }
+      } catch (_) {}
     }
 
     if (bookId != null && status == BookStatus.wishlist) {
@@ -256,6 +263,84 @@ class BooksRepository {
     }
 
     return _bookFromSummary(data);
+  }
+
+  Future<void> updateBookInfo({
+    required int bookId,
+    required String title,
+    String? seriesName,
+    int? volume,
+    String? author,
+    int? pageCount,
+    String? isbn,
+    String? description,
+  }) async {
+    final cleanSeriesName = seriesName?.trim() ?? '';
+    int? seriesId;
+
+    if (cleanSeriesName.isNotEmpty) {
+      try {
+        final encoded = Uri.encodeQueryComponent(cleanSeriesName);
+        final seriesRes = await _apiClient.get('/series?query=$encoded');
+        if (seriesRes.statusCode == 200) {
+          final list = jsonDecode(seriesRes.body) as List<dynamic>;
+          for (final item in list) {
+            if (item is Map &&
+                item['name']?.toString().toLowerCase().trim() == cleanSeriesName.toLowerCase()) {
+              seriesId = (item['id'] as num?)?.toInt();
+              break;
+            }
+          }
+        }
+        if (seriesId == null) {
+          final createRes = await _apiClient.post(
+            '/series',
+            body: {'name': cleanSeriesName, 'bookIds': [bookId]},
+          );
+          if (createRes.statusCode == 200 || createRes.statusCode == 201) {
+            final data = jsonDecode(createRes.body) as Map<String, dynamic>;
+            seriesId = (data['id'] as num?)?.toInt();
+          }
+        }
+      } catch (_) {}
+    }
+
+    try {
+      await _apiClient.put(
+        '/books/$bookId/series',
+        body: {
+          'seriesId': cleanSeriesName.isNotEmpty ? seriesId : null,
+          'volume': cleanSeriesName.isNotEmpty ? volume : null,
+        },
+      );
+    } catch (_) {}
+
+    final payload = <String, dynamic>{
+      'title': title.trim(),
+      if (isbn != null) 'isbn': isbn.trim(),
+      if (pageCount != null && pageCount > 0) 'pageCount': pageCount,
+      if (description != null) 'description': description.trim(),
+      if (volume != null && cleanSeriesName.isNotEmpty) 'volume': volume,
+      if (cleanSeriesName.isEmpty) 'clearSeries': true,
+      if (author != null && author.trim().isNotEmpty)
+        'authors': [
+          {'firstname': '', 'lastname': author.trim(), 'type': 'Writer'}
+        ],
+    };
+
+    final response = await _apiClient.put('/books/$bookId', body: payload);
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      String msg = 'Erreur lors de la modification (${response.statusCode})';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['detail'] != null) {
+          msg = decoded['detail'].toString();
+        } else if (decoded is Map && decoded['message'] != null) {
+          msg = decoded['message'].toString();
+        }
+      } catch (_) {}
+      throw Exception(msg);
+    }
   }
 
   Future<void> saveBook(Book book) async {

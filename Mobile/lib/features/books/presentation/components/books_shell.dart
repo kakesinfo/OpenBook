@@ -59,7 +59,7 @@ class _BooksShellState extends ConsumerState<BooksShell> {
             NavigationDestination(
               icon: Icon(Icons.menu_book_outlined),
               selectedIcon: Icon(Icons.menu_book_rounded, color: AppTheme.accentPrimary),
-              label: 'Collection',
+              label: 'Mes Albums',
             ),
             NavigationDestination(
               icon: Icon(Icons.favorite_outline_rounded),

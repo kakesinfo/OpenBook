@@ -11,18 +11,18 @@ class ApiClientState {
     this.host = '',
     this.port = '8080',
     this.token,
-    this.userEmail,
     this.userName,
     this.userAvatar,
+    this.userRole,
     this.isInitialized = false,
   });
 
   final String host;
   final String port;
   final String? token;
-  final String? userEmail;
   final String? userName;
   final String? userAvatar;
+  final String? userRole;
   final bool isInitialized;
 
   String get baseUrl {
@@ -37,18 +37,18 @@ class ApiClientState {
     String? host,
     String? port,
     String? token,
-    String? userEmail,
     String? userName,
     String? userAvatar,
+    String? userRole,
     bool? isInitialized,
   }) {
     return ApiClientState(
       host: host ?? this.host,
       port: port ?? this.port,
       token: token ?? this.token,
-      userEmail: userEmail ?? this.userEmail,
       userName: userName ?? this.userName,
       userAvatar: userAvatar ?? this.userAvatar,
+      userRole: userRole ?? this.userRole,
       isInitialized: isInitialized ?? this.isInitialized,
     );
   }
@@ -58,9 +58,9 @@ class ApiClientNotifier extends Notifier<ApiClientState> {
   static const _keyHost = 'api_server_host';
   static const _keyPort = 'api_server_port';
   static const _keyToken = 'api_auth_token';
-  static const _keyUserEmail = 'api_user_email';
   static const _keyUserName = 'api_user_name';
   static const _keyUserAvatar = 'api_user_avatar';
+  static const _keyUserRole = 'api_user_role';
 
   @override
   ApiClientState build() {
@@ -73,17 +73,35 @@ class ApiClientNotifier extends Notifier<ApiClientState> {
     final host = prefs.getString(_keyHost) ?? '';
     final port = prefs.getString(_keyPort) ?? '8080';
     final token = prefs.getString(_keyToken);
-    final userEmail = prefs.getString(_keyUserEmail);
     final userName = prefs.getString(_keyUserName);
     final userAvatar = prefs.getString(_keyUserAvatar);
+    final userRole = prefs.getString(_keyUserRole);
+
+    if (userRole != null && (userRole.toUpperCase() == 'ROLE_ADMIN' || userRole.toUpperCase().contains('ADMIN'))) {
+      await prefs.remove(_keyToken);
+      await prefs.remove(_keyUserName);
+      await prefs.remove(_keyUserAvatar);
+      await prefs.remove(_keyUserRole);
+
+      state = ApiClientState(
+        host: host,
+        port: port,
+        token: null,
+        userName: null,
+        userAvatar: null,
+        userRole: null,
+        isInitialized: true,
+      );
+      return;
+    }
 
     state = ApiClientState(
       host: host,
       port: port,
       token: token,
-      userEmail: userEmail,
       userName: userName,
       userAvatar: userAvatar,
+      userRole: userRole,
       isInitialized: true,
     );
   }
@@ -172,7 +190,7 @@ class ApiClientNotifier extends Notifier<ApiClientState> {
             url,
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({
-              'email': trimmedIdentifier,
+              'username': trimmedIdentifier,
               'password': password,
             }),
           )
@@ -180,6 +198,14 @@ class ApiClientNotifier extends Notifier<ApiClientState> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final role = data['role'] as String?;
+        if (role != null && (role.toUpperCase() == 'ROLE_ADMIN' || role.toUpperCase().contains('ADMIN'))) {
+          return (
+            success: false,
+            error: 'Les utilisateurs administrateurs ne sont pas autorisés à se connecter sur l\'application mobile.',
+          );
+        }
+
         final token = data['token'] as String?;
         if (token == null || token.isEmpty) {
           return (success: false, error: 'Jeton de session non reçu');
@@ -187,8 +213,11 @@ class ApiClientNotifier extends Notifier<ApiClientState> {
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_keyToken, token);
+        if (role != null) {
+          await prefs.setString(_keyUserRole, role);
+        }
 
-        state = state.copyWith(token: token);
+        state = state.copyWith(token: token, userRole: role);
 
         // Fetch profile
         await _fetchProfile();
@@ -205,7 +234,7 @@ class ApiClientNotifier extends Notifier<ApiClientState> {
       if (response.statusCode == 400 || response.statusCode == 401) {
         return (
           success: false,
-          error: 'Identifiant (email ou pseudo) ou mot de passe incorrect.',
+          error: 'Pseudo ou mot de passe incorrect.',
         );
       }
 
@@ -239,19 +268,24 @@ class ApiClientNotifier extends Notifier<ApiClientState> {
       final response = await get('/user/profile');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final email = data['email'] as String?;
+        final role = data['role'] as String?;
+        if (role != null && (role.toUpperCase() == 'ROLE_ADMIN' || role.toUpperCase().contains('ADMIN'))) {
+          await logout();
+          return;
+        }
+
         final name = data['username'] as String?;
         final avatar = data['avatar'] as String?;
 
         final prefs = await SharedPreferences.getInstance();
-        if (email != null) await prefs.setString(_keyUserEmail, email);
         if (name != null) await prefs.setString(_keyUserName, name);
         if (avatar != null) await prefs.setString(_keyUserAvatar, avatar);
+        if (role != null) await prefs.setString(_keyUserRole, role);
 
         state = state.copyWith(
-          userEmail: email,
           userName: name,
           userAvatar: avatar,
+          userRole: role,
         );
       }
     } catch (_) {}
@@ -269,17 +303,17 @@ class ApiClientNotifier extends Notifier<ApiClientState> {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyToken);
-    await prefs.remove(_keyUserEmail);
     await prefs.remove(_keyUserName);
     await prefs.remove(_keyUserAvatar);
+    await prefs.remove(_keyUserRole);
 
     state = ApiClientState(
       host: state.host,
       port: state.port,
       token: null,
-      userEmail: null,
       userName: null,
       userAvatar: null,
+      userRole: null,
       isInitialized: true,
     );
   }
