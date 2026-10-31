@@ -9,8 +9,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faBook,
     faLayerGroup,
-    faBolt,
-    faFire,
     faMagnifyingGlass,
     faTag,
     faCheck,
@@ -26,17 +24,15 @@ import {
     faNoteSticky
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
+import CategoryMultiSelect, {
+    CategoryOption,
+    DEFAULT_APP_CATEGORIES,
+    bookMatchesCategories
+} from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
 import "./SalesPage.scss";
 
-type CategoryFilter = "all" | "bd" | "comics" | "manga";
 type SalesStatusFilter = "all" | "FOR_SALE" | "SOLD";
 type DisplayMode = "grid" | "list";
-
-interface CategoryTab {
-    id: CategoryFilter;
-    label: string;
-    icon?: typeof faBook;
-}
 
 interface StatusTab {
     id: SalesStatusFilter;
@@ -51,26 +47,11 @@ interface HoveredCoverState {
     y: number;
 }
 
-const CATEGORY_TABS: CategoryTab[] = [
-    { id: "all", label: "Toutes catégories", icon: faLayerGroup },
-    { id: "bd", label: "BD", icon: faBook },
-    { id: "comics", label: "Comics", icon: faBolt },
-    { id: "manga", label: "Manga", icon: faFire }
-];
-
 const STATUS_TABS: StatusTab[] = [
     { id: "all", label: "Tous", icon: faLayerGroup },
     { id: "FOR_SALE", label: "À vendre", icon: faTag },
     { id: "SOLD", label: "Vendu", icon: faCheck }
 ];
-
-function normalizeCategory(category?: string | null, type?: string | null): "bd" | "comics" | "manga" {
-    const raw = `${category || ""} ${type || ""}`.toLowerCase();
-    if (raw.includes("manga")) return "manga";
-    if (raw.includes("comic")) return "comics";
-    if (raw.includes("bande") || raw.includes("bd") || raw.includes("roman") || raw.includes("cartonné")) return "bd";
-    return "comics";
-}
 
 export default function SalesPage() {
     const session = useSession();
@@ -81,7 +62,32 @@ export default function SalesPage() {
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
     const [selectedStatus, setSelectedStatus] = useState<SalesStatusFilter>("all");
-    const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>(DEFAULT_APP_CATEGORIES);
+
+    useEffect(() => {
+        session.customFetch("/series/categories", { method: "GET" })
+            .then(async (res) => {
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        setAvailableCategories(
+                            data.map((cat: { id?: number; name: string }) => {
+                                const found = DEFAULT_APP_CATEGORIES.find(
+                                    (d) => d.id.toLowerCase() === cat.name.toLowerCase()
+                                );
+                                return {
+                                    id: cat.name,
+                                    label: cat.name,
+                                    icon: found?.icon || faBook
+                                };
+                            })
+                        );
+                    }
+                }
+            })
+            .catch(() => {});
+    }, [session]);
     const [searchQuery, setSearchQuery] = useState("");
 
     // Display mode: "grid" (Galerie) vs "list" (Liste compacte)
@@ -265,7 +271,7 @@ export default function SalesPage() {
     // Reset page to 1 whenever filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [selectedStatus, selectedCategory, searchQuery]);
+    }, [selectedStatus, selectedCategories, searchQuery]);
 
     // Status counts
     const statusCounts = useMemo(() => {
@@ -292,9 +298,8 @@ export default function SalesPage() {
             }
 
             // Category filter
-            if (selectedCategory !== "all") {
-                const normalized = normalizeCategory(b.category, b.type);
-                if (normalized !== selectedCategory) return false;
+            if (selectedCategories.length > 0) {
+                if (!bookMatchesCategories(b, selectedCategories)) return false;
             }
 
             // Search query filter
@@ -308,9 +313,8 @@ export default function SalesPage() {
 
             return true;
         });
-    }, [books, selectedStatus, selectedCategory, searchQuery]);
+    }, [books, selectedStatus, selectedCategories, searchQuery]);
 
-    const totalSales = books.length;
     const totalFiltered = filteredBooks.length;
 
     // Pagination calculations
@@ -365,11 +369,27 @@ export default function SalesPage() {
     return (
         <div className="sales-page">
             <WrapperHeader>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
-                    <div>
-                        <h2 style={{ margin: 0 }}>
-                            Mes Ventes {totalSales > 0 ? `(${totalSales} album${totalSales > 1 ? "s" : ""})` : ""}
-                        </h2>
+                <div className="sales-page__header-center">
+                    <div className="sales-page__filters">
+                        {STATUS_TABS.map((tab) => {
+                            const isSelected = selectedStatus === tab.id;
+                            const count = statusCounts[tab.id];
+
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setSelectedStatus(tab.id)}
+                                    className={`sales-page__filter-btn ${isSelected ? "is-active" : ""}`}
+                                >
+                                    {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
+                                    <span>{tab.label}</span>
+                                    <span className="sales-page__filter-count">
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             </WrapperHeader>
@@ -378,44 +398,21 @@ export default function SalesPage() {
                 {/* Controls Bar: Status Tabs, Category Filter, Search, View Mode Toggle */}
                 {books.length > 0 && (
                     <div className="sales-page__controls">
-                        {/* Segmented Status Filters */}
-                        <div className="sales-page__filters">
-                            {STATUS_TABS.map((tab) => {
-                                const isSelected = selectedStatus === tab.id;
-                                const count = statusCounts[tab.id];
-
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        type="button"
-                                        onClick={() => setSelectedStatus(tab.id)}
-                                        className={`sales-page__filter-btn ${isSelected ? "is-active" : ""}`}
-                                    >
-                                        {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
-                                        <span>{tab.label}</span>
-                                        <span className="sales-page__filter-count">
-                                            {count}
-                                        </span>
-                                    </button>
-                                );
-                            })}
+                        {/* Left: Category Dropdown */}
+                        <div className="sales-page__left-controls">
+                            <CategoryMultiSelect
+                                options={availableCategories}
+                                selected={selectedCategories}
+                                onChange={(cats) => {
+                                    setSelectedCategories(cats);
+                                    if (currentPage !== 1) setCurrentPage(1);
+                                }}
+                                allLabel="Toutes les catégories"
+                            />
                         </div>
 
-                        {/* Search, Categories & Display Mode Switcher */}
-                        <div className="sales-page__right-controls">
-                            <div className="sales-page__categories">
-                                {CATEGORY_TABS.map((tab) => (
-                                    <button
-                                        key={tab.id}
-                                        type="button"
-                                        onClick={() => setSelectedCategory(tab.id)}
-                                        className={`sales-page__cat-btn ${selectedCategory === tab.id ? "is-active" : ""}`}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
-                            </div>
-
+                        {/* Center: Search input */}
+                        <div className="sales-page__center-controls">
                             <div className="sales-page__search">
                                 <FontAwesomeIcon icon={faMagnifyingGlass} />
                                 <input
@@ -424,9 +421,21 @@ export default function SalesPage() {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        className="sales-page__search-clear"
+                                        onClick={() => setSearchQuery("")}
+                                        aria-label="Effacer la recherche"
+                                    >
+                                        <FontAwesomeIcon icon={faXmark} />
+                                    </button>
+                                )}
                             </div>
+                        </div>
 
-                            {/* View Mode: Galerie vs Liste */}
+                        {/* Right: View Mode (Galerie vs Liste) */}
+                        <div className="sales-page__right-controls">
                             <div className="sales-page__view-toggle">
                                 <button
                                     type="button"

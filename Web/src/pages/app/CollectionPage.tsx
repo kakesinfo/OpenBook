@@ -12,8 +12,6 @@ import {
     faBook,
     faCompass,
     faLayerGroup,
-    faBolt,
-    faFire,
     faMagnifyingGlass,
     faBookBookmark,
     faCheck,
@@ -22,19 +20,18 @@ import {
     faBorderAll,
     faList,
     faChevronRight,
-    faClone
+    faClone,
+    faXmark
 } from "@fortawesome/free-solid-svg-icons";
+import CategoryMultiSelect, {
+    CategoryOption,
+    DEFAULT_APP_CATEGORIES,
+    bookMatchesCategories
+} from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
 import "./CollectionPage.scss";
 
-type CategoryFilter = "all" | "bd" | "comics" | "manga";
 type TomeStatusFilter = "all" | "toread" | "read" | "abandoned";
 type DisplayMode = "grid" | "list";
-
-interface CategoryTab {
-    id: CategoryFilter;
-    label: string;
-    icon?: typeof faBook;
-}
 
 interface StatusTab {
     id: TomeStatusFilter;
@@ -49,27 +46,12 @@ interface HoveredCoverState {
     y: number;
 }
 
-const CATEGORY_TABS: CategoryTab[] = [
-    { id: "all", label: "Toutes catégories", icon: faLayerGroup },
-    { id: "bd", label: "BD", icon: faBook },
-    { id: "comics", label: "Comics", icon: faBolt },
-    { id: "manga", label: "Manga", icon: faFire }
-];
-
 const STATUS_TABS: StatusTab[] = [
     { id: "all", label: "Tous", icon: faLayerGroup },
     { id: "toread", label: "Pile à lire", icon: faBookBookmark },
     { id: "read", label: "Lu", icon: faCheck },
     { id: "abandoned", label: "Abandonné", icon: faBan }
 ];
-
-function normalizeCategory(category?: string | null, type?: string | null): "bd" | "comics" | "manga" {
-    const raw = `${category || ""} ${type || ""}`.toLowerCase();
-    if (raw.includes("manga")) return "manga";
-    if (raw.includes("comic")) return "comics";
-    if (raw.includes("bande") || raw.includes("bd") || raw.includes("roman") || raw.includes("cartonné")) return "bd";
-    return "comics";
-}
 
 function matchesTomeStatus(book: BookSummaryDTO, filter: TomeStatusFilter): boolean {
     if (filter === "all") return true;
@@ -153,7 +135,32 @@ export default function CollectionPage() {
     });
 
     const [selectedStatus, setSelectedStatus] = useState<TomeStatusFilter>("all");
-    const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("all");
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>(DEFAULT_APP_CATEGORIES);
+
+    useEffect(() => {
+        session.customFetch("/series/categories", { method: "GET" })
+            .then(async (res) => {
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        setAvailableCategories(
+                            data.map((cat: { id?: number; name: string }) => {
+                                const found = DEFAULT_APP_CATEGORIES.find(
+                                    (d) => d.id.toLowerCase() === cat.name.toLowerCase()
+                                );
+                                return {
+                                    id: cat.name,
+                                    label: cat.name,
+                                    icon: found?.icon || faBook
+                                };
+                            })
+                        );
+                    }
+                }
+            })
+            .catch(() => {});
+    }, [session]);
     const [searchQuery, setSearchQuery] = useState("");
     const debouncedSearch = useDebounce(searchQuery, 300);
 
@@ -235,8 +242,8 @@ export default function CollectionPage() {
         }
     };
 
-    const handleCategoryChange = (category: CategoryFilter) => {
-        setSelectedCategory(category);
+    const handleCategoriesChange = (categories: string[]) => {
+        setSelectedCategories(categories);
         if (currentPage !== 1) {
             handlePageChange(1);
         }
@@ -273,7 +280,7 @@ export default function CollectionPage() {
         params.set("page", String(currentPage));
         params.set("size", String(pageSize));
         if (selectedStatus !== "all") params.set("status", selectedStatus);
-        if (selectedCategory !== "all") params.set("category", selectedCategory);
+        if (selectedCategories.length > 0) params.set("category", selectedCategories.join(","));
         if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
 
         session.customFetch(`/user/collection?${params.toString()}`, { method: "GET" })
@@ -298,9 +305,8 @@ export default function CollectionPage() {
 
                             const filtered = data.filter((b) => {
                                 if (!matchesTomeStatus(b, selectedStatus)) return false;
-                                if (selectedCategory !== "all") {
-                                    const cat = normalizeCategory(b.category, b.type);
-                                    if (cat !== selectedCategory) return false;
+                                if (selectedCategories.length > 0) {
+                                    if (!bookMatchesCategories(b, selectedCategories)) return false;
                                 }
                                 if (debouncedSearch.trim().length > 0) {
                                     const q = debouncedSearch.toLowerCase().trim();
@@ -362,7 +368,7 @@ export default function CollectionPage() {
         return () => {
             isCancelled = true;
         };
-    }, [session, currentPage, pageSize, selectedStatus, selectedCategory, debouncedSearch, refreshKey]);
+    }, [session, currentPage, pageSize, selectedStatus, selectedCategories, debouncedSearch, refreshKey]);
 
     // Pagination calculations
     const isAll = pageSize === 0 || pageSize >= 9999;
@@ -394,16 +400,32 @@ export default function CollectionPage() {
     };
 
     const hasAnyOwned = totalOwned > 0;
-    const isFiltering = searchQuery.trim().length > 0 || selectedStatus !== "all" || selectedCategory !== "all";
+    const isFiltering = searchQuery.trim().length > 0 || selectedStatus !== "all" || selectedCategories.length > 0;
 
     return (
         <div className="collection-page">
             <WrapperHeader>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
-                    <div>
-                        <h2 style={{ margin: 0 }}>
-                            Mes Albums {hasAnyOwned ? `(${totalOwned} album${totalOwned > 1 ? "s" : ""})` : ""}
-                        </h2>
+                <div className="collection-page__header-center">
+                    <div className="collection-page__filters">
+                        {STATUS_TABS.map((tab) => {
+                            const isSelected = selectedStatus === tab.id;
+                            const count = statusCounts[tab.id] ?? 0;
+
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => handleStatusChange(tab.id)}
+                                    className={`collection-page__filter-btn ${isSelected ? "is-active" : ""}`}
+                                >
+                                    {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
+                                    <span>{tab.label}</span>
+                                    <span className="collection-page__filter-count">
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             </WrapperHeader>
@@ -412,44 +434,18 @@ export default function CollectionPage() {
                 {/* Controls Bar: Status Tabs, Category Filter, Search, View Mode Toggle */}
                 {(hasAnyOwned || isFiltering) && (
                     <div className="collection-page__controls">
-                        {/* Status Filters */}
-                        <div className="collection-page__filters">
-                            {STATUS_TABS.map((tab) => {
-                                const isSelected = selectedStatus === tab.id;
-                                const count = statusCounts[tab.id] ?? 0;
-
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        type="button"
-                                        onClick={() => handleStatusChange(tab.id)}
-                                        className={`collection-page__filter-btn ${isSelected ? "is-active" : ""}`}
-                                    >
-                                        {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
-                                        <span>{tab.label}</span>
-                                        <span className="collection-page__filter-count">
-                                            {count}
-                                        </span>
-                                    </button>
-                                );
-                            })}
+                        {/* Left: Category Filter */}
+                        <div className="collection-page__left-controls">
+                            <CategoryMultiSelect
+                                options={availableCategories}
+                                selected={selectedCategories}
+                                onChange={handleCategoriesChange}
+                                allLabel="Toutes les catégories"
+                            />
                         </div>
 
-                        {/* Search, Categories & Display Mode Switcher */}
-                        <div className="collection-page__right-controls">
-                            <div className="collection-page__categories">
-                                {CATEGORY_TABS.map((tab) => (
-                                    <button
-                                        key={tab.id}
-                                        type="button"
-                                        onClick={() => handleCategoryChange(tab.id)}
-                                        className={`collection-page__cat-btn ${selectedCategory === tab.id ? "is-active" : ""}`}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
-                            </div>
-
+                        {/* Center: Search input */}
+                        <div className="collection-page__center-controls">
                             <div className="collection-page__search">
                                 <FontAwesomeIcon icon={faMagnifyingGlass} />
                                 <input
@@ -458,9 +454,21 @@ export default function CollectionPage() {
                                     value={searchQuery}
                                     onChange={(e) => handleSearchChange(e.target.value)}
                                 />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        className="collection-page__search-clear"
+                                        onClick={() => handleSearchChange("")}
+                                        aria-label="Effacer la recherche"
+                                    >
+                                        <FontAwesomeIcon icon={faXmark} />
+                                    </button>
+                                )}
                             </div>
+                        </div>
 
-                            {/* View Mode: Galerie vs Liste */}
+                        {/* Right: View Mode Toggle */}
+                        <div className="collection-page__right-controls">
                             <div className="collection-page__view-toggle">
                                 <button
                                     type="button"

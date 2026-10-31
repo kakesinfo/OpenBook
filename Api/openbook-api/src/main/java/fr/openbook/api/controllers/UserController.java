@@ -1,4 +1,4 @@
-package fr.openbook.api.controllers;
+﻿package fr.openbook.api.controllers;
 import java.util.Objects;
 import java.util.Collections;
 
@@ -545,7 +545,7 @@ public class UserController {
         }
         String cat = b.getSeries() != null && b.getSeries().getCategory() != null ? b.getSeries().getCategory().getName() : null;
         String type = b.getType();
-        return normalizeCategory(cat, type).equalsIgnoreCase(categoryFilter.trim());
+        String normalized = normalizeCategory(cat, type); for (String part : categoryFilter.split(",")) { String c = part.trim(); if (c.equalsIgnoreCase("all") || c.equalsIgnoreCase(normalized)) return true; } return false;
     }
 
     private boolean matchesSearch(BookEntity b, String searchQuery) {

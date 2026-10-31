@@ -4,7 +4,6 @@ import useSession from "../../hooks/UseSession.tsx";
 import { useSnackbar } from "notistack";
 import SeriesDTO, { getSeriesStatusLabel } from "../../dto/Series.dto.ts";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
-import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import Pagination from "../../components/Pagination/Pagination.tsx";
 import { Dialog } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -21,6 +20,7 @@ import {
 	faCheck
 } from "@fortawesome/free-solid-svg-icons";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
+import CategoryMultiSelect, { CategoryOption as MultiSelectOption, DEFAULT_APP_CATEGORIES } from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
 import "./SeriesPage.scss";
 
 interface CategoryOption {
@@ -49,14 +49,25 @@ export default function SeriesPage() {
     const session = useSession();
     const { enqueueSnackbar } = useSnackbar();
 
-    const [scope, setScope] = useState<"my" | "all">("my");
     const [mySeries, setMySeries] = useState<SeriesDTO[]>([]);
-    const [allSeries, setAllSeries] = useState<SeriesDTO[]>([]);
     const [categories, setCategories] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
     const [loading, setLoading] = useState(true);
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState<string>("all");
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+    const seriesCategoryOptions: MultiSelectOption[] = useMemo(() => {
+        return categories.map((cat) => {
+            const found = DEFAULT_APP_CATEGORIES.find(
+                (d) => d.id.toLowerCase() === cat.name.toLowerCase()
+            );
+            return {
+                id: cat.name,
+                label: cat.name,
+                icon: found?.icon
+            };
+        });
+    }, [categories]);
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -164,29 +175,9 @@ export default function SeriesPage() {
         }
     };
 
-    // Fetch all series
-    const fetchAllSeries = async () => {
-        setLoading(true);
-        try {
-            const res = await session.customFetch("/series", { method: "GET" });
-            if (res.ok) {
-                const data: SeriesDTO[] = await res.json();
-                setAllSeries(data);
-            }
-        } catch (err) {
-            console.error("Error fetching all series:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        if (scope === "my") {
-            fetchUserSeries();
-        } else {
-            fetchAllSeries();
-        }
-    }, [scope, session]);
+        fetchUserSeries();
+    }, [session]);
 
     // Debounced book search in Add Book Dialog
     useDebounce(bookSearchQuery, 300, (value) => {
@@ -222,7 +213,6 @@ export default function SeriesPage() {
             list.map((s) => (s.id === seriesId ? { ...s, isFollowed: !s.isFollowed } : s));
 
         setMySeries(updateFollowState);
-        setAllSeries(updateFollowState);
         if (activeSeries && activeSeries.id === seriesId) {
             setActiveSeries({ ...activeSeries, isFollowed: !activeSeries.isFollowed });
         }
@@ -237,7 +227,6 @@ export default function SeriesPage() {
                 const syncState = (list: SeriesDTO[]) =>
                     list.map((s) => (s.id === seriesId ? { ...s, isFollowed: followed } : s));
                 setMySeries(syncState);
-                setAllSeries(syncState);
                 if (activeSeries && activeSeries.id === seriesId) {
                     setActiveSeries((prev) => (prev ? { ...prev, isFollowed: followed } : null));
                 }
@@ -349,7 +338,6 @@ export default function SeriesPage() {
                 enqueueSnackbar("Série supprimée avec succès", { variant: "success" });
                 setActiveSeries(null);
                 fetchUserSeries();
-                if (scope === "all") fetchAllSeries();
             } else {
                 enqueueSnackbar("Erreur lors de la suppression de la série", { variant: "error" });
             }
@@ -460,13 +448,9 @@ export default function SeriesPage() {
 
     // Filter displayed series
     const displayedSeries = useMemo(() => {
-        let list = scope === "my" ? mySeries : allSeries;
-        if (scope === "my") {
-            list = list.filter((s) => (s.ownedCount || 0) > 0);
-        }
-        return list.filter((s) => {
-            if (selectedCategory !== "all") {
-                if (!s.category || s.category.toLowerCase() !== selectedCategory.toLowerCase()) {
+        return mySeries.filter((s) => {
+            if (selectedCategories.length > 0) {
+                if (!s.category || !selectedCategories.some((cat) => cat.toLowerCase() === s.category!.toLowerCase())) {
                     return false;
                 }
             }
@@ -478,12 +462,12 @@ export default function SeriesPage() {
             }
             return true;
         });
-    }, [scope, mySeries, allSeries, selectedCategory, searchQuery]);
+    }, [mySeries, selectedCategories, searchQuery]);
 
     // Reset page to 1 whenever filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [scope, selectedCategory, searchQuery]);
+    }, [selectedCategories, searchQuery]);
 
     // Pagination calculations
     const totalFiltered = displayedSeries.length;
@@ -508,90 +492,49 @@ export default function SeriesPage() {
 
     return (
         <div className="series-page">
-			<WrapperHeader>
-				<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
-					<div>
-						<h2 style={{ margin: 0 }}>
-							Mes Séries
-						</h2>
-					</div>
-					<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-						<button
-							type="button"
-							className="series-page__create-btn"
-							onClick={() => setCreateDialogOpen(true)}
-						>
-							<FontAwesomeIcon icon={faPlus} />
-							<span>Créer une série</span>
-						</button>
-					</div>
-				</div>
-			</WrapperHeader>
-
             <div className="series-page__content">
                 {/* Controls: Scope tabs, Search, Categories */}
                 <div className="series-page__controls">
-                    <div className="series-page__controls-top">
-                        <div className="series-page__scope-tabs">
-                            <button
-                                type="button"
-                                className={`series-page__scope-btn ${scope === "my" ? "is-active" : ""}`}
-                                onClick={() => setScope("my")}
-                            >
-                                <FontAwesomeIcon icon={faBook} />
-                                <span>Mes Séries ({mySeries.length})</span>
-                            </button>
-                            <button
-                                type="button"
-                                className={`series-page__scope-btn ${scope === "all" ? "is-active" : ""}`}
-                                onClick={() => setScope("all")}
-                            >
-                                <FontAwesomeIcon icon={faLayerGroup} />
-                                <span>Toutes les séries</span>
-                            </button>
-                        </div>
+                    {/* Left: Category Dropdown */}
+                    <div className="series-page__left-controls">
+                        <CategoryMultiSelect
+                            options={seriesCategoryOptions}
+                            selected={selectedCategories}
+                            onChange={(cats) => {
+                                setSelectedCategories(cats);
+                                setCurrentPage(1);
+                            }}
+                            allLabel="Toutes les catégories"
+                        />
+                    </div>
 
-                        <div className="series-page__search-wrapper">
-                            <FontAwesomeIcon icon={faMagnifyingGlass} className="series-page__search-icon" />
+                    {/* Right: Search input */}
+                    <div className="series-page__right-controls">
+                        <div className="series-page__search">
+                            <FontAwesomeIcon icon={faMagnifyingGlass} />
                             <input
                                 type="text"
-                                className="series-page__search-input"
                                 placeholder="Rechercher une série..."
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
+                                    setCurrentPage(1);
+                                }}
                             />
                             {searchQuery && (
                                 <button
                                     type="button"
                                     className="series-page__search-clear"
-                                    onClick={() => setSearchQuery("")}
+                                    onClick={() => {
+                                        setSearchQuery("");
+                                        setCurrentPage(1);
+                                    }}
                                     aria-label="Effacer la recherche"
                                 >
                                     <FontAwesomeIcon icon={faXmark} />
                                 </button>
                             )}
                         </div>
-                    </div>
-
-                    {/* Category filter pills */}
-                    <div className="series-page__categories">
-                        <button
-                            type="button"
-                            className={`series-page__category-pill ${selectedCategory === "all" ? "is-active" : ""}`}
-                            onClick={() => setSelectedCategory("all")}
-                        >
-                            Toutes
-                        </button>
-                        {categories.map((cat) => (
-                            <button
-                                key={cat.id}
-                                type="button"
-                                className={`series-page__category-pill ${selectedCategory === cat.name ? "is-active" : ""}`}
-                                onClick={() => setSelectedCategory(cat.name)}
-                            >
-                                {cat.name}
-                            </button>
-                        ))}
                     </div>
                 </div>
 
@@ -710,9 +653,9 @@ export default function SeriesPage() {
                 {!loading && displayedSeries.length === 0 && (
                     <div className="series-page__empty">
                         <FontAwesomeIcon icon={faLayerGroup} className="series-page__empty-icon" />
-                        <h3>{scope === "my" ? "Aucune série dans vos albums" : "Aucune série trouvée"}</h3>
+                        <h3>{mySeries.length === 0 ? "Aucune série dans vos albums" : "Aucune série trouvée"}</h3>
                         <p>
-                            {scope === "my"
+                            {mySeries.length === 0
                                 ? "Vous ne possédez actuellement aucun album associé à une série dans vos albums. Vous pouvez créer une série et y associer vos albums !"
                                 : "Aucune série ne correspond à votre filtre de recherche. Créez-la en un clic !"}
                         </p>

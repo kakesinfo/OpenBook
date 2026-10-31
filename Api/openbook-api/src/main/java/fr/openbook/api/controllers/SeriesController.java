@@ -59,7 +59,7 @@ public class SeriesController {
 
         if (category != null && !category.trim().isEmpty() && !"all".equalsIgnoreCase(category.trim())) {
             seriesList = seriesList.stream()
-                    .filter(s -> s.getCategory() != null && s.getCategory().getName().equalsIgnoreCase(category.trim()))
+                    .filter(s -> s.getCategory() != null && Arrays.stream(category.split(",")).map(String::trim).anyMatch(c -> c.equalsIgnoreCase("all") || c.equalsIgnoreCase(s.getCategory().getName())))
                     .toList();
         }
 
