@@ -30,7 +30,7 @@
 		<spring-security.version>6.4.2</spring-security.version>
 		<jjwt.version>0.11.5</jjwt.version>
 		<sqlite-jdbc.version>3.45.3.0</sqlite-jdbc.version>
-		<webp-imageio.version>0.1.6</webp-imageio.version>
+		<webp-imageio.version>0.11.0</webp-imageio.version>
 		<twelvemonkeys.version>3.11.0</twelvemonkeys.version>
 		<thumbnailator.version>0.4.20</thumbnailator.version>
 		<jsoup.version>1.18.1</jsoup.version>
@@ -64,7 +64,7 @@
 				<version>${jsoup.version}</version>
 			</dependency>
 			<dependency>
-				<groupId>org.sejda.imageio</groupId>
+				<groupId>com.github.usefulness</groupId>
 				<artifactId>webp-imageio</artifactId>
 				<version>${webp-imageio.version}</version>
 			</dependency>
