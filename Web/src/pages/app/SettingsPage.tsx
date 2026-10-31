@@ -4,7 +4,6 @@ import { useNavigate } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faUser,
-    faEnvelope,
     faLock,
     faShieldHalved,
     faCheck,
@@ -57,14 +56,8 @@ export default function SettingsPage() {
     const [avatarUploading, setAvatarUploading] = useState(false);
 
     // Modal states for Danger Zone
-    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-    // Email modal fields
-    const [newEmail, setNewEmail] = useState("");
-    const [emailCurrentPassword, setEmailCurrentPassword] = useState("");
-    const [emailSaving, setEmailSaving] = useState(false);
 
     // Password modal fields
     const [currentPassword, setCurrentPassword] = useState("");
@@ -321,62 +314,6 @@ export default function SettingsPage() {
         }
     };
 
-    // Submit Email Change (Destructive action)
-    const handleConfirmEmailChange = async (e: FormEvent) => {
-        e.preventDefault();
-        const trimmed = newEmail.trim();
-
-        if (!trimmed) {
-            enqueueSnackbar("Veuillez saisir une nouvelle adresse email.", { variant: "error" });
-            return;
-        }
-
-        if (!emailCurrentPassword) {
-            enqueueSnackbar("Votre mot de passe actuel est obligatoire pour confirmer.", { variant: "error" });
-            return;
-        }
-
-        setEmailSaving(true);
-        try {
-            const response = await session.customFetch("/user/email", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email: trimmed,
-                    currentPassword: emailCurrentPassword
-                })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.token) {
-                    session.updateToken(data.token);
-                } else {
-                    session.updateUser({ email: trimmed });
-                }
-                enqueueSnackbar("Adresse email mise à jour avec succès !", { variant: "success" });
-                setIsEmailModalOpen(false);
-                setEmailCurrentPassword("");
-                setNewEmail("");
-            } else {
-                const errorText = await response.text().catch(() => "");
-                let msg = "Erreur lors de la modification de l'adresse email.";
-                try {
-                    const parsed = JSON.parse(errorText);
-                    msg = parsed.message || parsed.error || errorText;
-                } catch {
-                    if (errorText) msg = errorText;
-                }
-                enqueueSnackbar(msg, { variant: "error" });
-            }
-        } catch (err) {
-            console.error(err);
-            enqueueSnackbar("Erreur lors de la modification de l'email.", { variant: "error" });
-        } finally {
-            setEmailSaving(false);
-        }
-    };
-
     // Submit Password Change (Destructive action)
     const handleConfirmPasswordChange = async (e: FormEvent) => {
         e.preventDefault();
@@ -499,8 +436,8 @@ export default function SettingsPage() {
                         <span className="settings-hero__name">
                             {session.user?.username || username || "Lecteur"}
                         </span>
-                        <span className="settings-hero__email">
-                            {session.user?.email || ""}
+                        <span className="settings-hero__role">
+                            {session.isAdmin ? "Compte Administrateur" : "Lecteur"}
                         </span>
                         <span className="settings-hero__badge">
                             <FontAwesomeIcon icon={faShieldHalved} /> Compte actif
@@ -516,9 +453,9 @@ export default function SettingsPage() {
                                 <FontAwesomeIcon icon={faUser} />
                             </div>
                             <div>
-                                <h3>Profil & Avatar</h3>
+                                <h3>{session.isAdmin ? "Profil" : "Profil & Avatar"}</h3>
                                 <p className="settings-card__header-desc">
-                                    Gérez votre image de profil et votre pseudonyme
+                                    {session.isAdmin ? "Gérez votre pseudonyme" : "Gérez votre image de profil et votre pseudonyme"}
                                 </p>
                             </div>
                         </div>
@@ -526,6 +463,7 @@ export default function SettingsPage() {
 
                     <div className="settings-card__body">
                         {/* Compact Avatar Upload Section */}
+                        {!session.isAdmin && (
                         <div className="avatar-compact">
                             <UserAvatar avatar={avatar} name={username} size="lg" />
 
@@ -570,6 +508,7 @@ export default function SettingsPage() {
                                 </div>
                             </div>
                         </div>
+                        )}
 
                         {/* Pseudo Form */}
                         <form onSubmit={handleUpdateUsername} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -619,6 +558,7 @@ export default function SettingsPage() {
                 </section>
 
                 {/* Section 2: Import Bookmory */}
+                {!session.isAdmin && (
                 <section className="settings-card settings-import-card">
                     <header className="settings-card__header">
                         <div className="settings-card__header-title">
@@ -762,6 +702,7 @@ export default function SettingsPage() {
                         )}
                     </div>
                 </section>
+                )}
 
                 {/* Section 3: Zone Danger */}
                 <section className="settings-danger-card">
@@ -784,28 +725,6 @@ export default function SettingsPage() {
                     </header>
 
                     <div className="settings-danger-card__list">
-                        {/* Ligne 1: Adresse Email */}
-                        <div className="settings-danger-card__item">
-                            <div className="settings-danger-card__item-info">
-                                <span className="settings-danger-card__item-title">Adresse email</span>
-                                <span className="settings-danger-card__item-desc">
-                                    Adresse actuelle : <strong>{session.user?.email || "Non définie"}</strong>
-                                </span>
-                            </div>
-                            <button
-                                type="button"
-                                className="settings-danger-card__btn"
-                                onClick={() => {
-                                    setNewEmail("");
-                                    setEmailCurrentPassword("");
-                                    setIsEmailModalOpen(true);
-                                }}
-                            >
-                                <FontAwesomeIcon icon={faEnvelope} />
-                                <span>Changer d'email</span>
-                            </button>
-                        </div>
-
                         {/* Ligne 2: Mot de passe */}
                         <div className="settings-danger-card__item">
                             <div className="settings-danger-card__item-info">
@@ -855,83 +774,6 @@ export default function SettingsPage() {
                     </div>
                 </section>
             </div>
-
-            {/* Popup / Modal 1: Changer d'email */}
-            {isEmailModalOpen && (
-                <div className="settings-modal-backdrop" onClick={() => setIsEmailModalOpen(false)}>
-                    <div className="settings-modal" onClick={(e) => e.stopPropagation()}>\
-                        <header className="settings-modal__header">
-                            <div className="settings-modal__title">
-                                <FontAwesomeIcon icon={faEnvelope} />
-                                <span>Changer d'adresse email</span>
-                            </div>
-                            <button
-                                type="button"
-                                className="settings-modal__close"
-                                onClick={() => setIsEmailModalOpen(false)}
-                                aria-label="Fermer"
-                            >
-                                <FontAwesomeIcon icon={faXmark} />
-                            </button>
-                        </header>
-
-                        <form onSubmit={handleConfirmEmailChange}>
-                            <div className="settings-modal__body">
-                                <div className="settings-modal__warning">
-                                    <FontAwesomeIcon icon={faTriangleExclamation} />
-                                    <span>
-                                        Cette action modifiera l'adresse avec laquelle vous vous connectez. Vous devez obligatoirement confirmer avec votre mot de passe actuel.
-                                    </span>
-                                </div>
-
-                                <div className="form-group">
-                                    <label htmlFor="modal-new-email">Nouvelle adresse email</label>
-                                    <input
-                                        id="modal-new-email"
-                                        type="email"
-                                        placeholder="nouvelle-adresse@exemple.com"
-                                        value={newEmail}
-                                        onChange={(e) => setNewEmail(e.target.value)}
-                                        required
-                                        autoFocus
-                                    />
-                                </div>
-
-                                <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label htmlFor="modal-email-pwd">Mot de passe actuel</label>
-                                    <input
-                                        id="modal-email-pwd"
-                                        type="password"
-                                        placeholder="Votre mot de passe actuel pour confirmer"
-                                        value={emailCurrentPassword}
-                                        onChange={(e) => setEmailCurrentPassword(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <footer className="settings-modal__footer">
-                                <button
-                                    type="button"
-                                    className="settings-btn settings-btn--ghost"
-                                    onClick={() => setIsEmailModalOpen(false)}
-                                    disabled={emailSaving}
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="settings-btn settings-btn--danger"
-                                    disabled={emailSaving}
-                                >
-                                    <FontAwesomeIcon icon={emailSaving ? faCircleNotch : faCheck} spin={emailSaving} />
-                                    <span>{emailSaving ? "Modification..." : "Confirmer le changement d'email"}</span>
-                                </button>
-                            </footer>
-                        </form>
-                    </div>
-                </div>
-            )}
 
             {/* Popup / Modal 2: Changer de mot de passe */}
             {isPasswordModalOpen && (

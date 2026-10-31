@@ -1511,4 +1511,20 @@
             <column name="deleted" />
         </createIndex>
     </changeSet>
+    <changeSet id="30" author="Axel">
+        <addColumn tableName="user">
+            <column name="role" type="varchar(50)" defaultValue="ROLE_USER">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+        <createIndex tableName="user" indexName="idx_user_role">
+            <column name="role" />
+        </createIndex>
+    </changeSet>
+    <changeSet id="31" author="Axel">
+        <dropNotNullConstraint tableName="user" columnName="email" columnDataType="varchar(255)"/>
+    </changeSet>
+    <changeSet id="32" author="Axel">
+        <dropColumn tableName="user" columnName="email"/>
+    </changeSet>
 </databaseChangeLog>

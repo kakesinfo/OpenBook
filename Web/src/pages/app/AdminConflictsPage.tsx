@@ -46,7 +46,6 @@ interface ActionResult {
 
 export default function AdminConflictsPage() {
     const session = useSession();
-    const [serverConnected, setServerConnected] = useState<boolean | null>(null);
     const [conflicts, setConflicts] = useState<SeriesConflict[]>([]);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<ActionResult | null>(null);
@@ -77,7 +76,6 @@ export default function AdminConflictsPage() {
                 const data = await resp.json();
                 const list: SeriesConflict[] = data.conflicts || [];
                 setConflicts(list);
-                setServerConnected(true);
 
                 const defaultExpanded: Record<number, boolean> = {};
                 const defaultModes: Record<number, "variant" | "split"> = {};
@@ -103,10 +101,8 @@ export default function AdminConflictsPage() {
                 setActionModes(defaultModes);
                 setCanonicalBooks(defaultCanonicals);
             } else {
-                setServerConnected(false);
             }
         } catch {
-            setServerConnected(false);
         } finally {
             setLoading(false);
         }
@@ -273,27 +269,7 @@ export default function AdminConflictsPage() {
     return (
         <div className="admin-conflicts">
             <WrapperHeader>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
-                    <div className="admin-conflicts__header-title">
-                        <h2>Gestion des Conflits & Variantes</h2>
-                    </div>
-
-                    <div style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        padding: "6px 14px",
-                        borderRadius: "20px",
-                        fontSize: "0.85rem",
-                        fontWeight: 600,
-                        background: serverConnected ? "var(--accent-primary-light)" : "rgba(239, 68, 68, 0.12)",
-                        color: serverConnected ? "var(--accent-primary)" : "#ef4444",
-                        border: `1px solid ${serverConnected ? "var(--border-focus)" : "rgba(239, 68, 68, 0.3)"}`
-                    }}>
-                        <FontAwesomeIcon icon={serverConnected ? faCircleCheck : faTriangleExclamation} />
-                        <span>{serverConnected ? "Microservice Connecté" : "Microservice Injoignable"}</span>
-                    </div>
-                </div>
+                <h2>Gestion des Conflits & Variantes</h2>
             </WrapperHeader>
 
             <div className="admin-conflicts__content">

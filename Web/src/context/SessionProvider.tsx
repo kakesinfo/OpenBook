@@ -27,6 +27,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return parseToken(localStorage.getItem("token")).user;
     });
 
+    const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
+
     const isLoggingOutRef = useRef(false);
 
     const updateToken = useCallback((newToken: string | null) => {
@@ -48,6 +50,42 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         updateToken(null);
     }, [updateToken]);
 
+    const checkSetupStatus = useCallback(async (): Promise<boolean> => {
+        try {
+            const res = await fetch(`${API_URL}/setup/status`);
+            if (res.ok) {
+                const data = await res.json();
+                const req = Boolean(data.setupRequired);
+                setSetupRequired(req);
+                return req;
+            }
+        } catch (err) {
+            console.error("Failed to check setup status:", err);
+        }
+        return false;
+    }, []);
+
+    useEffect(() => {
+        checkSetupStatus();
+    }, [checkSetupStatus]);
+
+    // Role recovery if token exists but claims lack role
+    useEffect(() => {
+        if (token && (!user?.role)) {
+            fetch(`${API_URL}/user/profile`, {
+                headers: { "Authorization": `Bearer ${token}` },
+                credentials: "include"
+            }).then(async res => {
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.role) {
+                        setUser(prev => prev ? { ...prev, role: data.role } : null);
+                    }
+                }
+            }).catch(() => {});
+        }
+    }, [token, user?.role]);
+
     useEffect(() => {
         const handleStorageChange = (e: StorageEvent) => {
             if (e.key === "token" || e.key === null) {
@@ -62,7 +100,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return () => window.removeEventListener("storage", handleStorageChange);
     }, []);
 
-    const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
         try {
             const response = await fetch(`${API_URL}/auth/login`, {
                 method: "POST",
@@ -70,7 +108,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                     "Content-Type": "application/json"
                 },
                 credentials: "include",
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ username, password }),
             });
 
             if (response.ok) {
@@ -102,7 +140,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
     }, [updateToken]);
 
-    const register = useCallback(async (username: string, email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    const register = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
         try {
             const response = await fetch(`${API_URL}/auth/register`, {
                 method: "POST",
@@ -110,7 +148,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
                     "Content-Type": "application/json"
                 },
                 credentials: "include",
-                body: JSON.stringify({ email, password, username }),
+                body: JSON.stringify({ username, password }),
             });
 
             if (response.ok) {
@@ -199,17 +237,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
     }, [token, clearLocalSession]);
 
+    const isAdmin = user?.role === 'ROLE_ADMIN';
+
     const sessionValue = useMemo(() => ({
         token,
         user,
         isAuthenticated: !!token,
+        isAdmin,
+        setupRequired,
+        checkSetupStatus,
         login,
         register,
         logout,
         customFetch,
         updateToken,
         updateUser
-    }), [token, user, login, register, logout, customFetch, updateToken, updateUser]);
+    }), [token, user, isAdmin, setupRequired, checkSetupStatus, login, register, logout, customFetch, updateToken, updateUser]);
 
     return (
         <SessionContext.Provider value={sessionValue}>

@@ -1,19 +1,22 @@
 import { createContext, useContext } from "react";
 
 export interface SessionUser {
-    email?: string;
     username?: string;
     avatar?: string;
     sub?: string;
     exp?: number;
+    role?: string;
 }
 
 export interface SessionContextType {
     token: string | null;
     user: SessionUser | null;
     isAuthenticated: boolean;
-    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-    register: (username: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    isAdmin: boolean;
+    setupRequired: boolean | null;
+    checkSetupStatus: () => Promise<boolean>;
+    login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<boolean>;
     customFetch: (url: string, options?: RequestInit) => Promise<Response>;
     updateToken: (newToken: string | null) => void;

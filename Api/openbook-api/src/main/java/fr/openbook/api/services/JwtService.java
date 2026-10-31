@@ -1,5 +1,6 @@
 package fr.openbook.api.services;
 
+import fr.openbook.api.entities.UserEntity;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -49,10 +50,19 @@ public class JwtService {
             UserDetails userDetails,
             long expiration
     ) {
+        Map<String, Object> claims = new HashMap<>(extraClaims != null ? extraClaims : Map.of());
+        if (!claims.containsKey("role") && userDetails != null) {
+            if (userDetails instanceof UserEntity userEntity && userEntity.getRole() != null) {
+                claims.put("role", userEntity.getRole());
+            } else if (userDetails.getAuthorities() != null && !userDetails.getAuthorities().isEmpty()) {
+                claims.put("role", userDetails.getAuthorities().iterator().next().getAuthority());
+            }
+        }
+
         return Jwts
                 .builder()
-                .setClaims(extraClaims)
-                .setSubject(userDetails.getUsername())
+                .setClaims(claims)
+                .setSubject(userDetails != null ? userDetails.getUsername() : "")
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)

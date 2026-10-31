@@ -12,6 +12,7 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
@@ -31,15 +32,14 @@ public class UserEntity implements UserDetails {
 
     @Column(name = "username", nullable = false, unique = true)
     private String username;
-
-    @Column(name = "email", nullable = false, unique = true)
-    private String email;
-
     @Column(name = "password", nullable = false)
     private String password;
 
     @Column(name = "avatar")
     private String avatar;
+
+    @Column(name = "role", nullable = false)
+    private String role = "ROLE_USER";
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -62,7 +62,7 @@ public class UserEntity implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of();
+        return List.of(new SimpleGrantedAuthority(this.role != null ? this.role : "ROLE_USER"));
     }
 
     @Override
@@ -76,7 +76,7 @@ public class UserEntity implements UserDetails {
 
     @Override
     public String getUsername() {
-        return email;
+        return username;
     }
 
     @Override

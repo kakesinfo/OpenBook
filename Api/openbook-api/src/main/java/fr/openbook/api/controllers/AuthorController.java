@@ -59,8 +59,7 @@ public class AuthorController {
         }
         String username = authentication.getName();
         return repositoryService.getUserRepository()
-                .findByUsername(username)
-                .or(() -> repositoryService.getUserRepository().findByEmail(username));
+                .findByUsername(username);
     }
 
     @GetMapping

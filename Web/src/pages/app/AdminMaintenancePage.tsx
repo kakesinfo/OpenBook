@@ -8,7 +8,6 @@ import {
     faCheckDouble,
     faCheck,
     faRotate,
-    faCircleCheck,
     faTriangleExclamation,
     faPlay,
     faImage,
@@ -95,7 +94,6 @@ interface MaintenanceResult {
 
 export default function AdminMaintenancePage() {
     const session = useSession();
-    const [serverConnected] = useState<boolean | null>(null);
     const [selectedTasks, setSelectedTasks] = useState<TaskId[]>([]);
     const [runningTasks, setRunningTasks] = useState<TaskId[]>([]);
     const [result, setResult] = useState<MaintenanceResult | null>(null);
@@ -281,27 +279,7 @@ export default function AdminMaintenancePage() {
     return (
         <div className="admin-maintenance">
             <WrapperHeader>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
-                    <div className="admin-maintenance__header-title">
-                        <h2>Maintenance</h2>
-                    </div>
-
-                    <div style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        padding: "6px 14px",
-                        borderRadius: "20px",
-                        fontSize: "0.85rem",
-                        fontWeight: 600,
-                        background: serverConnected ? "var(--accent-primary-light)" : "rgba(239, 68, 68, 0.12)",
-                        color: serverConnected ? "var(--accent-primary)" : "#ef4444",
-                        border: `1px solid ${serverConnected ? "var(--border-focus)" : "rgba(239, 68, 68, 0.3)"}`
-                    }}>
-                        <FontAwesomeIcon icon={serverConnected ? faCircleCheck : faTriangleExclamation} />
-                        <span>{serverConnected ? "Microservice Connecté" : "Microservice Injoignable"}</span>
-                    </div>
-                </div>
+                <h2>Maintenance</h2>
             </WrapperHeader>
 
             <div className="admin-maintenance__content">

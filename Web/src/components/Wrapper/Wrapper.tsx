@@ -9,7 +9,11 @@ import {
     faHeart,
     faCalendarDays,
     faGear,
-    faChartPie
+    faChartPie,
+    faRotate,
+    faWrench,
+    faCodeBranch,
+    faTrashCanArrowUp
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useLocation } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -90,8 +94,9 @@ export function WrapperSubButton({ children, to, icon }: {
     );
 }
 
-export function WrapperNavigation({ title = "Yet Another Library", children, onSearchClick }: {
+export function WrapperNavigation({ title = "Yet Another Library", badge, children, onSearchClick }: {
     title?: string;
+    badge?: React.ReactNode;
     children: React.ReactNode;
     onSearchClick?: () => void;
 }) {
@@ -99,6 +104,7 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
     const location = useLocation();
     const isSettingsActive = location.pathname.startsWith('/app/settings');
 
+    const adminBadge = badge !== undefined ? badge : (session.isAdmin ? "Administration" : null);
 
     return (
         <>
@@ -108,7 +114,12 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
                     <div className="wrapper-navigation__logo">
                         <FontAwesomeIcon icon={faBookOpen} />
                     </div>
-                    <span className="wrapper-navigation__brand">{title}</span>
+                    <div className="wrapper-navigation__brand-group">
+                        <span className="wrapper-navigation__brand">{title}</span>
+                        {adminBadge && (
+                            <span className="wrapper-navigation__admin-badge">{adminBadge}</span>
+                        )}
+                    </div>
                 </header>
 
                 <nav className="wrapper-navigation__body">
@@ -123,15 +134,15 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
                     >
                         <UserAvatar
                             avatar={session.user?.avatar}
-                            name={session.user?.username || session.user?.email}
+                            name={session.user?.username || "Lecteur"}
                             size="md"
                         />
                         <div className="wrapper-navigation__user-info">
                             <span className="wrapper-navigation__user-name">
                                 {session.user?.username || "Lecteur"}
                             </span>
-                            <span className="wrapper-navigation__user-email">
-                                {session.user?.email || ""}
+                            <span className="wrapper-navigation__user-role">
+                                {session.isAdmin ? "Administrateur" : "Lecteur"}
                             </span>
                         </div>
                         <span className="wrapper-navigation__user-gear">
@@ -148,7 +159,12 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
                     <div className="wrapper-navigation__logo">
                         <FontAwesomeIcon icon={faBookOpen} />
                     </div>
-                    <span>{title}</span>
+                    <div className="wrapper-mobile-header__brand-group">
+                        <span className="wrapper-mobile-header__title">{title}</span>
+                        {adminBadge && (
+                            <span className="wrapper-navigation__admin-badge">{adminBadge}</span>
+                        )}
+                    </div>
                 </div>
                 <div className="wrapper-mobile-header__actions">
                     {onSearchClick && (
@@ -168,7 +184,7 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
                     >
                         <UserAvatar
                             avatar={session.user?.avatar}
-                            name={session.user?.username || session.user?.email}
+                            name={session.user?.username || "Lecteur"}
                             size="sm"
                         />
                     </Link>
@@ -178,41 +194,76 @@ export function WrapperNavigation({ title = "Yet Another Library", children, onS
 
             {/* Mobile Bottom Navigation */}
             <nav className="wrapper-bottom-nav">
-                <Link
-                    to="/app/home"
-                    className={`wrapper-bottom-nav__item ${location.pathname.includes('/home') ? 'active' : ''}`}
-                >
-                    <FontAwesomeIcon icon={faNewspaper} />
-                    <span>Nouveautés</span>
-                </Link>
-                <Link
-                    to="/app/collection"
-                    className={`wrapper-bottom-nav__item ${location.pathname.includes('/collection') || location.pathname.includes('/bibliotheque') ? 'active' : ''}`}
-                >
-                    <FontAwesomeIcon icon={faBook} />
-                    <span>Bibliothèque</span>
-                </Link>
-                <Link
-                    to="/app/wishlist"
-                    className={`wrapper-bottom-nav__item ${location.pathname.includes('/wishlist') ? 'active' : ''}`}
-                >
-                    <FontAwesomeIcon icon={faHeart} />
-                    <span>Souhaits</span>
-                </Link>
-                <Link
-                    to="/app/planning"
-                    className={`wrapper-bottom-nav__item ${location.pathname.includes('/planning') ? 'active' : ''}`}
-                >
-                    <FontAwesomeIcon icon={faCalendarDays} />
-                    <span>Planning</span>
-                </Link>
-                <Link
-                    to="/app/statistics"
-                    className={`wrapper-bottom-nav__item ${location.pathname.includes('/statistics') ? 'active' : ''}`}
-                >
-                    <FontAwesomeIcon icon={faChartPie} />
-                    <span>Stats</span>
-                </Link>
+                {!session.isAdmin ? (
+                    <>
+                        <Link
+                            to="/app/home"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/home') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faNewspaper} />
+                            <span>Nouveautés</span>
+                        </Link>
+                        <Link
+                            to="/app/collection"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/collection') || location.pathname.includes('/bibliotheque') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faBook} />
+                            <span>Bibliothèque</span>
+                        </Link>
+                        <Link
+                            to="/app/wishlist"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/wishlist') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faHeart} />
+                            <span>Souhaits</span>
+                        </Link>
+                        <Link
+                            to="/app/planning"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/planning') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faCalendarDays} />
+                            <span>Planning</span>
+                        </Link>
+                        <Link
+                            to="/app/statistics"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/statistics') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faChartPie} />
+                            <span>Stats</span>
+                        </Link>
+                    </>
+                ) : (
+                    <>
+                        <Link
+                            to="/app/admin/indexation"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/indexation') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faRotate} />
+                            <span>Indexation</span>
+                        </Link>
+                        <Link
+                            to="/app/admin/maintenance"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/maintenance') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faWrench} />
+                            <span>Maintenance</span>
+                        </Link>
+                        <Link
+                            to="/app/admin/conflicts"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/conflicts') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faCodeBranch} />
+                            <span>Conflits</span>
+                        </Link>
+                        <Link
+                            to="/app/admin/deleted-books"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/deleted-books') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faTrashCanArrowUp} />
+                            <span>Supprimés</span>
+                        </Link>
+                    </>
+                )}
             </nav>
         </>
     );

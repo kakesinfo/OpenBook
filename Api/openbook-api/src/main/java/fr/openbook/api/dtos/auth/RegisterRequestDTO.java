@@ -10,6 +10,5 @@ import java.io.Serializable;
 public class RegisterRequestDTO implements Serializable
 {
     private String username;
-    private String email;
     private String password;
 }

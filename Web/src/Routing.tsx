@@ -7,6 +7,7 @@ import {Routes, Route, Navigate, useLocation} from "react-router";
 
 import Login from "./pages/Login.tsx";
 import Register from "./pages/Register.tsx";
+import SetupPage from "./pages/SetupPage.tsx";
 import useSession from "./hooks/UseSession.tsx";
 import App from "./pages/App.tsx";
 import BookPage from "./pages/app/BookPage.tsx";
@@ -22,10 +23,15 @@ import SettingsPage from "./pages/app/SettingsPage.tsx";
 import AdminIndexationPage from "./pages/app/AdminIndexationPage.tsx";
 import AdminMaintenancePage from "./pages/app/AdminMaintenancePage.tsx";
 import AdminConflictsPage from "./pages/app/AdminConflictsPage.tsx";
+import AdminDeletedBooksPage from "./pages/app/AdminDeletedBooksPage.tsx";
 import StatisticsPage from "./pages/app/StatisticsPage.tsx";
 
 function ProtectedRoute({ redirectPath = "/login", children }: { redirectPath?: string, children: React.ReactNode }) {
     const session = useSession();
+
+    if (session.setupRequired === true) {
+        return <Navigate replace to="/setup" />;
+    }
 
     if (!session.token) {
         return <Navigate replace to={redirectPath} />;
@@ -37,8 +43,32 @@ function ProtectedRoute({ redirectPath = "/login", children }: { redirectPath?: 
 function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
     const session = useSession();
 
+    if (session.setupRequired === true) {
+        return <Navigate replace to="/setup" />;
+    }
+
     if (session.token) {
-        return <Navigate replace to="/app" />;
+        return <Navigate replace to={session.isAdmin ? "/app/admin/indexation" : "/app/home"} />;
+    }
+
+    return <>{children}</>;
+}
+
+function AdminOnlyRoute({ children }: { children: React.ReactNode }) {
+    const session = useSession();
+
+    if (!session.isAdmin) {
+        return <Navigate replace to="/app/home" />;
+    }
+
+    return <>{children}</>;
+}
+
+function UserOnlyRoute({ children }: { children: React.ReactNode }) {
+    const session = useSession();
+
+    if (session.isAdmin) {
+        return <Navigate replace to="/app/admin/indexation" />;
     }
 
     return <>{children}</>;
@@ -48,12 +78,30 @@ export default function Routing() {
     const session = useSession();
     const location = useLocation();
 
+    // If setup is required, redirect anywhere to /setup
+    if (session.setupRequired === true && location.pathname !== "/setup") {
+        return (
+            <Routes>
+                <Route path="/setup" element={<SetupPage />} />
+                <Route path="*" element={<Navigate replace to="/setup" />} />
+            </Routes>
+        );
+    }
+
     return (
         <Routes>
             <Route path="/" element={
-                session.token
-                    ? <Navigate replace to="/app" />
-                    : <Navigate replace to="/login" />
+                session.setupRequired === true
+                    ? <Navigate replace to="/setup" />
+                    : (session.token
+                        ? <Navigate replace to={session.isAdmin ? "/app/admin/indexation" : "/app/home"} />
+                        : <Navigate replace to="/login" />)
+            } />
+
+            <Route path="/setup" element={
+                session.setupRequired === false
+                    ? <Navigate replace to={session.token ? (session.isAdmin ? "/app/admin/indexation" : "/app/home") : "/login"} />
+                    : <SetupPage />
             } />
 
             <Route path="/login" element={
@@ -72,26 +120,35 @@ export default function Routing() {
                     <App />
                 </ProtectedRoute>
             }>
-                <Route index element={<Navigate replace to="home" />} />
-                <Route path="home" element={<HomePage key={location.pathname}/>} />
-                <Route path="collection" element={<CollectionPage key={location.pathname}/>} />
-                <Route path="sales" element={<SalesPage key={location.pathname}/>} />
-                <Route path="ventes" element={<SalesPage key={location.pathname}/>} />
-                <Route path="collection/series" element={<SeriesPage key={location.pathname}/>} />
-                <Route path="series" element={<SeriesPage key={location.pathname}/>} />
-                <Route path="series/:id" element={<SeriesDetailPage key={location.pathname}/>} />
-                <Route path="author/:id" element={<AuthorDetailPage key={location.pathname}/>} />
-                <Route path="authors/:id" element={<AuthorDetailPage key={location.pathname}/>} />
-                <Route path="bibliotheque" element={<CollectionPage key={location.pathname}/>} />
-                <Route path="wishlist" element={<WishlistPage key={location.pathname}/>} />
-                <Route path="planning" element={<PlanningPage key={location.pathname}/>} />
-                <Route path="statistics" element={<StatisticsPage key={location.pathname}/>} />
-                <Route path="admin" element={<Navigate replace to="/app/admin/indexation" />} />
-                <Route path="admin/indexation" element={<AdminIndexationPage key={location.pathname}/>} />
-                <Route path="admin/maintenance" element={<AdminMaintenancePage key={location.pathname}/>} />
-                <Route path="admin/conflicts" element={<AdminConflictsPage key={location.pathname}/>} />
+                <Route index element={
+                    <Navigate replace to={session.isAdmin ? "admin/indexation" : "home"} />
+                } />
+
+                {/* Routes Utilisateur (bibliothèque, lecture, etc.) - non accessibles par l'admin */}
+                <Route path="home" element={<UserOnlyRoute><HomePage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="collection" element={<UserOnlyRoute><CollectionPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="sales" element={<UserOnlyRoute><SalesPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="ventes" element={<UserOnlyRoute><SalesPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="collection/series" element={<UserOnlyRoute><SeriesPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="series" element={<UserOnlyRoute><SeriesPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="series/:id" element={<UserOnlyRoute><SeriesDetailPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="author/:id" element={<UserOnlyRoute><AuthorDetailPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="authors/:id" element={<UserOnlyRoute><AuthorDetailPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="bibliotheque" element={<UserOnlyRoute><CollectionPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="wishlist" element={<UserOnlyRoute><WishlistPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="planning" element={<UserOnlyRoute><PlanningPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="statistics" element={<UserOnlyRoute><StatisticsPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="book/:id" element={<UserOnlyRoute><BookPage key={location.pathname}/></UserOnlyRoute>} />
+
+                {/* Routes Admin (Indexation, Maintenance, Conflits, Livres supprimés) - accessibles uniquement par l'admin */}
+                <Route path="admin" element={<AdminOnlyRoute><Navigate replace to="/app/admin/indexation" /></AdminOnlyRoute>} />
+                <Route path="admin/indexation" element={<AdminOnlyRoute><AdminIndexationPage key={location.pathname}/></AdminOnlyRoute>} />
+                <Route path="admin/maintenance" element={<AdminOnlyRoute><AdminMaintenancePage key={location.pathname}/></AdminOnlyRoute>} />
+                <Route path="admin/conflicts" element={<AdminOnlyRoute><AdminConflictsPage key={location.pathname}/></AdminOnlyRoute>} />
+                <Route path="admin/deleted-books" element={<AdminOnlyRoute><AdminDeletedBooksPage key={location.pathname}/></AdminOnlyRoute>} />
+
+                {/* Routes communes */}
                 <Route path="settings" element={<SettingsPage key={location.pathname}/>} />
-                <Route path="book/:id" element={ <BookPage key={location.pathname} /> } />
             </Route>
 
             <Route path="*" element={<Navigate replace to="/" />} />

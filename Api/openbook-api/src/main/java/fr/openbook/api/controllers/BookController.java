@@ -92,7 +92,6 @@ public class BookController {
         if (auth != null && auth.isAuthenticated() && auth.getName() != null) {
             return repositoryService.getUserRepository()
                     .findByUsername(auth.getName())
-                    .or(() -> repositoryService.getUserRepository().findByEmail(auth.getName()))
                     .orElse(null);
         }
         return null;

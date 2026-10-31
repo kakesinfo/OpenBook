@@ -11,6 +11,6 @@ import java.time.Instant;
 @Setter
 public class LoginRequestDTO implements Serializable
 {
-    private String email;
+    private String username;
     private String password;
 }

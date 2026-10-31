@@ -9,7 +9,6 @@ import {
     faBolt,
     faLayerGroup,
     faServer,
-    faCircleCheck,
     faTriangleExclamation,
     faStop
 } from "@fortawesome/free-solid-svg-icons";
@@ -70,7 +69,6 @@ export default function AdminIndexationPage() {
     const [loading, setLoading] = useState(false);
     const [triggerMessage, setTriggerMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [totalBooks, setTotalBooks] = useState<number>(0);
-    const [serverConnected, setServerConnected] = useState<boolean | null>(null);
 
     // Multiple selection of sources (only active sources can be selected)
     const [selectedSources, setSelectedSources] = useState<string[]>([]);
@@ -102,7 +100,6 @@ export default function AdminIndexationPage() {
             if (resp.ok) {
                 const data: ScraperStatus = await resp.json();
                 setStatus(data);
-                setServerConnected(data.connected !== false);
 
                 if (Array.isArray(data.sources)) {
                     setSources(data.sources);
@@ -112,10 +109,8 @@ export default function AdminIndexationPage() {
                     );
                 }
             } else {
-                setServerConnected(false);
             }
         } catch {
-            setServerConnected(false);
         }
     };
 
@@ -298,29 +293,7 @@ export default function AdminIndexationPage() {
     return (
         <div className="admin-page">
             <WrapperHeader>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
-                    <div>
-                        <div>
-							<h2>Indexation des catalogues</h2>
-						</div>
-                    </div>
-
-                    <div style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        padding: "6px 14px",
-                        borderRadius: "20px",
-                        fontSize: "0.85rem",
-                        fontWeight: 600,
-                        background: serverConnected ? "var(--accent-primary-light)" : "rgba(239, 68, 68, 0.12)",
-                        color: serverConnected ? "var(--accent-primary)" : "#ef4444",
-                        border: `1px solid ${serverConnected ? "var(--border-focus)" : "rgba(239, 68, 68, 0.3)"}`
-                    }}>
-                        <FontAwesomeIcon icon={serverConnected ? faCircleCheck : faTriangleExclamation} />
-                        <span>{serverConnected ? "Microservice Scraper Connecté" : "Microservice Injoignable"}</span>
-                    </div>
-                </div>
+                <h2>Indexation des catalogues</h2>
             </WrapperHeader>
 
             <div className="admin-page__content">
