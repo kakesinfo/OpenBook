@@ -68,6 +68,12 @@ public class BookmoryImportService {
         executorService.submit(() -> {
             try {
                 runImportSync(job, tempFile);
+            } catch (Throwable t) {
+                log.error("[Importer] Unhandled error during import job {}: {}", job.getId(), t.getMessage(), t);
+                job.setStatus("failed");
+                job.getErrors().add("Erreur inattendue: " + t.getMessage());
+                job.setCurrentStep("Échec de l'import: " + t.getMessage());
+                job.setFinishedAt(Instant.now());
             } finally {
                 if (tempFile.exists()) {
                     tempFile.delete();
@@ -97,7 +103,7 @@ public class BookmoryImportService {
                 BookmoryBook b = parsed.getBooks().get(i);
                 try {
                     processSingleBook(job, b, parsed);
-                } catch (Exception ex) {
+                } catch (Throwable ex) {
                     log.error("[Importer] Error processing book '{}': {}", b.getTitle(), ex.getMessage(), ex);
                     job.getErrors().add(String.format("Erreur '%s': %s", b.getTitle(), ex.getMessage()));
                 }
@@ -111,7 +117,7 @@ public class BookmoryImportService {
             log.info("[Importer] Job {} completed: {} created, {} updated, {} purchases, {} reading sessions",
                     job.getId(), job.getCreatedBooks(), job.getUpdatedBooks(), job.getImportedPurchases(), job.getImportedReadingSessions());
 
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
             log.error("[Importer] Import failed for job {}: {}", job.getId(), ex.getMessage(), ex);
             job.setStatus("failed");
             job.getErrors().add("Erreur de lecture du fichier .bookmory: " + ex.getMessage());
