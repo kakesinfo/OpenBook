@@ -1,4 +1,4 @@
-﻿package fr.openbook.api.controllers;
+package fr.openbook.api.controllers;
 import java.util.Objects;
 import java.util.Collections;
 
