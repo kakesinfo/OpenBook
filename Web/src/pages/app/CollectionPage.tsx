@@ -20,7 +20,8 @@ import {
     faBorderAll,
     faList,
     faChevronRight,
-    faClone
+    faClone,
+    faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import CategoryMultiSelect, {
     CategoryOption,
@@ -417,31 +418,8 @@ export default function CollectionPage() {
                 {/* Controls Bar: Status Tabs, Category Filter, Search, View Mode Toggle */}
                 {(hasAnyOwned || isFiltering) && (
                     <div className="collection-page__controls">
-                        {/* Status Filters */}
-                        <div className="collection-page__filters">
-                            {STATUS_TABS.map((tab) => {
-                                const isSelected = selectedStatus === tab.id;
-                                const count = statusCounts[tab.id] ?? 0;
-
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        type="button"
-                                        onClick={() => handleStatusChange(tab.id)}
-                                        className={`collection-page__filter-btn ${isSelected ? "is-active" : ""}`}
-                                    >
-                                        {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
-                                        <span>{tab.label}</span>
-                                        <span className="collection-page__filter-count">
-                                            {count}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        {/* Search, Categories & Display Mode Switcher */}
-                        <div className="collection-page__right-controls">
+                        {/* Left: Category Filter + Status Tabs */}
+                        <div className="collection-page__left-controls">
                             <CategoryMultiSelect
                                 options={availableCategories}
                                 selected={selectedCategories}
@@ -449,6 +427,31 @@ export default function CollectionPage() {
                                 allLabel="Toutes les catégories"
                             />
 
+                            <div className="collection-page__filters">
+                                {STATUS_TABS.map((tab) => {
+                                    const isSelected = selectedStatus === tab.id;
+                                    const count = statusCounts[tab.id] ?? 0;
+
+                                    return (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            onClick={() => handleStatusChange(tab.id)}
+                                            className={`collection-page__filter-btn ${isSelected ? "is-active" : ""}`}
+                                        >
+                                            {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
+                                            <span>{tab.label}</span>
+                                            <span className="collection-page__filter-count">
+                                                {count}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Center: Search input */}
+                        <div className="collection-page__center-controls">
                             <div className="collection-page__search">
                                 <FontAwesomeIcon icon={faMagnifyingGlass} />
                                 <input
@@ -457,9 +460,21 @@ export default function CollectionPage() {
                                     value={searchQuery}
                                     onChange={(e) => handleSearchChange(e.target.value)}
                                 />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        className="collection-page__search-clear"
+                                        onClick={() => handleSearchChange("")}
+                                        aria-label="Effacer la recherche"
+                                    >
+                                        <FontAwesomeIcon icon={faXmark} />
+                                    </button>
+                                )}
                             </div>
+                        </div>
 
-                            {/* View Mode: Galerie vs Liste */}
+                        {/* Right: View Mode Toggle */}
+                        <div className="collection-page__right-controls">
                             <div className="collection-page__view-toggle">
                                 <button
                                     type="button"

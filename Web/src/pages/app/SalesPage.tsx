@@ -383,31 +383,8 @@ export default function SalesPage() {
                 {/* Controls Bar: Status Tabs, Category Filter, Search, View Mode Toggle */}
                 {books.length > 0 && (
                     <div className="sales-page__controls">
-                        {/* Segmented Status Filters */}
-                        <div className="sales-page__filters">
-                            {STATUS_TABS.map((tab) => {
-                                const isSelected = selectedStatus === tab.id;
-                                const count = statusCounts[tab.id];
-
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        type="button"
-                                        onClick={() => setSelectedStatus(tab.id)}
-                                        className={`sales-page__filter-btn ${isSelected ? "is-active" : ""}`}
-                                    >
-                                        {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
-                                        <span>{tab.label}</span>
-                                        <span className="sales-page__filter-count">
-                                            {count}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        {/* Search, Categories & Display Mode Switcher */}
-                        <div className="sales-page__right-controls">
+                        {/* Left: Category Dropdown + Status Filters */}
+                        <div className="sales-page__left-controls">
                             <CategoryMultiSelect
                                 options={availableCategories}
                                 selected={selectedCategories}
@@ -418,6 +395,31 @@ export default function SalesPage() {
                                 allLabel="Toutes les catégories"
                             />
 
+                            <div className="sales-page__filters">
+                                {STATUS_TABS.map((tab) => {
+                                    const isSelected = selectedStatus === tab.id;
+                                    const count = statusCounts[tab.id];
+
+                                    return (
+                                        <button
+                                            key={tab.id}
+                                            type="button"
+                                            onClick={() => setSelectedStatus(tab.id)}
+                                            className={`sales-page__filter-btn ${isSelected ? "is-active" : ""}`}
+                                        >
+                                            {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
+                                            <span>{tab.label}</span>
+                                            <span className="sales-page__filter-count">
+                                                {count}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Center: Search input */}
+                        <div className="sales-page__center-controls">
                             <div className="sales-page__search">
                                 <FontAwesomeIcon icon={faMagnifyingGlass} />
                                 <input
@@ -426,9 +428,21 @@ export default function SalesPage() {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        className="sales-page__search-clear"
+                                        onClick={() => setSearchQuery("")}
+                                        aria-label="Effacer la recherche"
+                                    >
+                                        <FontAwesomeIcon icon={faXmark} />
+                                    </button>
+                                )}
                             </div>
+                        </div>
 
-                            {/* View Mode: Galerie vs Liste */}
+                        {/* Right: View Mode (Galerie vs Liste) */}
+                        <div className="sales-page__right-controls">
                             <div className="sales-page__view-toggle">
                                 <button
                                     type="button"

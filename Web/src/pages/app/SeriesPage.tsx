@@ -545,58 +545,82 @@ export default function SeriesPage() {
             <div className="series-page__content">
                 {/* Controls: Scope tabs, Search, Categories */}
                 <div className="series-page__controls">
-                    <div className="series-page__controls-top">
-                        <div className="series-page__scope-tabs">
+                    {/* Left: Category Dropdown + Scope Tabs */}
+                    <div className="series-page__left-controls">
+                        <CategoryMultiSelect
+                            options={seriesCategoryOptions}
+                            selected={selectedCategories}
+                            onChange={(cats) => {
+                                setSelectedCategories(cats);
+                                setCurrentPage(1);
+                            }}
+                            allLabel="Toutes les catégories"
+                        />
+
+                        <div className="series-page__filters">
                             <button
                                 type="button"
-                                className={`series-page__scope-btn ${scope === "my" ? "is-active" : ""}`}
-                                onClick={() => setScope("my")}
+                                className={`series-page__filter-btn ${scope === "my" ? "is-active" : ""}`}
+                                onClick={() => {
+                                    setScope("my");
+                                    setCurrentPage(1);
+                                }}
                             >
                                 <FontAwesomeIcon icon={faBook} />
-                                <span>Mes Séries ({mySeries.length})</span>
+                                <span>Mes Séries</span>
+                                <span className="series-page__filter-count">{mySeries.length}</span>
                             </button>
                             <button
                                 type="button"
-                                className={`series-page__scope-btn ${scope === "all" ? "is-active" : ""}`}
-                                onClick={() => setScope("all")}
+                                className={`series-page__filter-btn ${scope === "all" ? "is-active" : ""}`}
+                                onClick={() => {
+                                    setScope("all");
+                                    setCurrentPage(1);
+                                }}
                             >
                                 <FontAwesomeIcon icon={faLayerGroup} />
                                 <span>Toutes les séries</span>
+                                {scope === "all" && allSeries.length > 0 && (
+                                    <span className="series-page__filter-count">{allSeries.length}</span>
+                                )}
                             </button>
                         </div>
+                    </div>
 
-                        <div className="series-page__right-controls" style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                            <CategoryMultiSelect
-                                options={seriesCategoryOptions}
-                                selected={selectedCategories}
-                                onChange={(cats) => {
-                                    setSelectedCategories(cats);
+                    {/* Center: Search input */}
+                    <div className="series-page__center-controls">
+                        <div className="series-page__search">
+                            <FontAwesomeIcon icon={faMagnifyingGlass} />
+                            <input
+                                type="text"
+                                placeholder="Rechercher une série..."
+                                value={searchQuery}
+                                onChange={(e) => {
+                                    setSearchQuery(e.target.value);
                                     setCurrentPage(1);
                                 }}
-                                allLabel="Toutes les catégories"
                             />
-
-                            <div className="series-page__search-wrapper">
-                                <FontAwesomeIcon icon={faMagnifyingGlass} className="series-page__search-icon" />
-                                <input
-                                    type="text"
-                                    className="series-page__search-input"
-                                    placeholder="Rechercher une série..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                                {searchQuery && (
-                                    <button
-                                        type="button"
-                                        className="series-page__search-clear"
-                                        onClick={() => setSearchQuery("")}
-                                        aria-label="Effacer la recherche"
-                                    >
-                                        <FontAwesomeIcon icon={faXmark} />
-                                    </button>
-                                )}
-                            </div>
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    className="series-page__search-clear"
+                                    onClick={() => {
+                                        setSearchQuery("");
+                                        setCurrentPage(1);
+                                    }}
+                                    aria-label="Effacer la recherche"
+                                >
+                                    <FontAwesomeIcon icon={faXmark} />
+                                </button>
+                            )}
                         </div>
+                    </div>
+
+                    {/* Right: Series count badge */}
+                    <div className="series-page__right-controls">
+                        <span className="series-page__series-badge">
+                            {displayedSeries.length} série{displayedSeries.length > 1 ? "s" : ""}
+                        </span>
                     </div>
                 </div>
 
