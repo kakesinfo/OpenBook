@@ -21,6 +21,7 @@ import {
 	faCheck
 } from "@fortawesome/free-solid-svg-icons";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
+import CategoryMultiSelect, { CategoryOption as MultiSelectOption, DEFAULT_APP_CATEGORIES } from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
 import "./SeriesPage.scss";
 
 interface CategoryOption {
@@ -56,7 +57,20 @@ export default function SeriesPage() {
     const [loading, setLoading] = useState(true);
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState<string>("all");
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+    const seriesCategoryOptions: MultiSelectOption[] = useMemo(() => {
+        return categories.map((cat) => {
+            const found = DEFAULT_APP_CATEGORIES.find(
+                (d) => d.id.toLowerCase() === cat.name.toLowerCase()
+            );
+            return {
+                id: cat.name,
+                label: cat.name,
+                icon: found?.icon
+            };
+        });
+    }, [categories]);
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -465,8 +479,8 @@ export default function SeriesPage() {
             list = list.filter((s) => (s.ownedCount || 0) > 0);
         }
         return list.filter((s) => {
-            if (selectedCategory !== "all") {
-                if (!s.category || s.category.toLowerCase() !== selectedCategory.toLowerCase()) {
+            if (selectedCategories.length > 0) {
+                if (!s.category || !selectedCategories.some((cat) => cat.toLowerCase() === s.category!.toLowerCase())) {
                     return false;
                 }
             }
@@ -478,12 +492,12 @@ export default function SeriesPage() {
             }
             return true;
         });
-    }, [scope, mySeries, allSeries, selectedCategory, searchQuery]);
+    }, [scope, mySeries, allSeries, selectedCategories, searchQuery]);
 
     // Reset page to 1 whenever filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [scope, selectedCategory, searchQuery]);
+    }, [scope, selectedCategories, searchQuery]);
 
     // Pagination calculations
     const totalFiltered = displayedSeries.length;
@@ -551,47 +565,38 @@ export default function SeriesPage() {
                             </button>
                         </div>
 
-                        <div className="series-page__search-wrapper">
-                            <FontAwesomeIcon icon={faMagnifyingGlass} className="series-page__search-icon" />
-                            <input
-                                type="text"
-                                className="series-page__search-input"
-                                placeholder="Rechercher une série..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                        <div className="series-page__right-controls" style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                            <CategoryMultiSelect
+                                options={seriesCategoryOptions}
+                                selected={selectedCategories}
+                                onChange={(cats) => {
+                                    setSelectedCategories(cats);
+                                    setCurrentPage(1);
+                                }}
+                                allLabel="Toutes les catégories"
                             />
-                            {searchQuery && (
-                                <button
-                                    type="button"
-                                    className="series-page__search-clear"
-                                    onClick={() => setSearchQuery("")}
-                                    aria-label="Effacer la recherche"
-                                >
-                                    <FontAwesomeIcon icon={faXmark} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
 
-                    {/* Category filter pills */}
-                    <div className="series-page__categories">
-                        <button
-                            type="button"
-                            className={`series-page__category-pill ${selectedCategory === "all" ? "is-active" : ""}`}
-                            onClick={() => setSelectedCategory("all")}
-                        >
-                            Toutes
-                        </button>
-                        {categories.map((cat) => (
-                            <button
-                                key={cat.id}
-                                type="button"
-                                className={`series-page__category-pill ${selectedCategory === cat.name ? "is-active" : ""}`}
-                                onClick={() => setSelectedCategory(cat.name)}
-                            >
-                                {cat.name}
-                            </button>
-                        ))}
+                            <div className="series-page__search-wrapper">
+                                <FontAwesomeIcon icon={faMagnifyingGlass} className="series-page__search-icon" />
+                                <input
+                                    type="text"
+                                    className="series-page__search-input"
+                                    placeholder="Rechercher une série..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        className="series-page__search-clear"
+                                        onClick={() => setSearchQuery("")}
+                                        aria-label="Effacer la recherche"
+                                    >
+                                        <FontAwesomeIcon icon={faXmark} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
