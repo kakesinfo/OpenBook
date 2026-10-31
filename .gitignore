@@ -5,7 +5,9 @@ node_modules/
 out/
 
 *.iml
+*.bookmory
 
+.DS_Store
 Cache/
 
 Api/uploads/
