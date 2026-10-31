@@ -4,7 +4,6 @@ import useSession from "../../hooks/UseSession.tsx";
 import { useSnackbar } from "notistack";
 import SeriesDTO, { getSeriesStatusLabel } from "../../dto/Series.dto.ts";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
-import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import Pagination from "../../components/Pagination/Pagination.tsx";
 import { Dialog } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -493,26 +492,6 @@ export default function SeriesPage() {
 
     return (
         <div className="series-page">
-			<WrapperHeader>
-				<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
-					<div>
-						<h2 style={{ margin: 0 }}>
-							Mes Séries
-						</h2>
-					</div>
-					<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-						<button
-							type="button"
-							className="series-page__create-btn"
-							onClick={() => setCreateDialogOpen(true)}
-						>
-							<FontAwesomeIcon icon={faPlus} />
-							<span>Créer une série</span>
-						</button>
-					</div>
-				</div>
-			</WrapperHeader>
-
             <div className="series-page__content">
                 {/* Controls: Scope tabs, Search, Categories */}
                 <div className="series-page__controls">
