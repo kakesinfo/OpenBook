@@ -219,7 +219,7 @@ public class BookmoryDbService {
         b.setDescription(rs.getString("description"));
         b.setCoverUrl(rs.getString("cover_url"));
         Timestamp ts = rs.getTimestamp("release_date");
-        b.setReleaseDate(ts != null ? ts.toInstant() : Instant.EPOCH);
+        b.setReleaseDate(ts != null ? ts.toInstant() : null);
         long ed = rs.getLong("editor_id");
         b.setEditorId(rs.wasNull() ? null : ed);
         long ser = rs.getLong("series_id");
@@ -382,7 +382,7 @@ public class BookmoryDbService {
 
         String desc = cleanText(b.getDescription());
         String bType = (bookType != null && !bookType.isBlank()) ? bookType : "Comics";
-        Timestamp releaseTimestamp = Timestamp.from(relDate != null ? relDate : Instant.now());
+        Timestamp releaseTimestamp = relDate != null ? Timestamp.from(relDate) : null;
 
         String sql = "INSERT INTO book (" +
                 "title, series_id, editor_id, collection_id, " +

@@ -179,9 +179,7 @@ public class MorgenBdSource extends AbstractHttpSource {
         if (dateMatcher.find()) {
             releaseDate = FrenchDateParser.parse(dateMatcher.group(1));
         }
-        if (releaseDate == null) {
-            releaseDate = LocalDate.now();
-        }
+        
 
         // 4. Description
         String description = "";

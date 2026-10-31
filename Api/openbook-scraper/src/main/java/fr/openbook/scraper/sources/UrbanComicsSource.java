@@ -208,7 +208,7 @@ public class UrbanComicsSource extends AbstractHttpSource {
                     break;
                 }
             }
-            if (skip) continue;
+            if (skip || isSeriesUrl(href)) continue;
 
             LocalDate relDate = null;
             Element header = container.select("div.comics-container-header").first();
@@ -283,7 +283,7 @@ public class UrbanComicsSource extends AbstractHttpSource {
                         break;
                     }
                 }
-                if (skip) continue;
+                if (skip || isSeriesUrl(href)) continue;
 
                 String title = "";
                 Element tEl = tag.select(".woocommerce-loop-product__title, .product-title, .title, h2, h3").first();
@@ -361,7 +361,7 @@ public class UrbanComicsSource extends AbstractHttpSource {
                             break;
                         }
                     }
-                    if (skip) continue;
+                    if (skip || isSeriesUrl(cleanUrl)) continue;
 
                     String imgTitle = "";
                     String imgUrl = "";
@@ -374,12 +374,6 @@ public class UrbanComicsSource extends AbstractHttpSource {
                     }
 
                     LocalDate relDate = null;
-                    Element lastMod = urlEl.select("lastmod").first();
-                    if (lastMod != null) {
-                        String lm = lastMod.text().trim();
-                        if (lm.length() >= 10) lm = lm.substring(0, 10);
-                        relDate = FrenchDateParser.parse(lm);
-                    }
 
                     TargetHint existing = targets.get(cleanUrl);
                     if (existing == null) {
@@ -401,36 +395,11 @@ public class UrbanComicsSource extends AbstractHttpSource {
     private ScrapedBookDTO scrapeProductPage(String url, TargetHint hints) {
         if (hints == null) hints = new TargetHint("", "", 0, null, "");
 
+        if (isSeriesUrl(url)) return null;
+
         Document doc = fetchDocument(url);
         if (doc == null) {
-            String slug = url.replaceAll("/+$", "");
-            slug = slug.substring(slug.lastIndexOf('/') + 1);
-            for (String s : List.of("shop", "category", "auteurs", "tag", "collection", "cart", "mon-compte")) {
-                if (slug.contains(s)) return null;
-            }
-            String fallbackTitle = hints.title().isBlank() ? TextCleaner.titleCase(slug.replace('-', ' ')) : hints.title();
-            if (fallbackTitle.length() < 2) return null;
-
-            SeriesVolume sv = parseSeriesAndVolume(fallbackTitle, null);
-            Integer volume = sv.volume() != null ? sv.volume() : 1;
-            LocalDate relDate = hints.releaseDate() != null ? hints.releaseDate() : LocalDate.now();
-
-            return ScrapedBookDTO.builder()
-                    .title(TextCleaner.truncate(TextCleaner.cleanText(fallbackTitle), 255))
-                    .seriesName(TextCleaner.truncate(TextCleaner.cleanText(sv.series()), 255))
-                    .volume(volume)
-                    .isbn(hints.isbn())
-                    .editorName("Urban Comics")
-                    .categoryName("Comics")
-                    .pageCount(0)
-                    .price(hints.price())
-                    .description("")
-                    .coverUrl(hints.coverUrl())
-                    .releaseDate(relDate)
-                    .bookType("Comics")
-                    .authors(Collections.emptyList())
-                    .sourceUrl(url)
-                    .build();
+            return null;
         }
 
         String pageContent = doc.html();
@@ -451,7 +420,11 @@ public class UrbanComicsSource extends AbstractHttpSource {
             slug = slug.substring(slug.lastIndexOf('/') + 1);
             title = TextCleaner.titleCase(slug.replace('-', ' '));
         }
-        title = TextCleaner.cleanText(title);
+                title = TextCleaner.cleanText(title);
+        String lowTitle = title.toLowerCase();
+        if (lowTitle.endsWith(" serie") || lowTitle.endsWith(" série") || lowTitle.equals("serie") || lowTitle.equals("série")) {
+            return null;
+        }
 
         // 2. Series & Volume
         SeriesVolume sv = parseSeriesAndVolume(title, doc);
@@ -501,8 +474,10 @@ public class UrbanComicsSource extends AbstractHttpSource {
             LocalDate parsedD = FrenchDateParser.parse(rdm.group(1));
             if (parsedD != null) releaseDate = parsedD;
         }
-        if (releaseDate == null) {
-            releaseDate = LocalDate.now();
+
+
+                if (isbn.isBlank() && (isSeriesUrl(url) || !doc.select(".tax-series, .archive-series, .series, [class*='serie']").isEmpty())) {
+            return null;
         }
 
         // 4. Cover
@@ -691,5 +666,16 @@ public class UrbanComicsSource extends AbstractHttpSource {
 
     public static String slugTitle(String title) {
         return title.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("^-+|-+$", "");
+    }
+
+    public static boolean isSeriesUrl(String url) {
+        if (url == null || url.isBlank()) return false;
+        String clean = url.split("\\?")[0].replaceAll("/+$", "").toLowerCase();
+        return clean.endsWith("-serie") ||
+               clean.endsWith("-series") ||
+               clean.contains("-serie/") ||
+               clean.contains("-series/") ||
+               clean.contains("/series/") ||
+               clean.contains("/serie/");
     }
 }

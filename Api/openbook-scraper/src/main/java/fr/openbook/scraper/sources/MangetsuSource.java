@@ -274,9 +274,7 @@ public class MangetsuSource extends AbstractHttpSource {
         if (releaseDate == null && hint != null && !hint.dateStr().isBlank()) {
             releaseDate = FrenchDateParser.parse(hint.dateStr());
         }
-        if (releaseDate == null) {
-            releaseDate = LocalDate.now();
-        }
+        
 
         // 6. Description
         String description = "";

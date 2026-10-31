@@ -491,10 +491,10 @@ public class BookController {
                     book.setReleaseDate(Instant.parse(rawDate));
                 }
             } catch (Exception e) {
-                book.setReleaseDate(Instant.now());
+                book.setReleaseDate(null);
             }
         } else {
-            book.setReleaseDate(Instant.now());
+            book.setReleaseDate(null);
         }
 
         if (req.getSeriesId() != null) {

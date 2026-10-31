@@ -99,7 +99,7 @@ public class BookEntity {
     @Column(name = "deleted", nullable = false)
     private Boolean deleted = false;
 
-    @Column(name = "release_date", nullable = false)
+    @Column(name = "release_date")
     private Instant releaseDate;
 
     @Column(name = "created_at", nullable = false)

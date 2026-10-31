@@ -232,6 +232,47 @@ public class ScraperDbService {
             }
         }
 
+        // BNF enrichment if ISBN exists but releaseDate or pageCount is missing
+        if (!cleanISBN.isEmpty() && (book.getReleaseDate() == null || book.getPageCount() == 0 || collectionId == null)) {
+            try {
+                BnfBookData bnfData = bnfClient.lookupByIsbn(cleanISBN);
+                if (bnfData != null) {
+                    if (book.getPageCount() == 0 && bnfData.getPageCount() != null) {
+                        book.setPageCount(bnfData.getPageCount());
+                    }
+                    if (collectionId == null && bnfData.getCollectionName() != null && !bnfData.getCollectionName().isBlank()) {
+                        String cleanCol = TextCleaner.cleanText(bnfData.getCollectionName());
+                        try {
+                            collectionId = jdbcTemplate.queryForObject(
+                                    "SELECT id FROM collection WHERE LOWER(name) = LOWER(?) LIMIT 1;",
+                                    Integer.class,
+                                    cleanCol
+                            );
+                        } catch (EmptyResultDataAccessException e) {
+                            collectionId = jdbcTemplate.queryForObject(
+                                    "INSERT INTO collection (name, created_at, updated_at) VALUES (?, NOW(), NOW()) RETURNING id;",
+                                    Integer.class,
+                                    cleanCol
+                            );
+                        }
+                    }
+                    if ((book.getAuthors() == null || book.getAuthors().isEmpty()) && bnfData.getAuthors() != null && !bnfData.getAuthors().isEmpty()) {
+                        List<ScrapedAuthorDTO> authList = new ArrayList<>();
+                        for (String a : bnfData.getAuthors()) {
+                            String[] parts = TextCleaner.splitAuthorName(a);
+                            authList.add(new ScrapedAuthorDTO(parts[0], parts[1], "writer"));
+                        }
+                        book.setAuthors(authList);
+                    }
+                    if (book.getReleaseDate() == null && bnfData.getReleaseDate() != null) {
+                        book.setReleaseDate(LocalDate.ofInstant(bnfData.getReleaseDate(), java.time.ZoneOffset.UTC));
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("BNF ISBN lookup error during upsert: {}", e.getMessage());
+            }
+        }
+
         // BNF enrichment if ISBN is missing
         if (cleanISBN.isEmpty()) {
             String primaryAuthor = "";
@@ -445,7 +486,7 @@ public class ScraperDbService {
             int volVal = (book.getVolume() != null && book.getVolume() > 0) ? book.getVolume() : 1;
             Timestamp relTimestamp = book.getReleaseDate() != null
                     ? Timestamp.valueOf(book.getReleaseDate().atStartOfDay())
-                    : Timestamp.valueOf(LocalDate.now().atStartOfDay());
+                    : null;
             String bType = (book.getBookType() != null && !book.getBookType().isBlank()) ? book.getBookType() : "Comics";
 
             String finalCleanISBN = cleanISBN;
@@ -477,7 +518,7 @@ public class ScraperDbService {
                 ps.setInt(7, book.getPrice());
                 if (!cleanDesc.isEmpty()) ps.setString(8, cleanDesc); else ps.setNull(8, java.sql.Types.VARCHAR);
                 ps.setString(9, storedCover);
-                ps.setTimestamp(10, relTimestamp);
+                if (relTimestamp != null) ps.setTimestamp(10, relTimestamp); else ps.setNull(10, java.sql.Types.TIMESTAMP);
                 ps.setString(11, bType);
                 if (finalParentBookId != null) ps.setInt(12, finalParentBookId); else ps.setNull(12, java.sql.Types.INTEGER);
                 return ps;
@@ -1059,23 +1100,27 @@ public class ScraperDbService {
                 isbnToSet = "";
             } catch (EmptyResultDataAccessException ignored) {}
 
+            Timestamp foundRelTimestamp = bnfData.getReleaseDate() != null ? Timestamp.from(bnfData.getReleaseDate()) : null;
+
             if (!isbnToSet.isEmpty()) {
                 jdbcTemplate.update("""
                     UPDATE book
                     SET isbn = ?,
                         page_count = CASE WHEN page_count IS NULL OR page_count = 0 THEN ? ELSE page_count END,
                         collection_id = COALESCE(?, collection_id),
+                        release_date = CASE WHEN release_date IS NULL THEN ? ELSE release_date END,
                         updated_at = NOW()
                     WHERE id = ?;
-                """, isbnToSet, foundPages, newColId, id);
+                """, isbnToSet, foundPages, newColId, foundRelTimestamp, id);
             } else {
                 jdbcTemplate.update("""
                     UPDATE book
                     SET page_count = CASE WHEN page_count IS NULL OR page_count = 0 THEN ? ELSE page_count END,
                         collection_id = COALESCE(?, collection_id),
+                        release_date = CASE WHEN release_date IS NULL THEN ? ELSE release_date END,
                         updated_at = NOW()
                     WHERE id = ?;
-                """, foundPages, newColId, id);
+                """, foundPages, newColId, foundRelTimestamp, id);
             }
 
             enrichedCount++;
@@ -1102,16 +1147,17 @@ public class ScraperDbService {
         if (limit <= 0) limit = 100;
 
         List<Map<String, Object>> books = jdbcTemplate.queryForList("""
-            SELECT b.id, COALESCE(b.title, '') as title, COALESCE(b.isbn, '') as isbn, b.page_count, b.collection_id
+            SELECT b.id, COALESCE(b.title, '') as title, COALESCE(b.isbn, '') as isbn, b.page_count, b.collection_id, b.release_date
             FROM book b
             WHERE COALESCE(b.deleted, FALSE) = FALSE AND b.isbn IS NOT NULL AND LENGTH(TRIM(b.isbn)) >= 10
-            ORDER BY (CASE WHEN b.page_count IS NULL OR b.page_count = 0 THEN 0 ELSE 1 END), b.updated_at ASC
+            ORDER BY (CASE WHEN b.release_date IS NULL OR b.page_count IS NULL OR b.page_count = 0 THEN 0 ELSE 1 END), b.updated_at ASC
             LIMIT ?;
         """, limit);
 
         int verifiedCount = 0;
         int updatedCount = 0;
         int pagesCorrected = 0;
+        int datesCorrected = 0;
 
         for (Map<String, Object> b : books) {
             int id = (Integer) b.get("id");
@@ -1148,6 +1194,13 @@ public class ScraperDbService {
                 } catch (EmptyResultDataAccessException ignored) {}
             }
 
+            Timestamp currentRelDate = (Timestamp) b.get("release_date");
+            if (currentRelDate == null && bnfData.getReleaseDate() != null) {
+                jdbcTemplate.update("UPDATE book SET release_date = ?, updated_at = NOW() WHERE id = ?;", Timestamp.from(bnfData.getReleaseDate()), id);
+                datesCorrected++;
+                hasChanges = true;
+            }
+
             if (hasChanges) {
                 updatedCount++;
             }
@@ -1158,6 +1211,7 @@ public class ScraperDbService {
         result.put("verified", verifiedCount);
         result.put("updated", updatedCount);
         result.put("pages_corrected", pagesCorrected);
+        result.put("dates_corrected", datesCorrected);
         return result;
     }
 
