@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCalendarDays,
     faCalendarCheck,
+    faCalendarPlus,
     faClockRotateLeft,
     faBookOpen,
     faLayerGroup,
@@ -15,6 +16,7 @@ import useSession from "../../hooks/UseSession.tsx";
 import BookList from "../../components/BookList/BookList.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import "./PlanningPage.scss";
+import PlanningCalendarModal from "./PlanningCalendarModal.tsx";
 
 type TimeFilter = "recent" | "upcoming";
 
@@ -41,6 +43,7 @@ export default function PlanningPage() {
     const [loadingRecent, setLoadingRecent] = useState<boolean>(true);
     const [timeFilter, setTimeFilter] = useState<TimeFilter>("upcoming");
     const [selectedCategory, setSelectedCategory] = useState<string>("all");
+    const [calendarModalOpen, setCalendarModalOpen] = useState<boolean>(false);
 
     const fetchUpcomingBooks = async () => {
         setLoadingUpcoming(true);
@@ -235,11 +238,23 @@ export default function PlanningPage() {
     return (
         <div className="planning-page">
             <WrapperHeader>
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <h2>Planning des Sorties</h2>
-                    <span style={{ fontSize: "0.85rem", color: "var(--text-muted, #9ca3af)" }}>
-                        Albums de vos séries, éditeurs, auteurs et collections suivis
-                    </span>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "14px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <h2>Planning des Sorties</h2>
+                        <span style={{ fontSize: "0.85rem", color: "var(--text-muted, #9ca3af)" }}>
+                            Albums de vos séries, éditeurs, auteurs et collections suivis
+                        </span>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => setCalendarModalOpen(true)}
+                        className="planning-page__calendar-btn"
+                        title="Synchroniser avec Google Agenda ou exporter au format ICS"
+                    >
+                        <FontAwesomeIcon icon={faCalendarPlus} />
+                        <span>Synchroniser / Exporter</span>
+                    </button>
                 </div>
             </WrapperHeader>
 
@@ -523,6 +538,11 @@ export default function PlanningPage() {
                     </section>
                 ))}
             </div>
+            <PlanningCalendarModal
+                open={calendarModalOpen}
+                onClose={() => setCalendarModalOpen(false)}
+            />
         </div>
+
     );
 }

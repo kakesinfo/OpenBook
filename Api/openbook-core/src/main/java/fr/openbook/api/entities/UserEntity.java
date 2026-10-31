@@ -41,6 +41,9 @@ public class UserEntity implements UserDetails {
     @Column(name = "role", nullable = false)
     private String role = "ROLE_USER";
 
+    @Column(name = "calendar_token", unique = true)
+    private String calendarToken;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -50,6 +53,9 @@ public class UserEntity implements UserDetails {
     @PrePersist
     protected void onCreate()
     {
+        if (calendarToken == null || calendarToken.isBlank()) {
+            calendarToken = java.util.UUID.randomUUID().toString().replace("-", "");
+        }
         createdAt = new Date().toInstant();
         updatedAt = new Date().toInstant();
     }

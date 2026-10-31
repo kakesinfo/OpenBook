@@ -46,6 +46,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/images", "/images/**").permitAll()
                 .requestMatchers("/setup/**").permitAll()
                 .requestMatchers("/api/import/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/books/planning/calendar.ics", "/books/planning/calendar/**").permitAll()
                 .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(
                     "/user/collection/**",

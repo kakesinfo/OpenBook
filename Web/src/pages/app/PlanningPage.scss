@@ -3,6 +3,38 @@
   display: flex;
   flex-direction: column;
 
+  &__calendar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+
+    svg {
+      color: var(--accent-primary);
+      font-size: 1rem;
+    }
+
+    &:hover {
+      border-color: var(--accent-primary);
+      background: var(--accent-primary-light, rgba(99, 102, 241, 0.1));
+      color: var(--accent-primary);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
   &__content {
     width: 100%;
     padding: 28px;
