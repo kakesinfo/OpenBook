@@ -18,8 +18,8 @@ class SettingsPage extends ConsumerWidget {
     final displayName = (client.userName != null && client.userName!.isNotEmpty)
         ? client.userName!
         : 'Lecteur';
-    final displayEmail = (client.userEmail != null && client.userEmail!.isNotEmpty)
-        ? client.userEmail!
+    final displaySubtitle = (client.userName != null && client.userName!.isNotEmpty)
+        ? '@${client.userName!}'
         : 'Yet Another Library • Mobile';
 
     return Scaffold(
@@ -77,7 +77,7 @@ class SettingsPage extends ConsumerWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        displayEmail,
+                        displaySubtitle,
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.textMuted,

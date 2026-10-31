@@ -18,7 +18,6 @@ enum BookLibraryFilter {
   souhaits,
   pal,
   vendus,
-  pretes,
 }
 
 extension BookStatusX on BookStatus {
@@ -51,8 +50,6 @@ extension BookLibraryFilterX on BookLibraryFilter {
         return 'PAL';
       case BookLibraryFilter.vendus:
         return 'Vendus';
-      case BookLibraryFilter.pretes:
-        return 'Pretes';
     }
   }
 
@@ -68,8 +65,6 @@ extension BookLibraryFilterX on BookLibraryFilter {
         return book.status == BookStatus.unread;
       case BookLibraryFilter.vendus:
         return book.status == BookStatus.sold;
-      case BookLibraryFilter.pretes:
-        return book.status == BookStatus.lent;
     }
   }
 }
