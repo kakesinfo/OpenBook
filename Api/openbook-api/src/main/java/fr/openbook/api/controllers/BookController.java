@@ -2,6 +2,7 @@ package fr.openbook.api.controllers;
 
 import fr.openbook.api.dtos.AuthorDTO;
 import fr.openbook.api.dtos.BookDTO;
+import fr.openbook.api.dtos.CalendarFeedDTO;
 import fr.openbook.api.dtos.BookHasAuthorDTO;
 import fr.openbook.api.dtos.BookSummaryDTO;
 import fr.openbook.api.dtos.CollectionDTO;
@@ -28,8 +29,10 @@ import fr.openbook.api.services.CollectionService;
 import fr.openbook.api.services.EditorService;
 import fr.openbook.api.services.RepositoryService;
 import fr.openbook.api.services.SeriesService;
+import fr.openbook.api.services.CalendarIcsService;
 import fr.openbook.api.services.media.MediaService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -37,6 +40,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -61,6 +67,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.UUID;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -79,6 +86,7 @@ public class BookController {
     private final RepositoryService repositoryService;
     private final MediaService mediaServiceClient;
     private final AuthorDeduplicationService authorDeduplicationService;
+    private final CalendarIcsService calendarIcsService;
 
     private UserEntity getAuthenticatedUser(HttpSession session) {
         if (session != null) {
@@ -276,6 +284,7 @@ public class BookController {
             return enrichWithUserStatus(list, user);
         }
 
+
         if (user == null) {
             return Collections.emptyList();
         }
@@ -286,6 +295,77 @@ public class BookController {
                 .map(this::entityToSummaryDTO)
                 .collect(Collectors.toList());
         return enrichWithUserStatus(list, user);
+    }
+
+    @GetMapping("/planning/calendar-feed")
+    public CalendarFeedDTO getCalendarFeed(
+            HttpSession session,
+            HttpServletRequest request
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Non authentifié");
+        }
+        if (user.getCalendarToken() == null || user.getCalendarToken().isBlank()) {
+            user.setCalendarToken(UUID.randomUUID().toString().replace("-", ""));
+            user = repositoryService.getUserRepository().save(user);
+        }
+        return calendarIcsService.buildFeedDTO(user.getCalendarToken(), request);
+    }
+
+    @PostMapping("/planning/calendar-feed/regenerate")
+    public CalendarFeedDTO regenerateCalendarFeedToken(
+            HttpSession session,
+            HttpServletRequest request
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Non authentifié");
+        }
+        user.setCalendarToken(UUID.randomUUID().toString().replace("-", ""));
+        user = repositoryService.getUserRepository().save(user);
+        return calendarIcsService.buildFeedDTO(user.getCalendarToken(), request);
+    }
+
+    @GetMapping(value = "/planning/calendar.ics", produces = "text/calendar;charset=UTF-8")
+    public ResponseEntity<String> getPlanningCalendarIcs(
+            @RequestParam(name = "token", required = false) String token
+    ) {
+        return producePlanningIcs(token);
+    }
+
+    @GetMapping(value = "/planning/calendar/{token}.ics", produces = "text/calendar;charset=UTF-8")
+    public ResponseEntity<String> getPlanningCalendarIcsByPath(
+            @PathVariable("token") String token
+    ) {
+        return producePlanningIcs(token);
+    }
+
+    private ResponseEntity<String> producePlanningIcs(String token) {
+        if (token == null || token.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token manquant");
+        }
+        Optional<UserEntity> userOpt = repositoryService.getUserRepository().findByCalendarToken(token);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token invalide");
+        }
+        UserEntity user = userOpt.get();
+
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Europe/Paris"));
+        Instant start = now.toLocalDate().minusDays(30).atStartOfDay(now.getZone()).toInstant();
+        Instant end = now.toLocalDate().plusMonths(12).atTime(LocalTime.MAX).atZone(now.getZone()).toInstant();
+
+        List<BookEntity> books = repositoryService.getBookRepository()
+                .findPlanningUpcomingForUser(user.getId(), start, end);
+
+        String ics = calendarIcsService.generatePlanningIcs(user, books);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/calendar; charset=UTF-8"));
+        headers.setContentDisposition(ContentDisposition.inline().filename("planning.ics").build());
+        headers.setCacheControl(CacheControl.noCache().mustRevalidate());
+
+        return new ResponseEntity<>(ics, headers, HttpStatus.OK);
     }
 
     private ResponseEntity<?> getBooksOrderedByCreatedAt(HttpSession session, String order, Integer page, Integer size, Integer limit) {
