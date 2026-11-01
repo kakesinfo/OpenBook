@@ -8,11 +8,8 @@ import {
     faCheck,
     faRotateRight,
     faDownload,
-    faShieldHalved,
-    faInfoCircle,
-    faArrowUpRightFromSquare
+    faInfoCircle
 } from "@fortawesome/free-solid-svg-icons";
-import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { useSnackbar } from "notistack";
 import useSession from "../../hooks/UseSession.tsx";
 import { API_URL } from "../../config/api.ts";
@@ -93,11 +90,6 @@ export default function PlanningCalendarModal({ open, onClose }: Props) {
         } catch {
             enqueueSnackbar("Erreur lors de la copie du lien", { variant: "error" });
         }
-    };
-
-    const handleOpenGoogle = () => {
-        if (!feedData) return;
-        window.open(feedData.googleCalendarUrl, "_blank", "noopener,noreferrer");
     };
 
     const handleDownloadIcs = () => {

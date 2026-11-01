@@ -3,36 +3,34 @@ import { useState, useEffect, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCalendarDays,
-    faCalendarCheck,
-    faCalendarPlus,
     faClockRotateLeft,
-    faBookOpen,
-    faLayerGroup,
-    faMasksTheater,
-    faBook,
-    faFilter
+    faCalendarPlus,
+    faMagnifyingGlass,
+    faXmark,
+    faBook
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
 import BookList from "../../components/BookList/BookList.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
-import "./PlanningPage.scss";
+import CategoryMultiSelect, {
+    CategoryOption,
+    DEFAULT_APP_CATEGORIES,
+    bookMatchesCategories
+} from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
 import PlanningCalendarModal from "./PlanningCalendarModal.tsx";
+import "./PlanningPage.scss";
 
-type TimeFilter = "recent" | "upcoming";
+type TimeFilter = "upcoming" | "recent";
 
-interface CategoryFilterOption {
-    id: string;
+interface TimeTab {
+    id: TimeFilter;
     label: string;
-    icon?: any;
+    icon?: typeof faCalendarDays;
 }
 
-const CATEGORY_FILTERS: CategoryFilterOption[] = [
-    { id: "all", label: "Tous", icon: faLayerGroup },
-    { id: "comics", label: "Comics", icon: faMasksTheater },
-    { id: "bd", label: "BD", icon: faBookOpen },
-    { id: "manga", label: "Manga", icon: faBookOpen },
-    { id: "roman", label: "Roman", icon: faBook },
-    { id: "roman_graphique", label: "Roman Graphique", icon: faBookOpen }
+const TIME_TABS: TimeTab[] = [
+    { id: "upcoming", label: "À venir", icon: faCalendarDays },
+    { id: "recent", label: "Parus récemment", icon: faClockRotateLeft }
 ];
 
 export default function PlanningPage() {
@@ -42,8 +40,34 @@ export default function PlanningPage() {
     const [loadingUpcoming, setLoadingUpcoming] = useState<boolean>(true);
     const [loadingRecent, setLoadingRecent] = useState<boolean>(true);
     const [timeFilter, setTimeFilter] = useState<TimeFilter>("upcoming");
-    const [selectedCategory, setSelectedCategory] = useState<string>("all");
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>(DEFAULT_APP_CATEGORIES);
+    const [searchQuery, setSearchQuery] = useState<string>("");
     const [calendarModalOpen, setCalendarModalOpen] = useState<boolean>(false);
+
+    useEffect(() => {
+        session.customFetch("/series/categories", { method: "GET" })
+            .then(async (res) => {
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data) && data.length > 0) {
+                        setAvailableCategories(
+                            data.map((cat: { id?: number; name: string }) => {
+                                const found = DEFAULT_APP_CATEGORIES.find(
+                                    (d) => d.id.toLowerCase() === cat.name.toLowerCase()
+                                );
+                                return {
+                                    id: cat.name,
+                                    label: cat.name,
+                                    icon: found?.icon || faBook
+                                };
+                            })
+                        );
+                    }
+                }
+            })
+            .catch(() => {});
+    }, [session]);
 
     const fetchUpcomingBooks = async () => {
         setLoadingUpcoming(true);
@@ -97,6 +121,22 @@ export default function PlanningPage() {
         };
     }, []);
 
+    const totalRecentCount = useMemo(() => {
+        return recentBooks.filter((b) => {
+            if (!b.releaseDate) return false;
+            const d = new Date(b.releaseDate);
+            return !isNaN(d.getTime()) && d >= twoMonthsAgo && d <= endOfToday;
+        }).length;
+    }, [recentBooks, twoMonthsAgo, endOfToday]);
+
+    const totalUpcomingCount = useMemo(() => {
+        return upcomingBooks.filter((b) => {
+            if (!b.releaseDate) return false;
+            const d = new Date(b.releaseDate);
+            return !isNaN(d.getTime()) && d >= startOfTomorrow && d <= sixMonthsAhead;
+        }).length;
+    }, [upcomingBooks, startOfTomorrow, sixMonthsAhead]);
+
     const currentBooks = timeFilter === "upcoming" ? upcomingBooks : recentBooks;
     const isCurrentLoading = timeFilter === "upcoming" ? loadingUpcoming : loadingRecent;
 
@@ -117,72 +157,22 @@ export default function PlanningPage() {
         });
     }, [currentBooks, timeFilter, twoMonthsAgo, endOfToday, startOfTomorrow, sixMonthsAhead]);
 
-    // Matching helper for categories
-    const matchCategory = (book: BookSummaryDTO, filterId: string): boolean => {
-        if (filterId === "all") return true;
-
-        const cat = (book.category || "").toLowerCase();
-        const typ = (book.type || "").toLowerCase();
-
-        switch (filterId) {
-            case "comics":
-                return cat.includes("comics") || typ.includes("comics");
-            case "bd":
-                return cat.includes("bande") || cat === "bd" || typ.includes("cartonn") || typ.includes("bd");
-            case "manga":
-                return cat.includes("manga") || typ.includes("manga");
-            case "roman":
-                return (cat === "roman" || cat.startsWith("roman")) && !cat.includes("graphique");
-            case "roman_graphique":
-                return cat.includes("graphique") || typ.includes("graphique");
-            default:
-                return cat.includes(filterId) || typ.includes(filterId);
-        }
-    };
-
-    // Filter by category
+    // Filter by categories and search query
     const finalFilteredBooks = useMemo(() => {
-        return timeFilteredBooks.filter((book) => matchCategory(book, selectedCategory));
-    }, [timeFilteredBooks, selectedCategory]);
-
-    // Calculate category counts for current timeFilter
-    const categoryCounts = useMemo(() => {
-        const counts: Record<string, number> = {
-            all: timeFilteredBooks.length,
-            comics: 0,
-            bd: 0,
-            manga: 0,
-            roman: 0,
-            roman_graphique: 0
-        };
-
-        timeFilteredBooks.forEach((b) => {
-            if (matchCategory(b, "comics")) counts.comics++;
-            if (matchCategory(b, "bd")) counts.bd++;
-            if (matchCategory(b, "manga")) counts.manga++;
-            if (matchCategory(b, "roman")) counts.roman++;
-            if (matchCategory(b, "roman_graphique")) counts.roman_graphique++;
+        return timeFilteredBooks.filter((book) => {
+            if (selectedCategories.length > 0) {
+                if (!bookMatchesCategories(book, selectedCategories)) return false;
+            }
+            if (searchQuery.trim().length > 0) {
+                const q = searchQuery.toLowerCase().trim();
+                const titleMatch = (book.title || "").toLowerCase().includes(q);
+                const seriesMatch = (book.seriesName || "").toLowerCase().includes(q);
+                const authorMatch = (book.author || "").toLowerCase().includes(q);
+                if (!titleMatch && !seriesMatch && !authorMatch) return false;
+            }
+            return true;
         });
-
-        return counts;
-    }, [timeFilteredBooks]);
-
-    // Counts for the two main toggles
-    const totalRecentCount = useMemo(() => {
-        return recentBooks.filter((b) => {
-            if (!b.releaseDate) return false;
-            const d = new Date(b.releaseDate);
-            return !isNaN(d.getTime()) && d >= twoMonthsAgo && d <= endOfToday;
-        }).length;
-    }, [recentBooks, twoMonthsAgo, endOfToday]);
-
-    const totalUpcomingCount = useMemo(() => {
-        return upcomingBooks.filter((b) => {
-            if (!b.releaseDate) return false;
-            const d = new Date(b.releaseDate);
-            return !isNaN(d.getTime()) && d >= startOfTomorrow && d <= sixMonthsAhead;
-        }).length;
-    }, [upcomingBooks, startOfTomorrow, sixMonthsAhead]);
+    }, [timeFilteredBooks, selectedCategories, searchQuery]);
 
     // Grouping by Month: "Janvier 2026", "Février 2026", etc.
     const monthGroups = useMemo(() => {
@@ -238,212 +228,85 @@ export default function PlanningPage() {
     return (
         <div className="planning-page">
             <WrapperHeader>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "14px" }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                        <h2>Planning des Sorties</h2>
-                        <span style={{ fontSize: "0.85rem", color: "var(--text-muted, #9ca3af)" }}>
-                            Albums de vos séries, éditeurs, auteurs et collections suivis
-                        </span>
-                    </div>
+                <div className="planning-page__header-center">
+                    <div className="planning-page__filters">
+                        {TIME_TABS.map((tab) => {
+                            const isSelected = timeFilter === tab.id;
+                            const count = tab.id === "upcoming" ? totalUpcomingCount : totalRecentCount;
+                            const isLoading = tab.id === "upcoming" ? loadingUpcoming : loadingRecent;
 
-                    <button
-                        type="button"
-                        onClick={() => setCalendarModalOpen(true)}
-                        className="planning-page__calendar-btn"
-                        title="Synchroniser avec Google Agenda ou exporter au format ICS"
-                    >
-                        <FontAwesomeIcon icon={faCalendarPlus} />
-                        <span>Synchroniser / Exporter</span>
-                    </button>
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setTimeFilter(tab.id)}
+                                    className={`planning-page__filter-btn ${isSelected ? "is-active" : ""}`}
+                                >
+                                    {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
+                                    <span>{tab.label}</span>
+                                    <span className="planning-page__filter-count">
+                                        {isLoading ? "..." : count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </WrapperHeader>
 
             <div className="planning-page__content">
-                {/* Top Period Toggle: "Parus récemment" vs "À venir" */}
-                <div style={{
-                    background: "var(--card-bg, var(--bg-surface))",
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: "16px",
-                    padding: "20px 24px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "18px"
-                }}>
-                    <div style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        flexWrap: "wrap",
-                        gap: "16px"
-                    }}>
-                        <div style={{
-                            display: "inline-flex",
-                            background: "var(--bg-primary)",
-                            padding: "4px",
-                            borderRadius: "12px",
-                            border: "1px solid var(--border-subtle)",
-                            gap: "4px"
-                        }}>
-                            <button
-                                type="button"
-                                onClick={() => setTimeFilter("recent")}
-                                style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                    padding: "10px 20px",
-                                    borderRadius: "10px",
-                                    border: "none",
-                                    fontSize: "0.95rem",
-                                    fontWeight: 600,
-                                    cursor: "pointer",
-                                    transition: "all 0.2s ease",
-                                    background: timeFilter === "recent"
-                                        ? "var(--accent-primary)"
-                                        : "transparent",
-                                    color: timeFilter === "recent" ? "#ffffff" : "var(--text-secondary)",
-                                    boxShadow: timeFilter === "recent" ? "var(--shadow-sm)" : "none"
-                                }}
-                            >
-                                <FontAwesomeIcon icon={faClockRotateLeft} />
-                                <span>Parus récemment</span>
-                                <span style={{
-                                    padding: "2px 8px",
-                                    borderRadius: "12px",
-                                    fontSize: "0.75rem",
-                                    background: timeFilter === "recent" ? "rgba(255, 255, 255, 0.25)" : "var(--bg-elevated)",
-                                    color: timeFilter === "recent" ? "#ffffff" : "var(--text-muted)"
-                                }}>
-                                    {loadingRecent ? "..." : totalRecentCount}
-                                </span>
-                            </button>
+                {/* Controls Bar: Category MultiSelect, Search, Synchroniser / Exporter */}
+                <div className="planning-page__controls">
+                    {/* Left: Category MultiSelect */}
+                    <div className="planning-page__left-controls">
+                        <CategoryMultiSelect
+                            options={availableCategories}
+                            selected={selectedCategories}
+                            onChange={(cats) => setSelectedCategories(cats)}
+                            allLabel="Toutes les catégories"
+                        />
+                    </div>
 
-                            <button
-                                type="button"
-                                onClick={() => setTimeFilter("upcoming")}
-                                style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                    padding: "10px 20px",
-                                    borderRadius: "10px",
-                                    border: "none",
-                                    fontSize: "0.95rem",
-                                    fontWeight: 600,
-                                    cursor: "pointer",
-                                    transition: "all 0.2s ease",
-                                    background: timeFilter === "upcoming"
-                                        ? "var(--accent-primary)"
-                                        : "transparent",
-                                    color: timeFilter === "upcoming" ? "#ffffff" : "var(--text-secondary)",
-                                    boxShadow: timeFilter === "upcoming" ? "var(--shadow-sm)" : "none"
-                                }}
-                            >
-                                <FontAwesomeIcon icon={faCalendarDays} />
-                                <span>À venir</span>
-                                <span style={{
-                                    padding: "2px 8px",
-                                    borderRadius: "12px",
-                                    fontSize: "0.75rem",
-                                    background: timeFilter === "upcoming" ? "rgba(255, 255, 255, 0.25)" : "var(--bg-elevated)",
-                                    color: timeFilter === "upcoming" ? "#ffffff" : "var(--text-muted)"
-                                }}>
-                                    {loadingUpcoming ? "..." : totalUpcomingCount}
-                                </span>
-                            </button>
-                        </div>
-
-                        <div style={{
-                            fontSize: "0.85rem",
-                            color: "var(--text-muted)",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px"
-                        }}>
-                            <FontAwesomeIcon icon={faCalendarCheck} style={{ color: "var(--accent-primary)" }} />
-                            <span>
-                                {timeFilter === "recent"
-                                    ? "Fenêtre : sorties des 2 derniers mois"
-                                    : "Fenêtre : sorties prévues des 6 prochains mois"}
-                            </span>
+                    {/* Center: Search input */}
+                    <div className="planning-page__center-controls">
+                        <div className="planning-page__search">
+                            <FontAwesomeIcon icon={faMagnifyingGlass} />
+                            <input
+                                type="text"
+                                placeholder="Rechercher un album, une série, un auteur..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            {searchQuery && (
+                                <button
+                                    type="button"
+                                    className="planning-page__search-clear"
+                                    onClick={() => setSearchQuery("")}
+                                    aria-label="Effacer la recherche"
+                                >
+                                    <FontAwesomeIcon icon={faXmark} />
+                                </button>
+                            )}
                         </div>
                     </div>
 
-                    {/* Category Filter Pills */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <div style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            fontSize: "0.8rem",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            color: "var(--text-muted)",
-                            fontWeight: 600
-                        }}>
-                            <FontAwesomeIcon icon={faFilter} />
-                            <span>Filtrer par catégorie :</span>
-                        </div>
-
-                        <div style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: "10px",
-                            alignItems: "center"
-                        }}>
-                            {CATEGORY_FILTERS.map((cat) => {
-                                const count = categoryCounts[cat.id] ?? 0;
-                                const isSelected = selectedCategory === cat.id;
-
-                                return (
-                                    <button
-                                        key={cat.id}
-                                        type="button"
-                                        onClick={() => setSelectedCategory(cat.id)}
-                                        style={{
-                                            display: "inline-flex",
-                                            alignItems: "center",
-                                            gap: "8px",
-                                            padding: "8px 16px",
-                                            borderRadius: "20px",
-                                            border: isSelected
-                                                ? "1px solid var(--accent-primary)"
-                                                : "1px solid var(--border-subtle)",
-                                            background: isSelected
-                                                ? "var(--accent-primary-light)"
-                                                : "var(--bg-primary)",
-                                            color: isSelected
-                                                ? "var(--accent-primary)"
-                                                : "var(--text-secondary)",
-                                            fontWeight: isSelected ? 700 : 500,
-                                            fontSize: "0.85rem",
-                                            cursor: "pointer",
-                                            transition: "all 0.15s ease"
-                                        }}
-                                    >
-                                        {cat.icon && <FontAwesomeIcon icon={cat.icon} style={{ fontSize: "0.85rem" }} />}
-                                        <span>{cat.label}</span>
-                                        <span style={{
-                                            fontSize: "0.75rem",
-                                            padding: "1px 6px",
-                                            borderRadius: "10px",
-                                            background: isSelected
-                                                ? "var(--accent-primary)"
-                                                : "var(--bg-elevated)",
-                                            color: isSelected ? "#ffffff" : "var(--text-muted)"
-                                        }}>
-                                            {count}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                    {/* Right: Calendar Sync / Export Button */}
+                    <div className="planning-page__right-controls">
+                        <button
+                            type="button"
+                            onClick={() => setCalendarModalOpen(true)}
+                            className="planning-page__calendar-btn"
+                            title="Synchroniser avec Google Agenda ou exporter au format ICS"
+                        >
+                            <FontAwesomeIcon icon={faCalendarPlus} />
+                            <span>Synchroniser / Exporter</span>
+                        </button>
                     </div>
                 </div>
 
                 {/* Loading State */}
                 {isCurrentLoading && (
-                    <div style={{ textAlign: "center", padding: "40px", color: "var(--text-muted, #9ca3af)" }}>
+                    <div className="planning-page__loading">
                         {timeFilter === "upcoming"
                             ? "Chargement des prochaines sorties à venir..."
                             : "Chargement des parutions récentes..."}
@@ -452,83 +315,36 @@ export default function PlanningPage() {
 
                 {/* Empty State */}
                 {!isCurrentLoading && monthGroups.length === 0 && (
-                    <div style={{
-                        background: "var(--card-bg, var(--bg-surface))",
-                        border: "1px dashed var(--border-subtle)",
-                        borderRadius: "16px",
-                        padding: "48px 24px",
-                        textAlign: "center",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "12px"
-                    }}>
-                        <FontAwesomeIcon icon={faCalendarDays} style={{ fontSize: "2.5rem", color: "var(--text-muted, #9ca3af)" }} />
-                        <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700 }}>
-                            Aucune sortie trouvée
-                        </h3>
-                        <p style={{ margin: 0, color: "var(--text-muted, #9ca3af)", fontSize: "0.9rem", maxWidth: "480px" }}>
-                            Aucun album ne correspond à vos séries, auteurs, éditeurs ou collections suivis pour cette période (
-                            {timeFilter === "recent" ? "2 derniers mois" : "6 prochains mois"}
-                            ){selectedCategory !== "all" ? ` et au filtre ${CATEGORY_FILTERS.find(c => c.id === selectedCategory)?.label}` : ""}.
+                    <div className="planning-page__empty">
+                        <div className="planning-page__empty-icon">
+                            <FontAwesomeIcon icon={faCalendarDays} />
+                        </div>
+                        <h3>Aucune sortie trouvée</h3>
+                        <p>
+                            {searchQuery.trim() || selectedCategories.length > 0
+                                ? "Aucun album ne correspond à vos critères de recherche pour cette période."
+                                : `Aucun album ne correspond à vos séries, auteurs, éditeurs ou collections suivis pour cette période (${
+                                      timeFilter === "recent" ? "2 derniers mois" : "6 prochains mois"
+                                  }).`}
                         </p>
                     </div>
                 )}
 
                 {/* Grouped Month Sections */}
                 {!isCurrentLoading && monthGroups.map((group) => (
-                    <section
-                        key={group.title}
-                        style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "8px",
-                            paddingTop: "8px"
-                        }}
-                    >
+                    <section key={group.title} className="planning-page__month-section">
                         {/* Month Heading */}
-                        <div style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            paddingBottom: "10px",
-                            borderBottom: "2px solid rgba(99, 102, 241, 0.3)"
-                        }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                                <div style={{
-                                    width: "36px",
-                                    height: "36px",
-                                    borderRadius: "10px",
-                                    background: "rgba(99, 102, 241, 0.15)",
-                                    color: "var(--accent-secondary, #818cf8)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    fontSize: "1rem"
-                                }}>
+                        <div className="planning-page__month-header">
+                            <div className="planning-page__month-title-group">
+                                <div className="planning-page__month-badge-icon">
                                     <FontAwesomeIcon icon={faCalendarDays} />
                                 </div>
-
-                                <h3 style={{
-                                    margin: 0,
-                                    fontSize: "1.35rem",
-                                    fontWeight: 800,
-                                    color: "var(--text-primary, #ffffff)",
-                                    letterSpacing: "-0.01em"
-                                }}>
+                                <h3 className="planning-page__month-title">
                                     {group.title}
                                 </h3>
                             </div>
 
-                            <span style={{
-                                fontSize: "0.85rem",
-                                fontWeight: 600,
-                                padding: "4px 12px",
-                                borderRadius: "14px",
-                                background: "rgba(255, 255, 255, 0.06)",
-                                color: "var(--text-muted, #d1d5db)",
-                                border: "1px solid rgba(255, 255, 255, 0.08)"
-                            }}>
+                            <span className="planning-page__month-count">
                                 {group.books.length} {group.books.length > 1 ? "parutions" : "parution"}
                             </span>
                         </div>
@@ -538,11 +354,11 @@ export default function PlanningPage() {
                     </section>
                 ))}
             </div>
+
             <PlanningCalendarModal
                 open={calendarModalOpen}
                 onClose={() => setCalendarModalOpen(false)}
             />
         </div>
-
     );
 }
