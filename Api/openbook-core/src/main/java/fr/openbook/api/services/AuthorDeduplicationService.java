@@ -39,18 +39,38 @@ public class AuthorDeduplicationService {
         // 2. Lowercase
         normalized = normalized.toLowerCase(Locale.ROOT);
 
-        // 3. Replace non-alphanumeric characters with spaces
+        // 3. Remove role mentions scraped along with the name (e.g. "/ Autrice du texte")
+        normalized = ROLE_PATTERN.matcher(normalized).replaceAll(" ");
+
+        // 4. Replace non-alphanumeric characters with spaces
         normalized = normalized.replaceAll("[^a-z0-9]+", " ");
 
-        // 4. Split tokens, sort alphabetically and join
-        String[] tokens = normalized.trim().split("\\s+");
-        if (tokens.length == 0 || (tokens.length == 1 && tokens[0].isEmpty())) {
+        // 5. Split tokens, drop the ignorable "iv" suffix when a real name remains
+        List<String> tokenList = new ArrayList<>();
+        for (String t : normalized.trim().split("\\s+")) {
+            if (!t.isEmpty()) tokenList.add(t);
+        }
+        if (tokenList.isEmpty()) {
             return "";
         }
+        List<String> withoutSuffix = new ArrayList<>(tokenList);
+        withoutSuffix.removeIf(NAME_SUFFIXES::contains);
+        if (withoutSuffix.size() >= 2) {
+            tokenList = withoutSuffix;
+        }
 
-        Arrays.sort(tokens);
-        return String.join(" ", tokens);
+        // 6. Sort alphabetically and join
+        Collections.sort(tokenList);
+        return String.join(" ", tokenList);
     }
+
+    private static final java.util.regex.Pattern ROLE_PATTERN = java.util.regex.Pattern.compile(
+            "\\b(auteurs?|autrices?|dessinateurs?|dessinatrices?|illustrateurs?|illustratrices?|scenaristes?|coloristes?)"
+                    + "(\\s+(du|de la|de|des)\\s+(texte|dessin|scenario|couleurs?|couverture))?\\b");
+
+    // Only "IV" is ignored (e.g. "James Tynion IV" == "James Tynion").
+    // Jr/Sr/II/III/père/fils are kept so that fathers and sons are never merged.
+    private static final Set<String> NAME_SUFFIXES = Set.of("iv");
 
     /**
      * Measures how clean and canonical an author's name is.
@@ -83,6 +103,9 @@ public class AuthorDeduplicationService {
         // Penalty for quotes, parentheses, brackets
         if (fn.contains("\"") || fn.contains("'") || fn.contains("(") || fn.contains(")")) score -= 30;
         if (ln.contains("\"") || ln.contains("'") || ln.contains("(") || ln.contains(")")) score -= 30;
+
+        // Penalty for scraped role/separator noise (e.g. "/ Autrice du texte")
+        if (fn.contains("/") || ln.contains("/")) score -= 60;
 
         // Bonus for preserving real accents/diacritics (e.g. Pérez, Franquin)
         if (containsDiacritics(fn)) score += 15;
