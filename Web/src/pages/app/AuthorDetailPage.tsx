@@ -104,7 +104,15 @@ export default function AuthorDetailPage() {
             );
         }
 
-        return list;
+        // Most recent releases first, books without a release date at the end
+        return [...list].sort((a, b) => {
+            const ta = a.releaseDate ? new Date(a.releaseDate).getTime() : NaN;
+            const tb = b.releaseDate ? new Date(b.releaseDate).getTime() : NaN;
+            if (isNaN(ta) && isNaN(tb)) return 0;
+            if (isNaN(ta)) return 1;
+            if (isNaN(tb)) return -1;
+            return tb - ta;
+        });
     }, [author?.books, statusFilter, searchQuery]);
 
     const fullName = author
