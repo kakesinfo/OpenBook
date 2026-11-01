@@ -66,6 +66,7 @@ public class ScraperEngineService {
         liveScan.put("is_running", false);
         liveScan.put("job_name", "");
         liveScan.put("current_source", "");
+        liveScan.put("current_step", "");
         liveScan.put("current_source_name", "");
         liveScan.put("current_source_color", "#6366f1");
         liveScan.put("total_found", 0);
@@ -296,6 +297,7 @@ public class ScraperEngineService {
         liveScan.put("current_source", sourcesToRun.isEmpty() ? "" : sourcesToRun.get(0));
         liveScan.put("current_source_name", firstSrcName);
         liveScan.put("current_source_color", firstSrcColor);
+        liveScan.put("current_step", "Exploration du catalogue...");
         liveScan.put("total_found", 0);
         liveScan.put("total_saved", 0);
         liveScan.put("recent_books", new ArrayList<Map<String, Object>>());
@@ -325,6 +327,7 @@ public class ScraperEngineService {
                 liveScan.put("current_source", sName);
                 liveScan.put("current_source_name", source.getName());
                 liveScan.put("current_source_color", source.getColor());
+                liveScan.put("current_step", "Exploration du catalogue...");
 
                 int limit = fullScan ? 50000 : properties.getMaxBooksPerSource();
                 final int[] savedThisSource = {0};
@@ -346,6 +349,9 @@ public class ScraperEngineService {
 
                     int curFound = (int) liveScan.getOrDefault("total_found", 0);
                     liveScan.put("total_found", curFound + 1);
+                    if (curFound == 0) {
+                        liveScan.put("current_step", "Indexation des albums...");
+                    }
 
                     if (isSaved) {
                         int curSaved = (int) liveScan.getOrDefault("total_saved", 0);
@@ -478,6 +484,7 @@ public class ScraperEngineService {
 
             liveScan.put("is_running", false);
             liveScan.put("current_source", "");
+            liveScan.put("current_step", "");
             liveScan.put("ended_at", endTime.toString());
 
             synchronized (history) {

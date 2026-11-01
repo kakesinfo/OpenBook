@@ -37,6 +37,7 @@ export interface LiveScanStatus {
     current_source?: string | null;
     current_source_name?: string | null;
     current_source_color?: string | null;
+    current_step?: string | null;
     total_found: number;
     total_saved: number;
     started_at?: string | null;
@@ -392,8 +393,38 @@ export default function AdminIndexationPage() {
                                             {liveScan?.current_source_name || liveScan?.current_source || "En cours"}
                                         </span>
                                     </div>
-                                    <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 500 }}>
-                                        <strong style={{ color: "var(--text-primary)", fontWeight: 700 }}>{liveScan?.total_found ?? 0}</strong> {((liveScan?.total_found ?? 0) > 1) ? "livres trouvés" : "livre trouvé"}
+                                                                        <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 500 }}>
+                                        {(liveScan?.total_found ?? 0) === 0 ? (
+                                            <span style={{
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: "6px",
+                                                color: "var(--accent-amber)",
+                                                fontWeight: 600
+                                            }}>
+                                                <span className="admin-status-pulse" />
+                                                {liveScan?.current_step || "Exploration du catalogue..."}
+                                            </span>
+                                        ) : (
+                                            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                                                <span>
+                                                    <strong style={{ color: "var(--text-primary)", fontWeight: 700 }}>{liveScan?.total_found}</strong>{" "}
+                                                    {((liveScan?.total_found ?? 0) > 1) ? "livres trouvés" : "livre trouvé"}
+                                                </span>
+                                                {liveScan?.current_step && (
+                                                    <span style={{
+                                                        fontSize: "0.75rem",
+                                                        color: "var(--accent-amber)",
+                                                        background: "rgba(245, 158, 11, 0.12)",
+                                                        padding: "1px 7px",
+                                                        borderRadius: "10px",
+                                                        fontWeight: 600
+                                                    }}>
+                                                        {liveScan.current_step}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ) : liveScan?.last_error ? (
@@ -479,6 +510,99 @@ export default function AdminIndexationPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Live Scan In-Progress Banner */}
+                {isScanRunning && (
+                    <div style={{
+                        background: "var(--bg-surface)",
+                        border: "1px solid var(--border-subtle)",
+                        borderLeft: `4px solid ${liveScan?.current_source_color || "var(--accent-amber)"}`,
+                        borderRadius: "14px",
+                        padding: "16px 20px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "16px",
+                        boxShadow: "var(--shadow-sm)",
+                        flexWrap: "wrap"
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
+                            <div style={{
+                                width: "40px",
+                                height: "40px",
+                                borderRadius: "10px",
+                                background: "rgba(245, 158, 11, 0.15)",
+                                color: "var(--accent-amber)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "18px"
+                            }}>
+                                <FontAwesomeIcon icon={faRotate} spin />
+                            </div>
+                            <div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                    <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                                        Scan en cours :
+                                    </span>
+                                    <span style={{
+                                        fontWeight: 800,
+                                        fontSize: "0.95rem",
+                                        color: liveScan?.current_source_color || "var(--accent-amber)"
+                                    }}>
+                                        {liveScan?.current_source_name || liveScan?.current_source || "En cours"}
+                                    </span>
+                                </div>
+                                <div style={{
+                                    fontSize: "0.85rem",
+                                    color: "var(--text-muted)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                    marginTop: "3px",
+                                    flexWrap: "wrap"
+                                }}>
+                                    <span style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "6px",
+                                        color: "var(--accent-amber)",
+                                        fontWeight: 600
+                                    }}>
+                                        <span className="admin-status-pulse" />
+                                        {(liveScan?.total_found ?? 0) === 0
+                                            ? (liveScan?.current_step || "Exploration du catalogue...")
+                                            : (liveScan?.current_step || "Indexation des albums...")}
+                                    </span>
+                                    {(liveScan?.total_found ?? 0) > 0 && (
+                                        <>
+                                            <span>•</span>
+                                            <span>
+                                                <strong style={{ color: "var(--text-primary)" }}>{liveScan?.total_found}</strong> trouvés
+                                            </span>
+                                            <span>•</span>
+                                            <span>
+                                                <strong style={{ color: "var(--text-primary)" }}>{liveScan?.total_saved}</strong> enregistrés
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="admin-btn admin-btn--stop"
+                            onClick={handleStopScan}
+                            disabled={loading}
+                            style={{ padding: "8px 16px", fontSize: "0.85rem" }}
+                            title="Arrêter le scan en cours"
+                        >
+                            <FontAwesomeIcon icon={faStop} />
+                            <span>Arrêter</span>
+                        </button>
+                    </div>
+                )}
 
                 {/* Sources & Publishers Section (Table with Multi-select and Header Actions) */}
                 <div className="admin-sources-panel">
@@ -646,16 +770,39 @@ export default function AdminIndexationPage() {
                                                 onClick={(e) => e.stopPropagation()}
                                             >
                                                 {isEnabled && (
-                                                    <button
-                                                        type="button"
-                                                        className="admin-row-btn"
-                                                        onClick={() => handleTriggerScrape([source.id], false)}
-                                                        disabled={loading || isScanRunning}
-                                                        title={`Scanner ${source.name} (scan rapide)`}
-                                                    >
-                                                        <FontAwesomeIcon icon={faBolt} style={{ color: source.color }} />
-                                                        <span>Scanner</span>
-                                                    </button>
+                                                    isScanRunning && liveScan?.current_source === source.id ? (
+                                                        <span
+                                                            style={{
+                                                                display: "inline-flex",
+                                                                alignItems: "center",
+                                                                gap: "6px",
+                                                                padding: "6px 12px",
+                                                                borderRadius: "8px",
+                                                                background: "rgba(245, 158, 11, 0.12)",
+                                                                color: "var(--accent-amber)",
+                                                                fontSize: "0.8rem",
+                                                                fontWeight: 600
+                                                            }}
+                                                        >
+                                                            <FontAwesomeIcon icon={faRotate} spin />
+                                                            <span>
+                                                                {(liveScan?.total_found ?? 0) === 0
+                                                                    ? (liveScan?.current_step || "Exploration...")
+                                                                    : `${liveScan?.total_found} trouvés`}
+                                                            </span>
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            className="admin-row-btn"
+                                                            onClick={() => handleTriggerScrape([source.id], true)}
+                                                            disabled={loading || isScanRunning}
+                                                            title={`Scanner ${source.name} (catalogue complet)`}
+                                                        >
+                                                            <FontAwesomeIcon icon={faBolt} style={{ color: source.color }} />
+                                                            <span>Scanner</span>
+                                                        </button>
+                                                    )
                                                 )}
                                             </td>
                                         </tr>

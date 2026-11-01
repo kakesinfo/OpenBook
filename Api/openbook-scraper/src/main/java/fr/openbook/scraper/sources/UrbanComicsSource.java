@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -91,22 +92,24 @@ public class UrbanComicsSource extends AbstractHttpSource {
 
         log.info("[UrbanComics] Starting crawl (fullScan={}, maxItems={})...", fullScan, maxItems);
 
-        // 1. Crawl À paraître
+        // 1. Sitemaps (entire canonical product catalog)
+        if (fullScan) {
+            crawlSitemaps(fullScan, isStopped, targets);
+            log.info("[UrbanComics] Targets after sitemaps: {}", targets.size());
+        }
+
+        if (isStopped != null && isStopped.getAsBoolean()) return Collections.emptyList();
+
+        // 2. Crawl À paraître (enriches upcoming albums with planning dates and covers recent releases)
         crawlAParaitre(fullScan, isStopped, targets);
         log.info("[UrbanComics] Targets after à paraître: {}", targets.size());
 
         if (isStopped != null && isStopped.getAsBoolean()) return Collections.emptyList();
 
-        // 2. Crawl Shop
-        crawlShop(fullScan, isStopped, targets);
-        log.info("[UrbanComics] Targets after shop: {}", targets.size());
-
-        if (isStopped != null && isStopped.getAsBoolean()) return Collections.emptyList();
-
-        // 3. Sitemaps
-        if (fullScan || targets.size() < maxItems) {
-            crawlSitemaps(fullScan, isStopped, targets);
-            log.info("[UrbanComics] Targets after sitemaps: {}", targets.size());
+        // 3. Crawl Shop (fallback only if both sitemaps and à paraître found nothing)
+        if (targets.isEmpty()) {
+            crawlShop(fullScan, isStopped, targets);
+            log.info("[UrbanComics] Targets after shop: {}", targets.size());
         }
 
         if (isStopped != null && isStopped.getAsBoolean()) return Collections.emptyList();
@@ -124,6 +127,7 @@ public class UrbanComicsSource extends AbstractHttpSource {
         log.info("[UrbanComics] Processing {} target detail pages...", targetList.size());
 
         List<ScrapedBookDTO> books = Collections.synchronizedList(new ArrayList<>());
+        Semaphore semaphore = new Semaphore(10);
 
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
             for (Map.Entry<String, TargetHint> entry : targetList) {
@@ -132,12 +136,23 @@ public class UrbanComicsSource extends AbstractHttpSource {
                 executor.submit(() -> {
                     if (isStopped != null && isStopped.getAsBoolean()) return;
 
-                    ScrapedBookDTO book = scrapeProductPage(entry.getKey(), entry.getValue());
-                    if (book != null) {
-                        books.add(book);
-                        if (onBookFound != null) {
-                            onBookFound.accept(book);
+                    try {
+                        semaphore.acquire();
+                        try {
+                            if (isStopped != null && isStopped.getAsBoolean()) return;
+
+                            ScrapedBookDTO book = scrapeProductPage(entry.getKey(), entry.getValue());
+                            if (book != null) {
+                                books.add(book);
+                                if (onBookFound != null) {
+                                    onBookFound.accept(book);
+                                }
+                            }
+                        } finally {
+                            semaphore.release();
                         }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                     }
                 });
             }
@@ -161,19 +176,11 @@ public class UrbanComicsSource extends AbstractHttpSource {
         int curMonth = now.getMonthValue();
 
         List<int[]> monthsToVisit = new ArrayList<>();
-        if (fullScan) {
-            for (int y = 2012; y <= curYear + 1; y++) {
-                for (int m = 0; m < 12; m++) {
-                    monthsToVisit.add(new int[]{m, y});
-                }
-            }
-        } else {
-            for (int offset = -3; offset < 10; offset++) {
-                int val = curMonth - 1 + offset;
-                int targetMonthIdx = ((val % 12) + 12) % 12;
-                int yearOffset = val < 0 ? (val - 11) / 12 : val / 12;
-                monthsToVisit.add(new int[]{targetMonthIdx, curYear + yearOffset});
-            }
+        for (int offset = -3; offset < 10; offset++) {
+            int val = curMonth - 1 + offset;
+            int targetMonthIdx = ((val % 12) + 12) % 12;
+            int yearOffset = val < 0 ? (val - 11) / 12 : val / 12;
+            monthsToVisit.add(new int[]{targetMonthIdx, curYear + yearOffset});
         }
 
         for (int[] my : monthsToVisit) {
@@ -333,10 +340,9 @@ public class UrbanComicsSource extends AbstractHttpSource {
 
     private void crawlSitemaps(boolean fullScan, BooleanSupplier isStopped, Map<String, TargetHint> targets) {
         List<String> sitemaps = List.of(
-                "https://www.urban-comics.com/product-sitemap3.xml",
+                "https://www.urban-comics.com/product-sitemap.xml",
                 "https://www.urban-comics.com/product-sitemap2.xml",
-                "https://www.urban-comics.com/product-sitemap1.xml",
-                "https://www.urban-comics.com/post-sitemap1.xml"
+                "https://www.urban-comics.com/product-sitemap3.xml"
         );
 
         for (String smUrl : sitemaps) {
@@ -388,7 +394,9 @@ public class UrbanComicsSource extends AbstractHttpSource {
                         ));
                     }
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                log.warn("[UrbanComics] Error parsing sitemap {}: {}", smUrl, e.getMessage());
+            }
         }
     }
 

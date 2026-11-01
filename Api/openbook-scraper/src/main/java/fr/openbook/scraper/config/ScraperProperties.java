@@ -26,7 +26,7 @@ public class ScraperProperties {
     /**
      * Maximum books crawled per source in standard (non-full) mode.
      */
-    private int maxBooksPerSource = 50;
+    private int maxBooksPerSource = 500;
 
     /**
      * HTTP request timeout in seconds.
