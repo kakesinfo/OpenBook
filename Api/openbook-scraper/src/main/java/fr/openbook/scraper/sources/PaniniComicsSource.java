@@ -231,9 +231,7 @@ public class PaniniComicsSource extends AbstractHttpSource {
         if (dateEl != null) {
             releaseDate = FrenchDateParser.parse(dateEl.text().trim());
         }
-        if (releaseDate == null) {
-            releaseDate = LocalDate.now();
-        }
+        
 
         // ISBN
         String isbn = "";

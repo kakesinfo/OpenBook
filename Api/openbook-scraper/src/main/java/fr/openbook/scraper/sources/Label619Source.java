@@ -195,9 +195,7 @@ public class Label619Source extends AbstractHttpSource {
                             releaseDate = LocalDate.parse(dateStr.substring(0, 10));
                         } catch (Exception ignored) {}
                     }
-                    if (releaseDate == null) {
-                        releaseDate = LocalDate.now();
-                    }
+                    
 
                     // Description
                     String summary = item.path("summary").asText("");

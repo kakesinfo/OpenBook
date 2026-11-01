@@ -302,9 +302,7 @@ public class MonsieurToussaintLouvertureSource extends AbstractHttpSource {
                 } catch (Exception ignored) {}
             }
         }
-        if (releaseDate == null) {
-            releaseDate = LocalDate.now();
-        }
+        
 
         // 8. Description
         String description = "";

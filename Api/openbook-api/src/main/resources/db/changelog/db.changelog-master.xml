@@ -1540,4 +1540,7 @@
             UPDATE "user" SET calendar_token = md5(random()::text || clock_timestamp()::text || id::text) WHERE calendar_token IS NULL;
         </sql>
     </changeSet>
+    <changeSet id="34" author="Axel">
+        <dropNotNullConstraint tableName="book" columnName="release_date" columnDataType="timestamp"/>
+    </changeSet>
 </databaseChangeLog>

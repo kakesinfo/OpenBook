@@ -31,6 +31,9 @@ public class ScraperStatusDTO {
     @JsonProperty("current_source_color")
     private String currentSourceColor;
 
+    @JsonProperty("current_step")
+    private String currentStep;
+
     @JsonProperty("total_found")
     private int totalFound;
 
