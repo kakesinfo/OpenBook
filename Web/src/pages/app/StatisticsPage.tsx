@@ -12,7 +12,6 @@ import {
     faUserPen,
     faCalendarDays,
     faArrowRight,
-    faRotate,
     faLayerGroup,
     faBookOpen,
     faCrown,
@@ -29,20 +28,36 @@ import UserStatisticsDTO from "../../dto/UserStatistics.dto.ts";
 import PieChart from "../../components/Charts/PieChart.tsx";
 import "./StatisticsPage.scss";
 
+function StatisticsSectionPlaceholder() {
+    return (
+        <div className="stats-page__section-placeholder" aria-hidden="true">
+            <div className="stats-page__section-placeholder-line stats-page__section-placeholder-line--wide" />
+            <div className="stats-page__section-placeholder-line" />
+            <div className="stats-page__section-placeholder-content" />
+        </div>
+    );
+}
+
 export default function StatisticsPage() {
     const session = useSession();
     const [stats, setStats] = useState<UserStatisticsDTO | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
+    const [visibleSections, setVisibleSections] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
     const fetchStatistics = async () => {
         setLoading(true);
+        setVisibleSections(0);
         setError(null);
         try {
             const resp = await session.customFetch("/user/statistics", { method: "GET" });
             if (resp.ok) {
                 const data = await resp.json();
                 setStats(data);
+                setVisibleSections(1);
+                [2, 3, 4, 5, 6, 7].forEach((section, index) => {
+                    window.setTimeout(() => setVisibleSections(section), (index + 1) * 180);
+                });
             } else {
                 setError("Impossible de charger les statistiques.");
             }
@@ -93,11 +108,12 @@ export default function StatisticsPage() {
             </WrapperHeader>
 
             <div className="stats-page__content">
-                {loading && (
-                    <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted, #94a3b8)" }}>
-                        <FontAwesomeIcon icon={faRotate} spin style={{ fontSize: "2rem", marginBottom: "16px", color: "var(--accent-secondary, #6366f1)" }} />
-                        <div style={{ fontSize: "1rem", fontWeight: 500 }}>Calcul de vos statistiques en cours...</div>
-                    </div>
+                {loading && !stats && (
+                    <>
+                        <StatisticsSectionPlaceholder />
+                        <StatisticsSectionPlaceholder />
+                        <StatisticsSectionPlaceholder />
+                    </>
                 )}
 
                 {error && (
@@ -127,7 +143,7 @@ export default function StatisticsPage() {
                     </div>
                 )}
 
-                {!loading && !error && stats && stats.totalOwnedBooks === 0 && (
+                {!loading && !error && stats && stats.totalOwnedBooks === 0 && visibleSections >= 1 && (
                     <div className="stats-page__section-card" style={{ textAlign: "center", padding: "48px 24px" }}>
                         <FontAwesomeIcon icon={faBook} style={{ fontSize: "2.5rem", color: "var(--text-muted, #64748b)", marginBottom: "16px" }} />
                         <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary, #fff)", marginBottom: "8px" }}>
@@ -159,7 +175,7 @@ export default function StatisticsPage() {
                 {!loading && !error && stats && stats.totalOwnedBooks > 0 && (
                     <>
                         {/* 1. KEY METRICS CARDS */}
-                        <div className="stats-page__kpi-grid">
+                        {visibleSections >= 1 && <div className="stats-page__kpi-grid">
                             {/* Owned Books */}
                             <div className="stats-page__metric-card stats-page__metric-card--blue">
                                 <div className="stats-page__metric-icon" style={{ background: "rgba(99, 102, 241, 0.15)", color: "#818cf8" }}>
@@ -257,10 +273,10 @@ export default function StatisticsPage() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                            </div>}
 
-                        {/* 2. READING PROGRESSION & PAL */}
-                        <div className="stats-page__section-card">
+                            {/* 2. READING PROGRESSION & PAL */}
+                        {visibleSections >= 2 && <div className="stats-page__section-card">
                             <div className="stats-page__section-header">
                                 <div>
                                     <h3>
@@ -385,10 +401,10 @@ export default function StatisticsPage() {
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </div>}
 
                         {/* 3. PHYSICAL STATS (CLEAN, WITHOUT SILLY COMPARISONS) */}
-                        <div className="stats-page__section-card">
+                        {visibleSections >= 3 && <div className="stats-page__section-card">
                             <div className="stats-page__section-header">
                                 <div>
                                     <h3>
@@ -487,10 +503,10 @@ export default function StatisticsPage() {
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div>}
 
                         {/* 4. GENRES & PUBLICATION ERAS (TWO COLS) */}
-                        <div className="stats-page__two-cols">
+                        {visibleSections >= 4 && <div className="stats-page__two-cols">
                             {/* Donut Chart: Genres */}
                             <div className="stats-page__section-card">
                                 <div className="stats-page__section-header">
@@ -548,10 +564,10 @@ export default function StatisticsPage() {
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </div>}
 
                         {/* 5. TOP AUTHORS & TOP PUBLISHERS (TWO COLS) */}
-                        <div className="stats-page__two-cols">
+                        {visibleSections >= 5 && <div className="stats-page__two-cols">
                             {/* Top Authors */}
                             <div className="stats-page__section-card">
                                 <div className="stats-page__section-header">
@@ -629,10 +645,10 @@ export default function StatisticsPage() {
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </div>}
 
                         {/* 7. HALL OF FAME / RECORDS */}
-                        <div className="stats-page__section-card">
+                        {visibleSections >= 6 && <div className="stats-page__section-card">
                             <div className="stats-page__section-header">
                                 <div>
                                     <h3>
@@ -853,7 +869,7 @@ export default function StatisticsPage() {
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </div>}
                     </>
                 )}
             </div>
