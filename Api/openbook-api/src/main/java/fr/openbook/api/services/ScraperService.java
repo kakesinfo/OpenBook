@@ -61,11 +61,6 @@ public class ScraperService {
         return dbService.verifyBooksFromBnf(effectiveLimit, false);
     }
 
-    public Map<String, Object> findOriginCountriesFromBnf(Integer limit) {
-        int effectiveLimit = (limit != null && limit > 0) ? limit : 100;
-        return dbService.findOriginCountriesFromBnf(effectiveLimit);
-    }
-
     public Map<String, Object> getVolumeConflicts() {
         return Map.of("conflicts", dbService.detectVolumeConflicts());
     }
