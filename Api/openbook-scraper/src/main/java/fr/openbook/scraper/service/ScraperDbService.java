@@ -233,7 +233,8 @@ public class ScraperDbService {
         }
 
         // BNF enrichment if ISBN exists but releaseDate or pageCount is missing
-        if (!cleanISBN.isEmpty() && (book.getReleaseDate() == null || book.getPageCount() == 0 || collectionId == null)) {
+        if (!cleanISBN.isEmpty() && (book.getReleaseDate() == null || book.getPageCount() == 0
+                || collectionId == null || book.getOriginCountry() == null || book.getOriginCountry().isBlank())) {
             try {
                 BnfBookData bnfData = bnfClient.lookupByIsbn(cleanISBN);
                 if (bnfData != null) {
@@ -266,6 +267,10 @@ public class ScraperDbService {
                     }
                     if (book.getReleaseDate() == null && bnfData.getReleaseDate() != null) {
                         book.setReleaseDate(LocalDate.ofInstant(bnfData.getReleaseDate(), java.time.ZoneOffset.UTC));
+                    }
+                    if ((book.getOriginCountry() == null || book.getOriginCountry().isBlank())
+                            && bnfData.getOriginCountry() != null) {
+                        book.setOriginCountry(bnfData.getOriginCountry());
                     }
                 }
             } catch (Exception e) {
@@ -313,6 +318,10 @@ public class ScraperDbService {
                     }
                     if (book.getReleaseDate() == null && bnfData.getReleaseDate() != null) {
                         book.setReleaseDate(LocalDate.ofInstant(bnfData.getReleaseDate(), java.time.ZoneOffset.UTC));
+                    }
+                    if ((book.getOriginCountry() == null || book.getOriginCountry().isBlank())
+                            && bnfData.getOriginCountry() != null) {
+                        book.setOriginCountry(bnfData.getOriginCountry());
                     }
                 }
             } catch (Exception e) {
@@ -422,6 +431,7 @@ public class ScraperDbService {
                     description = COALESCE(?, description),
                     cover_url = COALESCE(?, cover_url),
                     collection_id = COALESCE(?, collection_id),
+                    origin_country = COALESCE(NULLIF(?, ''), origin_country),
                     parent_book_id = CASE
                         WHEN ?::int IS NOT NULL AND ?::int != id THEN ?::int
                         WHEN parent_book_id = id THEN NULL
@@ -435,6 +445,7 @@ public class ScraperDbService {
                     cleanDesc.isEmpty() ? null : cleanDesc,
                     storedCover,
                     collectionId,
+                    book.getOriginCountry(),
                     parentBookId, parentBookId, parentBookId,
                     bookId
             );
@@ -500,12 +511,12 @@ public class ScraperDbService {
                     INSERT INTO book (
                         title, series_id, editor_id, collection_id,
                         volume, isbn, page_count, price, description,
-                        cover_url, release_date, type, parent_book_id,
+                        cover_url, release_date, type, origin_country, parent_book_id,
                         deleted, created_at, updated_at
                     ) VALUES (
                         ?, NULL, ?, ?,
                         ?, ?, ?, ?, ?,
-                        ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?,
                         FALSE, NOW(), NOW()
                     ) RETURNING id;
                 """, Statement.RETURN_GENERATED_KEYS);
@@ -520,7 +531,12 @@ public class ScraperDbService {
                 ps.setString(9, storedCover);
                 if (relTimestamp != null) ps.setTimestamp(10, relTimestamp); else ps.setNull(10, java.sql.Types.TIMESTAMP);
                 ps.setString(11, bType);
-                if (finalParentBookId != null) ps.setInt(12, finalParentBookId); else ps.setNull(12, java.sql.Types.INTEGER);
+                if (book.getOriginCountry() != null && !book.getOriginCountry().isBlank()) {
+                    ps.setString(12, book.getOriginCountry());
+                } else {
+                    ps.setNull(12, java.sql.Types.VARCHAR);
+                }
+                if (finalParentBookId != null) ps.setInt(13, finalParentBookId); else ps.setNull(13, java.sql.Types.INTEGER);
                 return ps;
             }, keyHolder);
 
@@ -1073,6 +1089,7 @@ public class ScraperDbService {
             String foundISBN = bnfData.getIsbn();
             int foundPages = bnfData.getPageCount() != null ? bnfData.getPageCount() : 0;
             String foundCol = bnfData.getCollectionName();
+            String foundOriginCountry = bnfData.getOriginCountry();
 
             Integer newColId = collectionId;
             if (newColId == null && foundCol != null && !foundCol.isBlank()) {
@@ -1108,19 +1125,21 @@ public class ScraperDbService {
                     SET isbn = ?,
                         page_count = CASE WHEN page_count IS NULL OR page_count = 0 THEN ? ELSE page_count END,
                         collection_id = COALESCE(?, collection_id),
+                        origin_country = COALESCE(NULLIF(?, ''), origin_country),
                         release_date = CASE WHEN release_date IS NULL THEN ? ELSE release_date END,
                         updated_at = NOW()
                     WHERE id = ?;
-                """, isbnToSet, foundPages, newColId, foundRelTimestamp, id);
+                """, isbnToSet, foundPages, newColId, foundOriginCountry, foundRelTimestamp, id);
             } else {
                 jdbcTemplate.update("""
                     UPDATE book
                     SET page_count = CASE WHEN page_count IS NULL OR page_count = 0 THEN ? ELSE page_count END,
                         collection_id = COALESCE(?, collection_id),
+                        origin_country = COALESCE(NULLIF(?, ''), origin_country),
                         release_date = CASE WHEN release_date IS NULL THEN ? ELSE release_date END,
                         updated_at = NOW()
                     WHERE id = ?;
-                """, foundPages, newColId, foundRelTimestamp, id);
+                """, foundPages, newColId, foundOriginCountry, foundRelTimestamp, id);
             }
 
             enrichedCount++;
@@ -1147,7 +1166,8 @@ public class ScraperDbService {
         if (limit <= 0) limit = 100;
 
         List<Map<String, Object>> books = jdbcTemplate.queryForList("""
-            SELECT b.id, COALESCE(b.title, '') as title, COALESCE(b.isbn, '') as isbn, b.page_count, b.collection_id, b.release_date
+            SELECT b.id, COALESCE(b.title, '') as title, COALESCE(b.isbn, '') as isbn, b.page_count, b.collection_id,
+                   b.release_date, b.origin_country
             FROM book b
             WHERE COALESCE(b.deleted, FALSE) = FALSE AND b.isbn IS NOT NULL AND LENGTH(TRIM(b.isbn)) >= 10
             ORDER BY (CASE WHEN b.release_date IS NULL OR b.page_count IS NULL OR b.page_count = 0 THEN 0 ELSE 1 END), b.updated_at ASC
@@ -1162,10 +1182,15 @@ public class ScraperDbService {
         for (Map<String, Object> b : books) {
             int id = (Integer) b.get("id");
             String isbn = (String) b.get("isbn");
+            String title = (String) b.get("title");
             Integer currentPages = (Integer) b.get("page_count");
             Integer collectionId = (Integer) b.get("collection_id");
+            String currentOriginCountry = (String) b.get("origin_country");
 
             BnfBookData bnfData = bnfClient.lookupByIsbn(isbn);
+            if (bnfData == null && title != null && !title.isBlank()) {
+                bnfData = bnfClient.searchBook(title, null, null, null, 10);
+            }
             if (bnfData == null) {
                 continue;
             }
@@ -1192,6 +1217,15 @@ public class ScraperDbService {
                     jdbcTemplate.update("UPDATE book SET collection_id = ?, updated_at = NOW() WHERE id = ?;", newColId, id);
                     hasChanges = true;
                 } catch (EmptyResultDataAccessException ignored) {}
+            }
+
+            if ((currentOriginCountry == null || currentOriginCountry.isBlank())
+                    && bnfData.getOriginCountry() != null && !bnfData.getOriginCountry().isBlank()) {
+                jdbcTemplate.update(
+                        "UPDATE book SET origin_country = ?, updated_at = NOW() WHERE id = ?;",
+                        bnfData.getOriginCountry(), id
+                );
+                hasChanges = true;
             }
 
             Timestamp currentRelDate = (Timestamp) b.get("release_date");

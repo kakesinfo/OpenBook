@@ -14,6 +14,7 @@ public class BnfBookData {
     private Integer pageCount;
     private Instant releaseDate;
     private String collectionName;
+    private String originCountry;
     private List<String> authors = new ArrayList<>();
     private String docType; // Roman, Manga, Bande dessinée, Comics
 }

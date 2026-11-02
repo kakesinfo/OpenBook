@@ -19,4 +19,5 @@ public class ExistingBook {
     private Long seriesId;
     private Long collectionId;
     private String type;
+    private String originCountry;
 }

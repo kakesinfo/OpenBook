@@ -24,7 +24,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,7 +38,7 @@ public class BnfClient {
     private static final String BNF_USER_AGENT = "YetAnotherLibrary/1.0 (https://github.com/yet-another-library)";
 
     private static final Pattern RE_BNF_PUB_CLEANUP = Pattern.compile("(?i)\\b(?:comics|éditions|editions|manga|bd|publishing|presse)\\b");
-    private static final Pattern RE_BNF_CQL_CHARS = Pattern.compile("[\"\\(\\)\\{\\}\\[\\]:\\-<>=\\/\\\\]");
+    private static final Pattern RE_BNF_CQL_CHARS = Pattern.compile("[\"\\(\\)\\{\\}\\[\\]:#\\-<>=\\/\\\\]");
     private static final Pattern RE_BNF_CREATOR_ROLES = Pattern.compile("(?i)[\\.\\s]*(?:\\((?:auteur|illustrateur|coloriste|traducteur|directeur)[^\\)]*\\)|\\b(?:auteur|illustrateur|coloriste|traducteur)(?:\\s+du\\s+texte)?\\b)[\\.\\s]*");
     private static final Pattern RE_BNF_CREATOR_DATES = Pattern.compile("\\(\\s*[\\d\\.]{2,4}\\s*-[^\\)]*\\)");
     private static final Pattern RE_BNF_CREATOR_FUNC = Pattern.compile("(?i)[\\.\\s]*\\b(?:fonction\\s+indéterminée|collaborateur\\s+au\\s+texte|préfacier|directeur\\s+de\\s+publication)\\b.*");
@@ -46,6 +48,58 @@ public class BnfClient {
     private static final Pattern RE_BNF_ISBN_IDENTIFIER = Pattern.compile("(?:ISBN|EAN)\\s*([0-9Xx\\-]{10,17})");
     private static final Pattern RE_BNF_NON_ISBN = Pattern.compile("[^0-9Xx]");
     private static final Pattern RE_BNF_COLLECTION = Pattern.compile("(?i)Collection\\s*:\\s*([^;,\\n]+)");
+    private static final Pattern RE_BNF_TRANSLATION_ORIGIN = Pattern.compile(
+            "(?i)\\b(?:traduit|traduction|adapté|adaptation)\\s+(?:de|du|des|d')\\s+"
+                    + "(?:l['’])?(anglais|américain|américaine|japonais|japonaise|italien|italienne|espagnol|espagnole|allemand|allemande|coréen|coréenne|chinois|chinoise)"
+    );
+    private static final Map<String, String> COUNTRY_CODES = Map.ofEntries(
+            Map.entry("france", "FR"),
+            Map.entry("french", "FR"),
+            Map.entry("japon", "JP"),
+            Map.entry("japan", "JP"),
+            Map.entry("etats-unis", "US"),
+            Map.entry("états-unis", "US"),
+            Map.entry("united states", "US"),
+            Map.entry("usa", "US"),
+            Map.entry("royaume-uni", "GB"),
+            Map.entry("united kingdom", "GB"),
+            Map.entry("grande-bretagne", "GB"),
+            Map.entry("belgique", "BE"),
+            Map.entry("belgium", "BE"),
+            Map.entry("allemagne", "DE"),
+            Map.entry("germany", "DE"),
+            Map.entry("italie", "IT"),
+            Map.entry("italy", "IT"),
+            Map.entry("espagne", "ES"),
+            Map.entry("spain", "ES"),
+            Map.entry("canada", "CA"),
+            Map.entry("corée du sud", "KR"),
+            Map.entry("coree du sud", "KR"),
+            Map.entry("south korea", "KR")
+    );
+    private static final Map<String, String> CITY_COUNTRY_CODES = Map.ofEntries(
+            Map.entry("paris", "FR"),
+            Map.entry("bruxelles", "BE"),
+            Map.entry("brussels", "BE"),
+            Map.entry("londres", "GB"),
+            Map.entry("london", "GB"),
+            Map.entry("new york", "US"),
+            Map.entry("los angeles", "US"),
+            Map.entry("san francisco", "US"),
+            Map.entry("tokyo", "JP"),
+            Map.entry("kyoto", "JP"),
+            Map.entry("osaka", "JP"),
+            Map.entry("rome", "IT"),
+            Map.entry("milan", "IT"),
+            Map.entry("madrid", "ES"),
+            Map.entry("barcelone", "ES"),
+            Map.entry("berlin", "DE"),
+            Map.entry("munich", "DE"),
+            Map.entry("montréal", "CA"),
+            Map.entry("montreal", "CA"),
+            Map.entry("séoul", "KR"),
+            Map.entry("seoul", "KR")
+    );
 
     private final RestTemplate restTemplate;
 
@@ -67,15 +121,19 @@ public class BnfClient {
 
         List<String> queries = new ArrayList<>();
         if (!publisherTerm.isBlank() && !authorTerm.isBlank()) {
-            queries.add(String.format("(bib.title all \"%s\") and (bib.publisher all \"%s\") and (bib.author all \"%s\")", cleanT, publisherTerm, authorTerm));
+            queries.add(String.format("title all \"%s\" and publisher all \"%s\" and author all \"%s\"", cleanT, publisherTerm, authorTerm));
         }
         if (!publisherTerm.isBlank()) {
-            queries.add(String.format("(bib.title all \"%s\") and (bib.publisher all \"%s\")", cleanT, publisherTerm));
+            queries.add(String.format("title all \"%s\" and publisher all \"%s\"", cleanT, publisherTerm));
         }
         if (!authorTerm.isBlank()) {
-            queries.add(String.format("(bib.title all \"%s\") and (bib.author all \"%s\")", cleanT, authorTerm));
+            queries.add(String.format("title all \"%s\" and author all \"%s\"", cleanT, authorTerm));
         }
-        queries.add(String.format("(bib.title all \"%s\")", cleanT));
+        queries.add(String.format("title all \"%s\"", cleanT));
+        String[] titleWords = cleanT.split("\\s+");
+        if (titleWords.length >= 2) {
+            queries.add(String.format("title all \"%s %s\"", titleWords[0], titleWords[1]));
+        }
 
         List<Element> records = new ArrayList<>();
         for (String q : queries) {
@@ -152,8 +210,6 @@ public class BnfClient {
                 }
             }
         }
-        if (isbns.isEmpty()) return null;
-
         Integer pageCount = null;
         List<String> formats = getTagValues(rec, "format");
         for (String fmtStr : formats) {
@@ -184,6 +240,8 @@ public class BnfClient {
         String docType = "";
         List<String> descriptions = getTagValues(rec, "description");
         List<String> subjects = getTagValues(rec, "subject");
+        List<String> coverages = getTagValues(rec, "coverage");
+        List<String> publishers = getTagValues(rec, "publisher");
         String fullMeta = (String.join(" ", titles) + " " + String.join(" ", formats) + " " + String.join(" ", descriptions) + " " + String.join(" ", subjects)).toLowerCase();
 
         if (fullMeta.contains("bande dessinée") || fullMeta.contains("bandes dessinées") || fullMeta.contains("bande-dessinée")) {
@@ -197,9 +255,10 @@ public class BnfClient {
         }
 
         String collectionName = parseBnfCollection(descriptions);
+        String originCountry = parseOriginCountry(coverages, publishers, descriptions);
 
         BnfBookData bookData = new BnfBookData();
-        bookData.setIsbn(isbns.get(0));
+        bookData.setIsbn(isbns.isEmpty() ? null : isbns.get(0));
         bookData.setTitle(cleanText(titles.get(0)));
         bookData.setVolume(volume);
         bookData.setPageCount(pageCount);
@@ -207,7 +266,55 @@ public class BnfClient {
         bookData.setAuthors(authors);
         bookData.setDocType(docType);
         bookData.setCollectionName(collectionName);
+        bookData.setOriginCountry(originCountry);
         return bookData;
+    }
+
+    private String parseOriginCountry(List<String> coverages, List<String> publishers, List<String> descriptions) {
+        List<String> metadata = new ArrayList<>();
+        metadata.addAll(coverages);
+        metadata.addAll(publishers);
+        metadata.addAll(descriptions);
+
+        for (String value : metadata) {
+            String translationCountry = parseTranslationOrigin(value);
+            if (translationCountry != null) {
+                return translationCountry;
+            }
+
+            String normalized = value.toLowerCase(Locale.ROOT)
+                    .replaceAll("[()\\[\\],;:.]", " ")
+                    .replaceAll("\\s+", " ")
+                    .trim();
+            for (Map.Entry<String, String> entry : COUNTRY_CODES.entrySet()) {
+                if (normalized.contains(entry.getKey())) {
+                    return entry.getValue();
+                }
+            }
+            for (Map.Entry<String, String> entry : CITY_COUNTRY_CODES.entrySet()) {
+                if (normalized.contains(entry.getKey())) {
+                    return entry.getValue();
+                }
+            }
+        }
+        return null;
+    }
+
+    private String parseTranslationOrigin(String value) {
+        Matcher matcher = RE_BNF_TRANSLATION_ORIGIN.matcher(value);
+        if (!matcher.find()) {
+            return null;
+        }
+        return switch (matcher.group(1).toLowerCase(Locale.ROOT)) {
+            case "anglais", "américain", "américaine" -> "US";
+            case "japonais", "japonaise" -> "JP";
+            case "italien", "italienne" -> "IT";
+            case "espagnol", "espagnole" -> "ES";
+            case "allemand", "allemande" -> "DE";
+            case "coréen", "coréenne" -> "KR";
+            case "chinois", "chinoise" -> "CN";
+            default -> null;
+        };
     }
 
     private String parseBnfCollection(List<String> descriptions) {

@@ -164,7 +164,7 @@ public class BookmoryImportService {
 
         // 4. Personal collections from Bookmory are NOT imported as publisher collections
 
-        // 5. Query BNF if ISBN is missing
+        // 5. Query BNF when metadata is missing or can be enriched
         BnfBookData bnfData = null;
         String isbn = b.getIsbn() != null ? b.getIsbn().trim() : "";
         if (isbn.isBlank()) {
@@ -185,11 +185,14 @@ public class BookmoryImportService {
                     b.setPublicationDate(DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC).format(bnfData.getReleaseDate()));
                 }
             }
+        } else {
+            bnfData = bnfClient.lookupByIsbn(isbn);
         }
 
         // 6. Determine Book Type
         List<String> bookTags = parsed.getBookTags().getOrDefault(b.getKey(), Collections.emptyList());
         String bookType = determineBookType(b, b.getPublisher(), bnfData, bookTags);
+        String originCountry = bnfData != null ? bnfData.getOriginCountry() : null;
 
         // 7. Release date
         Instant relDate = parseReleaseDate(b.getPublicationDate(), b.getCreatedAt());
@@ -200,12 +203,12 @@ public class BookmoryImportService {
 
         if (existing != null) {
             bookId = existing.getId();
-            boolean updated = dbService.updateExistingBook(existing, b, coverURL, editorId, seriesId, relDate, bookType);
+            boolean updated = dbService.updateExistingBook(existing, b, coverURL, editorId, seriesId, relDate, bookType, originCountry);
             if (updated) {
                 job.setUpdatedBooks(job.getUpdatedBooks() + 1);
             }
         } else {
-            bookId = dbService.createNewBook(b, coverURL, editorId, seriesId, relDate, bookType);
+            bookId = dbService.createNewBook(b, coverURL, editorId, seriesId, relDate, bookType, originCountry);
             job.setCreatedBooks(job.getCreatedBooks() + 1);
         }
 

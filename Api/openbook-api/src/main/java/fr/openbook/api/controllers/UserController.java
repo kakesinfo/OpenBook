@@ -1341,10 +1341,10 @@ public class UserController {
             }
 
             String cCode = book.getOriginCountry();
-            if (cCode == null || cCode.isBlank()) {
-                cCode = inferCountry(book, category);
+            if (cCode != null && !cCode.isBlank()) {
+                cCode = cCode.trim().toUpperCase();
+                countryCounts.put(cCode, countryCounts.getOrDefault(cCode, 0) + 1);
             }
-            countryCounts.put(cCode.toUpperCase(), countryCounts.getOrDefault(cCode.toUpperCase(), 0) + 1);
         }
 
         int totalOwned = ownedEntities.size();
@@ -1586,18 +1586,6 @@ public class UserController {
         if (lower.contains("bande") || lower.contains("bd")) return 520;
         if (lower.contains("roman")) return 350;
         return 350;
-    }
-
-    private String inferCountry(BookEntity book, String category) {
-        String lowerCat = category.toLowerCase();
-        if (lowerCat.contains("manga")) return "JP";
-        if (lowerCat.contains("comics")) return "US";
-        if (lowerCat.contains("bande") || lowerCat.contains("bd")) {
-            String title = book.getTitle().toLowerCase();
-            if (title.contains("tintin") || title.contains("spirou") || title.contains("seuls")) return "BE";
-            return "FR";
-        }
-        return "FR";
     }
 
     private String getCountryName(String code) {

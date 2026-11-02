@@ -1543,4 +1543,9 @@
     <changeSet id="34" author="Axel">
         <dropNotNullConstraint tableName="book" columnName="release_date" columnDataType="timestamp"/>
     </changeSet>
+    <changeSet id="35" author="Axel">
+        <createIndex tableName="book" indexName="idx_book_origin_country">
+            <column name="origin_country" />
+        </createIndex>
+    </changeSet>
 </databaseChangeLog>
