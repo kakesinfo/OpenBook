@@ -52,9 +52,6 @@ public class ScrapedBookDTO {
     @JsonProperty("book_type")
     private String bookType;
 
-    @JsonProperty("origin_country")
-    private String originCountry;
-
     @Builder.Default
     private List<ScrapedAuthorDTO> authors = new ArrayList<>();
 

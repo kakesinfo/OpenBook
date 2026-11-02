@@ -172,7 +172,7 @@ public class BookmoryDbService {
             "SELECT id, title, isbn, COALESCE(volume, 0) as volume, COALESCE(page_count, 0) as page_count, " +
             "COALESCE(price, 0) as price, description, cover_url, " +
             "COALESCE(release_date, '1970-01-01'::timestamp) as release_date, " +
-            "editor_id, series_id, collection_id, COALESCE(type, '') as type, origin_country FROM book ";
+            "editor_id, series_id, collection_id, COALESCE(type, '') as type FROM book ";
 
     public ExistingBook findBook(String isbn, String title) {
         String cleanISBN = isbn != null ? isbn.trim() : "";
@@ -227,13 +227,11 @@ public class BookmoryDbService {
         long col = rs.getLong("collection_id");
         b.setCollectionId(rs.wasNull() ? null : col);
         b.setType(rs.getString("type"));
-        b.setOriginCountry(rs.getString("origin_country"));
         return b;
     }
 
     public boolean updateExistingBook(ExistingBook existing, BookmoryBook b, String newCoverURL,
-                                      Long editorId, Long seriesId, Instant relDate, String bookType,
-                                      String originCountry) {
+                                      Long editorId, Long seriesId, Instant relDate, String bookType) {
         boolean needsUpdate = false;
         List<String> setClauses = new ArrayList<>();
         List<Object> args = new ArrayList<>();
@@ -336,14 +334,6 @@ public class BookmoryDbService {
                 args.add(bookType);
                 needsUpdate = true;
             }
-
-        }
-
-        if (originCountry != null && !originCountry.isBlank()
-                && (existing.getOriginCountry() == null || existing.getOriginCountry().isBlank())) {
-            setClauses.add("origin_country = ?");
-            args.add(originCountry);
-            needsUpdate = true;
         }
 
         if (!needsUpdate) {
@@ -356,8 +346,7 @@ public class BookmoryDbService {
         return true;
     }
 
-    public Long createNewBook(BookmoryBook b, String coverURL, Long editorId, Long seriesId, Instant relDate,
-                              String bookType, String originCountry) {
+    public Long createNewBook(BookmoryBook b, String coverURL, Long editorId, Long seriesId, Instant relDate, String bookType) {
         String cleanT = cleanText(b.getTitle());
         if (cleanT.isBlank()) {
             throw new IllegalArgumentException("Book title cannot be empty");
@@ -398,11 +387,11 @@ public class BookmoryDbService {
         String sql = "INSERT INTO book (" +
                 "title, series_id, editor_id, collection_id, " +
                 "volume, isbn, page_count, price, description, " +
-                "cover_url, release_date, type, origin_country, created_at, updated_at" +
+                "cover_url, release_date, type, created_at, updated_at" +
                 ") VALUES (" +
                 "?, ?, ?, NULL, " +
                 "?, NULLIF(?, ''), ?, ?, NULLIF(?, ''), " +
-                "NULLIF(?, ''), ?, ?, NULLIF(?, ''), NOW(), NOW()" +
+                "NULLIF(?, ''), ?, ?, NOW(), NOW()" +
                 ") RETURNING id";
 
         try {
@@ -410,13 +399,13 @@ public class BookmoryDbService {
                     sql, Long.class,
                     cleanT, seriesId, editorId,
                     vol, cleanISBN, pages, price, desc,
-                    coverURL, releaseTimestamp, bType, originCountry
+                    coverURL, releaseTimestamp, bType
             );
         } catch (Exception ex) {
             if (ex.getMessage() != null && (ex.getMessage().contains("book_title_key") || ex.getMessage().contains("book_isbn_key"))) {
                 ExistingBook existing = findBook(cleanISBN, cleanT);
                 if (existing != null) {
-                    updateExistingBook(existing, b, coverURL, editorId, seriesId, relDate, bType, originCountry);
+                    updateExistingBook(existing, b, coverURL, editorId, seriesId, relDate, bType);
                     return existing.getId();
                 }
             }
