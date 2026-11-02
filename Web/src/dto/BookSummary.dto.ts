@@ -3,6 +3,7 @@ export default interface BookSummaryDTO {
     title: string;
     volume: number;
     price: number;
+    listingUrl?: string | null;
     releaseDate: string;
     createdAt?: string;
     coverUrl: string;

@@ -313,7 +313,8 @@ public class UserController {
     public UserOwnsBookDTO addBook(
         HttpSession session,
         @PathVariable Long id,
-        @PathVariable String status
+        @PathVariable String status,
+        @RequestBody(required = false) SaleStatusUpdateRequestDTO request
     ) {
         UserEntity user = getAuthenticatedUser(session);
         String upperStatus = status.toUpperCase();
@@ -344,7 +345,11 @@ public class UserController {
                         return s;
                     });
             entity.setStatus(upperStatus);
-            return UserOwnsBookDTO.from(repositoryService.getUserSellsBookRepository().saveAndFlush(entity));
+                    if (request != null) {
+                        entity.setPrice(request.getPrice());
+                        entity.setListingUrl(request.getListingUrl());
+                    }
+                    return UserOwnsBookDTO.from(repositoryService.getUserSellsBookRepository().saveAndFlush(entity));
         } else {
             repositoryService.getUserSellsBookRepository()
                     .findByUserIdAndBookId(user.getId(), id)
@@ -893,6 +898,7 @@ public class UserController {
                     if (entity.getPrice() != null) {
                         dto.setPrice(entity.getPrice().intValue());
                     }
+                    dto.setListingUrl(entity.getListingUrl());
                     return dto;
                 })
                 .toList();
@@ -918,6 +924,9 @@ public class UserController {
         entity.setStatus(upperStatus);
         if (request != null && request.getPrice() != null) {
             entity.setPrice(request.getPrice());
+        }
+        if (request != null) {
+            entity.setListingUrl(request.getListingUrl());
         }
         repositoryService.getUserSellsBookRepository().saveAndFlush(entity);
 

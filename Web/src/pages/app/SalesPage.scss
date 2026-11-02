@@ -477,7 +477,7 @@
 
   &__header {
     display: grid;
-    grid-template-columns: minmax(200px, 3.2fr) minmax(130px, 2fr) minmax(120px, 1.8fr) 100px 80px 100px 90px;
+    grid-template-columns: minmax(200px, 3.2fr) minmax(130px, 2fr) minmax(120px, 1.8fr) 100px 80px minmax(140px, 1.8fr) 100px 90px;
     align-items: center;
     gap: 12px;
     padding: 9px 14px;
@@ -507,7 +507,7 @@
 
 .sales-row {
   display: grid;
-  grid-template-columns: minmax(200px, 3.2fr) minmax(130px, 2fr) minmax(120px, 1.8fr) 100px 80px 100px 90px;
+  grid-template-columns: minmax(200px, 3.2fr) minmax(130px, 2fr) minmax(120px, 1.8fr) 100px 80px minmax(140px, 1.8fr) 100px 90px;
   align-items: center;
   gap: 12px;
   padding: 8px 14px;
@@ -645,6 +645,21 @@
     &--none {
       color: var(--text-muted);
       font-weight: normal;
+    }
+  }
+
+  &__listing-link {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--accent-primary);
+    font-size: 0.75rem;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &:hover {
+      text-decoration: underline;
     }
   }
 

@@ -621,6 +621,7 @@ export default function SalesPage() {
                                     <span className="sales-list__th sales-list__th--author">Auteur</span>
                                     <span className="sales-list__th sales-list__th--category">Catégorie</span>
                                     <span className="sales-list__th sales-list__th--price">Prix</span>
+                                    <span className="sales-list__th sales-list__th--listing">Annonce</span>
                                     <span className="sales-list__th sales-list__th--status">Statut</span>
                                     <span className="sales-list__th sales-list__th--action">Actions</span>
                                 </div>
@@ -690,6 +691,24 @@ export default function SalesPage() {
                                                     <span className="sales-row__price">
                                                         {book.price} €
                                                     </span>
+                                                ) : (
+                                                    <span className="sales-row__price sales-row__price--none">-</span>
+                                                )}
+                                            </div>
+
+                                            {/* Listing column */}
+                                            <div className="sales-row__col sales-row__col--listing">
+                                                {book.listingUrl ? (
+                                                    <a
+                                                        href={book.listingUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="sales-row__listing-link"
+                                                        title={book.listingUrl}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        {book.listingUrl}
+                                                    </a>
                                                 ) : (
                                                     <span className="sales-row__price sales-row__price--none">-</span>
                                                 )}

@@ -311,6 +311,7 @@
     </changeSet>
 
     <changeSet id="10" author="Axel">
+        <validCheckSum>9:2ed3ed0fb3e0786962a107bb538a2a75</validCheckSum>
         <createTable tableName="book">
             <column name="id" type="integer" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false" />
@@ -1547,5 +1548,12 @@
             <columnExists tableName="book" columnName="origin_country"/>
         </preConditions>
         <dropColumn tableName="book" columnName="origin_country"/>
+    </changeSet>
+    <changeSet id="37" author="Axel">
+        <addColumn tableName="user_sells_book">
+            <column name="listing_url" type="varchar(2048)">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
     </changeSet>
 </databaseChangeLog>

@@ -485,7 +485,8 @@ function ChangeBookStatusButton({
     children,
     bookId,
     session,
-    icon
+    icon,
+    onRequestSale
 }: {
     status: string | null;
     setStatus: (s: string | null) => void;
@@ -494,12 +495,17 @@ function ChangeBookStatusButton({
     bookId?: string;
     session?: SessionContextType;
     icon?: IconDefinition;
+    onRequestSale?: () => void;
 }) {
     const [processing, setProcessing] = useState(false);
     const isCurrent = status === newStatus;
 
     const handleClick = async () => {
         if (!newStatus || !bookId || !session || processing) return;
+        if (newStatus === "FOR_SALE" && !isCurrent && onRequestSale) {
+            onRequestSale();
+            return;
+        }
         setProcessing(true);
         try {
             if (isCurrent) {
@@ -563,7 +569,9 @@ export default function BookPage() {
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
     const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
     const [saleModalOpen, setSaleModalOpen] = useState(false);
+    const [listingModalOpen, setListingModalOpen] = useState(false);
     const [submittingTx, setSubmittingTx] = useState(false);
+    const [submittingListing, setSubmittingListing] = useState(false);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -595,6 +603,8 @@ export default function BookPage() {
     const [sellPrice, setSellPrice] = useState<string>("");
     const [sellLocation, setSellLocation] = useState<string>("");
     const [sellMemo, setSellMemo] = useState<string>("");
+    const [listingPrice, setListingPrice] = useState<string>("");
+    const [listingUrl, setListingUrl] = useState<string>("");
 
     const fetchTransactions = (bookId: string) => {
         setLoadingTransactions(true);
@@ -661,6 +671,41 @@ export default function BookPage() {
         setSellLocation("");
         setSellMemo("");
         setSaleModalOpen(true);
+    };
+
+    const handleOpenListingModal = () => {
+        setListingPrice(book?.price ? String(book.price) : "");
+        setListingUrl("");
+        setListingModalOpen(true);
+    };
+
+    const handleSaveListing = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!id || submittingListing) return;
+
+        setSubmittingListing(true);
+        try {
+            const res = await session.customFetch(`/user/addBook/${encodeURIComponent(id)}/FOR_SALE`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    price: parseFloat(listingPrice),
+                    listingUrl: listingUrl.trim() || null
+                })
+            });
+
+            if (res.ok) {
+                enqueueSnackbar("Livre mis en vente avec succès !", { variant: "success" });
+                setListingModalOpen(false);
+                setBookStatus("FOR_SALE");
+            } else {
+                enqueueSnackbar("Erreur lors de la mise en vente", { variant: "error" });
+            }
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } finally {
+            setSubmittingListing(false);
+        }
     };
 
     const handleSaveSale = async (e: React.FormEvent) => {
@@ -1587,6 +1632,7 @@ export default function BookPage() {
                                         bookId={id}
                                         session={session}
                                         icon={faTag}
+                                        onRequestSale={handleOpenListingModal}
                                     >
                                         {bookStatus === "FOR_SALE" ? "En vente" : (bookStatus === "SOLD" ? "Vendu (remettre en vente)" : "Mettre à vendre")}
                                     </ChangeBookStatusButton>
@@ -2963,6 +3009,96 @@ export default function BookPage() {
                             >
                                 <FontAwesomeIcon icon={faCheck} />
                                 <span>{submittingTx ? "Enregistrement..." : "Enregistrer l'achat"}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </Dialog>
+
+            {/* Listing Modal */}
+            <Dialog
+                open={listingModalOpen}
+                onClose={() => setListingModalOpen(false)}
+                PaperProps={{
+                    style: {
+                        backgroundColor: "var(--bg-surface, #1e1e24)",
+                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                        borderRadius: "16px",
+                        maxWidth: "460px",
+                        width: "100%",
+                        padding: "24px",
+                        color: "var(--text-primary)"
+                    }
+                }}
+            >
+                <div className="tx-dialog">
+                    <div className="tx-dialog__header">
+                        <div className="tx-dialog__header-title">
+                            <FontAwesomeIcon icon={faTag} style={{ color: "var(--accent-primary)" }} />
+                            <h3>Mettre en vente</h3>
+                        </div>
+                        <button
+                            type="button"
+                            className="tx-dialog__header-close"
+                            onClick={() => setListingModalOpen(false)}
+                            aria-label="Fermer"
+                        >
+                            <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                    </div>
+
+                    {book && (
+                        <p style={{ margin: "0 0 4px", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+                            Indiquez les informations de l'annonce pour <strong>« {book.title} »</strong> :
+                        </p>
+                    )}
+
+                    <form className="tx-dialog__form" onSubmit={handleSaveListing}>
+                        <div className="tx-dialog__field">
+                            <label>
+                                <FontAwesomeIcon icon={faCoins} />
+                                <span>Prix de mise en vente (€)</span>
+                            </label>
+                            <input
+                                type="number"
+                                required
+                                step="0.01"
+                                min="0"
+                                placeholder="ex: 12.00"
+                                value={listingPrice}
+                                onChange={(e) => setListingPrice(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="tx-dialog__field">
+                            <label>
+                                <FontAwesomeIcon icon={faLink} />
+                                <span>Lien de l'annonce</span>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>(optionnel)</span>
+                            </label>
+                            <input
+                                type="url"
+                                placeholder="https://..."
+                                value={listingUrl}
+                                onChange={(e) => setListingUrl(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="tx-dialog__actions">
+                            <button
+                                type="button"
+                                className="tx-dialog__btn-cancel"
+                                onClick={() => setListingModalOpen(false)}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={submittingListing}
+                                className="tx-dialog__btn-submit"
+                            >
+                                <FontAwesomeIcon icon={faCheck} />
+                                <span>{submittingListing ? "Enregistrement..." : "Mettre en vente"}</span>
                             </button>
                         </div>
                     </form>

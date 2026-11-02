@@ -44,6 +44,9 @@ public class UserSellsBookEntity {
     @Column(name = "price")
     private BigDecimal price;
 
+    @Column(name = "listing_url")
+    private String listingUrl;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
