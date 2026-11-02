@@ -2,6 +2,7 @@ package fr.openbook.api.importing.bnf;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -56,6 +57,11 @@ public class BnfClient {
                 .build();
     }
 
+    @Cacheable(
+            cacheNames = "bnf-search",
+            key = "#title + '|' + #author + '|' + #editorName + '|' + #volume",
+            sync = true
+    )
     public BnfBookData searchBook(String title, String author, String editorName, Integer volume, int timeoutSec) {
         String cleanT = cleanTitleForCQL(title);
         if (cleanT.isBlank()) {
@@ -103,6 +109,11 @@ public class BnfClient {
         return null;
     }
 
+    @Cacheable(
+            cacheNames = "bnf-isbn",
+            key = "#isbn",
+            sync = true
+    )
     public BnfBookData lookupByIsbn(String isbn) {
         if (isbn == null || isbn.isBlank()) {
             return null;

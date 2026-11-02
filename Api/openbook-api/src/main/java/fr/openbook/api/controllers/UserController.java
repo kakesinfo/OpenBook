@@ -77,6 +77,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.cache.annotation.Cacheable;
 
 @RestController
 @AllArgsConstructor
@@ -1193,6 +1194,7 @@ public class UserController {
     }
 
     @GetMapping("/statistics")
+    @Cacheable(cacheNames = "user-statistics", key = "#session.id", sync = true)
     public UserStatisticsDTO getStatistics(HttpSession session) {
         UserEntity user = getAuthenticatedUser(session);
 
