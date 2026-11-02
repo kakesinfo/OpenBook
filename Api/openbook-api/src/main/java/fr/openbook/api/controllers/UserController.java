@@ -38,7 +38,6 @@ import fr.openbook.api.dtos.UserStatisticsDTO;
 import fr.openbook.api.dtos.stats.AuthorHighlightDTO;
 import fr.openbook.api.dtos.stats.BookHighlightDTO;
 import fr.openbook.api.dtos.stats.CategoryStatDTO;
-import fr.openbook.api.dtos.stats.CountryStatDTO;
 import fr.openbook.api.dtos.stats.PublisherStatDTO;
 import fr.openbook.api.dtos.stats.DecadeStatDTO;
 import java.time.ZoneId;
@@ -1218,8 +1217,6 @@ public class UserController {
             stats.setHeightComparison("Votre pile est encore vide. Ajoutez vos premiers livres à votre collection !");
             stats.setWeightComparison("Votre bibliothèque est légère comme une plume !");
             stats.setCategoryBreakdown(new ArrayList<>());
-            stats.setTotalCountriesCount(0);
-            stats.setCountries(new ArrayList<>());
             stats.setTopAuthors(new ArrayList<>());
             stats.setTopPublishers(new ArrayList<>());
             stats.setPublicationDecades(new ArrayList<>());
@@ -1233,7 +1230,6 @@ public class UserController {
         int pricedBooksCount = 0;
 
         Map<String, Integer> categoryCounts = new LinkedHashMap<>();
-        Map<String, Integer> countryCounts = new HashMap<>();
         Map<String, Integer> authorCounts = new HashMap<>();
         Map<String, Integer> publisherCounts = new HashMap<>();
         Map<Integer, Integer> seriesOwnedCount = new HashMap<>();
@@ -1340,11 +1336,6 @@ public class UserController {
                 }
             }
 
-            String cCode = book.getOriginCountry();
-            if (cCode == null || cCode.isBlank()) {
-                cCode = inferCountry(book, category);
-            }
-            countryCounts.put(cCode.toUpperCase(), countryCounts.getOrDefault(cCode.toUpperCase(), 0) + 1);
         }
 
         int totalOwned = ownedEntities.size();
@@ -1437,18 +1428,6 @@ public class UserController {
         }
         categoryList.sort((a, b) -> Integer.compare(b.getCount(), a.getCount()));
         stats.setCategoryBreakdown(categoryList);
-
-        // Countries
-        List<CountryStatDTO> countryList = new ArrayList<>();
-        for (var entry : countryCounts.entrySet()) {
-            String code = entry.getKey();
-            int count = entry.getValue();
-            double pct = Math.round((count * 100.0 / totalOwned) * 10.0) / 10.0;
-            countryList.add(new CountryStatDTO(code, getCountryName(code), getCountryFlag(code), count, pct));
-        }
-        countryList.sort((a, b) -> Integer.compare(b.getCount(), a.getCount()));
-        stats.setCountries(countryList);
-        stats.setTotalCountriesCount(countryList.size());
 
         // Authors (Top 5)
         List<AuthorHighlightDTO> topAuthorsList = new ArrayList<>();
@@ -1586,50 +1565,6 @@ public class UserController {
         if (lower.contains("bande") || lower.contains("bd")) return 520;
         if (lower.contains("roman")) return 350;
         return 350;
-    }
-
-    private String inferCountry(BookEntity book, String category) {
-        String lowerCat = category.toLowerCase();
-        if (lowerCat.contains("manga")) return "JP";
-        if (lowerCat.contains("comics")) return "US";
-        if (lowerCat.contains("bande") || lowerCat.contains("bd")) {
-            String title = book.getTitle().toLowerCase();
-            if (title.contains("tintin") || title.contains("spirou") || title.contains("seuls")) return "BE";
-            return "FR";
-        }
-        return "FR";
-    }
-
-    private String getCountryName(String code) {
-        return switch (code) {
-            case "FR" -> "France";
-            case "US" -> "États-Unis";
-            case "JP" -> "Japon";
-            case "GB" -> "Royaume-Uni";
-            case "BE" -> "Belgique";
-            case "DE" -> "Allemagne";
-            case "IT" -> "Italie";
-            case "ES" -> "Espagne";
-            case "CA" -> "Canada";
-            case "KR" -> "Corée du Sud";
-            default -> code;
-        };
-    }
-
-    private String getCountryFlag(String code) {
-        return switch (code) {
-            case "FR" -> "🇫🇷";
-            case "US" -> "🇺🇸";
-            case "JP" -> "🇯🇵";
-            case "GB" -> "🇬🇧";
-            case "BE" -> "🇧🇪";
-            case "DE" -> "🇩🇪";
-            case "IT" -> "🇮🇹";
-            case "ES" -> "🇪🇸";
-            case "CA" -> "🇨🇦";
-            case "KR" -> "🇰🇷";
-            default -> "🌐";
-        };
     }
 
     private String computeHeightComparison(double meters) {

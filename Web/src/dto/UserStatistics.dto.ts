@@ -5,14 +5,6 @@ export interface CategoryStatDTO {
     color: string;
 }
 
-export interface CountryStatDTO {
-    code: string;
-    name: string;
-    flag: string;
-    count: number;
-    percentage: number;
-}
-
 export interface AuthorHighlightDTO {
     name: string;
     bookCount: number;
@@ -72,9 +64,6 @@ export default interface UserStatisticsDTO {
 
     // Breakdown
     categoryBreakdown: CategoryStatDTO[];
-    totalCountriesCount: number;
-    countries: CountryStatDTO[];
-
     // Authors & Publishers
     topAuthor?: AuthorHighlightDTO;
     topAuthors?: AuthorHighlightDTO[];
