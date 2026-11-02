@@ -70,9 +70,6 @@ public class BookEntity {
     @Column(name = "type")
     private String type;
 
-    @Column(name = "origin_country")
-    private String originCountry;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "series_id", nullable = true)
     private SeriesEntity series;

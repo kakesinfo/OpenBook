@@ -27,7 +27,6 @@ import { Link } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
 import UserStatisticsDTO from "../../dto/UserStatistics.dto.ts";
 import PieChart from "../../components/Charts/PieChart.tsx";
-import WorldMap from "../../components/WorldMap/WorldMap.tsx";
 import "./StatisticsPage.scss";
 
 export default function StatisticsPage() {
@@ -551,15 +550,7 @@ export default function StatisticsPage() {
                             </div>
                         </div>
 
-                        {/* 5. GEOGRAPHICAL ORIGIN (WORLD MAP) */}
-                        <div className="stats-page__section-card">
-                            <WorldMap
-                                countries={stats.countries}
-                                totalBooks={stats.totalOwnedBooks}
-                            />
-                        </div>
-
-                        {/* 6. TOP AUTHORS & TOP PUBLISHERS (TWO COLS) */}
+                        {/* 5. TOP AUTHORS & TOP PUBLISHERS (TWO COLS) */}
                         <div className="stats-page__two-cols">
                             {/* Top Authors */}
                             <div className="stats-page__section-card">

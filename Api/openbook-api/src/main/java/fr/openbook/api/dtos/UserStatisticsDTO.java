@@ -3,7 +3,6 @@ package fr.openbook.api.dtos;
 import fr.openbook.api.dtos.stats.AuthorHighlightDTO;
 import fr.openbook.api.dtos.stats.BookHighlightDTO;
 import fr.openbook.api.dtos.stats.CategoryStatDTO;
-import fr.openbook.api.dtos.stats.CountryStatDTO;
 import fr.openbook.api.dtos.stats.DecadeStatDTO;
 import fr.openbook.api.dtos.stats.PublisherStatDTO;
 import lombok.Data;
@@ -40,10 +39,6 @@ public class UserStatisticsDTO {
 
     // Breakdown for Pie Chart
     private List<CategoryStatDTO> categoryBreakdown;
-
-    // World Map & Countries
-    private int totalCountriesCount;
-    private List<CountryStatDTO> countries;
 
     // Authors & Publishers
     private AuthorHighlightDTO topAuthor;

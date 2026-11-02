@@ -336,7 +336,6 @@
 
             <column name="cover_url" type="varchar" />
             <column name="type" type="varchar(50)" />
-            <column name="origin_country" type="varchar(100)" />
 
             <column name="series_id" type="integer">
                 <constraints nullable="false" />
@@ -1542,5 +1541,11 @@
     </changeSet>
     <changeSet id="34" author="Axel">
         <dropNotNullConstraint tableName="book" columnName="release_date" columnDataType="timestamp"/>
+    </changeSet>
+    <changeSet id="36" author="Axel">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="book" columnName="origin_country"/>
+        </preConditions>
+        <dropColumn tableName="book" columnName="origin_country"/>
     </changeSet>
 </databaseChangeLog>
