@@ -6,6 +6,7 @@ export interface CategoryStatDTO {
 }
 
 export interface AuthorHighlightDTO {
+    id?: number;
     name: string;
     bookCount: number;
     role: string;

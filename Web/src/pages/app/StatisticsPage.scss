@@ -342,9 +342,15 @@
       font-size: 0.9rem;
       font-weight: 600;
       color: var(--text-primary, #ffffff);
+      text-decoration: none;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+
+      &:hover {
+        color: var(--accent-primary, #818cf8);
+        text-decoration: underline;
+      }
     }
 
     &-badge {

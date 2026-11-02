@@ -588,9 +588,19 @@ export default function StatisticsPage() {
                                                     <span className={`stats-page__leaderboard-item-rank stats-page__leaderboard-item-rank--${idx + 1}`}>
                                                         {idx + 1}
                                                     </span>
-                                                    <span className="stats-page__leaderboard-item-name" title={author.name}>
-                                                        {author.name}
-                                                    </span>
+                                                    {author.id ? (
+                                                        <Link
+                                                            to={`/app/author/${author.id}`}
+                                                            className="stats-page__leaderboard-item-name"
+                                                            title={`Voir la page de ${author.name}`}
+                                                        >
+                                                            {author.name}
+                                                        </Link>
+                                                    ) : (
+                                                        <span className="stats-page__leaderboard-item-name" title={author.name}>
+                                                            {author.name}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <span className="stats-page__leaderboard-item-badge">
                                                     {author.bookCount} {author.bookCount > 1 ? "albums" : "album"}
@@ -672,9 +682,19 @@ export default function StatisticsPage() {
                                                 <FontAwesomeIcon icon={faCrown} />
                                             </div>
                                             <div className="stats-page__record-info">
-                                                <div className="stats-page__record-title">
-                                                    {stats.topAuthor.name}
-                                                </div>
+                                                {stats.topAuthor.id ? (
+                                                    <Link
+                                                        to={`/app/author/${stats.topAuthor.id}`}
+                                                        className="stats-page__record-title"
+                                                        title={`Voir la page de ${stats.topAuthor.name}`}
+                                                    >
+                                                        {stats.topAuthor.name}
+                                                    </Link>
+                                                ) : (
+                                                    <div className="stats-page__record-title">
+                                                        {stats.topAuthor.name}
+                                                    </div>
+                                                )}
                                                 <div className="stats-page__record-meta">
                                                     Auteur le plus représenté
                                                 </div>

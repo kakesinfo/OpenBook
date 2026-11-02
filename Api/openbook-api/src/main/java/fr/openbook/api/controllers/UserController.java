@@ -1242,6 +1242,7 @@ public class UserController {
 
         Map<String, Integer> categoryCounts = new LinkedHashMap<>();
         Map<String, Integer> authorCounts = new HashMap<>();
+        Map<String, Integer> authorIds = new HashMap<>();
         Map<String, Integer> publisherCounts = new HashMap<>();
         Map<Integer, Integer> seriesOwnedCount = new HashMap<>();
         Map<Integer, SeriesEntity> seriesMap = new HashMap<>();
@@ -1340,8 +1341,9 @@ public class UserController {
                 for (var bha : book.getBookHasAuthors()) {
                     if (bha.getAuthor() != null) {
                         String authorName = (bha.getAuthor().getFirstname() + " " + bha.getAuthor().getLastname()).trim();
-                        if (!authorName.isBlank()) {
+                        if (!authorName.isBlank() && !"Collectif".equalsIgnoreCase(authorName)) {
                             authorCounts.put(authorName, authorCounts.getOrDefault(authorName, 0) + 1);
+                            authorIds.putIfAbsent(authorName, bha.getAuthor().getId());
                         }
                     }
                 }
@@ -1449,7 +1451,9 @@ public class UserController {
         for (int i = 0; i < Math.min(5, sortedAuthors.size()); i++) {
             var entry = sortedAuthors.get(i);
             double pct = Math.round((entry.getValue() * 100.0 / totalOwned) * 10.0) / 10.0;
-            topAuthorsList.add(new AuthorHighlightDTO(entry.getKey(), entry.getValue(), "Auteur", pct));
+            topAuthorsList.add(new AuthorHighlightDTO(
+                    authorIds.get(entry.getKey()), entry.getKey(), entry.getValue(), "Auteur", pct
+            ));
         }
         stats.setTopAuthors(topAuthorsList);
         if (!topAuthorsList.isEmpty()) {

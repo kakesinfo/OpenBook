@@ -8,12 +8,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AuthorHighlightDTO {
+    private Integer id;
     private String name;
     private int bookCount;
     private String role;
     private double percentage;
 
     public AuthorHighlightDTO(String name, int bookCount, String role) {
+        this.id = null;
         this.name = name;
         this.bookCount = bookCount;
         this.role = role;
