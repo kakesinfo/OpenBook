@@ -1250,6 +1250,55 @@ public class ScraperDbService {
     }
 
     /**
+     * Finds and stores missing book origin countries from BNF metadata.
+     */
+    @Transactional
+    public Map<String, Object> findOriginCountriesFromBnf(int limit) {
+        if (limit <= 0) limit = 100;
+
+        List<Map<String, Object>> books = jdbcTemplate.queryForList("""
+            SELECT b.id, COALESCE(b.title, '') as title, COALESCE(b.isbn, '') as isbn
+            FROM book b
+            WHERE COALESCE(b.deleted, FALSE) = FALSE
+              AND (b.origin_country IS NULL OR BTRIM(b.origin_country) = '')
+              AND ((b.isbn IS NOT NULL AND LENGTH(TRIM(b.isbn)) >= 10) OR BTRIM(COALESCE(b.title, '')) <> '')
+            ORDER BY b.updated_at ASC, b.id ASC
+            LIMIT ?;
+        """, limit);
+
+        int foundCount = 0;
+        int updatedCount = 0;
+
+        for (Map<String, Object> book : books) {
+            int id = (Integer) book.get("id");
+            String isbn = (String) book.get("isbn");
+            String title = (String) book.get("title");
+
+            BnfBookData bnfData = bnfClient.lookupByIsbn(isbn);
+            if (bnfData == null && title != null && !title.isBlank()) {
+                bnfData = bnfClient.searchBook(title, null, null, null, 10);
+            }
+            if (bnfData == null || bnfData.getOriginCountry() == null || bnfData.getOriginCountry().isBlank()) {
+                continue;
+            }
+
+            foundCount++;
+            updatedCount += jdbcTemplate.update("""
+                UPDATE book
+                SET origin_country = ?, updated_at = NOW()
+                WHERE id = ?
+                  AND (origin_country IS NULL OR BTRIM(origin_country) = '');
+            """, bnfData.getOriginCountry(), id);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("scanned", books.size());
+        result.put("countries_found", foundCount);
+        result.put("updated", updatedCount);
+        return result;
+    }
+
+    /**
      * Migrates external HTTP cover URLs to UUIDs handled by MediaService.
      */
     public Map<String, Object> migrateCoversToUuid(Integer limit, int maxWorkers) {

@@ -11,12 +11,13 @@ import {
     faTriangleExclamation,
     faPlay,
     faImage,
-    faUserPen
+    faUserPen,
+    faGlobeEurope
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
 import "./AdminMaintenancePage.scss";
 
-type TaskId = "utf8" | "dedup" | "dedup_authors" | "bnf" | "verify_isbn" | "migrate_covers";
+type TaskId = "utf8" | "dedup" | "dedup_authors" | "bnf" | "verify_isbn" | "origin_countries" | "migrate_covers";
 
 interface MaintenanceTaskDef {
     id: TaskId;
@@ -70,6 +71,14 @@ const TASKS: MaintenanceTaskDef[] = [
         iconClass: "admin-maintenance__task-icon--verify"
     },
     {
+        id: "origin_countries",
+        title: "Rechercher les pays d'origine",
+        tag: "Origine & Statistiques",
+        desc: "Interroge la BnF pour les albums dont le pays d'origine est manquant. Utilise les mentions de traduction, les pays et les lieux éditoriaux disponibles, puis laisse vide lorsqu'aucune information fiable n'est trouvée.",
+        icon: faGlobeEurope,
+        iconClass: "admin-maintenance__task-icon--origin"
+    },
+    {
         id: "migrate_covers",
         title: "Migrer les couvertures",
         tag: "Médias & Stockage",
@@ -103,6 +112,7 @@ export default function AdminMaintenancePage() {
         dedup_authors: { state: "idle" },
         bnf: { state: "idle" },
         verify_isbn: { state: "idle" },
+        origin_countries: { state: "idle" },
         migrate_covers: { state: "idle" }
     });
 
@@ -151,6 +161,9 @@ export default function AdminMaintenancePage() {
         } else if (taskId === "verify_isbn") {
             endpoint = "/admin/scrapers/verify-isbn";
             taskName = "Vérification BnF";
+        } else if (taskId === "origin_countries") {
+            endpoint = "/admin/scrapers/maintenance/origin-countries";
+            taskName = "Recherche des pays d'origine";
         } else if (taskId === "migrate_covers") {
             endpoint = "/admin/scrapers/maintenance/migrate-covers";
             taskName = "Migration des couvertures";
@@ -234,7 +247,7 @@ export default function AdminMaintenancePage() {
 
     const handleExecuteAll = async () => {
         if (runningTasks.length > 0) return;
-        setRunningTasks(["utf8", "dedup", "dedup_authors", "bnf", "verify_isbn", "migrate_covers"]);
+        setRunningTasks(["utf8", "dedup", "dedup_authors", "bnf", "verify_isbn", "origin_countries", "migrate_covers"]);
         setResult(null);
 
         const results: string[] = [];
@@ -259,6 +272,10 @@ export default function AdminMaintenancePage() {
         const resVerify = await runSingleTask("verify_isbn");
         if (!resVerify.ok) anyError = true;
         results.push(resVerify.message);
+
+        const resOriginCountries = await runSingleTask("origin_countries");
+        if (!resOriginCountries.ok) anyError = true;
+        results.push(resOriginCountries.message);
 
         const resCovers = await runSingleTask("migrate_covers");
         if (!resCovers.ok) anyError = true;

@@ -101,6 +101,17 @@ public class AdminScraperController {
         return ResponseEntity.ok(scraperService.verifyBooksFromBnf(limit));
     }
 
+    @PostMapping({"/origin-countries", "/maintenance/origin-countries"})
+    public ResponseEntity<Map<String, Object>> findOriginCountries(
+            @RequestBody(required = false) Map<String, Object> request
+    ) {
+        Integer limit = null;
+        if (request != null && request.containsKey("limit") && request.get("limit") instanceof Number n) {
+            limit = n.intValue();
+        }
+        return ResponseEntity.ok(scraperService.findOriginCountriesFromBnf(limit));
+    }
+
     @GetMapping("/maintenance/conflicts")
     public ResponseEntity<Map<String, Object>> getConflicts() {
         return ResponseEntity.ok(scraperService.getVolumeConflicts());
