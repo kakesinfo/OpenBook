@@ -29,6 +29,7 @@ import CategoryMultiSelect, {
     DEFAULT_APP_CATEGORIES,
     bookMatchesCategories
 } from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
+import BookCard from "../../components/BookCard/BookCard.tsx";
 import "./SalesPage.scss";
 
 type SalesStatusFilter = "all" | "FOR_SALE" | "SOLD";
@@ -530,85 +531,50 @@ export default function SalesPage() {
                                     const isActionLoading = actionLoadingId === book.id;
 
                                     return (
-                                        <div key={book.id} className={`sales-card ${isSold ? "is-sold" : ""}`}>
-                                            <Link to={`/app/book/${book.id}`} className="sales-card__media">
-                                                {book.coverUrl ? (
-                                                    <img src={book.coverUrl} alt={book.title} loading="lazy" />
-                                                ) : (
-                                                    <div className="sales-card__placeholder">
-                                                        <FontAwesomeIcon icon={faBook} />
-                                                    </div>
-                                                )}
-                                                {book.volume > 0 && (
-                                                    <div className="sales-card__badge-row">
-                                                        <span className="sales-badge sales-badge--volume">
-                                                            T.{book.volume}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </Link>
-
-                                            <div className="sales-card__body">
-                                                <Link to={`/app/book/${book.id}`} className="sales-card__title" title={book.title}>
-                                                    {book.title}
-                                                </Link>
-                                                {book.seriesName && (
-                                                    <span className="sales-card__series" title={book.seriesName}>
-                                                        {book.seriesName}
-                                                    </span>
-                                                )}
-                                                {book.author && (
-                                                    <span className="sales-card__author" title={book.author}>
-                                                        {book.author}
-                                                    </span>
-                                                )}
-
-                                                <div className="sales-card__footer">
-                                                    {book.price != null && book.price > 0 && (
-                                                        <span className="sales-card__price">
-                                                            <FontAwesomeIcon icon={faCoins} />
-                                                            <span>{book.price} €</span>
-                                                        </span>
-                                                    )}
-
-                                                    <div className="sales-card__actions">
-                                                        {isSold ? (
-                                                            <button
-                                                                type="button"
-                                                                disabled={isActionLoading}
-                                                                onClick={(e) => handleUpdateStatus(e, book.id, "FOR_SALE")}
-                                                                className="sales-card__btn sales-card__btn--relist"
-                                                                title="Remettre en vente"
-                                                            >
-                                                                <FontAwesomeIcon icon={faRotateLeft} />
-                                                                <span>Remettre en vente</span>
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                type="button"
-                                                                disabled={isActionLoading}
-                                                                onClick={(e) => handleOpenSaleModal(e, book)}
-                                                                className="sales-card__btn sales-card__btn--sold"
-                                                                title="Marquer comme vendu"
-                                                            >
-                                                                <FontAwesomeIcon icon={faCheck} />
-                                                                <span>Marquer vendu</span>
-                                                            </button>
-                                                        )}
-
+                                        <BookCard
+                                            key={book.id}
+                                            book={book}
+                                            className={`sales-card ${isSold ? "is-sold" : ""}`}
+                                            badgeText={book.volume > 0 ? `T.${book.volume}` : undefined}
+                                            actions={
+                                                <>
+                                                    {isSold ? (
                                                         <button
                                                             type="button"
                                                             disabled={isActionLoading}
-                                                            onClick={(e) => handleRemoveFromSales(e, book.id, book.title)}
-                                                            className="sales-card__btn sales-card__btn--delete"
-                                                            title="Retirer de mes ventes (remettre dans mes albums)"
+                                                            onClick={(e) => handleUpdateStatus(e, book.id, "FOR_SALE")}
+                                                            className="book-card__action-btn book-card__action-btn--relist"
+                                                            title="Remettre en vente"
+                                                            aria-label="Remettre en vente"
                                                         >
-                                                            <FontAwesomeIcon icon={faTrashCan} />
+                                                            <FontAwesomeIcon icon={faRotateLeft} />
                                                         </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            disabled={isActionLoading}
+                                                            onClick={(e) => handleOpenSaleModal(e, book)}
+                                                            className="book-card__action-btn book-card__action-btn--sold"
+                                                            title="Marquer comme vendu"
+                                                            aria-label="Marquer comme vendu"
+                                                        >
+                                                            <FontAwesomeIcon icon={faCheck} />
+                                                        </button>
+                                                    )}
+
+                                                    <button
+                                                        type="button"
+                                                        disabled={isActionLoading}
+                                                        onClick={(e) => handleRemoveFromSales(e, book.id, book.title)}
+                                                        className="book-card__action-btn book-card__action-btn--delete"
+                                                        title="Retirer de mes ventes (remettre dans mes albums)"
+                                                        aria-label="Retirer de mes ventes"
+                                                    >
+                                                        <FontAwesomeIcon icon={faTrashCan} />
+                                                    </button>
+                                                </>
+                                            }
+                                        />
                                     );
                                 })}
                             </div>

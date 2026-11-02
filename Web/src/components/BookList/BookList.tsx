@@ -1,12 +1,11 @@
 import { useState } from "react";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import "./BookList.scss";
-import { Link } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBook, faHeart, faCheck, faCalendarDays } from "@fortawesome/free-solid-svg-icons";
+import { faBook, faHeart, faCheck } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
 import { useSnackbar } from "notistack";
-import AsyncCoverImage from "../AsyncCoverImage/AsyncCoverImage.tsx";
+import BookCard from "../BookCard/BookCard.tsx";
 
 function getStatusBadge(book: BookSummaryDTO) {
     if (book.status === "FOR_SALE") {
@@ -26,17 +25,6 @@ function getStatusBadge(book: BookSummaryDTO) {
         return <span className="booklist-card__status-badge is-abandoned">Abandonné</span>;
     }
     return null;
-}
-
-function formatReleaseDate(dateStr?: string): string | null {
-    if (!dateStr) return null;
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return null;
-    return date.toLocaleDateString("fr-FR", {
-        day: "numeric",
-        month: "long",
-        year: "numeric"
-    });
 }
 
 interface BookListProps {
@@ -133,30 +121,18 @@ export default function BookList({ books, onBookStatusChange, showReleaseDate = 
                 const isWishlisted = effectiveStatus === "WISHLISTED";
                 const isOwned = effectiveStatus === "OWNED";
                 const isBusy = Boolean(loadingIds[book.id]);
-                const releaseDateFormatted = showReleaseDate ? formatReleaseDate(book.releaseDate) : null;
-
                 return (
-                    <Link to={`/app/book/${book.id}`} className="booklist-card" key={book.id}>
-                        <div className="booklist-card__cover-wrapper">
-                            <AsyncCoverImage
-                                src={book.coverUrl}
-                                alt={`Couverture de ${book.title}`}
-                                title={book.title}
-                            />
-
-                            {/* Status Badge top-left */}
-                            {getStatusBadge({ ...book, status: effectiveStatus || "" })}
-
-                            {/* Volume Badge top-right */}
-                            <span className="booklist-card__badge">
-                                {book.volume > 0 ? `Vol. ${book.volume}` : `Unique`}
-                            </span>
-
-                            {/* Hover Quick Actions (Wishlist & Library) */}
-                            <div className="booklist-card__quick-actions">
+                    <BookCard
+                        key={book.id}
+                        book={book}
+                        statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" })}
+                        badgeText={book.volume > 0 ? `Vol. ${book.volume}` : "Unique"}
+                        showReleaseDate={showReleaseDate}
+                        actions={
+                            <>
                                 <button
                                     type="button"
-                                    className={`booklist-card__action-btn booklist-card__action-btn--wishlist ${isWishlisted ? "is-active" : ""}`}
+                                    className={`book-card__action-btn book-card__action-btn--wishlist ${isWishlisted ? "is-active" : ""}`}
                                     onClick={(e) => handleQuickStatusToggle(e, book, "WISHLISTED")}
                                     disabled={isBusy}
                                     title={
@@ -175,7 +151,7 @@ export default function BookList({ books, onBookStatusChange, showReleaseDate = 
 
                                 <button
                                     type="button"
-                                    className={`booklist-card__action-btn booklist-card__action-btn--library ${isOwned ? "is-active" : ""}`}
+                                    className={`book-card__action-btn book-card__action-btn--library ${isOwned ? "is-active" : ""}`}
                                     onClick={(e) => handleQuickStatusToggle(e, book, "OWNED")}
                                     disabled={isBusy}
                                     title={
@@ -191,21 +167,9 @@ export default function BookList({ books, onBookStatusChange, showReleaseDate = 
                                 >
                                     <FontAwesomeIcon icon={isOwned ? faCheck : faBook} />
                                 </button>
-                            </div>
-                        </div>
-
-                        <div className="booklist-card__info">
-                            <h3 className="booklist-card__title" title={book.title}>
-                                {book.title}
-                            </h3>
-                            {releaseDateFormatted && (
-                                <span className="booklist-card__release-date">
-                                    <FontAwesomeIcon icon={faCalendarDays} />
-                                    <span>{releaseDateFormatted}</span>
-                                </span>
-                            )}
-                        </div>
-                    </Link>
+                            </>
+                        }
+                    />
                 );
             })}
         </div>
