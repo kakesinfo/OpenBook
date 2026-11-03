@@ -50,12 +50,21 @@ export default function PieChart({ data, totalCount, title }: PieChartProps) {
     // Build arcs
     let accumulatedAngle = -Math.PI / 2; // Start at top (12 o'clock)
     const slices = data.map((item, index) => {
+        const isHovered = hoveredIndex === index;
+        if (item.count <= 0) {
+            return {
+                ...item,
+                index,
+                pathData: "",
+                isHovered
+            };
+        }
+
         const sliceAngle = (item.count / totalCount) * 2 * Math.PI;
         const startAngle = accumulatedAngle;
         const endAngle = accumulatedAngle + sliceAngle;
         accumulatedAngle = endAngle;
 
-        const isHovered = hoveredIndex === index;
         const rOut = isHovered ? outerRadius + 6 : outerRadius;
         const rIn = isHovered ? innerRadius - 2 : innerRadius;
 
@@ -154,21 +163,23 @@ export default function PieChart({ data, totalCount, title }: PieChartProps) {
                             </filter>
                         </defs>
 
-                        {slices.map((slice) => (
-                            <path
-                                key={slice.name}
-                                d={slice.pathData}
-                                fill={slice.color}
-                                filter={slice.isHovered ? "url(#pie-glow)" : undefined}
-                                style={{
-                                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                                    cursor: "pointer",
-                                    opacity: hoveredIndex === null || slice.isHovered ? 1 : 0.65
-                                }}
-                                onMouseEnter={() => setHoveredIndex(slice.index)}
-                                onMouseLeave={() => setHoveredIndex(null)}
-                            />
-                        ))}
+                        {slices.map((slice) =>
+                            slice.pathData ? (
+                                <path
+                                    key={slice.name}
+                                    d={slice.pathData}
+                                    fill={slice.color}
+                                    filter={slice.isHovered ? "url(#pie-glow)" : undefined}
+                                    style={{
+                                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                                        cursor: "pointer",
+                                        opacity: hoveredIndex === null || slice.isHovered ? 1 : 0.65
+                                    }}
+                                    onMouseEnter={() => setHoveredIndex(slice.index)}
+                                    onMouseLeave={() => setHoveredIndex(null)}
+                                />
+                            ) : null
+                        )}
                     </svg>
 
                     {/* Donut Center Display */}

@@ -1550,14 +1550,13 @@ public class UserController {
             if (book == null) continue;
             String st = readingStatuses.get(book.getId());
             if (st == null) {
-                unreadCount++;
+                toReadCount++;
             } else {
                 switch (st.toUpperCase()) {
-                    case "READ" -> readCount++;
-                    case "READING" -> readingCount++;
-                    case "TO_READ" -> toReadCount++;
-                    case "ABANDONED" -> abandonedCount++;
-                    default -> unreadCount++;
+                    case "READ", "LU" -> readCount++;
+                    case "READING", "EN_COURS" -> readingCount++;
+                    case "ABANDONED", "ABANDONNE" -> abandonedCount++;
+                    default -> toReadCount++;
                 }
             }
         }

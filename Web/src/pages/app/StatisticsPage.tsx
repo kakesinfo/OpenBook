@@ -144,17 +144,6 @@ export default function StatisticsPage() {
                 <div className="stats-page__header-row">
                     <div className="stats-page__header-titles">
                         <h2>{tr("Statistics", "Statistiques")}</h2>
-                        <span className="stats-page__header-subtitle">
-                            {selectedYear !== null
-                                ? tr(
-                                      `Detailed overview, reading activity, and transactions for ${selectedYear}`,
-                                      `Aperçu détaillé, activité de lecture et transactions pour l'année ${selectedYear}`
-                                  )
-                                : tr(
-                                      "Detailed overview, reading progress, and records of your library",
-                                      "Aperçu détaillé, progression de lecture et records de votre bibliothèque"
-                                  )}
-                        </span>
                     </div>
 
                     <div className="stats-page__year-dropdown" ref={yearDropdownRef}>
@@ -413,400 +402,229 @@ export default function StatisticsPage() {
                             </div>
                         </div>}
 
-                        {/* 2. TRANSACTIONS: PURCHASES, GIFTS & SALES */}
-                        {visibleSections >= 2 && <div className="stats-page__section-card">
-                            <div className="stats-page__section-header">
-                                <div>
-                                    <h3>
-                                        <FontAwesomeIcon icon={faCoins} style={{ color: "#fbbf24" }} />
-                                        <span>{tr("Purchases, Gifts & Sales", "Achats, Cadeaux & Ventes")}</span>
-                                    </h3>
-                                    <p>
-                                        {selectedYear !== null
-                                            ? tr(`Transactions recorded in ${selectedYear}`, `Transactions enregistrées en ${selectedYear}`)
-                                            : tr("Summary of your purchases, gifts received, and sales", "Bilan de vos achats, cadeaux reçus et ventes")}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="stats-page__physical-grid">
-                                {/* Purchases */}
-                                <div className="stats-page__physical-card">
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                        <div style={{
-                                            width: "38px",
-                                            height: "38px",
-                                            borderRadius: "10px",
-                                            background: "rgba(16, 185, 129, 0.15)",
-                                            color: "#34d399",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            fontSize: "16px"
-                                        }}>
-                                            <FontAwesomeIcon icon={faCartShopping} />
-                                        </div>
-                                        <div style={{ textAlign: "right" }}>
-                                            <div style={{ fontSize: "1.55rem", fontWeight: 800, color: "#34d399", lineHeight: 1.15 }}>
-                                                {stats.totalBoughtCount ?? 0}
-                                            </div>
-                                            <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary, #cbd5e1)" }}>
-                                                {formatAmount(stats.totalBoughtAmount)}
-                                            </div>
-                                        </div>
-                                    </div>
+                        {/* 2. READING PROGRESSION & PHYSICAL STATS (TWO COLS) */}
+                        {visibleSections >= 2 && <div className="stats-page__two-cols">
+                            {/* Reading Progress */}
+                            <div className="stats-page__section-card">
+                                <div className="stats-page__section-header">
                                     <div>
-                                        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
-                                            {tr("Purchases", "Achats")}
-                                        </div>
-                                        <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
-                                            {tr("Books bought and total amount spent.", "Albums achetés et montant total dépensé.")}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Gifts */}
-                                <div className="stats-page__physical-card">
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                        <div style={{
-                                            width: "38px",
-                                            height: "38px",
-                                            borderRadius: "10px",
-                                            background: "rgba(236, 72, 153, 0.15)",
-                                            color: "#f472b6",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            fontSize: "16px"
-                                        }}>
-                                            <FontAwesomeIcon icon={faGift} />
-                                        </div>
-                                        <div style={{ fontSize: "1.55rem", fontWeight: 800, color: "#f472b6" }}>
-                                            {stats.totalGiftCount ?? 0}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
-                                            {tr("Gifts received", "Cadeaux reçus")}
-                                        </div>
-                                        <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
-                                            {tr("Books added as gifts to your library.", "Albums offerts et ajoutés à votre collection.")}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Sales */}
-                                <div className="stats-page__physical-card">
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                        <div style={{
-                                            width: "38px",
-                                            height: "38px",
-                                            borderRadius: "10px",
-                                            background: "rgba(245, 158, 11, 0.15)",
-                                            color: "#fbbf24",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            fontSize: "16px"
-                                        }}>
-                                            <FontAwesomeIcon icon={faTag} />
-                                        </div>
-                                        <div style={{ textAlign: "right" }}>
-                                            <div style={{ fontSize: "1.55rem", fontWeight: 800, color: "#fbbf24", lineHeight: 1.15 }}>
-                                                {stats.totalSoldCount ?? 0}
-                                            </div>
-                                            <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary, #cbd5e1)" }}>
-                                                {formatAmount(stats.totalSoldAmount)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
-                                            {tr("Sales", "Ventes")}
-                                        </div>
-                                        <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
-                                            {tr("Books sold and total amount earned.", "Albums vendus et montant total récupéré.")}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Net Spent */}
-                                <div className="stats-page__physical-card">
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                        <div style={{
-                                            width: "38px",
-                                            height: "38px",
-                                            borderRadius: "10px",
-                                            background: "rgba(99, 102, 241, 0.15)",
-                                            color: "#818cf8",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            fontSize: "16px"
-                                        }}>
-                                            <FontAwesomeIcon icon={faCoins} />
-                                        </div>
-                                        <div style={{ fontSize: "1.55rem", fontWeight: 800, color: "#818cf8" }}>
-                                            {formatAmount(stats.netSpentAmount)}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
-                                            {tr("Net budget", "Budget net")}
-                                        </div>
-                                        <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
-                                            {tr("Total purchases minus total sales.", "Total des achats moins le total des ventes.")}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>}
-
-                        {/* 3. READING PROGRESSION & PAL */}
-                        {visibleSections >= 3 && <div className="stats-page__section-card">
-                            <div className="stats-page__section-header">
-                                <div>
-                                    <h3>
-                                        <FontAwesomeIcon icon={faBookOpen} style={{ color: "var(--accent-primary)" }} />
-                                        <span>{tr("Reading progress", "Progression de lecture")}</span>
-                                    </h3>
-                                    <p>{tr("Track your reading and your To-Read pile", "Suivi de vos lectures et état de votre Pile À Lire (PAL)")}</p>
-                                </div>
-
-                                <div style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                    padding: "6px 14px",
-                                    borderRadius: "12px",
-                                    background: "var(--accent-primary-light)",
-                                    border: "1px solid var(--border-focus)",
-                                    color: "var(--accent-primary)",
-                                    fontSize: "0.95rem",
-                                    fontWeight: 700
-                                }}>
-                                    <FontAwesomeIcon icon={faCheck} style={{ fontSize: "0.85rem" }} />
-                                    <span>
-                                        {selectedYear !== null
-                                            ? tr(
-                                                  `${stats.readingProgressPercentage}% read (${selectedYear})`,
-                                                  `${stats.readingProgressPercentage}% lus (${selectedYear})`
-                                              )
-                                            : tr(
-                                                  `${stats.readingProgressPercentage}% of collection read`,
-                                                  `${stats.readingProgressPercentage}% de la collection lue`
-                                              )}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="stats-page__reading-panel">
-                                {/* Stacked Progress Bar */}
-                                <div className="stats-page__progress-stacked-bar">
-                                    <div
-                                        className="stats-page__progress-segment stats-page__progress-segment--read"
-                                        style={{ width: `${(stats.booksReadCount / stats.totalOwnedBooks) * 100}%` }}
-                                        title={`${tr("Read", "Lus")} : ${stats.booksReadCount}`}
-                                    />
-                                    <div
-                                        className="stats-page__progress-segment stats-page__progress-segment--reading"
-                                        style={{ width: `${(stats.booksReadingCount / stats.totalOwnedBooks) * 100}%` }}
-                                        title={`${tr("Reading", "En cours")} : ${stats.booksReadingCount}`}
-                                    />
-                                    <div
-                                        className="stats-page__progress-segment stats-page__progress-segment--toread"
-                                        style={{ width: `${(stats.booksToReadCount / stats.totalOwnedBooks) * 100}%` }}
-                                        title={`${tr("To read", "À lire")} : ${stats.booksToReadCount}`}
-                                    />
-                                    <div
-                                        className="stats-page__progress-segment stats-page__progress-segment--unread"
-                                        style={{ width: `${(stats.booksUnreadCount / stats.totalOwnedBooks) * 100}%` }}
-                                        title={`${tr("Unread", "Non lus")} : ${stats.booksUnreadCount}`}
-                                    />
-                                    {stats.booksAbandonedCount > 0 && (
-                                        <div
-                                            className="stats-page__progress-segment stats-page__progress-segment--abandoned"
-                                            style={{ width: `${(stats.booksAbandonedCount / stats.totalOwnedBooks) * 100}%` }}
-                                            title={`${tr("Dropped", "Abandonnés")} : ${stats.booksAbandonedCount}`}
-                                        />
-                                    )}
-                                </div>
-
-                                {/* Status Chips */}
-                                <div className="stats-page__status-chips">
-                                    <div className="stats-page__status-chip">
-                                        <div className="stats-page__status-chip-dot" style={{ background: "var(--accent-primary)", boxShadow: "0 0 8px var(--accent-primary-glow)" }} />
-                                        <div className="stats-page__status-chip-body">
-                                            <span className="stats-page__status-chip-count">{stats.booksReadCount}</span>
-                                            <span className="stats-page__status-chip-label">
-                                                {tr("Read", "Lus")} ({stats.totalOwnedBooks > 0 ? Math.round((stats.booksReadCount * 100) / stats.totalOwnedBooks) : 0}%)
-                                            </span>
-                                        </div>
+                                        <h3>
+                                            <FontAwesomeIcon icon={faBookOpen} style={{ color: "var(--accent-primary)" }} />
+                                            <span>{tr("Reading progress", "Progression de lecture")}</span>
+                                        </h3>
+                                        <p>{tr("Track your reading and your To-Read pile", "Suivi de vos lectures et état de votre Pile À Lire (PAL)")}</p>
                                     </div>
 
-                                    <div className="stats-page__status-chip">
-                                        <div className="stats-page__status-chip-dot" style={{ background: "#3b82f6", boxShadow: "0 0 8px rgba(59, 130, 246, 0.4)" }} />
-                                        <div className="stats-page__status-chip-body">
-                                            <span className="stats-page__status-chip-count">{stats.booksReadingCount}</span>
-                                            <span className="stats-page__status-chip-label">{tr("Reading", "En cours")}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="stats-page__status-chip">
-                                        <div className="stats-page__status-chip-dot" style={{ background: "#f59e0b", boxShadow: "0 0 8px rgba(245, 158, 11, 0.4)" }} />
-                                        <div className="stats-page__status-chip-body">
-                                            <span className="stats-page__status-chip-count">{stats.booksToReadCount}</span>
-                                            <span className="stats-page__status-chip-label">{tr("To read", "À lire (PAL)")}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="stats-page__status-chip">
-                                        <div className="stats-page__status-chip-dot" style={{ background: "rgba(255, 255, 255, 0.3)" }} />
-                                        <div className="stats-page__status-chip-body">
-                                            <span className="stats-page__status-chip-count">{stats.booksUnreadCount}</span>
-                                            <span className="stats-page__status-chip-label">{tr("Unread", "Non lus")}</span>
-                                        </div>
-                                    </div>
-
-                                    {stats.booksAbandonedCount > 0 && (
-                                        <div className="stats-page__status-chip">
-                                            <div className="stats-page__status-chip-dot" style={{ background: "#ef4444" }} />
-                                            <div className="stats-page__status-chip-body">
-                                                <span className="stats-page__status-chip-count">{stats.booksAbandonedCount}</span>
-                                                <span className="stats-page__status-chip-label">{tr("Dropped", "Abandonnés")}</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {stats.totalLoggedReadingMinutes > 0 && (
                                     <div style={{
-                                        display: "flex",
+                                        display: "inline-flex",
                                         alignItems: "center",
-                                        gap: "10px",
-                                        padding: "10px 16px",
-                                        borderRadius: "10px",
-                                        background: "rgba(99, 102, 241, 0.08)",
-                                        border: "1px solid rgba(99, 102, 241, 0.2)",
-                                        fontSize: "0.85rem",
-                                        color: "var(--text-secondary, #94a3b8)"
+                                        gap: "8px",
+                                        padding: "6px 14px",
+                                        borderRadius: "12px",
+                                        background: "var(--accent-primary-light)",
+                                        border: "1px solid var(--border-focus)",
+                                        color: "var(--accent-primary)",
+                                        fontSize: "0.95rem",
+                                        fontWeight: 700
                                     }}>
-                                        <FontAwesomeIcon icon={faClock} style={{ color: "#818cf8" }} />
+                                        <FontAwesomeIcon icon={faCheck} style={{ fontSize: "0.85rem" }} />
                                         <span>
-                                            <strong style={{ color: "var(--text-primary, #fff)" }}>{formatMinutes(stats.totalLoggedReadingMinutes)}</strong>{" "}
-                                            {tr("of timed reading recorded across ", "de lecture chronométrée enregistrée sur ")}
-                                            <strong style={{ color: "var(--text-primary, #fff)" }}>{stats.totalReadingSessionsCount}</strong>{" "}
-                                            {stats.totalReadingSessionsCount > 1 ? tr("sessions.", "sessions.") : tr("session.", "session.")}
+                                            {selectedYear !== null
+                                                ? tr(
+                                                      `${stats.readingProgressPercentage}% read (${selectedYear})`,
+                                                      `${stats.readingProgressPercentage}% lus (${selectedYear})`
+                                                  )
+                                                : tr(
+                                                      `${stats.readingProgressPercentage}% of collection read`,
+                                                      `${stats.readingProgressPercentage}% de la collection lue`
+                                                  )}
                                         </span>
                                     </div>
-                                )}
-                            </div>
-                        </div>}
+                                </div>
 
-                        {/* 4. PHYSICAL STATS */}
-                        {visibleSections >= 4 && <div className="stats-page__section-card">
-                            <div className="stats-page__section-header">
-                                <div>
-                                    <h3>
-                                        <FontAwesomeIcon icon={faRulerVertical} style={{ color: "#818cf8" }} />
-                                        <span>{tr("Physical data & Dimensions", "Données physiques & Dimensions")}</span>
-                                    </h3>
-                                    <p>{tr("Measurements and cumulative weight of your collection", "Mensurations et poids cumulé de votre collection")}</p>
+                                <div className="stats-page__reading-panel">
+                                    <PieChart
+                                        data={[
+                                            {
+                                                name: tr("Read", "Lus"),
+                                                count: stats.booksReadCount,
+                                                percentage:
+                                                    stats.totalOwnedBooks > 0
+                                                        ? Math.round((stats.booksReadCount * 1000) / stats.totalOwnedBooks) / 10
+                                                        : 0,
+                                                color: "#10b981"
+                                            },
+                                            {
+                                                name: tr("Reading", "En cours"),
+                                                count: stats.booksReadingCount,
+                                                percentage:
+                                                    stats.totalOwnedBooks > 0
+                                                        ? Math.round((stats.booksReadingCount * 1000) / stats.totalOwnedBooks) / 10
+                                                        : 0,
+                                                color: "#3b82f6"
+                                            },
+                                            {
+                                                name: tr("To read (PAL)", "À lire (PAL)"),
+                                                count: stats.booksToReadCount + (stats.booksUnreadCount || 0),
+                                                percentage:
+                                                    stats.totalOwnedBooks > 0
+                                                        ? Math.round(
+                                                              ((stats.booksToReadCount + (stats.booksUnreadCount || 0)) * 1000) /
+                                                                  stats.totalOwnedBooks
+                                                          ) / 10
+                                                        : 0,
+                                                color: "#f59e0b"
+                                            },
+                                            ...(stats.booksAbandonedCount > 0
+                                                ? [
+                                                      {
+                                                          name: tr("Dropped", "Abandonnés"),
+                                                          count: stats.booksAbandonedCount,
+                                                          percentage:
+                                                              stats.totalOwnedBooks > 0
+                                                                  ? Math.round((stats.booksAbandonedCount * 1000) / stats.totalOwnedBooks) / 10
+                                                                  : 0,
+                                                          color: "#ef4444"
+                                                      }
+                                                  ]
+                                                : [])
+                                        ]}
+                                        totalCount={stats.totalOwnedBooks}
+                                        title=""
+                                    />
+
+                                    {stats.totalLoggedReadingMinutes > 0 && (
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "10px",
+                                            padding: "10px 16px",
+                                            borderRadius: "10px",
+                                            background: "rgba(99, 102, 241, 0.08)",
+                                            border: "1px solid rgba(99, 102, 241, 0.2)",
+                                            fontSize: "0.85rem",
+                                            color: "var(--text-secondary, #94a3b8)"
+                                        }}>
+                                            <FontAwesomeIcon icon={faClock} style={{ color: "#818cf8" }} />
+                                            <span>
+                                                <strong style={{ color: "var(--text-primary, #fff)" }}>{formatMinutes(stats.totalLoggedReadingMinutes)}</strong>{" "}
+                                                {tr("of timed reading recorded across ", "de lecture chronométrée enregistrée sur ")}
+                                                <strong style={{ color: "var(--text-primary, #fff)" }}>{stats.totalReadingSessionsCount}</strong>{" "}
+                                                {stats.totalReadingSessionsCount > 1 ? tr("sessions.", "sessions.") : tr("session.", "session.")}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="stats-page__physical-grid">
-                                <div className="stats-page__physical-card">
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                        <div style={{
-                                            width: "38px",
-                                            height: "38px",
-                                            borderRadius: "10px",
-                                            background: "rgba(99, 102, 241, 0.15)",
-                                            color: "#818cf8",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            fontSize: "16px"
-                                        }}>
-                                            <FontAwesomeIcon icon={faRulerVertical} />
+                            {/* Physical Stats */}
+                            <div className="stats-page__section-card">
+                                <div className="stats-page__section-header">
+                                    <div>
+                                        <h3>
+                                            <FontAwesomeIcon icon={faRulerVertical} style={{ color: "#818cf8" }} />
+                                            <span>{tr("Physical data & Dimensions", "Données physiques & Dimensions")}</span>
+                                        </h3>
+                                        <p>{tr("Measurements and cumulative weight of your collection", "Mensurations et poids cumulé de votre collection")}</p>
+                                    </div>
+                                </div>
+
+                                <div className="stats-page__physical-grid stats-page__physical-grid--stacked">
+                                    <div className="stats-page__physical-card stats-page__physical-card--row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0 }}>
+                                            <div style={{
+                                                width: "36px",
+                                                height: "36px",
+                                                borderRadius: "10px",
+                                                background: "rgba(99, 102, 241, 0.15)",
+                                                color: "#818cf8",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: "15px",
+                                                flexShrink: 0
+                                            }}>
+                                                <FontAwesomeIcon icon={faRulerVertical} />
+                                            </div>
+                                            <div style={{ minWidth: 0 }}>
+                                                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
+                                                    {tr("Stack height", "Hauteur de la pile")}
+                                                </div>
+                                                <div style={{ fontSize: "0.78rem", color: "var(--text-muted, #94a3b8)", marginTop: "2px" }}>
+                                                    {tr("Cumulative height if all your books were stacked.", "Hauteur cumulée si tous vos albums étaient empilés.")}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "#818cf8" }}>
+                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#818cf8", flexShrink: 0 }}>
                                             {stats.totalHeightMeters} m
                                         </div>
                                     </div>
-                                    <div>
-                                        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
-                                            {tr("Stack height", "Hauteur de la pile")}
-                                        </div>
-                                        <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
-                                            {tr("Cumulative height if all your books were stacked.", "Hauteur cumulée si tous vos albums étaient empilés.")}
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div className="stats-page__physical-card">
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                        <div style={{
-                                            width: "38px",
-                                            height: "38px",
-                                            borderRadius: "10px",
-                                            background: "var(--accent-primary-light)",
-                                            color: "var(--accent-primary)",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            fontSize: "16px"
-                                        }}>
-                                            <FontAwesomeIcon icon={faWeightHanging} />
+                                    <div className="stats-page__physical-card stats-page__physical-card--row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0 }}>
+                                            <div style={{
+                                                width: "36px",
+                                                height: "36px",
+                                                borderRadius: "10px",
+                                                background: "var(--accent-primary-light)",
+                                                color: "var(--accent-primary)",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: "15px",
+                                                flexShrink: 0
+                                            }}>
+                                                <FontAwesomeIcon icon={faWeightHanging} />
+                                            </div>
+                                            <div style={{ minWidth: 0 }}>
+                                                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
+                                                    {tr("Library weight", "Poids de la bibliothèque")}
+                                                </div>
+                                                <div style={{ fontSize: "0.78rem", color: "var(--text-muted, #94a3b8)", marginTop: "2px" }}>
+                                                    {tr("Estimated total weight based on the type and format of each book.", "Poids total estimé selon le type et le format de chaque album.")}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "var(--accent-primary)" }}>
+                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--accent-primary)", flexShrink: 0 }}>
                                             {stats.totalWeightKg} kg
                                         </div>
                                     </div>
-                                    <div>
-                                        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
-                                            {tr("Library weight", "Poids de la bibliothèque")}
-                                        </div>
-                                        <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
-                                            {tr("Estimated total weight based on the type and format of each book.", "Poids total estimé selon le type et le format de chaque album.")}
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div className="stats-page__physical-card">
-                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                        <div style={{
-                                            width: "38px",
-                                            height: "38px",
-                                            borderRadius: "10px",
-                                            background: "rgba(6, 182, 212, 0.15)",
-                                            color: "#22d3ee",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            fontSize: "16px"
-                                        }}>
-                                            <FontAwesomeIcon icon={faFileLines} />
+                                    <div className="stats-page__physical-card stats-page__physical-card--row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0 }}>
+                                            <div style={{
+                                                width: "36px",
+                                                height: "36px",
+                                                borderRadius: "10px",
+                                                background: "rgba(6, 182, 212, 0.15)",
+                                                color: "#22d3ee",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: "15px",
+                                                flexShrink: 0
+                                            }}>
+                                                <FontAwesomeIcon icon={faFileLines} />
+                                            </div>
+                                            <div style={{ minWidth: 0 }}>
+                                                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
+                                                    {tr("Average page count", "Pagination moyenne")}
+                                                </div>
+                                                <div style={{ fontSize: "0.78rem", color: "var(--text-muted, #94a3b8)", marginTop: "2px" }}>
+                                                    {tr("Average number of pages per volume in your collection.", "Nombre moyen de pages par volume dans votre collection.")}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "#22d3ee" }}>
+                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#22d3ee", flexShrink: 0 }}>
                                             ~{stats.averagePagesPerBook} p.
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
-                                            {tr("Average page count", "Pagination moyenne")}
-                                        </div>
-                                        <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
-                                            {tr("Average number of pages per volume in your collection.", "Nombre moyen de pages par volume dans votre collection.")}
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>}
 
-                        {/* 5. GENRES & PUBLICATION ERAS (TWO COLS) */}
-                        {visibleSections >= 5 && <div className="stats-page__two-cols">
+                        {/* 3. GENRES & PUBLICATION ERAS (TWO COLS) */}
+                        {visibleSections >= 3 && <div className="stats-page__two-cols">
                             {/* Donut Chart: Genres */}
                             <div className="stats-page__section-card">
                                 <div className="stats-page__section-header">
@@ -870,8 +688,8 @@ export default function StatisticsPage() {
                             </div>
                         </div>}
 
-                        {/* 6. TOP AUTHORS & TOP PUBLISHERS (TWO COLS) */}
-                        {visibleSections >= 6 && <div className="stats-page__two-cols">
+                        {/* 4. TOP AUTHORS & TOP PUBLISHERS (TWO COLS) */}
+                        {visibleSections >= 4 && <div className="stats-page__two-cols">
                             {/* Top Authors */}
                             <div className="stats-page__section-card">
                                 <div className="stats-page__section-header">
@@ -961,8 +779,163 @@ export default function StatisticsPage() {
                             </div>
                         </div>}
 
-                        {/* 7. HALL OF FAME / RECORDS */}
-                        {visibleSections >= 7 && <div className="stats-page__section-card">
+                        {/* 5. TRANSACTIONS & HALL OF FAME / RECORDS (TWO COLS) */}
+                        {visibleSections >= 5 && <div className="stats-page__two-cols">
+                            {/* Transactions: Purchases, Gifts & Sales */}
+                            <div className="stats-page__section-card">
+                                <div className="stats-page__section-header">
+                                    <div>
+                                        <h3>
+                                            <FontAwesomeIcon icon={faCoins} style={{ color: "#fbbf24" }} />
+                                            <span>{tr("Purchases, Gifts & Sales", "Achats, Cadeaux & Ventes")}</span>
+                                        </h3>
+                                        <p>
+                                            {selectedYear !== null
+                                                ? tr(`Transactions recorded in ${selectedYear}`, `Transactions enregistrées en ${selectedYear}`)
+                                                : tr("Summary of your purchases, gifts received, and sales", "Bilan de vos achats, cadeaux reçus et ventes")}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="stats-page__physical-grid stats-page__physical-grid--stacked">
+                                    {/* Purchases */}
+                                    <div className="stats-page__physical-card stats-page__physical-card--row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0 }}>
+                                            <div style={{
+                                                width: "36px",
+                                                height: "36px",
+                                                borderRadius: "10px",
+                                                background: "rgba(16, 185, 129, 0.15)",
+                                                color: "#34d399",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: "15px",
+                                                flexShrink: 0
+                                            }}>
+                                                <FontAwesomeIcon icon={faCartShopping} />
+                                            </div>
+                                            <div style={{ minWidth: 0 }}>
+                                                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
+                                                    {tr("Purchases", "Achats")}
+                                                </div>
+                                                <div style={{ fontSize: "0.78rem", color: "var(--text-muted, #94a3b8)", marginTop: "2px" }}>
+                                                    {tr("Books bought and total amount spent.", "Albums achetés et montant total dépensé.")}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                                            <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#34d399", lineHeight: 1.15 }}>
+                                                {stats.totalBoughtCount ?? 0}
+                                            </div>
+                                            <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary, #cbd5e1)" }}>
+                                                {formatAmount(stats.totalBoughtAmount)}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Gifts */}
+                                    <div className="stats-page__physical-card stats-page__physical-card--row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0 }}>
+                                            <div style={{
+                                                width: "36px",
+                                                height: "36px",
+                                                borderRadius: "10px",
+                                                background: "rgba(236, 72, 153, 0.15)",
+                                                color: "#f472b6",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: "15px",
+                                                flexShrink: 0
+                                            }}>
+                                                <FontAwesomeIcon icon={faGift} />
+                                            </div>
+                                            <div style={{ minWidth: 0 }}>
+                                                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
+                                                    {tr("Gifts received", "Cadeaux reçus")}
+                                                </div>
+                                                <div style={{ fontSize: "0.78rem", color: "var(--text-muted, #94a3b8)", marginTop: "2px" }}>
+                                                    {tr("Books added as gifts to your library.", "Albums offerts et ajoutés à votre collection.")}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#f472b6", flexShrink: 0 }}>
+                                            {stats.totalGiftCount ?? 0}
+                                        </div>
+                                    </div>
+
+                                    {/* Sales */}
+                                    <div className="stats-page__physical-card stats-page__physical-card--row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0 }}>
+                                            <div style={{
+                                                width: "36px",
+                                                height: "36px",
+                                                borderRadius: "10px",
+                                                background: "rgba(245, 158, 11, 0.15)",
+                                                color: "#fbbf24",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: "15px",
+                                                flexShrink: 0
+                                            }}>
+                                                <FontAwesomeIcon icon={faTag} />
+                                            </div>
+                                            <div style={{ minWidth: 0 }}>
+                                                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
+                                                    {tr("Sales", "Ventes")}
+                                                </div>
+                                                <div style={{ fontSize: "0.78rem", color: "var(--text-muted, #94a3b8)", marginTop: "2px" }}>
+                                                    {tr("Books sold and total amount earned.", "Albums vendus et montant total récupéré.")}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                                            <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#fbbf24", lineHeight: 1.15 }}>
+                                                {stats.totalSoldCount ?? 0}
+                                            </div>
+                                            <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary, #cbd5e1)" }}>
+                                                {formatAmount(stats.totalSoldAmount)}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Net Spent */}
+                                    <div className="stats-page__physical-card stats-page__physical-card--row">
+                                        <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0 }}>
+                                            <div style={{
+                                                width: "36px",
+                                                height: "36px",
+                                                borderRadius: "10px",
+                                                background: "rgba(99, 102, 241, 0.15)",
+                                                color: "#818cf8",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: "15px",
+                                                flexShrink: 0
+                                            }}>
+                                                <FontAwesomeIcon icon={faCoins} />
+                                            </div>
+                                            <div style={{ minWidth: 0 }}>
+                                                <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
+                                                    {tr("Net budget", "Budget net")}
+                                                </div>
+                                                <div style={{ fontSize: "0.78rem", color: "var(--text-muted, #94a3b8)", marginTop: "2px" }}>
+                                                    {tr("Total purchases minus total sales.", "Total des achats moins le total des ventes.")}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#818cf8", flexShrink: 0 }}>
+                                            {formatAmount(stats.netSpentAmount)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Hall of Fame / Records */}
+                            <div className="stats-page__section-card">
                             <div className="stats-page__section-header">
                                 <div>
                                     <h3>
@@ -1195,6 +1168,7 @@ export default function StatisticsPage() {
                                         </Link>
                                     </div>
                                 )}
+                            </div>
                             </div>
                         </div>}
                     </>
