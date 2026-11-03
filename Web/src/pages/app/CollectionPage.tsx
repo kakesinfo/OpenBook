@@ -17,6 +17,7 @@ import {
     faCheck,
     faBookOpen,
     faBan,
+    faPause,
     faBorderAll,
     faList,
     faChevronRight,
@@ -88,6 +89,14 @@ function getReadingStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string
             <span className="collection-status-badge collection-status-badge--reading">
                 <FontAwesomeIcon icon={faBookOpen} />
                 <span>{tr("Reading", "En cours")}</span>
+            </span>
+        );
+    }
+    if (rStatus === "PAUSED" || rStatus === "EN_PAUSE" || rStatus === "PAUSE") {
+        return (
+            <span className="collection-status-badge collection-status-badge--paused">
+                <FontAwesomeIcon icon={faPause} />
+                <span>{tr("Paused", "En pause")}</span>
             </span>
         );
     }

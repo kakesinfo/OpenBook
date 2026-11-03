@@ -20,6 +20,9 @@ function getStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string) => st
     if (rStatus === "READING" || rStatus === "EN_COURS") {
         return <span className="booklist-card__status-badge is-reading">{tr("Reading", "En cours")}</span>;
     }
+    if (rStatus === "PAUSED" || rStatus === "EN_PAUSE" || rStatus === "PAUSE") {
+        return <span className="booklist-card__status-badge is-paused">{tr("Paused", "En pause")}</span>;
+    }
     if (rStatus === "ABANDONED" || rStatus === "ABANDONNE") {
         return <span className="booklist-card__status-badge is-abandoned">{tr("Abandoned", "Abandonné")}</span>;
     }

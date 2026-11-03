@@ -417,7 +417,7 @@ public class BookmoryImportService {
                 if (s == null) continue;
                 switch (s.trim().toUpperCase()) {
                     case "DONE": return "READ";
-                    case "PAUSE": return "READING";
+                    case "PAUSE": return "PAUSED";
                     case "NOT_STARTED": return "UNREAD";
                 }
             }
@@ -426,7 +426,7 @@ public class BookmoryImportService {
         if (b.getReads() != null) {
             for (BookmoryRead rd : b.getReads()) {
                 if ("DONE".equalsIgnoreCase(rd.getStatus())) return "READ";
-                if ("PAUSE".equalsIgnoreCase(rd.getStatus())) return "READING";
+                if ("PAUSE".equalsIgnoreCase(rd.getStatus())) return "PAUSED";
             }
         }
 
