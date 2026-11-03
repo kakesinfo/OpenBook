@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
 import '../data/book.dart';
+import '../data/book_transaction.dart';
 import '../data/books_repository.dart';
 import '../data/cover_image_service.dart';
 import '../data/reading_session.dart';
@@ -26,6 +27,13 @@ final bookSearchQueryProvider =
     NotifierProvider<BookSearchQueryNotifier, String>(
   BookSearchQueryNotifier.new,
 );
+
+
+final bookTransactionsProvider =
+    FutureProvider.family<List<BookTransaction>, int>((ref, bookId) async {
+  final repository = ref.watch(booksRepositoryProvider);
+  return repository.getBookTransactions(bookId);
+});
 
 final bookDetailsProvider = FutureProvider.family<Map<String, dynamic>, int>((ref, bookId) async {
   final repository = ref.watch(booksRepositoryProvider);
@@ -404,5 +412,32 @@ class BooksController extends AsyncNotifier<List<Book>> {
 
         return _coverImageService.storeResizedCover(selectedPath);
     }
+  }
+
+  Future<void> addBookTransaction({
+    required int bookId,
+    required BookTransaction transaction,
+  }) async {
+    await _repository.addBookTransaction(bookId, transaction);
+    ref.invalidate(bookTransactionsProvider(bookId));
+    final currentBook = _bookById(bookId);
+    if (currentBook != null &&
+        currentBook.status != BookStatus.read &&
+        currentBook.status != BookStatus.reading &&
+        currentBook.status != BookStatus.unread &&
+        currentBook.status != BookStatus.lent &&
+        currentBook.status != BookStatus.sold) {
+      await _repository.updateBookStatus(bookId, BookStatus.unread);
+    }
+    await reload();
+  }
+
+  Future<void> deleteBookTransaction({
+    required int bookId,
+    required int transactionId,
+  }) async {
+    await _repository.deleteBookTransaction(transactionId);
+    ref.invalidate(bookTransactionsProvider(bookId));
+    await reload();
   }
 }

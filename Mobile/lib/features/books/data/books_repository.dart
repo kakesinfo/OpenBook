@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
 import 'book.dart';
+import 'book_transaction.dart';
 import 'reading_session.dart';
 
 class BooksRepository {
@@ -416,6 +417,35 @@ class BooksRepository {
     final response = await _apiClient.delete('/user/readingSessions/$sessionId');
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Impossible de supprimer la session: ${response.statusCode}');
+    }
+  }
+
+  Future<List<BookTransaction>> getBookTransactions(int bookId) async {
+    final response = await _apiClient.get('/user/books/$bookId/transactions');
+    if (response.statusCode != 200) {
+      return [];
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((item) => BookTransaction.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<BookTransaction> addBookTransaction(int bookId, BookTransaction tx) async {
+    final response = await _apiClient.post(
+      '/user/books/$bookId/transactions',
+      body: tx.toJson(),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Impossible d\'enregistrer l\'achat: ${response.statusCode}');
+    }
+
+    return BookTransaction.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<void> deleteBookTransaction(int transactionId) async {
+    final response = await _apiClient.delete('/user/transactions/$transactionId');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Impossible de supprimer la transaction: ${response.statusCode}');
     }
   }
 }

@@ -6,6 +6,7 @@ import '../../../core/network/api_client.dart';
 import '../application/books_providers.dart';
 import '../data/book.dart';
 import '../data/books_repository.dart';
+import 'book_purchase_history_page.dart';
 import 'book_reading_history_page.dart';
 import 'book_reading_session_page.dart';
 import 'components/book_cover.dart';
@@ -126,7 +127,13 @@ class BookDetailsPage extends ConsumerWidget {
             tooltip: 'Menu de l\'album',
             color: AppTheme.bgElevated,
             onSelected: (value) async {
-              if (value == 'edit') {
+              if (value == 'history') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => BookPurchaseHistoryPage(book: activeBook),
+                  ),
+                );
+              } else if (value == 'edit') {
                 showEditBookSheet(
                   context,
                   book: activeBook,
@@ -163,6 +170,19 @@ class BookDetailsPage extends ConsumerWidget {
               }
             },
             itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'history',
+                child: Row(
+                  children: [
+                    Icon(Icons.receipt_long_rounded, color: AppTheme.accentPrimary, size: 20),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Historique d\'achat',
+                      style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
               PopupMenuItem(
                 value: 'edit',
                 child: Row(
