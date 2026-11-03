@@ -38,8 +38,8 @@ export default function LanguageSelector() {
 
     const getOptionLabel = (id: typeof language) =>
         id === "en"
-            ? tr("English (Default)", "Anglais (Par défaut)")
-            : tr("Français (French)", "Français");
+            ? tr("English", "Anglais")
+            : tr("French", "Français");
 
     return (
         <div className="language-selector">
