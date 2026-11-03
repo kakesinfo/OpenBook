@@ -1693,7 +1693,6 @@ export default function BookPage() {
                                         aria-label={tr("Reading status", "Statut de lecture")}
                                     >
                                         <option value="UNREAD">{tr("Unread", "Non lu")}</option>
-                                        <option value="TO_READ">{tr("To read", "Pile à lire")}</option>
                                         <option value="READING">{tr("Currently reading", "En cours de lecture")}</option>
                                         <option value="READ">{tr("Read", "Lu")}</option>
                                         <option value="ABANDONED">{tr("Abandoned", "Abandonné")}</option>

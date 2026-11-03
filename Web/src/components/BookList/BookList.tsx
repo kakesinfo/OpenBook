@@ -16,9 +16,7 @@ function getStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string) => st
     if (rStatus === "READ" || rStatus === "LU") {
         return <span className="booklist-card__status-badge is-read">{tr("Read", "Lu")}</span>;
     }
-    if (rStatus === "TO_READ" || rStatus === "A_LIRE" || rStatus === "PILE_A_LIRE") {
-        return <span className="booklist-card__status-badge is-toread">{tr("To read", "À lire")}</span>;
-    }
+
     if (rStatus === "READING" || rStatus === "EN_COURS") {
         return <span className="booklist-card__status-badge is-reading">{tr("Reading", "En cours")}</span>;
     }

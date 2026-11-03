@@ -1556,4 +1556,9 @@
             </column>
         </addColumn>
     </changeSet>
+    <changeSet id="38" author="Axel">
+        <sql>
+            UPDATE book_status SET status = 'UNREAD' WHERE status = 'TO_READ' OR status = 'PILE_A_LIRE' OR status = 'A_LIRE' OR status = 'PAL';
+        </sql>
+    </changeSet>
 </databaseChangeLog>

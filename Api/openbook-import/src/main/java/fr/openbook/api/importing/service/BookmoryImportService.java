@@ -418,7 +418,7 @@ public class BookmoryImportService {
                 switch (s.trim().toUpperCase()) {
                     case "DONE": return "READ";
                     case "PAUSE": return "READING";
-                    case "NOT_STARTED": return "TO_READ";
+                    case "NOT_STARTED": return "UNREAD";
                 }
             }
         }

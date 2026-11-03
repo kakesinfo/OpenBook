@@ -82,14 +82,7 @@ function getReadingStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string
             </span>
         );
     }
-    if (rStatus === "TO_READ" || rStatus === "A_LIRE" || rStatus === "PILE_A_LIRE") {
-        return (
-            <span className="collection-status-badge collection-status-badge--toread">
-                <FontAwesomeIcon icon={faBookBookmark} />
-                <span>{tr("To read", "À lire")}</span>
-            </span>
-        );
-    }
+
     if (rStatus === "READING" || rStatus === "EN_COURS") {
         return (
             <span className="collection-status-badge collection-status-badge--reading">

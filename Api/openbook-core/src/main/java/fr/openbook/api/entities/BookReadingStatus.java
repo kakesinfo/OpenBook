@@ -4,7 +4,6 @@ import java.io.Serializable;
 
 public enum BookReadingStatus implements Serializable {
     UNREAD,
-    TO_READ,
     READING,
     READ,
     ABANDONED;
@@ -19,8 +18,7 @@ public enum BookReadingStatus implements Serializable {
         return switch (normalized) {
             case "READ", "LU" -> READ;
             case "READING", "EN_COURS", "EN_COURS_DE_LECTURE" -> READING;
-            case "TO_READ", "PILE_A_LIRE", "PAL", "A_LIRE" -> TO_READ;
-            case "UNREAD", "NON_LU" -> UNREAD;
+            case "TO_READ", "PILE_A_LIRE", "PAL", "A_LIRE", "UNREAD", "NON_LU" -> UNREAD;
             case "ABANDONED", "ABANDONNE" -> ABANDONED;
             default -> {
                 for (BookReadingStatus status : values()) {
