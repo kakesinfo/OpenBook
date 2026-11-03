@@ -7,30 +7,44 @@ import {
     faPlus,
     faCheck,
     faBook,
-    faPenNib
+    faPenNib,
+    faTag,
+    faCoins,
+    faLink,
+    faArrowLeft
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
+import UserBookTransactionDTO from "../../dto/UserBookTransaction.dto.ts";
 
 interface Props {
     open: boolean;
     onClose: () => void;
     onOpenCreateBook?: (initialTitle?: string) => void;
+    mode?: "library" | "sale";
 }
 
-export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook }: Props) {
+export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook, mode = "library" }: Props) {
     const session = useSession();
     const navigate = useNavigate();
     const { enqueueSnackbar } = useSnackbar();
+
+    const isSaleMode = mode === "sale";
 
     const [query, setQuery] = useState("");
     const [books, setBooks] = useState<BookSummaryDTO[]>([]);
     const [searching, setSearching] = useState(false);
     const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+
+    // Listing details step when putting a book up for sale
+    const [listingTargetBook, setListingTargetBook] = useState<BookSummaryDTO | null>(null);
+    const [listingPrice, setListingPrice] = useState<string>("");
+    const [listingUrl, setListingUrl] = useState<string>("");
+    const [submittingListing, setSubmittingListing] = useState(false);
 
     const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -40,6 +54,10 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook 
             setBooks([]);
             setSearching(false);
             setAddedIds(new Set());
+            setListingTargetBook(null);
+            setListingPrice("");
+            setListingUrl("");
+            setSubmittingListing(false);
             setTimeout(() => {
                 inputRef.current?.focus();
             }, 100);
@@ -100,6 +118,94 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook 
         }
     };
 
+    const handleOpenListingStep = async (book: BookSummaryDTO, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!session.token || addingIds.has(book.id)) return;
+
+        setAddingIds((prev) => new Set(prev).add(book.id));
+        try {
+            const res = await session.customFetch(`/user/books/${encodeURIComponent(book.id)}/transactions`, {
+                method: "GET"
+            });
+
+            if (res.ok) {
+                const txs: UserBookTransactionDTO[] = await res.json();
+                const acquiredCount = txs.filter((t) => t.type === "BOUGHT" || t.type === "GIFT").length;
+                const soldCount = txs.filter((t) => t.type === "SOLD").length;
+
+                if (acquiredCount <= soldCount) {
+                    enqueueSnackbar(
+                        "Vous devez avoir un achat ou un cadeau dans l'historique d'achat pour vendre ce livre.",
+                        { variant: "warning" }
+                    );
+                    return;
+                }
+            } else {
+                enqueueSnackbar("Impossible de vérifier l'historique d'achat de ce livre", { variant: "error" });
+                return;
+            }
+
+            setListingTargetBook(book);
+            setListingPrice(book.price ? String(book.price) : "");
+            setListingUrl(book.listingUrl || "");
+        } catch (err) {
+            console.error("Error checking book transactions:", err);
+            enqueueSnackbar("Erreur de connexion", { variant: "error" });
+        } finally {
+            setAddingIds((prev) => {
+                const next = new Set(prev);
+                next.delete(book.id);
+                return next;
+            });
+        }
+    };
+
+    const handleSaveListing = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!listingTargetBook || !session.token || submittingListing) return;
+
+        setSubmittingListing(true);
+        try {
+            const res = await session.customFetch(`/user/addBook/${encodeURIComponent(listingTargetBook.id)}/FOR_SALE`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    price: parseFloat(listingPrice),
+                    listingUrl: listingUrl.trim() || null
+                })
+            });
+
+            if (res.ok) {
+                setAddedIds((prev) => new Set(prev).add(listingTargetBook.id));
+                setBooks((prev) =>
+                    prev.map((b) =>
+                        b.id === listingTargetBook.id
+                            ? { ...b, status: "FOR_SALE", price: parseFloat(listingPrice) || b.price, listingUrl: listingUrl.trim() || null }
+                            : b
+                    )
+                );
+                enqueueSnackbar(`« ${listingTargetBook.title} » a été mis en vente !`, { variant: "success" });
+                window.dispatchEvent(new CustomEvent("sales-updated"));
+                setListingTargetBook(null);
+            } else {
+                let errMsg = "Erreur lors de la mise en vente";
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.message || errData.error || errMsg;
+                } catch {
+                    const text = await res.text().catch(() => "");
+                    if (text) errMsg = text;
+                }
+                enqueueSnackbar(errMsg, { variant: "error" });
+            }
+        } catch (err) {
+            console.error("Error listing book for sale:", err);
+            enqueueSnackbar("Erreur de connexion", { variant: "error" });
+        } finally {
+            setSubmittingListing(false);
+        }
+    };
+
     const handleBookClick = (bookId: string | number) => {
         onClose();
         navigate(`/app/book/${bookId}`);
@@ -128,11 +234,17 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook 
                 }
             }}
         >
-            <div className="fab-modal">
+            <div className={`fab-modal ${isSaleMode ? "fab-modal--sale" : ""}`}>
                 <div className="fab-modal__header">
                     <div className="fab-modal__header-title">
-                        <FontAwesomeIcon icon={faMagnifyingGlass} />
-                        <h3>Ajouter un livre à ma bibliothèque</h3>
+                        <FontAwesomeIcon icon={isSaleMode ? faTag : faMagnifyingGlass} />
+                        <h3>
+                            {listingTargetBook
+                                ? "Mettre en vente"
+                                : isSaleMode
+                                    ? "Chercher un livre à mettre en vente"
+                                    : "Ajouter un livre à ma bibliothèque"}
+                        </h3>
                     </div>
                     <button
                         type="button"
@@ -144,104 +256,205 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook 
                     </button>
                 </div>
 
-                <div className="fab-modal__body">
-                    <div className="fab-form__field">
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Rechercher par titre, série ou ISBN..."
-                            autoComplete="off"
-                        />
-                    </div>
+                {listingTargetBook ? (
+                    <form className="fab-form" onSubmit={handleSaveListing}>
+                        <div className="fab-search-item" style={{ cursor: "default" }}>
+                            <div className="fab-search-item__left" style={{ cursor: "default" }}>
+                                <div className="fab-search-item__thumb">
+                                    {listingTargetBook.coverUrl ? (
+                                        <img src={listingTargetBook.coverUrl} alt={listingTargetBook.title} loading="lazy" />
+                                    ) : (
+                                        <FontAwesomeIcon icon={faBook} />
+                                    )}
+                                </div>
+                                <div className="fab-search-item__info">
+                                    {listingTargetBook.seriesName && (
+                                        <span className="fab-search-item__series">
+                                            {listingTargetBook.seriesName}
+                                        </span>
+                                    )}
+                                    <span className="fab-search-item__title">
+                                        {listingTargetBook.title}
+                                    </span>
+                                    <div className="fab-search-item__meta">
+                                        {listingTargetBook.volume !== undefined && listingTargetBook.volume !== null && (
+                                            <span>{listingTargetBook.volume > 0 ? `Tome ${listingTargetBook.volume}` : "One-shot"}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                    {searching && (
-                        <p style={{ textAlign: "center", color: "var(--text-muted)", padding: "14px 0", fontSize: "0.875rem" }}>
-                            Recherche en cours...
-                        </p>
-                    )}
+                        <div className="fab-form__field">
+                            <label>
+                                <FontAwesomeIcon icon={faCoins} />
+                                <span>Prix de mise en vente (€) *</span>
+                            </label>
+                            <input
+                                type="number"
+                                required
+                                step="0.01"
+                                min="0"
+                                placeholder="ex: 12.00"
+                                value={listingPrice}
+                                onChange={(e) => setListingPrice(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
 
-                    {!searching && query.trim() && books.length === 0 && (
-                        <div className="fab-no-results">
-                            <p className="fab-no-results__text">
-                                Aucun livre trouvé pour « <strong>{query}</strong> »
-                            </p>
+                        <div className="fab-form__field">
+                            <label>
+                                <FontAwesomeIcon icon={faLink} />
+                                <span>Lien de l'annonce</span>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>(optionnel)</span>
+                            </label>
+                            <input
+                                type="url"
+                                placeholder="https://..."
+                                value={listingUrl}
+                                onChange={(e) => setListingUrl(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="fab-modal__footer">
                             <button
                                 type="button"
-                                className="fab-no-results__btn"
-                                onClick={handleCreateMissing}
+                                className="fab-btn-cancel"
+                                disabled={submittingListing}
+                                onClick={() => setListingTargetBook(null)}
+                                style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
                             >
-                                <FontAwesomeIcon icon={faPenNib} />
-                                <span>Créer un livre manquant</span>
+                                <FontAwesomeIcon icon={faArrowLeft} />
+                                <span>Retour</span>
+                            </button>
+                            <button
+                                type="submit"
+                                className="fab-btn-submit"
+                                disabled={submittingListing}
+                            >
+                                <FontAwesomeIcon icon={faCheck} />
+                                <span>{submittingListing ? "Enregistrement..." : "Mettre en vente"}</span>
                             </button>
                         </div>
-                    )}
+                    </form>
+                ) : (
+                    <div className="fab-modal__body">
+                        <div className="fab-form__field">
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder={isSaleMode ? "Rechercher un livre à mettre en vente..." : "Rechercher par titre, série ou ISBN..."}
+                                autoComplete="off"
+                            />
+                        </div>
 
-                    {books.length > 0 && (
-                        <ul className="fab-search-results">
-                            {books.map((book) => {
-                                const isOwned = book.status === "OWNED" || addedIds.has(book.id);
-                                const isAdding = addingIds.has(book.id);
+                        {searching && (
+                            <p style={{ textAlign: "center", color: "var(--text-muted)", padding: "14px 0", fontSize: "0.875rem" }}>
+                                Recherche en cours...
+                            </p>
+                        )}
 
-                                return (
-                                    <li
-                                        key={book.id}
-                                        className="fab-search-item"
-                                        onClick={() => handleBookClick(book.id)}
-                                    >
-                                        <div className="fab-search-item__left">
-                                            <div className="fab-search-item__thumb">
-                                                {book.coverUrl ? (
-                                                    <img src={book.coverUrl} alt={book.title} loading="lazy" />
-                                                ) : (
-                                                    <FontAwesomeIcon icon={faBook} />
-                                                )}
-                                            </div>
-                                            <div className="fab-search-item__info">
-                                                {book.seriesName && (
-                                                    <span className="fab-search-item__series">
-                                                        {book.seriesName}
-                                                    </span>
-                                                )}
-                                                <span className="fab-search-item__title">
-                                                    {book.title}
-                                                </span>
-                                                <div className="fab-search-item__meta">
-                                                    {book.volume !== undefined && book.volume !== null && (
-                                                        <span>{book.volume > 0 ? `Tome ${book.volume}` : "One-shot"}</span>
-                                                    )}
-                                                    {book.releaseDate && (
-                                                        <span>• {new Date(book.releaseDate).getFullYear()}</span>
+                        {!searching && query.trim() && books.length === 0 && (
+                            <div className="fab-no-results">
+                                <p className="fab-no-results__text">
+                                    Aucun livre trouvé pour « <strong>{query}</strong> »
+                                </p>
+                                <button
+                                    type="button"
+                                    className="fab-no-results__btn"
+                                    onClick={handleCreateMissing}
+                                >
+                                    <FontAwesomeIcon icon={faPenNib} />
+                                    <span>Créer un livre manquant</span>
+                                </button>
+                            </div>
+                        )}
+
+                        {books.length > 0 && (
+                            <ul className="fab-search-results">
+                                {books.map((book) => {
+                                    const isOwned = book.status === "OWNED" || addedIds.has(book.id);
+                                    const isForSale = book.status === "FOR_SALE" || (isSaleMode && addedIds.has(book.id));
+                                    const isAdding = addingIds.has(book.id);
+
+                                    return (
+                                        <li
+                                            key={book.id}
+                                            className="fab-search-item"
+                                            onClick={() => handleBookClick(book.id)}
+                                        >
+                                            <div className="fab-search-item__left">
+                                                <div className="fab-search-item__thumb">
+                                                    {book.coverUrl ? (
+                                                        <img src={book.coverUrl} alt={book.title} loading="lazy" />
+                                                    ) : (
+                                                        <FontAwesomeIcon icon={faBook} />
                                                     )}
                                                 </div>
+                                                <div className="fab-search-item__info">
+                                                    {book.seriesName && (
+                                                        <span className="fab-search-item__series">
+                                                            {book.seriesName}
+                                                        </span>
+                                                    )}
+                                                    <span className="fab-search-item__title">
+                                                        {book.title}
+                                                    </span>
+                                                    <div className="fab-search-item__meta">
+                                                        {book.volume !== undefined && book.volume !== null && (
+                                                            <span>{book.volume > 0 ? `Tome ${book.volume}` : "One-shot"}</span>
+                                                        )}
+                                                        {book.releaseDate && (
+                                                            <span>• {new Date(book.releaseDate).getFullYear()}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        <div className="fab-search-item__actions">
-                                            {isOwned ? (
-                                                <span className="fab-badge-owned">
-                                                    <FontAwesomeIcon icon={faCheck} />
-                                                    <span>Dans votre bibliothèque</span>
-                                                </span>
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    className="fab-btn-add"
-                                                    disabled={isAdding}
-                                                    onClick={(e) => handleAddBook(book, e)}
-                                                >
-                                                    <FontAwesomeIcon icon={isAdding ? faCheck : faPlus} />
-                                                    <span>{isAdding ? "Ajout..." : "Ajouter"}</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    )}
-                </div>
+                                            <div className="fab-search-item__actions">
+                                                {isSaleMode ? (
+                                                    isForSale ? (
+                                                        <span className="fab-badge-owned">
+                                                            <FontAwesomeIcon icon={faCheck} />
+                                                            <span>En vente</span>
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            className="fab-btn-add"
+                                                            disabled={isAdding}
+                                                            onClick={(e) => handleOpenListingStep(book, e)}
+                                                        >
+                                                            <FontAwesomeIcon icon={faTag} />
+                                                            <span>{isAdding ? "Vérification..." : "Mettre en vente"}</span>
+                                                        </button>
+                                                    )
+                                                ) : isOwned ? (
+                                                    <span className="fab-badge-owned">
+                                                        <FontAwesomeIcon icon={faCheck} />
+                                                        <span>Dans votre bibliothèque</span>
+                                                    </span>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="fab-btn-add"
+                                                        disabled={isAdding}
+                                                        onClick={(e) => handleAddBook(book, e)}
+                                                    >
+                                                        <FontAwesomeIcon icon={isAdding ? faCheck : faPlus} />
+                                                        <span>{isAdding ? "Ajout..." : "Ajouter"}</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </div>
+                )}
             </div>
         </Dialog>
     );

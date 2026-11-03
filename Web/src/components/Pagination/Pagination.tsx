@@ -1,9 +1,12 @@
+import { useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faChevronLeft,
     faChevronRight,
     faAnglesLeft,
-    faAnglesRight
+    faAnglesRight,
+    faChevronDown,
+    faCheck
 } from "@fortawesome/free-solid-svg-icons";
 import "./Pagination.scss";
 
@@ -45,6 +48,23 @@ export default function Pagination({
     pageSizeOptions = [20, 50, 100],
     itemLabel = "livres"
 }: PaginationProps) {
+    const [sizeMenuOpen, setSizeMenuOpen] = useState(false);
+    const sizeDropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (sizeDropdownRef.current && !sizeDropdownRef.current.contains(e.target as Node)) {
+                setSizeMenuOpen(false);
+            }
+        }
+        if (sizeMenuOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [sizeMenuOpen]);
+
     if (!totalItems || totalItems === 0 || totalPages === 0) {
         return null;
     }
@@ -62,19 +82,53 @@ export default function Pagination({
                 )}
 
                 {pageSize !== undefined && pageSize !== null && onPageSizeChange && (
-                    <div className="pagination__size-selector">
-                        <span>Par page :</span>
-                        <select
-                            value={pageSize}
-                            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                    <div
+                        ref={sizeDropdownRef}
+                        className={`pagination__size-dropdown ${sizeMenuOpen ? "is-open" : ""}`}
+                    >
+                        <button
+                            type="button"
+                            className="pagination__size-trigger"
+                            onClick={() => setSizeMenuOpen((prev) => !prev)}
+                            aria-haspopup="listbox"
+                            aria-expanded={sizeMenuOpen}
                             aria-label="Nombre d'éléments par page"
                         >
-                            {pageSizeOptions.map((opt) => (
-                                <option key={opt} value={opt}>
-                                    {opt === 0 ? "Tous" : opt}
-                                </option>
-                            ))}
-                        </select>
+                            <span className="pagination__size-label">Par page :</span>
+                            <span className="pagination__size-value">
+                                {pageSize === 0 ? "Tous" : pageSize}
+                            </span>
+                            <FontAwesomeIcon
+                                icon={faChevronDown}
+                                className={`pagination__size-chevron ${sizeMenuOpen ? "is-open" : ""}`}
+                            />
+                        </button>
+
+                        {sizeMenuOpen && (
+                            <div className="pagination__size-menu" role="listbox">
+                                {pageSizeOptions.map((opt) => {
+                                    const isSelected = opt === pageSize;
+                                    return (
+                                        <button
+                                            key={opt}
+                                            type="button"
+                                            role="option"
+                                            aria-selected={isSelected}
+                                            className={`pagination__size-option ${isSelected ? "is-selected" : ""}`}
+                                            onClick={() => {
+                                                onPageSizeChange(opt);
+                                                setSizeMenuOpen(false);
+                                            }}
+                                        >
+                                            <span>{opt === 0 ? "Tous" : opt}</span>
+                                            {isSelected && (
+                                                <FontAwesomeIcon icon={faCheck} className="pagination__size-check" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

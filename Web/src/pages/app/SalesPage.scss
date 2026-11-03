@@ -2,6 +2,11 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+  --accent-primary: #f59e0b;
+  --accent-primary-hover: #d97706;
+  --accent-primary-light: rgba(245, 158, 11, 0.14);
+  --accent-primary-glow: rgba(245, 158, 11, 0.35);
+  --border-focus: rgba(245, 158, 11, 0.45);
 
   &__content {
     width: 100%;

@@ -675,7 +675,7 @@ export default function BookPage() {
 
     const handleOpenSaleModal = () => {
         if (!canSellInHistory) {
-            enqueueSnackbar("Vous devez avoir enregistré un achat ou un cadeau dans l'historique d'achat avant de pouvoir vendre ce livre (Achats + Cadeaux ≥ Ventes).", { variant: "warning" });
+            enqueueSnackbar("Vous devez avoir un achat ou un cadeau dans l'historique d'achat pour vendre ce livre.", { variant: "warning" });
             return;
         }
         setSellDate("");
@@ -687,7 +687,7 @@ export default function BookPage() {
 
     const handleOpenListingModal = () => {
         if (!canSellInHistory) {
-            enqueueSnackbar("Vous devez avoir enregistré un achat ou un cadeau dans l'historique d'achat avant de pouvoir vendre ce livre (Achats + Cadeaux ≥ Ventes).", { variant: "warning" });
+            enqueueSnackbar("Vous devez avoir un achat ou un cadeau dans l'historique d'achat pour vendre ce livre.", { variant: "warning" });
             return;
         }
         setListingPrice(book?.price ? String(book.price) : "");

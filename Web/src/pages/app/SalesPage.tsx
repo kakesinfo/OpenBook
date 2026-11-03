@@ -219,6 +219,9 @@ export default function SalesPage() {
 
     useEffect(() => {
         fetchSales();
+        const handleSalesUpdated = () => fetchSales();
+        window.addEventListener("sales-updated", handleSalesUpdated);
+        return () => window.removeEventListener("sales-updated", handleSalesUpdated);
     }, [session]);
 
     // Status toggle: FOR_SALE <-> SOLD
