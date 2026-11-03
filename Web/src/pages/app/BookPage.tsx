@@ -48,6 +48,7 @@ import {
     faPencil,
     faScaleBalanced,
     faBox,
+    faGift,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
@@ -592,7 +593,8 @@ export default function BookPage() {
         };
     }, []);
 
-    // Buy modal form
+    // Buy / Gift modal form
+    const [buyType, setBuyType] = useState<"BOUGHT" | "GIFT">("BOUGHT");
     const [buyDate, setBuyDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
     const [buyPrice, setBuyPrice] = useState<string>("");
     const [buyLocation, setBuyLocation] = useState<string>("");
@@ -621,9 +623,10 @@ export default function BookPage() {
             .finally(() => setLoadingTransactions(false));
     };
 
-    const handleOpenPurchaseModal = () => {
+    const handleOpenPurchaseModal = (initialType: "BOUGHT" | "GIFT" = "BOUGHT") => {
+        setBuyType(initialType);
         setBuyDate(new Date().toISOString().split("T")[0]);
-        setBuyPrice(book?.price ? String(book.price) : "");
+        setBuyPrice(initialType === "GIFT" ? "" : (book?.price ? String(book.price) : ""));
         setBuyLocation("");
         setBuyMemo("");
         setPurchaseModalOpen(true);
@@ -635,12 +638,13 @@ export default function BookPage() {
 
         setSubmittingTx(true);
         try {
-            const parsedPrice = buyPrice ? parseFloat(buyPrice) : null;
+            const isGift = buyType === "GIFT";
+            const parsedPrice = !isGift && buyPrice ? parseFloat(buyPrice) : null;
             const res = await session.customFetch(`/user/books/${encodeURIComponent(id)}/transactions`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    type: "BOUGHT",
+                    type: buyType,
                     date: buyDate,
                     price: parsedPrice,
                     location: buyLocation.trim() || null,
@@ -649,14 +653,14 @@ export default function BookPage() {
             });
 
             if (res.ok) {
-                enqueueSnackbar("Achat enregistré avec succès !", { variant: "success" });
+                enqueueSnackbar(isGift ? "Cadeau enregistré avec succès !" : "Achat enregistré avec succès !", { variant: "success" });
                 setPurchaseModalOpen(false);
                 fetchTransactions(id);
                 if (bookStatus !== "OWNED" && bookStatus !== "FOR_SALE" && bookStatus !== "SOLD") {
                     setBookStatus("OWNED");
                 }
             } else {
-                enqueueSnackbar("Erreur lors de l'enregistrement de l'achat", { variant: "error" });
+                enqueueSnackbar(isGift ? "Erreur lors de l'enregistrement du cadeau" : "Erreur lors de l'enregistrement de l'achat", { variant: "error" });
             }
         } catch (err: any) {
             enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
@@ -665,7 +669,15 @@ export default function BookPage() {
         }
     };
 
+    const acquiredCount = transactions.filter((t) => t.type === "BOUGHT" || t.type === "GIFT").length;
+    const soldCount = transactions.filter((t) => t.type === "SOLD").length;
+    const canSellInHistory = acquiredCount > soldCount;
+
     const handleOpenSaleModal = () => {
+        if (!canSellInHistory) {
+            enqueueSnackbar("Vous devez avoir enregistré un achat ou un cadeau dans l'historique d'achat avant de pouvoir vendre ce livre (Achats + Cadeaux ≥ Ventes).", { variant: "warning" });
+            return;
+        }
         setSellDate("");
         setSellPrice(book?.price ? String(book.price) : "");
         setSellLocation("");
@@ -674,6 +686,10 @@ export default function BookPage() {
     };
 
     const handleOpenListingModal = () => {
+        if (!canSellInHistory) {
+            enqueueSnackbar("Vous devez avoir enregistré un achat ou un cadeau dans l'historique d'achat avant de pouvoir vendre ce livre (Achats + Cadeaux ≥ Ventes).", { variant: "warning" });
+            return;
+        }
         setListingPrice(book?.price ? String(book.price) : "");
         setListingUrl("");
         setListingModalOpen(true);
@@ -699,7 +715,15 @@ export default function BookPage() {
                 setListingModalOpen(false);
                 setBookStatus("FOR_SALE");
             } else {
-                enqueueSnackbar("Erreur lors de la mise en vente", { variant: "error" });
+                let errMsg = "Erreur lors de la mise en vente";
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.message || errData.error || errMsg;
+                } catch {
+                    const text = await res.text().catch(() => "");
+                    if (text) errMsg = text;
+                }
+                enqueueSnackbar(errMsg, { variant: "error" });
             }
         } catch (err: any) {
             enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
@@ -733,7 +757,15 @@ export default function BookPage() {
                 setBookStatus("SOLD");
                 fetchTransactions(id);
             } else {
-                enqueueSnackbar("Erreur lors de l'enregistrement de la vente", { variant: "error" });
+                let errMsg = "Erreur lors de l'enregistrement de la vente";
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.message || errData.error || errMsg;
+                } catch {
+                    const text = await res.text().catch(() => "");
+                    if (text) errMsg = text;
+                }
+                enqueueSnackbar(errMsg, { variant: "error" });
             }
         } catch (err: any) {
             enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
@@ -1261,6 +1293,8 @@ export default function BookPage() {
         .filter((t) => t.type === "SOLD" && t.price != null)
         .reduce((sum, t) => sum + Number(t.price || 0), 0);
     const hasBought = transactions.some((t) => t.type === "BOUGHT");
+    const hasGift = transactions.some((t) => t.type === "GIFT");
+    const giftCount = transactions.filter((t) => t.type === "GIFT").length;
     const hasSold = transactions.some((t) => t.type === "SOLD");
 
     const allAuthors = book?.authors || [];
@@ -2768,7 +2802,7 @@ export default function BookPage() {
                             <button
                                 type="button"
                                 className="book-page__tx-btn book-page__tx-btn--buy"
-                                onClick={handleOpenPurchaseModal}
+                                onClick={() => handleOpenPurchaseModal("BOUGHT")}
                                 title="Ajouter un achat pour cet album"
                             >
                                 <FontAwesomeIcon icon={faCartShopping} />
@@ -2776,12 +2810,12 @@ export default function BookPage() {
                             </button>
                             <button
                                 type="button"
-                                className="book-page__tx-btn book-page__tx-btn--sell"
-                                onClick={handleOpenSaleModal}
-                                title="Renseigner une vente pour cet album"
+                                className="book-page__tx-btn book-page__tx-btn--gift"
+                                onClick={() => handleOpenPurchaseModal("GIFT")}
+                                title="Indiquer que cet album a été reçu en cadeau"
                             >
-                                <FontAwesomeIcon icon={faCoins} />
-                                <span>Renseigner une vente</span>
+                                <FontAwesomeIcon icon={faGift} />
+                                <span>Reçu en cadeau</span>
                             </button>
                             <button
                                 type="button"
@@ -2802,13 +2836,19 @@ export default function BookPage() {
                                     <strong>{totalBought.toFixed(2).replace('.', ',')} €</strong>
                                 </div>
                             )}
+                            {hasGift && (
+                                <div className="book-page__summary-pill book-page__summary-pill--gift">
+                                    <span>Cadeaux reçus :</span>
+                                    <strong>{giftCount}</strong>
+                                </div>
+                            )}
                             {hasSold && (
                                 <div className="book-page__summary-pill book-page__summary-pill--sold">
                                     <span>Total vendu :</span>
                                     <strong>{totalSold.toFixed(2).replace('.', ',')} €</strong>
                                 </div>
                             )}
-                            {hasBought && hasSold && (
+                            {(hasBought || hasGift) && hasSold && (
                                 <div className="book-page__summary-pill">
                                     <span>Solde :</span>
                                     <strong style={{ color: totalSold >= totalBought ? "var(--accent-primary)" : "#f87171" }}>
@@ -2826,14 +2866,22 @@ export default function BookPage() {
                     ) : transactions.length === 0 ? (
                         <div className="book-page__transactions-empty">
                             <p>Aucun historique d'achat ou de vente renseigné pour cet album.</p>
-                            <div style={{ marginTop: "10px" }}>
+                            <div style={{ marginTop: "10px", display: "flex", justifyContent: "center", gap: "8px", flexWrap: "wrap" }}>
                                 <button
                                     type="button"
                                     className="book-page__tx-btn book-page__tx-btn--buy"
-                                    onClick={handleOpenPurchaseModal}
+                                    onClick={() => handleOpenPurchaseModal("BOUGHT")}
                                 >
                                     <FontAwesomeIcon icon={faCartShopping} />
                                     <span>Ajouter un premier achat</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="book-page__tx-btn book-page__tx-btn--gift"
+                                    onClick={() => handleOpenPurchaseModal("GIFT")}
+                                >
+                                    <FontAwesomeIcon icon={faGift} />
+                                    <span>Reçu en cadeau</span>
                                 </button>
                             </div>
                         </div>
@@ -2841,12 +2889,20 @@ export default function BookPage() {
                         <div className="book-page__transactions-list">
                             {transactions.map((tx) => {
                                 const isBuy = tx.type === "BOUGHT";
+                                const isGift = tx.type === "GIFT";
+                                const badgeClass = isBuy
+                                    ? "book-page__tx-badge--bought"
+                                    : isGift
+                                        ? "book-page__tx-badge--gift"
+                                        : "book-page__tx-badge--sold";
+                                const badgeIcon = isBuy ? faCartShopping : isGift ? faGift : faCoins;
+                                const badgeLabel = isBuy ? "Acheté" : isGift ? "Cadeau" : "Vendu";
                                 return (
                                     <div key={tx.id} className="book-page__tx-item">
                                         <div className="book-page__tx-left">
-                                            <span className={`book-page__tx-badge ${isBuy ? 'book-page__tx-badge--bought' : 'book-page__tx-badge--sold'}`}>
-                                                <FontAwesomeIcon icon={isBuy ? faCartShopping : faCoins} />
-                                                <span>{isBuy ? "Acheté" : "Vendu"}</span>
+                                            <span className={`book-page__tx-badge ${badgeClass}`}>
+                                                <FontAwesomeIcon icon={badgeIcon} />
+                                                <span>{badgeLabel}</span>
                                             </span>
 
                                             <div className="book-page__tx-details">
@@ -2862,8 +2918,8 @@ export default function BookPage() {
                                                     </span>
 
                                                     {tx.location && (
-                                                        <span className="book-page__tx-location" title={isBuy ? "Lieu d'achat" : "Canal / Acheteur"}>
-                                                            <FontAwesomeIcon icon={faStore} />
+                                                        <span className="book-page__tx-location" title={isBuy ? "Lieu d'achat" : isGift ? "Offert par / Occasion" : "Canal / Acheteur"}>
+                                                            <FontAwesomeIcon icon={isGift ? faGift : faStore} />
                                                             <span>{tx.location}</span>
                                                         </span>
                                                     )}
@@ -2879,8 +2935,8 @@ export default function BookPage() {
                                         </div>
 
                                         <div className="book-page__tx-right">
-                                            <span className={`book-page__tx-price ${isBuy ? 'book-page__tx-price--bought' : 'book-page__tx-price--sold'}`}>
-                                                {tx.price != null ? `${Number(tx.price).toFixed(2).replace('.', ',')} €` : "- €"}
+                                            <span className={`book-page__tx-price ${isBuy ? 'book-page__tx-price--bought' : isGift ? 'book-page__tx-price--gift' : 'book-page__tx-price--sold'}`}>
+                                                {isGift ? "Offert" : tx.price != null ? `${Number(tx.price).toFixed(2).replace('.', ',')} €` : "- €"}
                                             </span>
 
                                             <button
@@ -2900,7 +2956,7 @@ export default function BookPage() {
                 </div>
             </Dialog>
 
-            {/* Purchase Modal */}
+            {/* Purchase / Gift Modal */}
             <Dialog
                 open={purchaseModalOpen}
                 onClose={() => setPurchaseModalOpen(false)}
@@ -2919,8 +2975,11 @@ export default function BookPage() {
                 <div className="tx-dialog">
                     <div className="tx-dialog__header">
                         <div className="tx-dialog__header-title">
-                            <FontAwesomeIcon icon={faCartShopping} style={{ color: "var(--accent-primary)" }} />
-                            <h3>Ajouter un achat</h3>
+                            <FontAwesomeIcon
+                                icon={buyType === "GIFT" ? faGift : faCartShopping}
+                                style={{ color: buyType === "GIFT" ? "#ec4899" : "var(--accent-primary)" }}
+                            />
+                            <h3>{buyType === "GIFT" ? "Reçu en cadeau" : "Ajouter un achat"}</h3>
                         </div>
                         <button
                             type="button"
@@ -2932,18 +2991,78 @@ export default function BookPage() {
                         </button>
                     </div>
 
+                    <div className="cover-dialog__tabs">
+                        <button
+                            type="button"
+                            className={`cover-dialog__tab ${buyType === "BOUGHT" ? "cover-dialog__tab--active" : ""}`}
+                            onClick={() => {
+                                setBuyType("BOUGHT");
+                                if (!buyPrice && book?.price) {
+                                    setBuyPrice(String(book.price));
+                                }
+                            }}
+                            disabled={submittingTx}
+                        >
+                            <FontAwesomeIcon icon={faCartShopping} />
+                            <span>Achat</span>
+                        </button>
+                        <button
+                            type="button"
+                            className={`cover-dialog__tab ${buyType === "GIFT" ? "cover-dialog__tab--active" : ""}`}
+                            onClick={() => setBuyType("GIFT")}
+                            disabled={submittingTx}
+                        >
+                            <FontAwesomeIcon icon={faGift} />
+                            <span>Cadeau reçu</span>
+                        </button>
+                    </div>
+
                     {book && (
                         <p style={{ margin: "0 0 4px", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
-                            Renseignez les détails d'achat pour <strong>« {book.title} »</strong> :
+                            {buyType === "GIFT" ? (
+                                <>Renseignez les détails du cadeau pour <strong>« {book.title} »</strong> :</>
+                            ) : (
+                                <>Renseignez les détails d'achat pour <strong>« {book.title} »</strong> :</>
+                            )}
                         </p>
                     )}
 
                     <form className="tx-dialog__form" onSubmit={handleSavePurchase}>
-                        <div className="tx-dialog__grid">
+                        {buyType === "BOUGHT" ? (
+                            <div className="tx-dialog__grid">
+                                <div className="tx-dialog__field">
+                                    <label>
+                                        <FontAwesomeIcon icon={faCalendarDays} />
+                                        <span>Date d'achat *</span>
+                                    </label>
+                                    <input
+                                        type="date"
+                                        required
+                                        value={buyDate}
+                                        onChange={(e) => setBuyDate(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="tx-dialog__field">
+                                    <label>
+                                        <FontAwesomeIcon icon={faTag} />
+                                        <span>Prix d'achat (€)</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="ex: 15.00"
+                                        value={buyPrice}
+                                        onChange={(e) => setBuyPrice(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        ) : (
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faCalendarDays} />
-                                    <span>Date d'achat *</span>
+                                    <span>Date de réception *</span>
                                 </label>
                                 <input
                                     type="date"
@@ -2952,31 +3071,16 @@ export default function BookPage() {
                                     onChange={(e) => setBuyDate(e.target.value)}
                                 />
                             </div>
-
-                            <div className="tx-dialog__field">
-                                <label>
-                                    <FontAwesomeIcon icon={faTag} />
-                                    <span>Prix d'achat (€)</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    placeholder="ex: 15.00"
-                                    value={buyPrice}
-                                    onChange={(e) => setBuyPrice(e.target.value)}
-                                />
-                            </div>
-                        </div>
+                        )}
 
                         <div className="tx-dialog__field">
                             <label>
-                                <FontAwesomeIcon icon={faStore} />
-                                <span>Lieu d'achat</span>
+                                <FontAwesomeIcon icon={buyType === "GIFT" ? faGift : faStore} />
+                                <span>{buyType === "GIFT" ? "Offert par / Occasion" : "Lieu d'achat"}</span>
                             </label>
                             <input
                                 type="text"
-                                placeholder="ex: Librairie Album, Fnac, Vinted, Brocante..."
+                                placeholder={buyType === "GIFT" ? "ex: Anniversaire, Noël, Offert par un ami..." : "ex: Librairie Album, Fnac, Vinted, Brocante..."}
                                 value={buyLocation}
                                 onChange={(e) => setBuyLocation(e.target.value)}
                             />
@@ -3005,10 +3109,16 @@ export default function BookPage() {
                             <button
                                 type="submit"
                                 disabled={submittingTx}
-                                className="tx-dialog__btn-submit tx-dialog__btn-submit--bought"
+                                className={`tx-dialog__btn-submit ${buyType === "GIFT" ? "tx-dialog__btn-submit--gift" : "tx-dialog__btn-submit--bought"}`}
                             >
                                 <FontAwesomeIcon icon={faCheck} />
-                                <span>{submittingTx ? "Enregistrement..." : "Enregistrer l'achat"}</span>
+                                <span>
+                                    {submittingTx
+                                        ? "Enregistrement..."
+                                        : buyType === "GIFT"
+                                            ? "Enregistrer le cadeau"
+                                            : "Enregistrer l'achat"}
+                                </span>
                             </button>
                         </div>
                     </form>

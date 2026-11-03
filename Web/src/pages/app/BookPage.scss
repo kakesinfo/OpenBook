@@ -1283,9 +1283,22 @@
     border-color: var(--border-focus);
     color: var(--accent-primary);
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: var(--accent-primary);
       border-color: var(--accent-primary);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+  }
+
+  &--gift {
+    background: rgba(236, 72, 153, 0.14);
+    border-color: rgba(236, 72, 153, 0.4);
+    color: #ec4899;
+
+    &:hover:not(:disabled) {
+      background: #ec4899;
+      border-color: #ec4899;
       color: #ffffff;
       transform: translateY(-1px);
     }
@@ -1296,12 +1309,18 @@
     border-color: var(--accent-amber);
     color: var(--accent-amber);
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: var(--accent-amber);
       border-color: var(--accent-amber);
       color: #ffffff;
       transform: translateY(-1px);
     }
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
   }
 }
 
@@ -1330,6 +1349,10 @@
 
   &--bought strong {
     color: var(--accent-primary);
+  }
+
+  &--gift strong {
+    color: #ec4899;
   }
 
   &--sold strong {
@@ -1399,6 +1422,12 @@
     background: var(--accent-primary-light);
     border: 1px solid var(--border-focus);
     color: var(--accent-primary);
+  }
+
+  &--gift {
+    background: rgba(236, 72, 153, 0.14);
+    border: 1px solid rgba(236, 72, 153, 0.4);
+    color: #ec4899;
   }
 
   &--sold {
@@ -1474,6 +1503,10 @@
 
   &--bought {
     color: var(--accent-primary);
+  }
+
+  &--gift {
+    color: #ec4899;
   }
 
   &--sold {
@@ -1647,6 +1680,16 @@
 
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, var(--accent-primary-hover) 0%, var(--accent-primary) 100%);
+        transform: translateY(-1px);
+      }
+    }
+
+    &--gift {
+      background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+      box-shadow: 0 4px 14px rgba(236, 72, 153, 0.35);
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #db2777 0%, #ec4899 100%);
         transform: translateY(-1px);
       }
     }

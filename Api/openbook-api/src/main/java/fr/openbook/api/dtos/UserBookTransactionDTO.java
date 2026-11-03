@@ -12,7 +12,7 @@ public class UserBookTransactionDTO {
     private Integer id;
     private Long bookId;
     private Long userId;
-    private String type; // "BOUGHT", "SOLD"
+    private String type; // "BOUGHT", "GIFT", "SOLD"
     private String date; // YYYY-MM-DD
     private BigDecimal price;
     private String location;

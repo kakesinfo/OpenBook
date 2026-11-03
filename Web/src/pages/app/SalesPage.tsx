@@ -150,7 +150,15 @@ export default function SalesPage() {
                 enqueueSnackbar("Album marqué comme vendu avec succès !", { variant: "success" });
                 setSaleModalOpen(false);
             } else {
-                enqueueSnackbar("Erreur lors de la validation de la vente", { variant: "error" });
+                let errMsg = "Erreur lors de la validation de la vente";
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.message || errData.error || errMsg;
+                } catch {
+                    const text = await res.text().catch(() => "");
+                    if (text) errMsg = text;
+                }
+                enqueueSnackbar(errMsg, { variant: "error" });
             }
         } catch (err: any) {
             enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });

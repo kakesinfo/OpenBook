@@ -40,7 +40,7 @@ public class UserBookTransactionEntity {
     private UserEntity user;
 
     @Column(name = "type", nullable = false)
-    private String type; // "BOUGHT", "SOLD"
+    private String type; // "BOUGHT", "GIFT", "SOLD"
 
     @Column(name = "transaction_date")
     private LocalDate transactionDate;
