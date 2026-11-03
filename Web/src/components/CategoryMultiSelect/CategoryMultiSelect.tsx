@@ -13,6 +13,7 @@ import {
     faPalette,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import "./CategoryMultiSelect.scss";
 
 export interface CategoryOption {
@@ -94,10 +95,13 @@ export default function CategoryMultiSelect({
     options,
     selected,
     onChange,
-    allLabel = "Toutes les catégories",
-    placeholder = "Catégories",
+    allLabel,
+    placeholder,
     className = ""
 }: CategoryMultiSelectProps) {
+    const { tr, translateCategory } = useLanguage();
+    const resolvedAllLabel = allLabel && allLabel !== "Toutes les catégories" ? allLabel : tr("All categories", "Toutes les catégories");
+    const resolvedPlaceholder = placeholder && placeholder !== "Catégories" ? placeholder : tr("Categories", "Catégories");
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -146,19 +150,22 @@ export default function CategoryMultiSelect({
 
     const getTriggerLabel = () => {
         if (isAllSelected) {
-            return allLabel;
+            return resolvedAllLabel;
         }
         if (selected.length === 1) {
             const opt = options.find((o) => o.id === selected[0]);
-            return opt ? opt.label : selected[0];
+            return translateCategory(opt ? opt.label : selected[0]);
         }
         if (selected.length === 2) {
             const labels = selected
-                .map((id) => options.find((o) => o.id === id)?.label || id)
+                .map((id) => translateCategory(options.find((o) => o.id === id)?.label || id))
                 .join(", ");
             if (labels.length <= 18) return labels;
         }
-        return `${selected.length} sélectionné${selected.length > 1 ? "s" : ""}`;
+        return tr(
+            `${selected.length} selected`,
+            `${selected.length} sélectionné${selected.length > 1 ? "s" : ""}`
+        );
     };
 
     return (
@@ -188,16 +195,16 @@ export default function CategoryMultiSelect({
             {isOpen && (
                 <div className="category-multiselect__dropdown" role="listbox">
                     <div className="category-multiselect__header">
-                        <span className="category-multiselect__header-title">{placeholder}</span>
+                        <span className="category-multiselect__header-title">{resolvedPlaceholder}</span>
                         {!isAllSelected && (
                             <button
                                 type="button"
                                 className="category-multiselect__reset-btn"
                                 onClick={handleSelectAll}
-                                title="Afficher toutes les catégories"
+                                title={tr("Show all categories", "Afficher toutes les catégories")}
                             >
                                 <FontAwesomeIcon icon={faRotateLeft} />
-                                <span>Tout afficher</span>
+                                <span>{tr("Show all", "Tout afficher")}</span>
                             </button>
                         )}
                     </div>
@@ -212,7 +219,7 @@ export default function CategoryMultiSelect({
                             {isAllSelected && <FontAwesomeIcon icon={faCheck} />}
                         </div>
                         <FontAwesomeIcon icon={faLayerGroup} className="category-multiselect__option-icon" />
-                        <span className="category-multiselect__option-label">{allLabel}</span>
+                        <span className="category-multiselect__option-label">{resolvedAllLabel}</span>
                     </div>
 
                     <div className="category-multiselect__divider" />
@@ -239,7 +246,7 @@ export default function CategoryMultiSelect({
                                         />
                                     )}
                                     <span className="category-multiselect__option-label">
-                                        {option.label}
+                                        {translateCategory(option.label)}
                                     </span>
                                 </div>
                             );

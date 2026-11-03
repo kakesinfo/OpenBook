@@ -13,6 +13,7 @@ import {
     faStop
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import "./AdminPage.scss";
 
 export interface ScraperSource {
@@ -65,6 +66,7 @@ interface ScraperStatus {
 
 export default function AdminIndexationPage() {
     const session = useSession();
+    const { tr } = useLanguage();
     const [status, setStatus] = useState<ScraperStatus | null>(null);
     const [sources, setSources] = useState<ScraperSource[]>([]);
     const [loading, setLoading] = useState(false);
@@ -190,7 +192,10 @@ export default function AdminIndexationPage() {
             if (resp.ok) {
                 setTriggerMessage({
                     type: "success",
-                    text: `Scraper pour ${target.name} ${nextState ? "activé" : "désactivé"}.`
+                    text: tr(
+                        `Scraper for ${target.name} ${nextState ? "enabled" : "disabled"}.`,
+                        `Scraper pour ${target.name} ${nextState ? "activé" : "désactivé"}.`
+                    )
                 });
                 await fetchStatus();
             }
@@ -213,7 +218,7 @@ export default function AdminIndexationPage() {
             });
             const data = await resp.json();
 
-            let targetLabel = "toutes les sources actives";
+            let targetLabel = tr("all active sources", "toutes les sources actives");
             if (targetSources && targetSources.length > 0) {
                 targetLabel = targetSources
                     .map((id) => sources.find((s) => s.id === id)?.name || id)
@@ -222,14 +227,17 @@ export default function AdminIndexationPage() {
 
             setTriggerMessage({
                 type: "success",
-                text: data.message || `Scan ${full ? "complet" : "rapide"} lancé pour : ${targetLabel} !`
+                text: data.message || tr(
+                    `${full ? "Full" : "Quick"} scan started for: ${targetLabel}!`,
+                    `Scan ${full ? "complet" : "rapide"} lancé pour : ${targetLabel} !`
+                )
             });
             await fetchStatus();
             setTimeout(fetchTotalBooks, 2000);
         } catch {
             setTriggerMessage({
                 type: "error",
-                text: "Erreur lors du déclenchement du scraper."
+                text: tr("Error while triggering the scraper.", "Erreur lors du déclenchement du scraper.")
             });
         } finally {
             setLoading(false);
@@ -240,7 +248,10 @@ export default function AdminIndexationPage() {
         if (selectedSources.length === 0) {
             setTriggerMessage({
                 type: "error",
-                text: "Veuillez cocher au moins une source active dans le tableau pour lancer un scan rapide."
+                text: tr(
+                    "Please check at least one active source in the table to start a quick scan.",
+                    "Veuillez cocher au moins une source active dans le tableau pour lancer un scan rapide."
+                )
             });
             return;
         }
@@ -255,7 +266,10 @@ export default function AdminIndexationPage() {
             if (activeList.length === 0) {
                 setTriggerMessage({
                     type: "error",
-                    text: "Toutes les sources sont désactivées. Activez au moins une source pour lancer un scan complet."
+                    text: tr(
+                        "All sources are disabled. Enable at least one source to start a full scan.",
+                        "Toutes les sources sont désactivées. Activez au moins une source pour lancer un scan complet."
+                    )
                 });
                 return;
             }
@@ -273,13 +287,13 @@ export default function AdminIndexationPage() {
             const data = await resp.json();
             setTriggerMessage({
                 type: "success",
-                text: data.message || "Arrêt du scan demandé."
+                text: data.message || tr("Scan stop requested.", "Arrêt du scan demandé.")
             });
             await fetchStatus();
         } catch {
             setTriggerMessage({
                 type: "error",
-                text: "Erreur lors de la demande d'arrêt du scan."
+                text: tr("Error while requesting to stop the scan.", "Erreur lors de la demande d'arrêt du scan.")
             });
         } finally {
             setLoading(false);
@@ -294,7 +308,7 @@ export default function AdminIndexationPage() {
     return (
         <div className="admin-page">
             <WrapperHeader>
-                <h2>Indexation des catalogues</h2>
+                <h2>{tr("Catalog Indexing", "Indexation des catalogues")}</h2>
             </WrapperHeader>
 
             <div className="admin-page__content">
@@ -347,7 +361,7 @@ export default function AdminIndexationPage() {
                         </div>
                         <div>
                             <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-                                Albums indexés
+                                {tr("Indexed books", "Albums indexés")}
                             </div>
                             <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text-primary)" }}>
                                 {totalBooks}
@@ -380,20 +394,20 @@ export default function AdminIndexationPage() {
                         </div>
                         <div style={{ minWidth: 0, flex: 1 }}>
                             <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-                                État du robot
+                                {tr("Bot status", "État du robot")}
                             </div>
                             {isScanRunning ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "2px" }}>
                                     <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--accent-amber)", display: "flex", alignItems: "center", gap: "6px" }}>
-                                        <span>Scan :</span>
+                                        <span>{tr("Scan:", "Scan :")}</span>
                                         <span style={{
                                             color: liveScan?.current_source_color || "var(--accent-amber)",
                                             fontWeight: 800
                                         }}>
-                                            {liveScan?.current_source_name || liveScan?.current_source || "En cours"}
+                                            {liveScan?.current_source_name || liveScan?.current_source || tr("In progress", "En cours")}
                                         </span>
                                     </div>
-                                                                        <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 500 }}>
+                                    <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 500 }}>
                                         {(liveScan?.total_found ?? 0) === 0 ? (
                                             <span style={{
                                                 display: "inline-flex",
@@ -403,13 +417,13 @@ export default function AdminIndexationPage() {
                                                 fontWeight: 600
                                             }}>
                                                 <span className="admin-status-pulse" />
-                                                {liveScan?.current_step || "Exploration du catalogue..."}
+                                                {liveScan?.current_step || tr("Exploring catalog...", "Exploration du catalogue...")}
                                             </span>
                                         ) : (
                                             <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                                                 <span>
                                                     <strong style={{ color: "var(--text-primary)", fontWeight: 700 }}>{liveScan?.total_found}</strong>{" "}
-                                                    {((liveScan?.total_found ?? 0) > 1) ? "livres trouvés" : "livre trouvé"}
+                                                    {((liveScan?.total_found ?? 0) > 1) ? tr("books found", "livres trouvés") : tr("book found", "livre trouvé")}
                                                 </span>
                                                 {liveScan?.current_step && (
                                                     <span style={{
@@ -430,7 +444,7 @@ export default function AdminIndexationPage() {
                             ) : liveScan?.last_error ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "2px" }}>
                                     <div style={{ fontSize: "1rem", fontWeight: 700, color: "#ef4444" }}>
-                                        Erreur
+                                        {tr("Error", "Erreur")}
                                     </div>
                                     <div style={{ fontSize: "0.75rem", color: "#f87171", fontWeight: 500, lineHeight: 1.2 }}>
                                         {liveScan.last_error}
@@ -438,7 +452,7 @@ export default function AdminIndexationPage() {
                                 </div>
                             ) : (
                                 <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--accent-primary)", marginTop: "2px" }}>
-                                    En veille (Prêt)
+                                    {tr("Idle (Ready)", "En veille (Prêt)")}
                                 </div>
                             )}
                         </div>
@@ -469,10 +483,10 @@ export default function AdminIndexationPage() {
                         </div>
                         <div>
                             <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-                                Planification auto
+                                {tr("Auto schedule", "Planification auto")}
                             </div>
                             <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                                Quotidien à {status?.schedule?.daily_at || "03:00"}
+                                {tr(`Daily at ${status?.schedule?.daily_at || "03:00"}`, `Quotidien à ${status?.schedule?.daily_at || "03:00"}`)}
                             </div>
                         </div>
                     </div>
@@ -502,10 +516,10 @@ export default function AdminIndexationPage() {
                         </div>
                         <div>
                             <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>
-                                Sources configurées
+                                {tr("Configured sources", "Sources configurées")}
                             </div>
                             <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--text-primary)" }}>
-                                {activeCount} / {sources.length} <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-muted)" }}>actives</span>
+                                {activeCount} / {sources.length} <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--text-muted)" }}>{tr("active", "actives")}</span>
                             </div>
                         </div>
                     </div>
@@ -543,14 +557,14 @@ export default function AdminIndexationPage() {
                             <div>
                                 <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                                     <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                                        Scan en cours :
+                                        {tr("Scan in progress:", "Scan en cours :")}
                                     </span>
                                     <span style={{
                                         fontWeight: 800,
                                         fontSize: "0.95rem",
                                         color: liveScan?.current_source_color || "var(--accent-amber)"
                                     }}>
-                                        {liveScan?.current_source_name || liveScan?.current_source || "En cours"}
+                                        {liveScan?.current_source_name || liveScan?.current_source || tr("In progress", "En cours")}
                                     </span>
                                 </div>
                                 <div style={{
@@ -571,18 +585,18 @@ export default function AdminIndexationPage() {
                                     }}>
                                         <span className="admin-status-pulse" />
                                         {(liveScan?.total_found ?? 0) === 0
-                                            ? (liveScan?.current_step || "Exploration du catalogue...")
-                                            : (liveScan?.current_step || "Indexation des albums...")}
+                                            ? (liveScan?.current_step || tr("Exploring catalog...", "Exploration du catalogue..."))
+                                            : (liveScan?.current_step || tr("Indexing books...", "Indexation des albums..."))}
                                     </span>
                                     {(liveScan?.total_found ?? 0) > 0 && (
                                         <>
                                             <span>•</span>
                                             <span>
-                                                <strong style={{ color: "var(--text-primary)" }}>{liveScan?.total_found}</strong> trouvés
+                                                <strong style={{ color: "var(--text-primary)" }}>{liveScan?.total_found}</strong> {tr("found", "trouvés")}
                                             </span>
                                             <span>•</span>
                                             <span>
-                                                <strong style={{ color: "var(--text-primary)" }}>{liveScan?.total_saved}</strong> enregistrés
+                                                <strong style={{ color: "var(--text-primary)" }}>{liveScan?.total_saved}</strong> {tr("saved", "enregistrés")}
                                             </span>
                                         </>
                                     )}
@@ -596,10 +610,10 @@ export default function AdminIndexationPage() {
                             onClick={handleStopScan}
                             disabled={loading}
                             style={{ padding: "8px 16px", fontSize: "0.85rem" }}
-                            title="Arrêter le scan en cours"
+                            title={tr("Stop current scan", "Arrêter le scan en cours")}
                         >
                             <FontAwesomeIcon icon={faStop} />
-                            <span>Arrêter</span>
+                            <span>{tr("Stop", "Arrêter")}</span>
                         </button>
                     </div>
                 )}
@@ -610,19 +624,25 @@ export default function AdminIndexationPage() {
                         <div className="admin-sources-panel__title-group">
                             <div className="admin-sources-panel__title-row">
                                 <h3 className="admin-sources-panel__title">
-                                    Éditeurs & Sources
+                                    {tr("Publishers & Sources", "Éditeurs & Sources")}
                                 </h3>
                                 <span className="admin-sources-panel__badge">
-                                    {activeCount} / {sources.length} actives
+                                    {activeCount} / {sources.length} {tr("active", "actives")}
                                 </span>
                                 {selectedSources.length > 0 && (
                                     <span className="admin-sources-panel__badge admin-sources-panel__badge--selected">
-                                        {selectedSources.length} cochée{selectedSources.length > 1 ? "s" : ""}
+                                        {tr(
+                                            `${selectedSources.length} selected`,
+                                            `${selectedSources.length} cochée${selectedSources.length > 1 ? "s" : ""}`
+                                        )}
                                     </span>
                                 )}
                             </div>
                             <p className="admin-sources-panel__subtitle">
-                                Cochez les sources actives pour un scan ciblé ou activez/désactivez le scraper de chaque éditeur.
+                                {tr(
+                                    "Check active sources for a targeted scan or enable/disable each publisher's scraper.",
+                                    "Cochez les sources actives pour un scan ciblé ou activez/désactivez le scraper de chaque éditeur."
+                                )}
                             </p>
                         </div>
 
@@ -636,13 +656,13 @@ export default function AdminIndexationPage() {
                                         disabled={loading || selectedSources.length === 0}
                                         title={
                                             selectedSources.length === 0
-                                                ? "Cochez au moins une source active dans le tableau pour lancer un scan rapide"
-                                                : "Lancer un scan rapide (nouveautés) sur les sources cochées"
+                                                ? tr("Check at least one active source in the table to start a quick scan", "Cochez au moins une source active dans le tableau pour lancer un scan rapide")
+                                                : tr("Start a quick scan (new releases) on selected sources", "Lancer un scan rapide (nouveautés) sur les sources cochées")
                                         }
                                     >
                                         <FontAwesomeIcon icon={faBolt} />
                                         <span>
-                                            Scan rapide {selectedSources.length > 0 ? `(${selectedSources.length})` : ""}
+                                            {tr("Quick scan", "Scan rapide")} {selectedSources.length > 0 ? `(${selectedSources.length})` : ""}
                                         </span>
                                     </button>
 
@@ -653,13 +673,13 @@ export default function AdminIndexationPage() {
                                         disabled={loading || (selectedSources.length === 0 && activeCount === 0)}
                                         title={
                                             selectedSources.length > 0
-                                                ? "Lancer un scan complet du catalogue sur les sources cochées"
-                                                : "Lancer un scan complet du catalogue sur toutes les sources actives"
+                                                ? tr("Start a full catalog scan on selected sources", "Lancer un scan complet du catalogue sur les sources cochées")
+                                                : tr("Start a full catalog scan on all active sources", "Lancer un scan complet du catalogue sur toutes les sources actives")
                                         }
                                     >
                                         <FontAwesomeIcon icon={faLayerGroup} />
                                         <span>
-                                            Scan complet {selectedSources.length > 0 ? `(${selectedSources.length})` : "(actives)"}
+                                            {tr("Full scan", "Scan complet")} {selectedSources.length > 0 ? `(${selectedSources.length})` : tr("(active)", "(actives)")}
                                         </span>
                                     </button>
                                 </>
@@ -669,10 +689,10 @@ export default function AdminIndexationPage() {
                                     className="admin-btn admin-btn--stop"
                                     onClick={handleStopScan}
                                     disabled={loading}
-                                    title="Arrêter le scan en cours"
+                                    title={tr("Stop current scan", "Arrêter le scan en cours")}
                                 >
                                     <FontAwesomeIcon icon={faStop} />
-                                    <span>Arrêter de scanner</span>
+                                    <span>{tr("Stop scanning", "Arrêter de scanner")}</span>
                                 </button>
                             )}
 
@@ -692,13 +712,13 @@ export default function AdminIndexationPage() {
                                             checked={allActiveSelected}
                                             disabled={activeCount === 0}
                                             onChange={handleSelectAll}
-                                            title={allActiveSelected ? "Tout désélectionner" : "Sélectionner toutes les sources actives"}
+                                            title={allActiveSelected ? tr("Deselect all", "Tout désélectionner") : tr("Select all active sources", "Sélectionner toutes les sources actives")}
                                         />
                                     </th>
-                                    <th>Nom de la source / Éditeur</th>
-                                    <th>Description</th>
-                                    <th style={{ width: "190px", textAlign: "center" }}>État du Scraper</th>
-                                    <th style={{ width: "120px", textAlign: "right" }}>Action</th>
+                                    <th>{tr("Source / Publisher Name", "Nom de la source / Éditeur")}</th>
+                                    <th>{tr("Description", "Description")}</th>
+                                    <th style={{ width: "190px", textAlign: "center" }}>{tr("Scraper Status", "État du Scraper")}</th>
+                                    <th style={{ width: "120px", textAlign: "right" }}>{tr("Action", "Action")}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -725,7 +745,7 @@ export default function AdminIndexationPage() {
                                                         onChange={() => handleToggleSelect(source.id)}
                                                     />
                                                 ) : (
-                                                    <span className="admin-sources-table__no-check" title="Scraper désactivé">-</span>
+                                                    <span className="admin-sources-table__no-check" title={tr("Scraper disabled", "Scraper désactivé")}>-</span>
                                                 )}
                                             </td>
 
@@ -749,7 +769,7 @@ export default function AdminIndexationPage() {
                                             >
                                                 <label
                                                     className="admin-toggle"
-                                                    title={isEnabled ? "Désactiver le scraper de cette source" : "Activer le scraper de cette source"}
+                                                    title={isEnabled ? tr("Disable scraper for this source", "Désactiver le scraper de cette source") : tr("Enable scraper for this source", "Activer le scraper de cette source")}
                                                 >
                                                     <input
                                                         type="checkbox"
@@ -759,7 +779,7 @@ export default function AdminIndexationPage() {
                                                     />
                                                     <span className="admin-toggle__slider" />
                                                     <span className={`admin-toggle__label ${isEnabled ? "is-active" : "is-inactive"}`}>
-                                                        {isEnabled ? "Activé" : "Désactivé"}
+                                                        {isEnabled ? tr("Enabled", "Activé") : tr("Disabled", "Désactivé")}
                                                     </span>
                                                 </label>
                                             </td>
@@ -787,8 +807,8 @@ export default function AdminIndexationPage() {
                                                             <FontAwesomeIcon icon={faRotate} spin />
                                                             <span>
                                                                 {(liveScan?.total_found ?? 0) === 0
-                                                                    ? (liveScan?.current_step || "Exploration...")
-                                                                    : `${liveScan?.total_found} trouvés`}
+                                                                    ? (liveScan?.current_step || tr("Exploring...", "Exploration..."))
+                                                                    : tr(`${liveScan?.total_found} found`, `${liveScan?.total_found} trouvés`)}
                                                             </span>
                                                         </span>
                                                     ) : (
@@ -797,10 +817,10 @@ export default function AdminIndexationPage() {
                                                             className="admin-row-btn"
                                                             onClick={() => handleTriggerScrape([source.id], true)}
                                                             disabled={loading || isScanRunning}
-                                                            title={`Scanner ${source.name} (catalogue complet)`}
+                                                            title={tr(`Scan ${source.name} (full catalog)`, `Scanner ${source.name} (catalogue complet)`)}
                                                         >
                                                             <FontAwesomeIcon icon={faBolt} style={{ color: source.color }} />
-                                                            <span>Scanner</span>
+                                                            <span>{tr("Scan", "Scanner")}</span>
                                                         </button>
                                                     )
                                                 )}

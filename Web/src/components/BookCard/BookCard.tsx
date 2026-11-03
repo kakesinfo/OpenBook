@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCalendarDays } from "@fortawesome/free-solid-svg-icons";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import AsyncCoverImage from "../AsyncCoverImage/AsyncCoverImage.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import "./BookCard.scss";
 
 interface BookCardProps {
@@ -15,11 +16,11 @@ interface BookCardProps {
     className?: string;
 }
 
-function formatReleaseDate(dateStr?: string): string | null {
+function formatReleaseDate(dateStr: string | undefined, locale: string): string | null {
     if (!dateStr) return null;
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return null;
-    return date.toLocaleDateString("fr-FR", {
+    return date.toLocaleDateString(locale, {
         day: "numeric",
         month: "long",
         year: "numeric"
@@ -34,7 +35,8 @@ export default function BookCard({
     showReleaseDate = false,
     className = ""
 }: BookCardProps) {
-    const releaseDate = showReleaseDate ? formatReleaseDate(book.releaseDate) : null;
+    const { locale, tr } = useLanguage();
+    const releaseDate = showReleaseDate ? formatReleaseDate(book.releaseDate, locale) : null;
 
     return (
         <div className={`book-card ${className}`.trim()}>
@@ -42,7 +44,7 @@ export default function BookCard({
                 <Link to={`/app/book/${book.id}`} className="book-card__cover-link">
                     <AsyncCoverImage
                         src={book.coverUrl}
-                        alt={`Couverture de ${book.title}`}
+                        alt={tr(`Cover of ${book.title}`, `Couverture de ${book.title}`)}
                         title={book.title}
                     />
                 </Link>

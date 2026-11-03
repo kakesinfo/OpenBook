@@ -30,6 +30,7 @@ import CategoryMultiSelect, {
     bookMatchesCategories
 } from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
 import BookCard from "../../components/BookCard/BookCard.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import "./SalesPage.scss";
 
 type SalesStatusFilter = "all" | "FOR_SALE" | "SOLD";
@@ -37,7 +38,8 @@ type DisplayMode = "grid" | "list";
 
 interface StatusTab {
     id: SalesStatusFilter;
-    label: string;
+    labelEn: string;
+    labelFr: string;
     icon?: typeof faTag;
 }
 
@@ -49,13 +51,14 @@ interface HoveredCoverState {
 }
 
 const STATUS_TABS: StatusTab[] = [
-    { id: "all", label: "Tous", icon: faLayerGroup },
-    { id: "FOR_SALE", label: "À vendre", icon: faTag },
-    { id: "SOLD", label: "Vendu", icon: faCheck }
+    { id: "all", labelEn: "All", labelFr: "Tous", icon: faLayerGroup },
+    { id: "FOR_SALE", labelEn: "For sale", labelFr: "À vendre", icon: faTag },
+    { id: "SOLD", labelEn: "Sold", labelFr: "Vendu", icon: faCheck }
 ];
 
 export default function SalesPage() {
     const session = useSession();
+    const { tr, translateCategory } = useLanguage();
     const { enqueueSnackbar } = useSnackbar();
 
     const [books, setBooks] = useState<BookSummaryDTO[]>([]);
@@ -147,10 +150,10 @@ export default function SalesPage() {
                 setBooks((prev) =>
                     prev.map((b) => (b.id === saleTargetBook.id ? { ...b, status: "SOLD", price: parsedPrice ? Math.round(parsedPrice) : b.price } : b))
                 );
-                enqueueSnackbar("Album marqué comme vendu avec succès !", { variant: "success" });
+                enqueueSnackbar(tr("Book marked as sold successfully!", "Album marqué comme vendu avec succès !"), { variant: "success" });
                 setSaleModalOpen(false);
             } else {
-                let errMsg = "Erreur lors de la validation de la vente";
+                let errMsg = tr("Error confirming sale", "Erreur lors de la validation de la vente");
                 try {
                     const errData = await res.json();
                     errMsg = errData.message || errData.error || errMsg;
@@ -161,7 +164,7 @@ export default function SalesPage() {
                 enqueueSnackbar(errMsg, { variant: "error" });
             }
         } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
         } finally {
             setSubmittingSale(false);
         }
@@ -240,14 +243,16 @@ export default function SalesPage() {
                     prev.map((b) => (b.id === bookId ? { ...b, status: targetStatus } : b))
                 );
                 enqueueSnackbar(
-                    targetStatus === "SOLD" ? "Album marqué comme vendu !" : "Album remis en vente !",
+                    targetStatus === "SOLD"
+                        ? tr("Book marked as sold!", "Album marqué comme vendu !")
+                        : tr("Book relisted for sale!", "Album remis en vente !"),
                     { variant: "success" }
                 );
             } else {
-                enqueueSnackbar("Erreur lors de la mise à jour du statut", { variant: "error" });
+                enqueueSnackbar(tr("Error updating status", "Erreur lors de la mise à jour du statut"), { variant: "error" });
             }
         } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
         } finally {
             setActionLoadingId(null);
         }
@@ -259,7 +264,9 @@ export default function SalesPage() {
         e.stopPropagation();
         if (actionLoadingId != null) return;
 
-        const confirm = window.confirm(`Retirer « ${bookTitle} » de vos ventes ?`);
+        const confirm = window.confirm(
+            tr(`Remove "${bookTitle}" from your sales?`, `Retirer « ${bookTitle} » de vos ventes ?`)
+        );
         if (!confirm) return;
 
         setActionLoadingId(bookId);
@@ -269,12 +276,15 @@ export default function SalesPage() {
             });
             if (res.ok) {
                 setBooks((prev) => prev.filter((b) => b.id !== bookId));
-                enqueueSnackbar("Album retiré des ventes et remis dans vos albums", { variant: "success" });
+                enqueueSnackbar(
+                    tr("Book removed from sales and returned to your library", "Album retiré des ventes et remis dans vos albums"),
+                    { variant: "success" }
+                );
             } else {
-                enqueueSnackbar("Erreur lors du retrait de l'album", { variant: "error" });
+                enqueueSnackbar(tr("Error removing book", "Erreur lors du retrait de l'album"), { variant: "error" });
             }
         } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
         } finally {
             setActionLoadingId(null);
         }
@@ -395,7 +405,7 @@ export default function SalesPage() {
                                     className={`sales-page__filter-btn ${isSelected ? "is-active" : ""}`}
                                 >
                                     {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
-                                    <span>{tab.label}</span>
+                                    <span>{tr(tab.labelEn, tab.labelFr)}</span>
                                     <span className="sales-page__filter-count">
                                         {count}
                                     </span>
@@ -419,7 +429,7 @@ export default function SalesPage() {
                                     setSelectedCategories(cats);
                                     if (currentPage !== 1) setCurrentPage(1);
                                 }}
-                                allLabel="Toutes les catégories"
+                                allLabel={tr("All categories", "Toutes les catégories")}
                             />
                         </div>
 
@@ -429,7 +439,7 @@ export default function SalesPage() {
                                 <FontAwesomeIcon icon={faMagnifyingGlass} />
                                 <input
                                     type="text"
-                                    placeholder="Rechercher une vente..."
+                                    placeholder={tr("Search a sale...", "Rechercher une vente...")}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -438,7 +448,7 @@ export default function SalesPage() {
                                         type="button"
                                         className="sales-page__search-clear"
                                         onClick={() => setSearchQuery("")}
-                                        aria-label="Effacer la recherche"
+                                        aria-label={tr("Clear search", "Effacer la recherche")}
                                     >
                                         <FontAwesomeIcon icon={faXmark} />
                                     </button>
@@ -453,19 +463,19 @@ export default function SalesPage() {
                                     type="button"
                                     className={`sales-page__view-btn ${displayMode === "grid" ? "is-active" : ""}`}
                                     onClick={() => handleSetDisplayMode("grid")}
-                                    title="Mode Galerie"
+                                    title={tr("Gallery view", "Mode Galerie")}
                                 >
                                     <FontAwesomeIcon icon={faBorderAll} />
-                                    <span>Galerie</span>
+                                    <span>{tr("Gallery", "Galerie")}</span>
                                 </button>
                                 <button
                                     type="button"
                                     className={`sales-page__view-btn ${displayMode === "list" ? "is-active" : ""}`}
                                     onClick={() => handleSetDisplayMode("list")}
-                                    title="Mode Liste compacte"
+                                    title={tr("Compact list view", "Mode Liste compacte")}
                                 >
                                     <FontAwesomeIcon icon={faList} />
-                                    <span>Liste</span>
+                                    <span>{tr("List", "Liste")}</span>
                                 </button>
                             </div>
                         </div>
@@ -475,7 +485,7 @@ export default function SalesPage() {
                 {/* Body Content */}
                 {loading ? (
                     <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
-                        Chargement de vos ventes...
+                        {tr("Loading your sales...", "Chargement de vos ventes...")}
                     </div>
                 ) : books.length === 0 ? (
                     /* Empty Sales State */
@@ -502,10 +512,13 @@ export default function SalesPage() {
                             <FontAwesomeIcon icon={faTag} />
                         </div>
                         <h3 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700 }}>
-                            Aucun album en vente pour le moment
+                            {tr("No books listed for sale right now", "Aucun album en vente pour le moment")}
                         </h3>
                         <p style={{ margin: 0, color: "var(--text-muted)", maxWidth: "420px", fontSize: "0.875rem" }}>
-                            Pour mettre un livre en vente, rendez-vous sur sa fiche album et cliquez sur « Mettre à vendre ».
+                            {tr(
+                                'To list a book for sale, go to its book page and click "List for sale", or use the + button below.',
+                                "Pour mettre un livre en vente, rendez-vous sur sa fiche album et cliquez sur « Mettre à vendre », ou utilisez le bouton + ci-dessous."
+                            )}
                         </p>
                         <Link
                             to="/app/collection"
@@ -525,12 +538,12 @@ export default function SalesPage() {
                             }}
                         >
                             <FontAwesomeIcon icon={faBook} />
-                            <span>Voir ma bibliothèque</span>
+                            <span>{tr("View my library", "Voir ma bibliothèque")}</span>
                         </Link>
                     </div>
                 ) : totalFiltered === 0 ? (
                     <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
-                        Aucun album ne correspond à vos filtres de vente.
+                        {tr("No books match your sales filters.", "Aucun album ne correspond à vos filtres de vente.")}
                     </div>
                 ) : (
                     <>
@@ -546,7 +559,7 @@ export default function SalesPage() {
                                             key={book.id}
                                             book={book}
                                             className={`sales-card ${isSold ? "is-sold" : ""}`}
-                                            badgeText={book.volume > 0 ? `T.${book.volume}` : undefined}
+                                            badgeText={book.volume > 0 ? tr(`Vol.${book.volume}`, `T.${book.volume}`) : undefined}
                                             actions={
                                                 <>
                                                     {isSold ? (
@@ -555,8 +568,8 @@ export default function SalesPage() {
                                                             disabled={isActionLoading}
                                                             onClick={(e) => handleUpdateStatus(e, book.id, "FOR_SALE")}
                                                             className="book-card__action-btn book-card__action-btn--relist"
-                                                            title="Remettre en vente"
-                                                            aria-label="Remettre en vente"
+                                                            title={tr("Relist for sale", "Remettre en vente")}
+                                                            aria-label={tr("Relist for sale", "Remettre en vente")}
                                                         >
                                                             <FontAwesomeIcon icon={faRotateLeft} />
                                                         </button>
@@ -566,8 +579,8 @@ export default function SalesPage() {
                                                             disabled={isActionLoading}
                                                             onClick={(e) => handleOpenSaleModal(e, book)}
                                                             className="book-card__action-btn book-card__action-btn--sold"
-                                                            title="Marquer comme vendu"
-                                                            aria-label="Marquer comme vendu"
+                                                            title={tr("Mark as sold", "Marquer comme vendu")}
+                                                            aria-label={tr("Mark as sold", "Marquer comme vendu")}
                                                         >
                                                             <FontAwesomeIcon icon={faCheck} />
                                                         </button>
@@ -578,8 +591,8 @@ export default function SalesPage() {
                                                         disabled={isActionLoading}
                                                         onClick={(e) => handleRemoveFromSales(e, book.id, book.title)}
                                                         className="book-card__action-btn book-card__action-btn--delete"
-                                                        title="Retirer de mes ventes (remettre dans mes albums)"
-                                                        aria-label="Retirer de mes ventes"
+                                                        title={tr("Remove from my sales (return to library)", "Retirer de mes ventes (remettre dans mes albums)")}
+                                                        aria-label={tr("Remove from my sales", "Retirer de mes ventes")}
                                                     >
                                                         <FontAwesomeIcon icon={faTrashCan} />
                                                     </button>
@@ -593,14 +606,14 @@ export default function SalesPage() {
                             /* Compact Table/List Mode for Sales */
                             <div className="sales-list">
                                 <div className="sales-list__header">
-                                    <span className="sales-list__th sales-list__th--title">Titre</span>
-                                    <span className="sales-list__th sales-list__th--series">Série / Tome</span>
-                                    <span className="sales-list__th sales-list__th--author">Auteur</span>
-                                    <span className="sales-list__th sales-list__th--category">Catégorie</span>
-                                    <span className="sales-list__th sales-list__th--price">Prix</span>
-                                    <span className="sales-list__th sales-list__th--listing">Annonce</span>
-                                    <span className="sales-list__th sales-list__th--status">Statut</span>
-                                    <span className="sales-list__th sales-list__th--action">Actions</span>
+                                    <span className="sales-list__th sales-list__th--title">{tr("Title", "Titre")}</span>
+                                    <span className="sales-list__th sales-list__th--series">{tr("Series / Vol.", "Série / Tome")}</span>
+                                    <span className="sales-list__th sales-list__th--author">{tr("Author", "Auteur")}</span>
+                                    <span className="sales-list__th sales-list__th--category">{tr("Category", "Catégorie")}</span>
+                                    <span className="sales-list__th sales-list__th--price">{tr("Price", "Prix")}</span>
+                                    <span className="sales-list__th sales-list__th--listing">{tr("Listing", "Annonce")}</span>
+                                    <span className="sales-list__th sales-list__th--status">{tr("Status", "Statut")}</span>
+                                    <span className="sales-list__th sales-list__th--action">{tr("Actions", "Actions")}</span>
                                 </div>
 
                                 {paginatedBooks.map((book) => {
@@ -623,9 +636,9 @@ export default function SalesPage() {
                                                     {book.title}
                                                 </span>
                                                 {book.parentBookId && (
-                                                    <span className="sales-row__variant-badge" title="Couverture variante">
+                                                    <span className="sales-row__variant-badge" title={tr("Variant cover", "Couverture variante")}>
                                                         <FontAwesomeIcon icon={faClone} />
-                                                        <span>Variante</span>
+                                                        <span>{tr("Variant", "Variante")}</span>
                                                     </span>
                                                 )}
                                             </Link>
@@ -639,7 +652,7 @@ export default function SalesPage() {
                                                 )}
                                                 {book.volume > 0 && (
                                                     <span className="sales-row__volume-badge">
-                                                        T.{book.volume}
+                                                        {tr(`Vol.${book.volume}`, `T.${book.volume}`)}
                                                     </span>
                                                 )}
                                             </div>
@@ -657,7 +670,7 @@ export default function SalesPage() {
                                             <div className="sales-row__col sales-row__col--category">
                                                 {cat && (
                                                     <span className="sales-row__tag">
-                                                        {cat}
+                                                        {translateCategory(cat)}
                                                     </span>
                                                 )}
                                             </div>
@@ -695,7 +708,7 @@ export default function SalesPage() {
                                             <div className="sales-row__col sales-row__col--status">
                                                 <span className={`sales-badge ${isSold ? "sales-badge--sold" : "sales-badge--forsale"}`}>
                                                     <FontAwesomeIcon icon={isSold ? faCheck : faTag} />
-                                                    <span>{isSold ? "Vendu" : "À vendre"}</span>
+                                                    <span>{isSold ? tr("Sold", "Vendu") : tr("For sale", "À vendre")}</span>
                                                 </span>
                                             </div>
 
@@ -707,7 +720,7 @@ export default function SalesPage() {
                                                         disabled={isActionLoading}
                                                         onClick={(e) => handleUpdateStatus(e, book.id, "FOR_SALE")}
                                                         className="sales-row__action-btn sales-row__action-btn--relist"
-                                                        title="Remettre en vente"
+                                                        title={tr("Relist for sale", "Remettre en vente")}
                                                     >
                                                         <FontAwesomeIcon icon={faRotateLeft} />
                                                     </button>
@@ -717,7 +730,7 @@ export default function SalesPage() {
                                                         disabled={isActionLoading}
                                                         onClick={(e) => handleOpenSaleModal(e, book)}
                                                         className="sales-row__action-btn sales-row__action-btn--sold"
-                                                        title="Marquer comme vendu"
+                                                        title={tr("Mark as sold", "Marquer comme vendu")}
                                                     >
                                                         <FontAwesomeIcon icon={faCheck} />
                                                     </button>
@@ -728,7 +741,7 @@ export default function SalesPage() {
                                                     disabled={isActionLoading}
                                                     onClick={(e) => handleRemoveFromSales(e, book.id, book.title)}
                                                     className="sales-row__action-btn sales-row__action-btn--delete"
-                                                    title="Retirer de mes ventes (remettre dans mes albums)"
+                                                    title={tr("Remove from my sales (return to library)", "Retirer de mes ventes (remettre dans mes albums)")}
                                                 >
                                                     <FontAwesomeIcon icon={faTrashCan} />
                                                 </button>
@@ -787,13 +800,13 @@ export default function SalesPage() {
                     <div className="tx-dialog__header">
                         <div className="tx-dialog__header-title">
                             <FontAwesomeIcon icon={faCoins} style={{ color: "#f59e0b" }} />
-                            <h3>Marquer comme vendu</h3>
+                            <h3>{tr("Mark as sold", "Marquer comme vendu")}</h3>
                         </div>
                         <button
                             type="button"
                             className="tx-dialog__header-close"
                             onClick={() => setSaleModalOpen(false)}
-                            aria-label="Fermer"
+                            aria-label={tr("Close", "Fermer")}
                         >
                             <FontAwesomeIcon icon={faXmark} />
                         </button>
@@ -801,7 +814,7 @@ export default function SalesPage() {
 
                     {saleTargetBook && (
                         <p style={{ margin: "0 0 4px", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
-                            Renseignez les informations de vente pour <strong>« {saleTargetBook.title} »</strong> :
+                            {tr("Enter sale details for", "Renseignez les informations de vente pour")} <strong>« {saleTargetBook.title} »</strong> :
                         </p>
                     )}
 
@@ -810,8 +823,8 @@ export default function SalesPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faCalendarDays} />
-                                    <span>Date de vente</span>
-                                    <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>(optionnel)</span>
+                                    <span>{tr("Sale date", "Date de vente")}</span>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>{tr("(optional)", "(optionnel)")}</span>
                                 </label>
                                 <input
                                     type="date"
@@ -823,13 +836,13 @@ export default function SalesPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faCoins} />
-                                    <span>Prix de vente (€)</span>
+                                    <span>{tr("Sale price (€)", "Prix de vente (€)")}</span>
                                 </label>
                                 <input
                                     type="number"
                                     step="0.01"
                                     min="0"
-                                    placeholder="ex: 12.00"
+                                    placeholder={tr("e.g. 12.00", "ex: 12.00")}
                                     value={salePrice}
                                     onChange={(e) => setSalePrice(e.target.value)}
                                 />
@@ -839,11 +852,11 @@ export default function SalesPage() {
                         <div className="tx-dialog__field">
                             <label>
                                 <FontAwesomeIcon icon={faStore} />
-                                <span>Lieu / Canal de vente (optionnel)</span>
+                                <span>{tr("Sale location / platform (optional)", "Lieu / Canal de vente (optionnel)")}</span>
                             </label>
                             <input
                                 type="text"
-                                placeholder="ex: Vinted, Brocante, Ami, etc."
+                                placeholder={tr("e.g. Vinted, Flea market, Friend, etc.", "ex: Vinted, Brocante, Ami, etc.")}
                                 value={saleLocation}
                                 onChange={(e) => setSaleLocation(e.target.value)}
                             />
@@ -852,10 +865,10 @@ export default function SalesPage() {
                         <div className="tx-dialog__field">
                             <label>
                                 <FontAwesomeIcon icon={faNoteSticky} />
-                                <span>Mémo / Remarques (optionnel)</span>
+                                <span>{tr("Memo / Notes (optional)", "Mémo / Remarques (optionnel)")}</span>
                             </label>
                             <textarea
-                                placeholder="ex: Remise en main propre, lot de 3 tomes..."
+                                placeholder={tr("e.g. Local pickup, bundle of 3 volumes...", "ex: Remise en main propre, lot de 3 tomes...")}
                                 value={saleMemo}
                                 onChange={(e) => setSaleMemo(e.target.value)}
                             />
@@ -867,7 +880,7 @@ export default function SalesPage() {
                                 className="tx-dialog__btn-cancel"
                                 onClick={() => setSaleModalOpen(false)}
                             >
-                                Annuler
+                                {tr("Cancel", "Annuler")}
                             </button>
                             <button
                                 type="submit"
@@ -875,7 +888,7 @@ export default function SalesPage() {
                                 className="tx-dialog__btn-submit tx-dialog__btn-submit--sold"
                             >
                                 <FontAwesomeIcon icon={faCheck} />
-                                <span>{submittingSale ? "Validation..." : "Valider la vente"}</span>
+                                <span>{submittingSale ? tr("Confirming...", "Validation...") : tr("Confirm sale", "Valider la vente")}</span>
                             </button>
                         </div>
                     </form>

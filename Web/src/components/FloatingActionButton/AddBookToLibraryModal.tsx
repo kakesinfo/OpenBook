@@ -16,6 +16,7 @@ import {
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import UserBookTransactionDTO from "../../dto/UserBookTransaction.dto.ts";
@@ -29,6 +30,7 @@ interface Props {
 
 export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook, mode = "library" }: Props) {
     const session = useSession();
+    const { tr } = useLanguage();
     const navigate = useNavigate();
     const { enqueueSnackbar } = useSnackbar();
 
@@ -102,13 +104,13 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
 
             if (res.ok) {
                 setAddedIds((prev) => new Set(prev).add(book.id));
-                enqueueSnackbar(`« ${book.title} » a été ajouté à votre bibliothèque !`, { variant: "success" });
+                enqueueSnackbar(tr(`"${book.title}" has been added to your library!`, `« ${book.title} » a été ajouté à votre bibliothèque !`), { variant: "success" });
             } else {
-                enqueueSnackbar("Erreur lors de l'ajout à la bibliothèque", { variant: "error" });
+                enqueueSnackbar(tr("Error adding book to library", "Erreur lors de l'ajout à la bibliothèque"), { variant: "error" });
             }
         } catch (err) {
             console.error("Error adding book to library:", err);
-            enqueueSnackbar("Erreur de connexion", { variant: "error" });
+            enqueueSnackbar(tr("Connection error", "Erreur de connexion"), { variant: "error" });
         } finally {
             setAddingIds((prev) => {
                 const next = new Set(prev);
@@ -135,13 +137,16 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
 
                 if (acquiredCount <= soldCount) {
                     enqueueSnackbar(
-                        "Vous devez avoir un achat ou un cadeau dans l'historique d'achat pour vendre ce livre.",
+                        tr(
+                            "You must have a purchase or a gift in the purchase history to sell this book.",
+                            "Vous devez avoir un achat ou un cadeau dans l'historique d'achat pour vendre ce livre."
+                        ),
                         { variant: "warning" }
                     );
                     return;
                 }
             } else {
-                enqueueSnackbar("Impossible de vérifier l'historique d'achat de ce livre", { variant: "error" });
+                enqueueSnackbar(tr("Unable to verify the purchase history for this book", "Impossible de vérifier l'historique d'achat de ce livre"), { variant: "error" });
                 return;
             }
 
@@ -150,7 +155,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
             setListingUrl(book.listingUrl || "");
         } catch (err) {
             console.error("Error checking book transactions:", err);
-            enqueueSnackbar("Erreur de connexion", { variant: "error" });
+            enqueueSnackbar(tr("Connection error", "Erreur de connexion"), { variant: "error" });
         } finally {
             setAddingIds((prev) => {
                 const next = new Set(prev);
@@ -184,11 +189,11 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                             : b
                     )
                 );
-                enqueueSnackbar(`« ${listingTargetBook.title} » a été mis en vente !`, { variant: "success" });
+                enqueueSnackbar(tr(`"${listingTargetBook.title}" has been listed for sale!`, `« ${listingTargetBook.title} » a été mis en vente !`), { variant: "success" });
                 window.dispatchEvent(new CustomEvent("sales-updated"));
                 setListingTargetBook(null);
             } else {
-                let errMsg = "Erreur lors de la mise en vente";
+                let errMsg = tr("Error listing book for sale", "Erreur lors de la mise en vente");
                 try {
                     const errData = await res.json();
                     errMsg = errData.message || errData.error || errMsg;
@@ -200,7 +205,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
             }
         } catch (err) {
             console.error("Error listing book for sale:", err);
-            enqueueSnackbar("Erreur de connexion", { variant: "error" });
+            enqueueSnackbar(tr("Connection error", "Erreur de connexion"), { variant: "error" });
         } finally {
             setSubmittingListing(false);
         }
@@ -240,17 +245,17 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                         <FontAwesomeIcon icon={isSaleMode ? faTag : faMagnifyingGlass} />
                         <h3>
                             {listingTargetBook
-                                ? "Mettre en vente"
+                                ? tr("List for sale", "Mettre en vente")
                                 : isSaleMode
-                                    ? "Chercher un livre à mettre en vente"
-                                    : "Ajouter un livre à ma bibliothèque"}
+                                    ? tr("Search for a book to list for sale", "Chercher un livre à mettre en vente")
+                                    : tr("Add a book to my library", "Ajouter un livre à ma bibliothèque")}
                         </h3>
                     </div>
                     <button
                         type="button"
                         className="fab-modal__header-close"
                         onClick={onClose}
-                        aria-label="Fermer"
+                        aria-label={tr("Close", "Fermer")}
                     >
                         <FontAwesomeIcon icon={faXmark} />
                     </button>
@@ -278,7 +283,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                     </span>
                                     <div className="fab-search-item__meta">
                                         {listingTargetBook.volume !== undefined && listingTargetBook.volume !== null && (
-                                            <span>{listingTargetBook.volume > 0 ? `Tome ${listingTargetBook.volume}` : "One-shot"}</span>
+                                            <span>{listingTargetBook.volume > 0 ? `${tr("Volume", "Tome")} ${listingTargetBook.volume}` : "One-shot"}</span>
                                         )}
                                     </div>
                                 </div>
@@ -288,14 +293,14 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                         <div className="fab-form__field">
                             <label>
                                 <FontAwesomeIcon icon={faCoins} />
-                                <span>Prix de mise en vente (€) *</span>
+                                <span>{tr("Listing price (€) *", "Prix de mise en vente (€) *")}</span>
                             </label>
                             <input
                                 type="number"
                                 required
                                 step="0.01"
                                 min="0"
-                                placeholder="ex: 12.00"
+                                placeholder={tr("e.g., 12.00", "ex: 12.00")}
                                 value={listingPrice}
                                 onChange={(e) => setListingPrice(e.target.value)}
                                 autoFocus
@@ -305,8 +310,8 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                         <div className="fab-form__field">
                             <label>
                                 <FontAwesomeIcon icon={faLink} />
-                                <span>Lien de l'annonce</span>
-                                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>(optionnel)</span>
+                                <span>{tr("Listing URL", "Lien de l'annonce")}</span>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>{tr("(optional)", "(optionnel)")}</span>
                             </label>
                             <input
                                 type="url"
@@ -325,7 +330,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                 style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
                             >
                                 <FontAwesomeIcon icon={faArrowLeft} />
-                                <span>Retour</span>
+                                <span>{tr("Back", "Retour")}</span>
                             </button>
                             <button
                                 type="submit"
@@ -333,7 +338,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                 disabled={submittingListing}
                             >
                                 <FontAwesomeIcon icon={faCheck} />
-                                <span>{submittingListing ? "Enregistrement..." : "Mettre en vente"}</span>
+                                <span>{submittingListing ? tr("Saving...", "Enregistrement...") : tr("List for sale", "Mettre en vente")}</span>
                             </button>
                         </div>
                     </form>
@@ -345,21 +350,21 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                 type="text"
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
-                                placeholder={isSaleMode ? "Rechercher un livre à mettre en vente..." : "Rechercher par titre, série ou ISBN..."}
+                                placeholder={isSaleMode ? tr("Search for a book to list for sale...", "Rechercher un livre à mettre en vente...") : tr("Search by title, series or ISBN...", "Rechercher par titre, série ou ISBN...")}
                                 autoComplete="off"
                             />
                         </div>
 
                         {searching && (
                             <p style={{ textAlign: "center", color: "var(--text-muted)", padding: "14px 0", fontSize: "0.875rem" }}>
-                                Recherche en cours...
+                                {tr("Searching...", "Recherche en cours...")}
                             </p>
                         )}
 
                         {!searching && query.trim() && books.length === 0 && (
                             <div className="fab-no-results">
                                 <p className="fab-no-results__text">
-                                    Aucun livre trouvé pour « <strong>{query}</strong> »
+                                    {tr("No books found for", "Aucun livre trouvé pour")} « <strong>{query}</strong> »
                                 </p>
                                 <button
                                     type="button"
@@ -367,7 +372,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                     onClick={handleCreateMissing}
                                 >
                                     <FontAwesomeIcon icon={faPenNib} />
-                                    <span>Créer un livre manquant</span>
+                                    <span>{tr("Create a missing book", "Créer un livre manquant")}</span>
                                 </button>
                             </div>
                         )}
@@ -404,7 +409,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                                     </span>
                                                     <div className="fab-search-item__meta">
                                                         {book.volume !== undefined && book.volume !== null && (
-                                                            <span>{book.volume > 0 ? `Tome ${book.volume}` : "One-shot"}</span>
+                                                            <span>{book.volume > 0 ? `${tr("Volume", "Tome")} ${book.volume}` : "One-shot"}</span>
                                                         )}
                                                         {book.releaseDate && (
                                                             <span>• {new Date(book.releaseDate).getFullYear()}</span>
@@ -418,7 +423,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                                     isForSale ? (
                                                         <span className="fab-badge-owned">
                                                             <FontAwesomeIcon icon={faCheck} />
-                                                            <span>En vente</span>
+                                                            <span>{tr("For sale", "En vente")}</span>
                                                         </span>
                                                     ) : (
                                                         <button
@@ -428,13 +433,13 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                                             onClick={(e) => handleOpenListingStep(book, e)}
                                                         >
                                                             <FontAwesomeIcon icon={faTag} />
-                                                            <span>{isAdding ? "Vérification..." : "Mettre en vente"}</span>
+                                                            <span>{isAdding ? tr("Checking...", "Vérification...") : tr("List for sale", "Mettre en vente")}</span>
                                                         </button>
                                                     )
                                                 ) : isOwned ? (
                                                     <span className="fab-badge-owned">
                                                         <FontAwesomeIcon icon={faCheck} />
-                                                        <span>Dans votre bibliothèque</span>
+                                                        <span>{tr("In your library", "Dans votre bibliothèque")}</span>
                                                     </span>
                                                 ) : (
                                                     <button
@@ -444,7 +449,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                                         onClick={(e) => handleAddBook(book, e)}
                                                     >
                                                         <FontAwesomeIcon icon={isAdding ? faCheck : faPlus} />
-                                                        <span>{isAdding ? "Ajout..." : "Ajouter"}</span>
+                                                        <span>{isAdding ? tr("Adding...", "Ajout...") : tr("Add", "Ajouter")}</span>
                                                     </button>
                                                 )}
                                             </div>

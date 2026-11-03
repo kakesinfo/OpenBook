@@ -24,12 +24,14 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import UserAvatar from "../../components/UserAvatar/UserAvatar.tsx";
 import ThemeSelector from "../../components/ThemeSelector/ThemeSelector.tsx";
+import LanguageSelector from "../../components/LanguageSelector/LanguageSelector.tsx";
 import "./SettingsPage.scss";
 
-const REQUIRED_DELETE_PHRASE = "Je veux supprimer mon compte";
+const BACKEND_DELETE_PHRASE = "Je veux supprimer mon compte";
 
 interface ImportJobStatus {
     id: string;
@@ -47,7 +49,9 @@ interface ImportJobStatus {
 
 export default function SettingsPage() {
     const session = useSession();
+    const { tr } = useLanguage();
     const navigate = useNavigate();
+    const requiredDeletePhrase = tr("I want to delete my account", "Je veux supprimer mon compte");
 
     // Profile state
     const [username, setUsername] = useState("");
@@ -108,12 +112,12 @@ export default function SettingsPage() {
     const handleFileUpload = async (file: File) => {
         const lowerName = file.name.toLowerCase();
         if (!lowerName.endsWith(".jpg") && !lowerName.endsWith(".jpeg") && !lowerName.endsWith(".png")) {
-            enqueueSnackbar("Format non supporté : seuls les fichiers JPG et PNG sont autorisés.", { variant: "error" });
+            enqueueSnackbar(tr("Unsupported format: only JPG and PNG files are allowed.", "Format non supporté : seuls les fichiers JPG et PNG sont autorisés."), { variant: "error" });
             return;
         }
 
         if (file.size > 5 * 1024 * 1024) {
-            enqueueSnackbar("Fichier trop volumineux (maximum 5 Mo).", { variant: "error" });
+            enqueueSnackbar(tr("File too large (maximum 5 MB).", "Fichier trop volumineux (maximum 5 Mo)."), { variant: "error" });
             return;
         }
 
@@ -135,10 +139,10 @@ export default function SettingsPage() {
                 } else {
                     session.updateUser({ avatar: data.avatar });
                 }
-                enqueueSnackbar("Avatar vérifié par l'analyse de sécurité et mis à jour !", { variant: "success" });
+                enqueueSnackbar(tr("Avatar verified by security analysis and updated!", "Avatar vérifié par l'analyse de sécurité et mis à jour !"), { variant: "success" });
             } else {
                 const errorText = await response.text().catch(() => "");
-                let msg = "Échec de l'analyse ou du téléversement de l'image.";
+                let msg = tr("Failed to analyze or upload image.", "Échec de l'analyse ou du téléversement de l'image.");
                 try {
                     const parsed = JSON.parse(errorText);
                     msg = parsed.error || parsed.message || errorText;
@@ -149,7 +153,7 @@ export default function SettingsPage() {
             }
         } catch (err) {
             console.error("Avatar upload error:", err);
-            enqueueSnackbar("Erreur lors du téléversement de l'avatar.", { variant: "error" });
+            enqueueSnackbar(tr("Error uploading avatar.", "Erreur lors du téléversement de l'avatar."), { variant: "error" });
         } finally {
             setAvatarUploading(false);
         }
@@ -182,7 +186,7 @@ export default function SettingsPage() {
                 } else {
                     session.updateUser({ avatar: "" });
                 }
-                enqueueSnackbar("Photo de profil supprimée.", { variant: "success" });
+                enqueueSnackbar(tr("Profile picture removed.", "Photo de profil supprimée."), { variant: "success" });
             }
         } catch (err) {
             console.error(err);
@@ -194,7 +198,7 @@ export default function SettingsPage() {
         e.preventDefault();
         const trimmed = username.trim();
         if (!trimmed) {
-            enqueueSnackbar("Le pseudonyme ne peut pas être vide.", { variant: "error" });
+            enqueueSnackbar(tr("Username cannot be empty.", "Le pseudonyme ne peut pas être vide."), { variant: "error" });
             return;
         }
 
@@ -216,10 +220,10 @@ export default function SettingsPage() {
                 } else {
                     session.updateUser({ username: trimmed });
                 }
-                enqueueSnackbar("Pseudonyme mis à jour avec succès !", { variant: "success" });
+                enqueueSnackbar(tr("Username updated successfully!", "Pseudonyme mis à jour avec succès !"), { variant: "success" });
             } else {
                 const errorText = await response.text().catch(() => "");
-                let msg = "Erreur lors de la mise à jour.";
+                let msg = tr("Error updating profile.", "Erreur lors de la mise à jour.");
                 try {
                     const parsed = JSON.parse(errorText);
                     msg = parsed.message || parsed.error || errorText;
@@ -230,7 +234,7 @@ export default function SettingsPage() {
             }
         } catch (err) {
             console.error(err);
-            enqueueSnackbar("Erreur de connexion.", { variant: "error" });
+            enqueueSnackbar(tr("Connection error.", "Erreur de connexion."), { variant: "error" });
         } finally {
             setProfileSaving(false);
         }
@@ -240,7 +244,7 @@ export default function SettingsPage() {
     const handleBookmoryFileSelected = async (file: File) => {
         const lower = file.name.toLowerCase();
         if (!lower.endsWith(".bookmory") && !lower.endsWith(".zip")) {
-            enqueueSnackbar("Format non valide : veuillez sélectionner un fichier .bookmory", { variant: "error" });
+            enqueueSnackbar(tr("Invalid format: please select a .bookmory file", "Format non valide : veuillez sélectionner un fichier .bookmory"), { variant: "error" });
             return;
         }
 
@@ -258,7 +262,7 @@ export default function SettingsPage() {
 
             if (!resp.ok) {
                 const errText = await resp.text().catch(() => "");
-                let msg = "Erreur lors de l'envoi de l'archive.";
+                let msg = tr("Error uploading backup archive.", "Erreur lors de l'envoi de l'archive.");
                 try {
                     const parsed = JSON.parse(errText);
                     msg = parsed.error || parsed.message || errText;
@@ -273,7 +277,7 @@ export default function SettingsPage() {
             const data = await resp.json();
             const initialJob = data.job;
             if (!initialJob || !initialJob.id) {
-                enqueueSnackbar("Réponse inattendue du service d'import.", { variant: "error" });
+                enqueueSnackbar(tr("Unexpected response from import service.", "Réponse inattendue du service d'import."), { variant: "error" });
                 setImporting(false);
                 return;
             }
@@ -293,13 +297,16 @@ export default function SettingsPage() {
                             if (importPollingRef.current) clearInterval(importPollingRef.current);
                             setImporting(false);
                             enqueueSnackbar(
-                                `Importation Bookmory réussie ! (${updatedJob.created_books} créés, ${updatedJob.updated_books} mis à jour, ${updatedJob.imported_purchases} achats, ${updatedJob.imported_reading_sessions} temps de lecture)`,
+                                tr(
+                                    `Bookmory import successful! (${updatedJob.created_books} created, ${updatedJob.updated_books} updated, ${updatedJob.imported_purchases} purchases, ${updatedJob.imported_reading_sessions} reading sessions)`,
+                                    `Importation Bookmory réussie ! (${updatedJob.created_books} créés, ${updatedJob.updated_books} mis à jour, ${updatedJob.imported_purchases} achats, ${updatedJob.imported_reading_sessions} temps de lecture)`
+                                ),
                                 { variant: "success", autoHideDuration: 6000 }
                             );
                         } else if (updatedJob.status === "failed") {
                             if (importPollingRef.current) clearInterval(importPollingRef.current);
                             setImporting(false);
-                            enqueueSnackbar("L'importation de la sauvegarde a échoué.", { variant: "error" });
+                            enqueueSnackbar(tr("Backup import failed.", "L'importation de la sauvegarde a échoué."), { variant: "error" });
                         }
                     }
                 } catch (pollErr) {
@@ -309,7 +316,7 @@ export default function SettingsPage() {
 
         } catch (err) {
             console.error("Bookmory import error:", err);
-            enqueueSnackbar("Erreur réseau lors de l'importation.", { variant: "error" });
+            enqueueSnackbar(tr("Network error during import.", "Erreur réseau lors de l'importation."), { variant: "error" });
             setImporting(false);
         }
     };
@@ -319,17 +326,17 @@ export default function SettingsPage() {
         e.preventDefault();
 
         if (!currentPassword) {
-            enqueueSnackbar("Le mot de passe actuel est requis.", { variant: "error" });
+            enqueueSnackbar(tr("Current password is required.", "Le mot de passe actuel est requis."), { variant: "error" });
             return;
         }
 
         if (!newPassword || newPassword.length < 6) {
-            enqueueSnackbar("Le nouveau mot de passe doit comporter au moins 6 caractères.", { variant: "error" });
+            enqueueSnackbar(tr("New password must be at least 6 characters long.", "Le nouveau mot de passe doit comporter au moins 6 caractères."), { variant: "error" });
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            enqueueSnackbar("La confirmation ne correspond pas au nouveau mot de passe.", { variant: "error" });
+            enqueueSnackbar(tr("Confirmation does not match the new password.", "La confirmation ne correspond pas au nouveau mot de passe."), { variant: "error" });
             return;
         }
 
@@ -345,14 +352,14 @@ export default function SettingsPage() {
             });
 
             if (response.ok) {
-                enqueueSnackbar("Mot de passe modifié avec succès !", { variant: "success" });
+                enqueueSnackbar(tr("Password updated successfully!", "Mot de passe modifié avec succès !"), { variant: "success" });
                 setIsPasswordModalOpen(false);
                 setCurrentPassword("");
                 setNewPassword("");
                 setConfirmPassword("");
             } else {
                 const errorText = await response.text().catch(() => "");
-                let msg = "Erreur lors de la modification du mot de passe.";
+                let msg = tr("Error updating password.", "Erreur lors de la modification du mot de passe.");
                 try {
                     const parsed = JSON.parse(errorText);
                     msg = parsed.message || parsed.error || errorText;
@@ -363,7 +370,7 @@ export default function SettingsPage() {
             }
         } catch (err) {
             console.error(err);
-            enqueueSnackbar("Erreur lors de la modification du mot de passe.", { variant: "error" });
+            enqueueSnackbar(tr("Error updating password.", "Erreur lors de la modification du mot de passe."), { variant: "error" });
         } finally {
             setPasswordSaving(false);
         }
@@ -374,12 +381,12 @@ export default function SettingsPage() {
         e.preventDefault();
 
         if (!deletePassword) {
-            enqueueSnackbar("Veuillez saisir votre mot de passe pour confirmer la suppression.", { variant: "error" });
+            enqueueSnackbar(tr("Please enter your password to confirm deletion.", "Veuillez saisir votre mot de passe pour confirmer la suppression."), { variant: "error" });
             return;
         }
 
-        if (deleteConfirmationText !== REQUIRED_DELETE_PHRASE) {
-            enqueueSnackbar(`Vous devez saisir exactement "${REQUIRED_DELETE_PHRASE}".`, { variant: "error" });
+        if (deleteConfirmationText !== requiredDeletePhrase && deleteConfirmationText !== BACKEND_DELETE_PHRASE) {
+            enqueueSnackbar(tr(`You must type "${requiredDeletePhrase}" exactly.`, `Vous devez saisir exactement "${requiredDeletePhrase}".`), { variant: "error" });
             return;
         }
 
@@ -390,18 +397,18 @@ export default function SettingsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     password: deletePassword,
-                    confirmationText: deleteConfirmationText
+                    confirmationText: BACKEND_DELETE_PHRASE
                 })
             });
 
             if (response.ok) {
                 setIsDeleteModalOpen(false);
                 await session.logout();
-                enqueueSnackbar("Votre compte a été supprimé définitivement.", { variant: "info" });
+                enqueueSnackbar(tr("Your account has been permanently deleted.", "Votre compte a été supprimé définitivement."), { variant: "info" });
                 navigate("/login");
             } else {
                 const errorText = await response.text().catch(() => "");
-                let msg = "Erreur lors de la suppression du compte.";
+                let msg = tr("Error deleting account.", "Erreur lors de la suppression du compte.");
                 try {
                     const parsed = JSON.parse(errorText);
                     msg = parsed.message || parsed.error || errorText;
@@ -412,7 +419,7 @@ export default function SettingsPage() {
             }
         } catch (err) {
             console.error(err);
-            enqueueSnackbar("Erreur lors de la suppression du compte.", { variant: "error" });
+            enqueueSnackbar(tr("Error deleting account.", "Erreur lors de la suppression du compte."), { variant: "error" });
         } finally {
             setDeleteSaving(false);
         }
@@ -421,7 +428,7 @@ export default function SettingsPage() {
     return (
         <div className="settings-page">
             <WrapperHeader>
-                <h2>Paramètres du compte</h2>
+                <h2>{tr("Account Settings", "Paramètres du compte")}</h2>
             </WrapperHeader>
 
             <div className="settings-container">
@@ -434,18 +441,18 @@ export default function SettingsPage() {
                     />
                     <div className="settings-hero__info">
                         <span className="settings-hero__name">
-                            {session.user?.username || username || "Lecteur"}
+                            {session.user?.username || username || tr("Reader", "Lecteur")}
                         </span>
                         <span className="settings-hero__role">
-                            {session.isAdmin ? "Compte Administrateur" : "Lecteur"}
+                            {session.isAdmin ? tr("Administrator Account", "Compte Administrateur") : tr("Reader", "Lecteur")}
                         </span>
                         <span className="settings-hero__badge">
-                            <FontAwesomeIcon icon={faShieldHalved} /> Compte actif
+                            <FontAwesomeIcon icon={faShieldHalved} /> {tr("Active account", "Compte actif")}
                         </span>
                     </div>
                 </div>
 
-                {/* Section 1: Profil (Avatar Upload & Pseudo) */}
+                {/* Section 1: Réglages rapides (Pseudo, Avatar & Langue) */}
                 <section className="settings-card">
                     <header className="settings-card__header">
                         <div className="settings-card__header-title">
@@ -453,71 +460,25 @@ export default function SettingsPage() {
                                 <FontAwesomeIcon icon={faUser} />
                             </div>
                             <div>
-                                <h3>{session.isAdmin ? "Profil" : "Profil & Avatar"}</h3>
+                                <h3>{tr("Quick Settings", "Réglages rapides")}</h3>
                                 <p className="settings-card__header-desc">
-                                    {session.isAdmin ? "Gérez votre pseudonyme" : "Gérez votre image de profil et votre pseudonyme"}
+                                    {session.isAdmin
+                                        ? tr("Manage your username and display language", "Gérez votre pseudonyme et la langue d'affichage")
+                                        : tr("Manage your username, profile picture and display language", "Gérez votre pseudonyme, votre image de profil et la langue d'affichage")}
                                 </p>
                             </div>
                         </div>
                     </header>
 
                     <div className="settings-card__body">
-                        {/* Compact Avatar Upload Section */}
-                        {!session.isAdmin && (
-                        <div className="avatar-compact">
-                            <UserAvatar avatar={avatar} name={username} size="lg" />
-
-                            <div className="avatar-compact__content">
-                                <span className="avatar-compact__title">
-                                    {avatar ? "Photo de profil active" : "Initiales par défaut"}
-                                </span>
-
-                                <div className="avatar-compact__actions">
-                                    <label className="avatar-compact__upload-btn">
-                                        {avatarUploading ? (
-                                            <FontAwesomeIcon icon={faCircleNotch} spin />
-                                        ) : (
-                                            <FontAwesomeIcon icon={faCamera} />
-                                        )}
-                                        <span>{avatarUploading ? "Vérification..." : "Changer la photo"}</span>
-                                        <input
-                                            type="file"
-                                            accept="image/png, image/jpeg, image/jpg"
-                                            onChange={handleFileInputChange}
-                                            disabled={avatarUploading}
-                                        />
-                                    </label>
-
-                                    {avatar && (
-                                        <button
-                                            type="button"
-                                            className="avatar-compact__reset-btn"
-                                            onClick={handleRemoveAvatar}
-                                        >
-                                            <FontAwesomeIcon icon={faTrashCan} />
-                                            <span>Supprimer la photo</span>
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="avatar-compact__meta">
-                                    <span>Formats : <strong>JPG, PNG</strong> (max. 5 Mo).</span>
-                                    <span className="avatar-compact__security-tag">
-                                        <FontAwesomeIcon icon={faShieldHalved} /> Analyse de sécurité & assainissement
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        )}
-
                         {/* Pseudo Form */}
-                        <form onSubmit={handleUpdateUsername} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                        <form onSubmit={handleUpdateUsername} className="settings-inline-field">
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label htmlFor="settings-username">Pseudonyme</label>
+                                <label htmlFor="settings-username">{tr("Username", "Pseudonyme")}</label>
                                 <input
                                     id="settings-username"
                                     type="text"
-                                    placeholder="Votre pseudonyme"
+                                    placeholder={tr("Your username", "Votre pseudonyme")}
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     required
@@ -530,9 +491,63 @@ export default function SettingsPage() {
                                 disabled={profileSaving}
                             >
                                 <FontAwesomeIcon icon={faCheck} />
-                                <span>{profileSaving ? "Enregistrement..." : "Enregistrer le pseudonyme"}</span>
+                                <span>{profileSaving ? tr("Saving...", "Enregistrement...") : tr("Save username", "Enregistrer le pseudonyme")}</span>
                             </button>
                         </form>
+
+                        {/* Compact Avatar Upload Section */}
+                        {!session.isAdmin && (
+                        <div className="settings-field-block">
+                            <span className="settings-field-label">{tr("Avatar", "Avatar")}</span>
+                            <div className="avatar-compact">
+                                <UserAvatar avatar={avatar} name={username} size="lg" />
+
+                                <div className="avatar-compact__content">
+                                    <span className="avatar-compact__title">
+                                        {avatar ? tr("Active profile picture", "Photo de profil active") : tr("Default initials", "Initiales par défaut")}
+                                    </span>
+
+                                    <div className="avatar-compact__actions">
+                                        <label className="avatar-compact__upload-btn">
+                                            {avatarUploading ? (
+                                                <FontAwesomeIcon icon={faCircleNotch} spin />
+                                            ) : (
+                                                <FontAwesomeIcon icon={faCamera} />
+                                            )}
+                                            <span>{avatarUploading ? tr("Verifying...", "Vérification...") : tr("Change picture", "Changer la photo")}</span>
+                                            <input
+                                                type="file"
+                                                accept="image/png, image/jpeg, image/jpg"
+                                                onChange={handleFileInputChange}
+                                                disabled={avatarUploading}
+                                            />
+                                        </label>
+
+                                        {avatar && (
+                                            <button
+                                                type="button"
+                                                className="avatar-compact__reset-btn"
+                                                onClick={handleRemoveAvatar}
+                                            >
+                                                <FontAwesomeIcon icon={faTrashCan} />
+                                                <span>{tr("Remove picture", "Supprimer la photo")}</span>
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="avatar-compact__meta">
+                                        <span>{tr("Formats:", "Formats :")} <strong>JPG, PNG</strong> ({tr("max. 5 MB", "max. 5 Mo")}).</span>
+                                        <span className="avatar-compact__security-tag">
+                                            <FontAwesomeIcon icon={faShieldHalved} /> {tr("Security analysis & sanitization", "Analyse de sécurité & assainissement")}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        )}
+
+                        {/* Language Selector */}
+                        <LanguageSelector />
                     </div>
                 </section>
 
@@ -544,9 +559,9 @@ export default function SettingsPage() {
                                 <FontAwesomeIcon icon={faPalette} />
                             </div>
                             <div>
-                                <h3>Thème & Apparence</h3>
+                                <h3>{tr("Theme & Appearance", "Thème & Apparence")}</h3>
                                 <p className="settings-card__header-desc">
-                                    Choisissez le thème graphique appliqué à l'ensemble du site
+                                    {tr("Choose the visual theme applied across the entire website", "Choisissez le thème graphique appliqué à l'ensemble du site")}
                                 </p>
                             </div>
                         </div>
@@ -566,9 +581,9 @@ export default function SettingsPage() {
                                 <FontAwesomeIcon icon={faFileImport} />
                             </div>
                             <div>
-                                <h3>Import de sauvegarde Bookmory</h3>
+                                <h3>{tr("Bookmory Backup Import", "Import de sauvegarde Bookmory")}</h3>
                                 <p className="settings-card__header-desc">
-                                    Importez vos albums, couvertures, données d'achat et temps de lecture depuis un fichier .bookmory
+                                    {tr("Import your books, covers, purchase data and reading time from a .bookmory file", "Importez vos albums, couvertures, données d'achat et temps de lecture depuis un fichier .bookmory")}
                                 </p>
                             </div>
                         </div>
@@ -580,12 +595,12 @@ export default function SettingsPage() {
                                 <FontAwesomeIcon icon={faInfoCircle} />
                             </div>
                             <div className="import-info-box__text">
-                                <p><strong>Règles d'importation :</strong></p>
+                                <p><strong>{tr("Import rules:", "Règles d'importation :")}</strong></p>
                                 <ul>
-                                    <li><strong>Albums existants :</strong> mise à jour de la couverture et des informations si différentes.</li>
-                                    <li><strong>Nouveaux albums :</strong> création automatique avec métadonnées et couvertures de la sauvegarde.</li>
-                                    <li><strong>Données d'achat :</strong> prix, date d'acquisition, lieu d'achat et mémo importés dans vos transactions.</li>
-                                    <li><strong>Temps de lecture :</strong> sessions et durées chronométrées intégrées dans votre historique de lecture.</li>
+                                    <li><strong>{tr("Existing books:", "Albums existants :")}</strong> {tr("updates cover and details if different.", "mise à jour de la couverture et des informations si différentes.")}</li>
+                                    <li><strong>{tr("New books:", "Nouveaux albums :")}</strong> {tr("automatic creation with metadata and covers from backup.", "création automatique avec métadonnées et couvertures de la sauvegarde.")}</li>
+                                    <li><strong>{tr("Purchase data:", "Données d'achat :")}</strong> {tr("price, acquisition date, purchase location and memo imported into your transactions.", "prix, date d'acquisition, lieu d'achat et mémo importés dans vos transactions.")}</li>
+                                    <li><strong>{tr("Reading time:", "Temps de lecture :")}</strong> {tr("timed sessions and durations added to your reading history.", "sessions et durées chronométrées intégrées dans votre historique de lecture.")}</li>
                                 </ul>
                             </div>
                         </div>
@@ -601,10 +616,10 @@ export default function SettingsPage() {
                                 </div>
                                 <div className="import-dropzone__text">
                                     <span className="import-dropzone__title">
-                                        {importing ? "Importation en cours..." : "Sélectionner une sauvegarde .bookmory"}
+                                        {importing ? tr("Importing...", "Importation en cours...") : tr("Select a .bookmory backup", "Sélectionner une sauvegarde .bookmory")}
                                     </span>
                                     <span className="import-dropzone__subtitle">
-                                        Fichiers acceptés : <strong>.bookmory</strong> (ou archive zip)
+                                        {tr("Accepted files:", "Fichiers acceptés :")} <strong>.bookmory</strong> {tr("(or zip archive)", "(ou archive zip)")}
                                     </span>
                                 </div>
                                 <input
@@ -629,7 +644,7 @@ export default function SettingsPage() {
                                         <FontAwesomeIcon icon={faArrowsRotate} spin /> {importJob.current_step}
                                     </span>
                                     <span className="import-progress-card__count">
-                                        {importJob.processed_books} / {importJob.total_books || "?"} albums
+                                        {importJob.processed_books} / {importJob.total_books || "?"} {tr("books", "albums")}
                                     </span>
                                 </div>
                                 <div className="import-progress-bar">
@@ -648,35 +663,35 @@ export default function SettingsPage() {
                             <div className="import-results-card">
                                 <div className="import-results-card__header">
                                     <FontAwesomeIcon icon={faCircleCheck} className="import-results-card__check" />
-                                    <span>Importation réussie avec succès !</span>
+                                    <span>{tr("Import completed successfully!", "Importation réussie avec succès !")}</span>
                                 </div>
                                 <div className="import-stats-grid">
                                     <div className="import-stat-item import-stat-item--green">
                                         <FontAwesomeIcon icon={faBook} />
                                         <div className="import-stat-item__content">
                                             <span className="import-stat-item__num">{importJob.created_books}</span>
-                                            <span className="import-stat-item__label">Nouveaux albums créés</span>
+                                            <span className="import-stat-item__label">{tr("New books created", "Nouveaux albums créés")}</span>
                                         </div>
                                     </div>
                                     <div className="import-stat-item import-stat-item--blue">
                                         <FontAwesomeIcon icon={faBook} />
                                         <div className="import-stat-item__content">
                                             <span className="import-stat-item__num">{importJob.updated_books}</span>
-                                            <span className="import-stat-item__label">Albums mis à jour</span>
+                                            <span className="import-stat-item__label">{tr("Books updated", "Albums mis à jour")}</span>
                                         </div>
                                     </div>
                                     <div className="import-stat-item import-stat-item--amber">
                                         <FontAwesomeIcon icon={faReceipt} />
                                         <div className="import-stat-item__content">
                                             <span className="import-stat-item__num">{importJob.imported_purchases}</span>
-                                            <span className="import-stat-item__label">Achats importés</span>
+                                            <span className="import-stat-item__label">{tr("Purchases imported", "Achats importés")}</span>
                                         </div>
                                     </div>
                                     <div className="import-stat-item import-stat-item--purple">
                                         <FontAwesomeIcon icon={faClock} />
                                         <div className="import-stat-item__content">
                                             <span className="import-stat-item__num">{importJob.imported_reading_sessions}</span>
-                                            <span className="import-stat-item__label">Temps de lecture importés</span>
+                                            <span className="import-stat-item__label">{tr("Reading sessions imported", "Temps de lecture importés")}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -688,14 +703,14 @@ export default function SettingsPage() {
                             <div className="import-errors-box">
                                 <div className="import-errors-box__title">
                                     <FontAwesomeIcon icon={faTriangleExclamation} />
-                                    <span>{importJob.errors.length} avertissement(s) lors de l'import :</span>
+                                    <span>{importJob.errors.length} {tr("warning(s) during import:", "avertissement(s) lors de l'import :")}</span>
                                 </div>
                                 <ul>
                                     {importJob.errors.slice(0, 5).map((err, idx) => (
                                         <li key={idx}>{err}</li>
                                     ))}
                                     {importJob.errors.length > 5 && (
-                                        <li>... et {importJob.errors.length - 5} autre(s)</li>
+                                        <li>{tr(`... and ${importJob.errors.length - 5} more`, `... et ${importJob.errors.length - 5} autre(s)`)}</li>
                                     )}
                                 </ul>
                             </div>
@@ -712,15 +727,15 @@ export default function SettingsPage() {
                                 <FontAwesomeIcon icon={faTriangleExclamation} />
                             </div>
                             <div>
-                                <h3>Zone Danger</h3>
+                                <h3>{tr("Danger Zone", "Zone Danger")}</h3>
                                 <p className="settings-card__header-desc">
-                                    Actions sensibles et destructives nécessitant une confirmation
+                                    {tr("Sensitive and destructive actions requiring confirmation", "Actions sensibles et destructives nécessitant une confirmation")}
                                 </p>
                             </div>
                         </div>
                         <div className="settings-card__badge-danger">
                             <FontAwesomeIcon icon={faLock} />
-                            <span>Confirmation requise</span>
+                            <span>{tr("Confirmation required", "Confirmation requise")}</span>
                         </div>
                     </header>
 
@@ -728,9 +743,9 @@ export default function SettingsPage() {
                         {/* Ligne 2: Mot de passe */}
                         <div className="settings-danger-card__item">
                             <div className="settings-danger-card__item-info">
-                                <span className="settings-danger-card__item-title">Mot de passe</span>
+                                <span className="settings-danger-card__item-title">{tr("Password", "Mot de passe")}</span>
                                 <span className="settings-danger-card__item-desc">
-                                    Renforcez la sécurité de votre compte avec un mot de passe robuste
+                                    {tr("Strengthen your account security with a strong password", "Renforcez la sécurité de votre compte avec un mot de passe robuste")}
                                 </span>
                             </div>
                             <button
@@ -744,7 +759,7 @@ export default function SettingsPage() {
                                 }}
                             >
                                 <FontAwesomeIcon icon={faLock} />
-                                <span>Changer de mot de passe</span>
+                                <span>{tr("Change password", "Changer de mot de passe")}</span>
                             </button>
                         </div>
 
@@ -752,10 +767,10 @@ export default function SettingsPage() {
                         <div className="settings-danger-card__item">
                             <div className="settings-danger-card__item-info">
                                 <span className="settings-danger-card__item-title" style={{ color: "#f87171" }}>
-                                    Supprimer mon compte
+                                    {tr("Delete my account", "Supprimer mon compte")}
                                 </span>
                                 <span className="settings-danger-card__item-desc">
-                                    Supprime définitivement votre compte, vos listes et toutes vos données
+                                    {tr("Permanently deletes your account, lists, and all your data", "Supprime définitivement votre compte, vos listes et toutes vos données")}
                                 </span>
                             </div>
                             <button
@@ -768,7 +783,7 @@ export default function SettingsPage() {
                                 }}
                             >
                                 <FontAwesomeIcon icon={faTrashCan} />
-                                <span>Supprimer le compte</span>
+                                <span>{tr("Delete account", "Supprimer le compte")}</span>
                             </button>
                         </div>
                     </div>
@@ -782,13 +797,13 @@ export default function SettingsPage() {
                         <header className="settings-modal__header">
                             <div className="settings-modal__title">
                                 <FontAwesomeIcon icon={faLock} />
-                                <span>Changer de mot de passe</span>
+                                <span>{tr("Change password", "Changer de mot de passe")}</span>
                             </div>
                             <button
                                 type="button"
                                 className="settings-modal__close"
                                 onClick={() => setIsPasswordModalOpen(false)}
-                                aria-label="Fermer"
+                                aria-label={tr("Close", "Fermer")}
                             >
                                 <FontAwesomeIcon icon={faXmark} />
                             </button>
@@ -799,16 +814,16 @@ export default function SettingsPage() {
                                 <div className="settings-modal__warning">
                                     <FontAwesomeIcon icon={faTriangleExclamation} />
                                     <span>
-                                        Pour des raisons de sécurité, vous devez renseigner votre mot de passe actuel pour définir un nouveau mot de passe.
+                                        {tr("For security reasons, you must enter your current password to set a new password.", "Pour des raisons de sécurité, vous devez renseigner votre mot de passe actuel pour définir un nouveau mot de passe.")}
                                     </span>
                                 </div>
 
                                 <div className="form-group">
-                                    <label htmlFor="modal-current-pwd">Mot de passe actuel</label>
+                                    <label htmlFor="modal-current-pwd">{tr("Current password", "Mot de passe actuel")}</label>
                                     <input
                                         id="modal-current-pwd"
                                         type="password"
-                                        placeholder="Votre mot de passe actuel"
+                                        placeholder={tr("Your current password", "Votre mot de passe actuel")}
                                         value={currentPassword}
                                         onChange={(e) => setCurrentPassword(e.target.value)}
                                         required
@@ -817,11 +832,11 @@ export default function SettingsPage() {
                                 </div>
 
                                 <div className="form-group">
-                                    <label htmlFor="modal-new-pwd">Nouveau mot de passe (min. 6 caractères)</label>
+                                    <label htmlFor="modal-new-pwd">{tr("New password (min. 6 characters)", "Nouveau mot de passe (min. 6 caractères)")}</label>
                                     <input
                                         id="modal-new-pwd"
                                         type="password"
-                                        placeholder="Nouveau mot de passe"
+                                        placeholder={tr("New password", "Nouveau mot de passe")}
                                         value={newPassword}
                                         onChange={(e) => setNewPassword(e.target.value)}
                                         minLength={6}
@@ -830,11 +845,11 @@ export default function SettingsPage() {
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label htmlFor="modal-confirm-pwd">Confirmer le nouveau mot de passe</label>
+                                    <label htmlFor="modal-confirm-pwd">{tr("Confirm new password", "Confirmer le nouveau mot de passe")}</label>
                                     <input
                                         id="modal-confirm-pwd"
                                         type="password"
-                                        placeholder="Confirmez le nouveau mot de passe"
+                                        placeholder={tr("Confirm new password", "Confirmez le nouveau mot de passe")}
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         minLength={6}
@@ -850,7 +865,7 @@ export default function SettingsPage() {
                                     onClick={() => setIsPasswordModalOpen(false)}
                                     disabled={passwordSaving}
                                 >
-                                    Annuler
+                                    {tr("Cancel", "Annuler")}
                                 </button>
                                 <button
                                     type="submit"
@@ -858,7 +873,7 @@ export default function SettingsPage() {
                                     disabled={passwordSaving}
                                 >
                                     <FontAwesomeIcon icon={passwordSaving ? faCircleNotch : faCheck} spin={passwordSaving} />
-                                    <span>{passwordSaving ? "Modification..." : "Confirmer le changement de mot de passe"}</span>
+                                    <span>{passwordSaving ? tr("Updating...", "Modification...") : tr("Confirm password change", "Confirmer le changement de mot de passe")}</span>
                                 </button>
                             </footer>
                         </form>
@@ -873,13 +888,13 @@ export default function SettingsPage() {
                         <header className="settings-modal__header">
                             <div className="settings-modal__title">
                                 <FontAwesomeIcon icon={faTrashCan} />
-                                <span>Supprimer définitivement le compte</span>
+                                <span>{tr("Permanently delete account", "Supprimer définitivement le compte")}</span>
                             </div>
                             <button
                                 type="button"
                                 className="settings-modal__close"
                                 onClick={() => setIsDeleteModalOpen(false)}
-                                aria-label="Fermer"
+                                aria-label={tr("Close", "Fermer")}
                             >
                                 <FontAwesomeIcon icon={faXmark} />
                             </button>
@@ -890,20 +905,20 @@ export default function SettingsPage() {
                                 <div className="settings-modal__warning">
                                     <FontAwesomeIcon icon={faTriangleExclamation} />
                                     <span>
-                                        Attention : cette action est <strong>irréversible</strong>. Toutes vos données de compte, votre bibliothèque et vos souhaits seront supprimés sans possibilité de récupération.
+                                        {tr("Warning: this action is", "Attention : cette action est")} <strong>{tr("irreversible", "irréversible")}</strong>. {tr("All your account data, library and wishlist will be deleted with no possibility of recovery.", "Toutes vos données de compte, votre bibliothèque et vos souhaits seront supprimés sans possibilité de récupération.")}
                                     </span>
                                 </div>
 
                                 <div className="form-group">
                                     <label>
-                                        Recopiez la phrase suivante pour confirmer :
+                                        {tr("Type the following phrase to confirm:", "Recopiez la phrase suivante pour confirmer :")}
                                     </label>
                                     <div className="modal-confirm-quote">
-                                        {REQUIRED_DELETE_PHRASE}
+                                        {requiredDeletePhrase}
                                     </div>
                                     <input
                                         type="text"
-                                        placeholder={REQUIRED_DELETE_PHRASE}
+                                        placeholder={requiredDeletePhrase}
                                         value={deleteConfirmationText}
                                         onChange={(e) => setDeleteConfirmationText(e.target.value)}
                                         required
@@ -912,11 +927,11 @@ export default function SettingsPage() {
                                 </div>
 
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label htmlFor="modal-delete-pwd">Mot de passe actuel</label>
+                                    <label htmlFor="modal-delete-pwd">{tr("Current password", "Mot de passe actuel")}</label>
                                     <input
                                         id="modal-delete-pwd"
                                         type="password"
-                                        placeholder="Votre mot de passe pour confirmer la suppression"
+                                        placeholder={tr("Your password to confirm deletion", "Votre mot de passe pour confirmer la suppression")}
                                         value={deletePassword}
                                         onChange={(e) => setDeletePassword(e.target.value)}
                                         required
@@ -931,7 +946,7 @@ export default function SettingsPage() {
                                     onClick={() => setIsDeleteModalOpen(false)}
                                     disabled={deleteSaving}
                                 >
-                                    Annuler
+                                    {tr("Cancel", "Annuler")}
                                 </button>
                                 <button
                                     type="submit"
@@ -939,7 +954,7 @@ export default function SettingsPage() {
                                     disabled={deleteSaving}
                                 >
                                     <FontAwesomeIcon icon={deleteSaving ? faCircleNotch : faCheck} spin={deleteSaving} />
-                                    <span>{deleteSaving ? "Suppression en cours..." : "Confirmer la suppression définitive"}</span>
+                                    <span>{deleteSaving ? tr("Deleting...", "Suppression en cours...") : tr("Confirm permanent deletion", "Confirmer la suppression définitive")}</span>
                                 </button>
                             </footer>
                         </form>

@@ -5,6 +5,8 @@ import SeriesDTO from "../../dto/Series.dto.ts";
 import UserBookTransactionDTO from "../../dto/UserBookTransaction.dto.ts";
 import { useSnackbar } from "notistack";
 import useSession, { SessionContextType } from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
+import { trStatic } from "../../i18n";
 import { getSeriesStatusLabel } from "../../dto/Series.dto.ts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -105,7 +107,7 @@ function SearchableSelect({
     onChange,
     options,
     placeholder,
-    emptyLabel = "-- Aucun --",
+    emptyLabel,
     openDirection = "down"
 }: {
     value: string;
@@ -115,6 +117,8 @@ function SearchableSelect({
     emptyLabel?: string;
     openDirection?: "down" | "up";
 }) {
+    const { tr } = useLanguage();
+    const resolvedEmptyLabel = emptyLabel ?? tr("-- None --", "-- Aucun --");
     const [isOpen, setIsOpen] = useState(false);
     const [isFiltering, setIsFiltering] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -139,13 +143,14 @@ function SearchableSelect({
         normalizedQuery !== "" &&
         ("aucun".includes(normalizedQuery) ||
             "aucune".includes(normalizedQuery) ||
-            emptyLabel.toLowerCase().includes(normalizedQuery));
+            "none".includes(normalizedQuery) ||
+            resolvedEmptyLabel.toLowerCase().includes(normalizedQuery));
 
     const showEmptyOption = !isFiltering || normalizedQuery === "" || isNoneQuery;
 
     const exactMatchExists = options.some(
         (opt) => opt.toLowerCase() === value.trim().toLowerCase()
-    ) || ["aucun", "aucune"].includes(value.trim().toLowerCase());
+    ) || ["aucun", "aucune", "none"].includes(value.trim().toLowerCase());
 
     const handleSelectOption = (opt: string) => {
         onChange(opt);
@@ -201,8 +206,8 @@ function SearchableSelect({
                                 setIsFiltering(false);
                                 setIsOpen(true);
                             }}
-                            title="Effacer"
-                            aria-label="Effacer"
+                            title={tr("Clear", "Effacer")}
+                            aria-label={tr("Clear", "Effacer")}
                         >
                             <FontAwesomeIcon icon={faXmark} />
                         </button>
@@ -216,7 +221,7 @@ function SearchableSelect({
                             if (next) setIsFiltering(false);
                         }}
                         tabIndex={-1}
-                        aria-label="Ouvrir la liste"
+                        aria-label={tr("Open list", "Ouvrir la liste")}
                     >
                         <FontAwesomeIcon icon={faChevronDown} />
                     </button>
@@ -231,7 +236,7 @@ function SearchableSelect({
                             className={`searchable-select__option searchable-select__option--clear ${value.trim() === "" ? "searchable-select__option--selected" : ""}`}
                             onClick={() => handleSelectOption("")}
                         >
-                            <span>{emptyLabel}</span>
+                            <span>{resolvedEmptyLabel}</span>
                             {value.trim() === "" && <FontAwesomeIcon icon={faCheck} className="searchable-select__check" />}
                         </button>
                     )}
@@ -243,7 +248,7 @@ function SearchableSelect({
                             onClick={() => handleSelectOption(value.trim())}
                         >
                             <FontAwesomeIcon icon={faPlus} />
-                            <span>Utiliser « {value.trim()} »</span>
+                            <span>{tr(`Use "${value.trim()}"`, `Utiliser « ${value.trim()} »`)}</span>
                         </button>
                     )}
 
@@ -264,7 +269,7 @@ function SearchableSelect({
                         })
                     ) : (
                         value.trim() === "" && (
-                            <div className="searchable-select__empty">Aucune option disponible</div>
+                            <div className="searchable-select__empty">{tr("No options available", "Aucune option disponible")}</div>
                         )
                     )}
                 </div>
@@ -284,6 +289,7 @@ function SeriesSearchableSelect({
     seriesList: SeriesDTO[];
     onCreateNew?: (initialName: string) => void;
 }) {
+    const { tr, translateCategory } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [isFiltering, setIsFiltering] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -291,7 +297,7 @@ function SeriesSearchableSelect({
 
     const selectedSeries = seriesList.find((s) => Number(s.id) === Number(selectedId)) || null;
     const selectedDisplay = selectedSeries
-        ? `${selectedSeries.name} (${selectedSeries.category || "Comics"})`
+        ? `${selectedSeries.name} (${translateCategory(selectedSeries.category || "Comics")})`
         : "";
 
     useEffect(() => {
@@ -336,7 +342,7 @@ function SeriesSearchableSelect({
                 <input
                     type="text"
                     value={isFiltering ? searchQuery : selectedDisplay}
-                    placeholder="Rechercher ou sélectionner une série..."
+                    placeholder={tr("Search or select a series...", "Rechercher ou sélectionner une série...")}
                     onFocus={(e) => {
                         setIsOpen(true);
                         setIsFiltering(false);
@@ -380,8 +386,8 @@ function SeriesSearchableSelect({
                                 setIsFiltering(false);
                                 setIsOpen(true);
                             }}
-                            title="Effacer"
-                            aria-label="Effacer"
+                            title={tr("Clear", "Effacer")}
+                            aria-label={tr("Clear", "Effacer")}
                         >
                             <FontAwesomeIcon icon={faXmark} />
                         </button>
@@ -398,7 +404,7 @@ function SeriesSearchableSelect({
                             }
                         }}
                         tabIndex={-1}
-                        aria-label="Ouvrir la liste des séries"
+                        aria-label={tr("Open series list", "Ouvrir la liste des séries")}
                     >
                         <FontAwesomeIcon icon={faChevronDown} />
                     </button>
@@ -413,7 +419,7 @@ function SeriesSearchableSelect({
                             className={`searchable-select__option searchable-select__option--clear ${selectedId == null ? "searchable-select__option--selected" : ""}`}
                             onClick={() => handleSelect(null)}
                         >
-                            <span>-- Aucune série --</span>
+                            <span>{tr("-- No series --", "-- Aucune série --")}</span>
                             {selectedId == null && <FontAwesomeIcon icon={faCheck} className="searchable-select__check" />}
                         </button>
                     )}
@@ -431,7 +437,7 @@ function SeriesSearchableSelect({
                             }}
                         >
                             <FontAwesomeIcon icon={faPlus} />
-                            <span>Créer la nouvelle série « {searchQuery.trim()} »</span>
+                            <span>{tr(`Create new series "${searchQuery.trim()}"`, `Créer la nouvelle série « ${searchQuery.trim()} »`)}</span>
                         </button>
                     )}
 
@@ -446,14 +452,14 @@ function SeriesSearchableSelect({
                                     onClick={() => handleSelect(Number(s.id))}
                                 >
                                     <span>
-                                        {s.name} <small style={{ color: "var(--text-secondary)" }}>({s.category || "Comics"})</small>
+                                        {s.name} <small style={{ color: "var(--text-secondary)" }}>({translateCategory(s.category || "Comics")})</small>
                                     </span>
                                     {isSelected && <FontAwesomeIcon icon={faCheck} className="searchable-select__check" />}
                                 </button>
                             );
                         })
                     ) : (
-                        <div className="searchable-select__empty">Aucune série trouvée</div>
+                        <div className="searchable-select__empty">{tr("No series found", "Aucune série trouvée")}</div>
                     )}
                 </div>
             )}
@@ -472,10 +478,10 @@ function getFollowTypeIcon(type: FollowType) {
 
 function getFollowTypeLabel(type: FollowType) {
     switch (type) {
-        case "series": return "Série";
-        case "author": return "Auteur";
-        case "editor": return "Maison d'édition";
-        case "collection": return "Collection";
+        case "series": return trStatic("Series", "Série");
+        case "author": return trStatic("Author", "Auteur");
+        case "editor": return trStatic("Publisher", "Maison d'édition");
+        case "collection": return trStatic("Collection", "Collection");
     }
 }
 
@@ -551,6 +557,7 @@ export default function BookPage() {
     const { id } = useParams<{ id?: string }>();
     const navigate = useNavigate();
     const session = useSession();
+    const { tr, locale, translateCategory } = useLanguage();
 
     const [book, setBook] = useState<BookDTO | null>(null);
     const [bookStatus, setBookStatus] = useState<string | null>(null);
@@ -653,14 +660,14 @@ export default function BookPage() {
             });
 
             if (res.ok) {
-                enqueueSnackbar(isGift ? "Cadeau enregistré avec succès !" : "Achat enregistré avec succès !", { variant: "success" });
+                enqueueSnackbar(isGift ? tr("Gift saved successfully!", "Cadeau enregistré avec succès !") : tr("Purchase saved successfully!", "Achat enregistré avec succès !"), { variant: "success" });
                 setPurchaseModalOpen(false);
                 fetchTransactions(id);
                 if (bookStatus !== "OWNED" && bookStatus !== "FOR_SALE" && bookStatus !== "SOLD") {
                     setBookStatus("OWNED");
                 }
             } else {
-                enqueueSnackbar(isGift ? "Erreur lors de l'enregistrement du cadeau" : "Erreur lors de l'enregistrement de l'achat", { variant: "error" });
+                enqueueSnackbar(isGift ? tr("Error saving gift", "Erreur lors de l'enregistrement du cadeau") : tr("Error saving purchase", "Erreur lors de l'enregistrement de l'achat"), { variant: "error" });
             }
         } catch (err: any) {
             enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
@@ -675,7 +682,7 @@ export default function BookPage() {
 
     const handleOpenSaleModal = () => {
         if (!canSellInHistory) {
-            enqueueSnackbar("Vous devez avoir un achat ou un cadeau dans l'historique d'achat pour vendre ce livre.", { variant: "warning" });
+            enqueueSnackbar(tr("You must have a purchase or a gift in your purchase history to sell this book.", "Vous devez avoir un achat ou un cadeau dans l'historique d'achat pour vendre ce livre."), { variant: "warning" });
             return;
         }
         setSellDate("");
@@ -687,7 +694,7 @@ export default function BookPage() {
 
     const handleOpenListingModal = () => {
         if (!canSellInHistory) {
-            enqueueSnackbar("Vous devez avoir un achat ou un cadeau dans l'historique d'achat pour vendre ce livre.", { variant: "warning" });
+            enqueueSnackbar(tr("You must have a purchase or a gift in your purchase history to sell this book.", "Vous devez avoir un achat ou un cadeau dans l'historique d'achat pour vendre ce livre."), { variant: "warning" });
             return;
         }
         setListingPrice(book?.price ? String(book.price) : "");
@@ -711,11 +718,11 @@ export default function BookPage() {
             });
 
             if (res.ok) {
-                enqueueSnackbar("Livre mis en vente avec succès !", { variant: "success" });
+                enqueueSnackbar(tr("Book listed for sale successfully!", "Livre mis en vente avec succès !"), { variant: "success" });
                 setListingModalOpen(false);
                 setBookStatus("FOR_SALE");
             } else {
-                let errMsg = "Erreur lors de la mise en vente";
+                let errMsg = tr("Error listing book for sale", "Erreur lors de la mise en vente");
                 try {
                     const errData = await res.json();
                     errMsg = errData.message || errData.error || errMsg;
@@ -752,12 +759,12 @@ export default function BookPage() {
             });
 
             if (res.ok) {
-                enqueueSnackbar("Vente enregistrée avec succès !", { variant: "success" });
+                enqueueSnackbar(tr("Sale saved successfully!", "Vente enregistrée avec succès !"), { variant: "success" });
                 setSaleModalOpen(false);
                 setBookStatus("SOLD");
                 fetchTransactions(id);
             } else {
-                let errMsg = "Erreur lors de l'enregistrement de la vente";
+                let errMsg = tr("Error saving sale", "Erreur lors de l'enregistrement de la vente");
                 try {
                     const errData = await res.json();
                     errMsg = errData.message || errData.error || errMsg;
@@ -775,16 +782,16 @@ export default function BookPage() {
     };
 
     const handleDeleteTransaction = async (txId: number) => {
-        const confirm = window.confirm("Supprimer cette ligne d'historique ?");
+        const confirm = window.confirm(tr("Delete this history entry?", "Supprimer cette ligne d'historique ?"));
         if (!confirm || !id) return;
 
         try {
             const res = await session.customFetch(`/user/transactions/${txId}`, { method: "DELETE" });
             if (res.ok) {
-                enqueueSnackbar("Ligne supprimée", { variant: "info" });
+                enqueueSnackbar(tr("Entry deleted", "Ligne supprimée"), { variant: "info" });
                 fetchTransactions(id);
             } else {
-                enqueueSnackbar("Erreur lors de la suppression", { variant: "error" });
+                enqueueSnackbar(tr("Error deleting entry", "Erreur lors de la suppression"), { variant: "error" });
             }
         } catch (err: any) {
             enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
@@ -881,7 +888,7 @@ export default function BookPage() {
         if (!id || savingBookInfo) return;
 
         if (!editTitle.trim()) {
-            enqueueSnackbar("Le titre de l'album est obligatoire", { variant: "warning" });
+            enqueueSnackbar(tr("Book title is required", "Le titre de l'album est obligatoire"), { variant: "warning" });
             return;
         }
 
@@ -912,9 +919,9 @@ export default function BookPage() {
                 const updated: BookDTO = await res.json();
                 setBook(updated);
                 setEditModalOpen(false);
-                enqueueSnackbar("Informations de l'album mises à jour avec succès !", { variant: "success" });
+                enqueueSnackbar(tr("Book information updated successfully!", "Informations de l'album mises à jour avec succès !"), { variant: "success" });
             } else {
-                let errMsg = "Impossible de mettre à jour les informations de l'album";
+                let errMsg = tr("Unable to update book information", "Impossible de mettre à jour les informations de l'album");
                 try {
                     const errData = await res.json();
                     errMsg = errData.message || errData.error || errMsg;
@@ -957,7 +964,7 @@ export default function BookPage() {
     const handleSelectCoverFile = (file: File | null) => {
         if (!file) return;
         if (!file.type.startsWith("image/")) {
-            enqueueSnackbar("Veuillez sélectionner un fichier image valide (JPG, PNG, WebP...)", { variant: "warning" });
+            enqueueSnackbar(tr("Please select a valid image file (JPG, PNG, WebP...)", "Veuillez sélectionner un fichier image valide (JPG, PNG, WebP...)"), { variant: "warning" });
             return;
         }
         if (coverPreviewUrl && coverPreviewUrl.startsWith("blob:")) {
@@ -972,11 +979,11 @@ export default function BookPage() {
         if (!id || uploadingCover) return;
 
         if (coverMode === "file" && !coverFile) {
-            enqueueSnackbar("Veuillez sélectionner une image depuis votre appareil", { variant: "warning" });
+            enqueueSnackbar(tr("Please select an image from your device", "Veuillez sélectionner une image depuis votre appareil"), { variant: "warning" });
             return;
         }
         if (coverMode === "url" && !coverRemoteUrl.trim()) {
-            enqueueSnackbar("Veuillez saisir l'URL d'une image", { variant: "warning" });
+            enqueueSnackbar(tr("Please enter an image URL", "Veuillez saisir l'URL d'une image"), { variant: "warning" });
             return;
         }
 
@@ -1001,7 +1008,7 @@ export default function BookPage() {
             if (response.ok) {
                 const updatedBook: BookDTO = await response.json();
                 setBook(updatedBook);
-                enqueueSnackbar("Couverture mise à jour et optimisée !", { variant: "success" });
+                enqueueSnackbar(tr("Cover updated and optimized!", "Couverture mise à jour et optimisée !"), { variant: "success" });
                 setCoverModalOpen(false);
                 if (coverPreviewUrl && coverPreviewUrl.startsWith("blob:")) {
                     URL.revokeObjectURL(coverPreviewUrl);
@@ -1010,7 +1017,7 @@ export default function BookPage() {
                 setCoverFile(null);
                 setCoverRemoteUrl("");
             } else {
-                let errMsg = "Impossible de mettre à jour la couverture";
+                let errMsg = tr("Unable to update cover", "Impossible de mettre à jour la couverture");
                 try {
                     const errData = await response.json();
                     errMsg = errData.message || errData.error || errMsg;
@@ -1121,7 +1128,7 @@ export default function BookPage() {
         try {
             if (seriesModalMode === "create") {
                 if (!newSeriesName.trim()) {
-                    enqueueSnackbar("Veuillez renseigner le nom de la série", { variant: "warning" });
+                    enqueueSnackbar(tr("Please enter the series name", "Veuillez renseigner le nom de la série"), { variant: "warning" });
                     setSavingSeries(false);
                     return;
                 }
@@ -1156,7 +1163,7 @@ export default function BookPage() {
                     });
                 }
 
-                enqueueSnackbar(`Nouvelle série « ${createdSeries.name} » créée et associée`, { variant: "success" });
+                enqueueSnackbar(tr(`New series "${createdSeries.name}" created and linked`, `Nouvelle série « ${createdSeries.name} » créée et associée`), { variant: "success" });
             } else {
                 // Link to existing series (or unlink if selectedSeriesId is null)
                 const updateRes = await session.customFetch(`/books/${encodeURIComponent(id)}/series`, {
@@ -1169,12 +1176,12 @@ export default function BookPage() {
                 });
 
                 if (!updateRes.ok) {
-                    enqueueSnackbar("Erreur lors de l'association à la série", { variant: "error" });
+                    enqueueSnackbar(tr("Error linking to series", "Erreur lors de l'association à la série"), { variant: "error" });
                     setSavingSeries(false);
                     return;
                 }
 
-                enqueueSnackbar(selectedSeriesId ? "Série et tomaison associées avec succès" : "Série dissociée", { variant: "success" });
+                enqueueSnackbar(selectedSeriesId ? tr("Series and volume linked successfully", "Série et tomaison associées avec succès") : tr("Series unlinked", "Série dissociée"), { variant: "success" });
             }
 
             // Reload book
@@ -1197,7 +1204,10 @@ export default function BookPage() {
     const handleDeleteBook = async () => {
         if (!book || !id) return;
         const confirm = window.confirm(
-            `Êtes-vous sûr de vouloir supprimer définitivement l'album « ${book.title} » ? Cette action est irréversible.`
+            tr(
+                `Are you sure you want to permanently delete the book "${book.title}"? This action cannot be undone.`,
+                `Êtes-vous sûr de vouloir supprimer définitivement l'album « ${book.title} » ? Cette action est irréversible.`
+            )
         );
         if (!confirm) return;
 
@@ -1207,14 +1217,14 @@ export default function BookPage() {
                 method: "DELETE"
             });
             if (res.ok) {
-                enqueueSnackbar(`Album « ${book.title} » supprimé avec succès`, { variant: "success" });
+                enqueueSnackbar(tr(`Book "${book.title}" deleted successfully`, `Album « ${book.title} » supprimé avec succès`), { variant: "success" });
                 navigate("/app/collection");
             } else {
-                enqueueSnackbar("Erreur lors de la suppression de l'album", { variant: "error" });
+                enqueueSnackbar(tr("Error deleting book", "Erreur lors de la suppression de l'album"), { variant: "error" });
             }
         } catch (err) {
             console.error("Error deleting book:", err);
-            enqueueSnackbar("Erreur réseau lors de la suppression de l'album", { variant: "error" });
+            enqueueSnackbar(tr("Network error while deleting book", "Erreur réseau lors de la suppression de l'album"), { variant: "error" });
         } finally {
             setDeletingBook(false);
         }
@@ -1222,7 +1232,7 @@ export default function BookPage() {
 
     const handleRemoveFromSeries = async () => {
         if (!id || savingSeries) return;
-        const confirm = window.confirm("Retirer cet album de sa série ?");
+        const confirm = window.confirm(tr("Remove this book from its series?", "Retirer cet album de sa série ?"));
         if (!confirm) return;
 
         setSavingSeries(true);
@@ -1234,7 +1244,7 @@ export default function BookPage() {
             });
 
             if (updateRes.ok) {
-                enqueueSnackbar("Album retiré de la série", { variant: "info" });
+                enqueueSnackbar(tr("Book removed from series", "Album retiré de la série"), { variant: "info" });
                 const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1&withSeries=1`;
                 const refreshRes = await session.customFetch(fetchUrl, { method: "GET" });
                 if (refreshRes.ok) {
@@ -1361,7 +1371,7 @@ export default function BookPage() {
                         onClick={() => navigate(-1)}
                     >
                         <FontAwesomeIcon icon={faArrowLeft} />
-                        <span>Retour</span>
+                        <span>{tr("Back", "Retour")}</span>
                     </button>
                 </div>
             </WrapperHeader>
@@ -1369,7 +1379,7 @@ export default function BookPage() {
             <div className="book-page__content">
                 {loading && (
                     <div className="book-page__state">
-                        <p>Chargement des détails de l'ouvrage...</p>
+                        <p>{tr("Loading book details...", "Chargement des détails de l'ouvrage...")}</p>
                     </div>
                 )}
 
@@ -1387,7 +1397,7 @@ export default function BookPage() {
                                 {book.coverUrl ? (
                                     <img
                                         src={book.coverUrl}
-                                        alt={`Couverture de ${book.title}`}
+                                        alt={tr(`Cover of ${book.title}`, `Couverture de ${book.title}`)}
                                         className="book-page__cover"
                                         decoding="async"
                                     />
@@ -1401,10 +1411,10 @@ export default function BookPage() {
                                     type="button"
                                     className="book-page__cover-edit-btn"
                                     onClick={handleOpenCoverModal}
-                                    title="Changer l'image de couverture de cet album"
+                                    title={tr("Change this book's cover image", "Changer l'image de couverture de cet album")}
                                 >
                                     <FontAwesomeIcon icon={faCamera} />
-                                    <span>Changer l'image</span>
+                                    <span>{tr("Change cover", "Changer l'image")}</span>
                                 </button>
                             </div>
 
@@ -1416,20 +1426,20 @@ export default function BookPage() {
                                             <Link
                                                 to={`/app/book/${book.previousBookId}`}
                                                 className="book-page__volume-nav-btn book-page__volume-nav-btn--prev"
-                                                title={book.previousBook?.title ? `Tome précédent : ${book.previousBook.title}` : "Tome précédent"}
+                                                title={book.previousBook?.title ? tr(`Previous volume: ${book.previousBook.title}`, `Tome précédent : ${book.previousBook.title}`) : tr("Previous volume", "Tome précédent")}
                                             >
                                                 <FontAwesomeIcon icon={faChevronLeft} />
-                                                <span>Précédent</span>
+                                                <span>{tr("Previous", "Précédent")}</span>
                                             </Link>
                                         ) : (
                                             <button
                                                 type="button"
                                                 disabled
                                                 className="book-page__volume-nav-btn book-page__volume-nav-btn--disabled book-page__volume-nav-btn--prev"
-                                                title="Tome précédent non disponible dans la bibliothèque"
+                                                title={tr("Previous volume not available in library", "Tome précédent non disponible dans la bibliothèque")}
                                             >
                                                 <FontAwesomeIcon icon={faChevronLeft} />
-                                                <span>Précédent</span>
+                                                <span>{tr("Previous", "Précédent")}</span>
                                             </button>
                                         )
                                     )}
@@ -1438,9 +1448,9 @@ export default function BookPage() {
                                             <Link
                                                 to={`/app/book/${book.nextBookId}`}
                                                 className="book-page__volume-nav-btn book-page__volume-nav-btn--next"
-                                                title={book.nextBook?.title ? `Tome suivant : ${book.nextBook.title}` : "Tome suivant"}
+                                                title={book.nextBook?.title ? tr(`Next volume: ${book.nextBook.title}`, `Tome suivant : ${book.nextBook.title}`) : tr("Next volume", "Tome suivant")}
                                             >
-                                                <span>Suivant</span>
+                                                <span>{tr("Next", "Suivant")}</span>
                                                 <FontAwesomeIcon icon={faChevronRight} />
                                             </Link>
                                         ) : (
@@ -1448,9 +1458,9 @@ export default function BookPage() {
                                                 type="button"
                                                 disabled
                                                 className="book-page__volume-nav-btn book-page__volume-nav-btn--disabled book-page__volume-nav-btn--next"
-                                                title="Tome suivant non disponible dans la bibliothèque"
+                                                title={tr("Next volume not available in library", "Tome suivant non disponible dans la bibliothèque")}
                                             >
-                                                <span>Suivant</span>
+                                                <span>{tr("Next", "Suivant")}</span>
                                                 <FontAwesomeIcon icon={faChevronRight} />
                                             </button>
                                         )
@@ -1467,8 +1477,8 @@ export default function BookPage() {
                                     type="button"
                                     className={`book-page__menu-btn ${detailsMenuOpen ? "book-page__menu-btn--open" : ""}`}
                                     onClick={() => setDetailsMenuOpen((prev) => !prev)}
-                                    title="Actions"
-                                    aria-label="Menu d'actions"
+                                    title={tr("Actions", "Actions")}
+                                    aria-label={tr("Actions menu", "Menu d'actions")}
                                     aria-expanded={detailsMenuOpen}
                                 >
                                     <FontAwesomeIcon icon={faBars} />
@@ -1485,7 +1495,7 @@ export default function BookPage() {
                                             }}
                                         >
                                             <FontAwesomeIcon icon={faPen} />
-                                            <span>Modifier</span>
+                                            <span>{tr("Edit", "Modifier")}</span>
                                         </button>
                                         <button
                                             type="button"
@@ -1496,7 +1506,7 @@ export default function BookPage() {
                                             }}
                                         >
                                             <FontAwesomeIcon icon={faCoins} />
-                                            <span>Historique d'achat{transactions.length > 0 ? ` (${transactions.length})` : ""}</span>
+                                            <span>{tr("Purchase history", "Historique d'achat")}{transactions.length > 0 ? ` (${transactions.length})` : ""}</span>
                                         </button>
                                         <div className="book-page__dropdown-divider" />
                                         <button
@@ -1509,7 +1519,7 @@ export default function BookPage() {
                                             }}
                                         >
                                             <FontAwesomeIcon icon={faTrash} />
-                                            <span>{deletingBook ? "Suppression..." : "Supprimer"}</span>
+                                            <span>{deletingBook ? tr("Deleting...", "Suppression...") : tr("Delete", "Supprimer")}</span>
                                         </button>
                                     </div>
                                 )}
@@ -1526,19 +1536,19 @@ export default function BookPage() {
                                     {book.series && book.volume != null && (
                                         <span className="book-page__tag book-page__tag--volume">
                                             {book.series?.totalVolumes && book.series.totalVolumes > 1
-                                                ? `Tome ${book.volume} sur ${Math.max(book.volume, book.series.totalVolumes)}`
-                                                : `Tome ${book.volume}`}
+                                                ? tr(`Volume ${book.volume} of ${Math.max(book.volume, book.series.totalVolumes)}`, `Tome ${book.volume} sur ${Math.max(book.volume, book.series.totalVolumes)}`)
+                                                : tr(`Volume ${book.volume}`, `Tome ${book.volume}`)}
                                         </span>
                                     )}
                                     {book.series?.category && (
                                         <span className="book-page__tag book-page__tag--category">
-                                            {book.series.category}
+                                            {translateCategory(book.series.category)}
                                         </span>
                                     )}
                                     {book.parentBookId && (
                                         <Link to={`/app/book/${book.parentBookId}`} className="book-page__tag book-page__tag--variant">
                                             <FontAwesomeIcon icon={faClone} />
-                                            <span>Couverture variante</span>
+                                            <span>{tr("Variant cover", "Couverture variante")}</span>
                                         </Link>
                                     )}
                                 </div>
@@ -1554,7 +1564,7 @@ export default function BookPage() {
                                                 <Link
                                                     to={`/app/series/${book.series.id}`}
                                                     className="book-page__entity-title-btn"
-                                                    title={`Voir la série ${book.series.name}`}
+                                                    title={tr(`View series ${book.series.name}`, `Voir la série ${book.series.name}`)}
                                                 >
                                                     <span>{book.series.name}</span>
                                                     {followStates[`series_${book.series.id}`] && (
@@ -1568,7 +1578,7 @@ export default function BookPage() {
                                     </div>
                                 ) : (
                                     <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px", flexWrap: "wrap" }}>
-                                        <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Aucune série associée</span>
+                                        <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>{tr("No linked series", "Aucune série associée")}</span>
                                     </div>
                                 )}
 
@@ -1579,7 +1589,7 @@ export default function BookPage() {
                                 {/* Auteurs cliquables pour voir la page auteur */}
                                 {book.authors && book.authors.length > 0 && (
                                     <div className="book-page__authors-row">
-                                        <span>Par</span>
+                                        <span>{tr("By", "Par")}</span>
                                         {book.authors.map((author, idx) => {
                                             const fullName = `${author.firstname || ""} ${author.lastname || ""}`.trim();
                                             const isFollowed = author.id ? Boolean(followStates[`author_${author.id}`]) : false;
@@ -1589,7 +1599,7 @@ export default function BookPage() {
                                                         <Link
                                                             to={`/app/author/${author.id}`}
                                                             className="book-page__entity-inline-btn"
-                                                            title={`Voir la page de ${fullName}`}
+                                                            title={tr(`View ${fullName}'s page`, `Voir la page de ${fullName}`)}
                                                         >
                                                             <span>{fullName}</span>
                                                             {isFollowed && (
@@ -1615,9 +1625,9 @@ export default function BookPage() {
                                 <div className="book-page__variant-banner">
                                     <FontAwesomeIcon icon={faClone} />
                                     <span>
-                                        Ceci est une <strong>couverture variante</strong>.{" "}
+                                        {tr("This is a", "Ceci est une")} <strong>{tr("variant cover", "couverture variante")}</strong>.{" "}
                                         <Link to={`/app/book/${book.parentBookId}`}>
-                                            Voir l'édition standard {book.parentBookTitle ? `(« ${book.parentBookTitle} »)` : ""}
+                                            {tr("View standard edition", "Voir l'édition standard")} {book.parentBookTitle ? `(« ${book.parentBookTitle} »)` : ""}
                                         </Link>
                                     </span>
                                 </div>
@@ -1641,7 +1651,7 @@ export default function BookPage() {
                                         session={session}
                                         icon={faHeart}
                                     >
-                                        {bookStatus === "WISHLISTED" ? "Dans les souhaits" : "Liste de souhaits"}
+                                        {bookStatus === "WISHLISTED" ? tr("In wishlist", "Dans les souhaits") : tr("Wishlist", "Liste de souhaits")}
                                     </ChangeBookStatusButton>
                                 )}
 
@@ -1654,7 +1664,7 @@ export default function BookPage() {
                                         session={session}
                                         icon={faBook}
                                     >
-                                        {bookStatus === "OWNED" ? "Dans la bibliothèque" : "Ajouter à la bibliothèque"}
+                                        {bookStatus === "OWNED" ? tr("In library", "Dans la bibliothèque") : tr("Add to library", "Ajouter à la bibliothèque")}
                                     </ChangeBookStatusButton>
                                 )}
 
@@ -1668,7 +1678,7 @@ export default function BookPage() {
                                         icon={faTag}
                                         onRequestSale={handleOpenListingModal}
                                     >
-                                        {bookStatus === "FOR_SALE" ? "En vente" : (bookStatus === "SOLD" ? "Vendu (remettre en vente)" : "Mettre à vendre")}
+                                        {bookStatus === "FOR_SALE" ? tr("For sale", "En vente") : (bookStatus === "SOLD" ? tr("Sold (relist)", "Vendu (remettre en vente)") : tr("List for sale", "Mettre à vendre"))}
                                     </ChangeBookStatusButton>
                                 )}
 
@@ -1679,7 +1689,7 @@ export default function BookPage() {
                                         onClick={handleOpenSaleModal}
                                     >
                                         <FontAwesomeIcon icon={bookStatus === 'SOLD' ? faCheck : faCoins} />
-                                        <span>{bookStatus === 'SOLD' ? 'Vendu' : 'Marquer comme vendu'}</span>
+                                        <span>{bookStatus === 'SOLD' ? tr('Sold', 'Vendu') : tr('Mark as sold', 'Marquer comme vendu')}</span>
                                     </button>
                                 )}
 
@@ -1688,13 +1698,13 @@ export default function BookPage() {
                                     <select
                                         value={readingStatus ? readingStatus.toUpperCase() : "UNREAD"}
                                         onChange={handleReadingStatusChange}
-                                        aria-label="Statut de lecture"
+                                        aria-label={tr("Reading status", "Statut de lecture")}
                                     >
-                                        <option value="UNREAD">Non lu</option>
-                                        <option value="TO_READ">Pile à lire</option>
-                                        <option value="READING">En cours de lecture</option>
-                                        <option value="READ">Lu</option>
-                                        <option value="ABANDONED">Abandonné</option>
+                                        <option value="UNREAD">{tr("Unread", "Non lu")}</option>
+                                        <option value="TO_READ">{tr("To read", "Pile à lire")}</option>
+                                        <option value="READING">{tr("Currently reading", "En cours de lecture")}</option>
+                                        <option value="READ">{tr("Read", "Lu")}</option>
+                                        <option value="ABANDONED">{tr("Abandoned", "Abandonné")}</option>
                                     </select>
                                 </div>
                             </div>
@@ -1702,17 +1712,17 @@ export default function BookPage() {
                             {/* Technical Details Card */}
                             <div className="book-page__specs-card">
                                 <div className="book-page__specs-header">
-                                    <h3 className="book-page__specs-title">Détails</h3>
+                                    <h3 className="book-page__specs-title">{tr("Details", "Détails")}</h3>
                                 </div>
                                 <div className="book-page__specs-list">
                                     {/* Date de sortie */}
                                     {book.releaseDate && (
                                         <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faCalendarDays} className="book-page__spec-icon" /> Date de sortie
+                                                <FontAwesomeIcon icon={faCalendarDays} className="book-page__spec-icon" /> {tr("Release date", "Date de sortie")}
                                             </span>
                                             <span className="book-page__spec-value">
-                                                {new Date(book.releaseDate).toLocaleDateString('fr-FR', {
+                                                {new Date(book.releaseDate).toLocaleDateString(locale, {
                                                     day: 'numeric',
                                                     month: 'long',
                                                     year: 'numeric'
@@ -1725,14 +1735,14 @@ export default function BookPage() {
                                     {book.editor?.name && (
                                         <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faBuilding} className="book-page__spec-icon" /> Éditeur
+                                                <FontAwesomeIcon icon={faBuilding} className="book-page__spec-icon" /> {tr("Publisher", "Éditeur")}
                                             </span>
                                             <div className="book-page__spec-value">
                                                 <button
                                                     type="button"
                                                     className="book-page__spec-author-link"
                                                     onClick={() => openFollowModal("editor", book.editor?.id, book.editor!.name)}
-                                                    title={`Gérer le suivi de l'éditeur ${book.editor.name}`}
+                                                    title={tr(`Manage follow for publisher ${book.editor.name}`, `Gérer le suivi de l'éditeur ${book.editor.name}`)}
                                                 >
                                                     <span>{book.editor.name}</span>
                                                     {book.editor?.id && followStates[`editor_${book.editor.id}`] && (
@@ -1754,7 +1764,7 @@ export default function BookPage() {
                                                     type="button"
                                                     className="book-page__spec-author-link"
                                                     onClick={() => openFollowModal("collection", book.collection?.id, book.collection!.name)}
-                                                    title={`Gérer le suivi de la collection ${book.collection.name}`}
+                                                    title={tr(`Manage follow for collection ${book.collection.name}`, `Gérer le suivi de la collection ${book.collection.name}`)}
                                                 >
                                                     <span>{book.collection.name}</span>
                                                     {book.collection?.id && followStates[`collection_${book.collection.id}`] && (
@@ -1769,7 +1779,7 @@ export default function BookPage() {
                                     {scenaristes.length > 0 && (
                                         <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faPenNib} className="book-page__spec-icon" /> Scénariste{scenaristes.length > 1 ? "s" : ""}
+                                                <FontAwesomeIcon icon={faPenNib} className="book-page__spec-icon" /> {scenaristes.length > 1 ? tr("Writers", "Scénaristes") : tr("Writer", "Scénariste")}
                                             </span>
                                             <div className="book-page__spec-value book-page__spec-authors">
                                                 {scenaristes.map((a, i) => {
@@ -1805,7 +1815,7 @@ export default function BookPage() {
                                     {dessinateurs.length > 0 && (
                                         <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faPencil} className="book-page__spec-icon" /> Dessinateur{dessinateurs.length > 1 ? "s" : ""}
+                                                <FontAwesomeIcon icon={faPencil} className="book-page__spec-icon" /> {dessinateurs.length > 1 ? tr("Illustrators", "Dessinateurs") : tr("Illustrator", "Dessinateur")}
                                             </span>
                                             <div className="book-page__spec-value book-page__spec-authors">
                                                 {dessinateurs.map((a, i) => {
@@ -1841,7 +1851,7 @@ export default function BookPage() {
                                     {coloristes.length > 0 && (
                                         <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faPalette} className="book-page__spec-icon" /> Coloriste{coloristes.length > 1 ? "s" : ""}
+                                                <FontAwesomeIcon icon={faPalette} className="book-page__spec-icon" /> {coloristes.length > 1 ? tr("Colorists", "Coloristes") : tr("Colorist", "Coloriste")}
                                             </span>
                                             <div className="book-page__spec-value book-page__spec-authors">
                                                 {coloristes.map((a, i) => {
@@ -1899,7 +1909,7 @@ export default function BookPage() {
                                     {book.weight ? (
                                         <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faScaleBalanced} className="book-page__spec-icon" /> Poids
+                                                <FontAwesomeIcon icon={faScaleBalanced} className="book-page__spec-icon" /> {tr("Weight", "Poids")}
                                             </span>
                                             <span className="book-page__spec-value">{book.weight} g</span>
                                         </div>
@@ -1929,7 +1939,7 @@ export default function BookPage() {
                                     {book.themes && book.themes.length > 0 && (
                                         <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faTags} className="book-page__spec-icon" /> Thèmes
+                                                <FontAwesomeIcon icon={faTags} className="book-page__spec-icon" /> {tr("Themes", "Thèmes")}
                                             </span>
                                             <span className="book-page__spec-value">
                                                 {book.themes.join(", ")}
@@ -1941,7 +1951,7 @@ export default function BookPage() {
                                     {book.price ? (
                                         <div className="book-page__spec-row">
                                             <span className="book-page__spec-label">
-                                                <FontAwesomeIcon icon={faTag} className="book-page__spec-icon" /> Prix
+                                                <FontAwesomeIcon icon={faTag} className="book-page__spec-icon" /> {tr("Price", "Prix")}
                                             </span>
                                             <span className="book-page__spec-value">{book.price} €</span>
                                         </div>
@@ -1954,10 +1964,10 @@ export default function BookPage() {
                                 <div className="book-page__variants-card">
                                     <div className="book-page__variants-header">
                                         <FontAwesomeIcon icon={faClone} />
-                                        <h3>Éditions & Couvertures alternatives ({1 + (book.variants?.length || (book.parentBookId ? 1 : 0))})</h3>
+                                        <h3>{tr("Editions & Alternative Covers", "Éditions & Couvertures alternatives")} ({1 + (book.variants?.length || (book.parentBookId ? 1 : 0))})</h3>
                                     </div>
                                     <p className="book-page__variants-desc">
-                                        Sélectionnez une version pour afficher sa couverture dédiée, son ISBN et ses spécifications :
+                                        {tr("Select an edition to view its dedicated cover, ISBN, and specifications:", "Sélectionnez une version pour afficher sa couverture dédiée, son ISBN et ses spécifications :")}
                                     </p>
                                     <div className="book-page__variants-grid">
                                         {/* Standard / Parent Edition */}
@@ -1965,25 +1975,25 @@ export default function BookPage() {
                                             <Link
                                                 to={`/app/book/${book.parentBookId}`}
                                                 className="book-page__variant-pill"
-                                                title={`Édition standard : ${book.parentBookTitle || ""}`}
+                                                title={`${tr("Standard edition", "Édition standard")}: ${book.parentBookTitle || ""}`}
                                             >
                                                 <div className="book-page__variant-pill-thumb">
                                                     <FontAwesomeIcon icon={faBookOpen} />
                                                 </div>
                                                 <div className="book-page__variant-pill-info">
-                                                    <span className="book-page__variant-pill-badge">Édition standard</span>
-                                                    <span className="book-page__variant-pill-title">{book.parentBookTitle || "Édition standard"}</span>
+                                                    <span className="book-page__variant-pill-badge">{tr("Standard edition", "Édition standard")}</span>
+                                                    <span className="book-page__variant-pill-title">{book.parentBookTitle || tr("Standard edition", "Édition standard")}</span>
                                                 </div>
                                             </Link>
                                         ) : (
-                                            <div className="book-page__variant-pill book-page__variant-pill--active" title="Édition standard affichée">
+                                            <div className="book-page__variant-pill book-page__variant-pill--active" title={tr("Standard edition displayed", "Édition standard affichée")}>
                                                 {book.coverUrl ? (
                                                     <img src={book.coverUrl} alt={book.title} className="book-page__variant-pill-img" />
                                                 ) : (
                                                     <div className="book-page__variant-pill-fallback"><FontAwesomeIcon icon={faBookOpen} /></div>
                                                 )}
                                                 <div className="book-page__variant-pill-info">
-                                                    <span className="book-page__variant-pill-badge book-page__variant-pill-badge--active">Standard (Actuel)</span>
+                                                    <span className="book-page__variant-pill-badge book-page__variant-pill-badge--active">{tr("Standard (Current)", "Standard (Actuel)")}</span>
                                                     <span className="book-page__variant-pill-title">{book.title}</span>
                                                     {book.price ? <span className="book-page__variant-pill-price">{book.price} €</span> : null}
                                                 </div>
@@ -1995,14 +2005,14 @@ export default function BookPage() {
                                             const isCurrent = String(v.id) === String(book.id);
                                             if (isCurrent) {
                                                 return (
-                                                    <div key={v.id} className="book-page__variant-pill book-page__variant-pill--active" title="Variante actuelle affichée">
+                                                    <div key={v.id} className="book-page__variant-pill book-page__variant-pill--active" title={tr("Current variant displayed", "Variante actuelle affichée")}>
                                                         {v.coverUrl ? (
                                                             <img src={v.coverUrl} alt={v.title} className="book-page__variant-pill-img" />
                                                         ) : (
                                                             <div className="book-page__variant-pill-fallback"><FontAwesomeIcon icon={faBookOpen} /></div>
                                                         )}
                                                         <div className="book-page__variant-pill-info">
-                                                            <span className="book-page__variant-pill-badge book-page__variant-pill-badge--active">Variante (Actuel)</span>
+                                                            <span className="book-page__variant-pill-badge book-page__variant-pill-badge--active">{tr("Variant (Current)", "Variante (Actuel)")}</span>
                                                             <span className="book-page__variant-pill-title">{v.title}</span>
                                                             {v.price ? <span className="book-page__variant-pill-price">{v.price} €</span> : null}
                                                         </div>
@@ -2022,7 +2032,7 @@ export default function BookPage() {
                                                         <div className="book-page__variant-pill-fallback"><FontAwesomeIcon icon={faBookOpen} /></div>
                                                     )}
                                                     <div className="book-page__variant-pill-info">
-                                                        <span className="book-page__variant-pill-badge book-page__variant-pill-badge--alt">Variante</span>
+                                                        <span className="book-page__variant-pill-badge book-page__variant-pill-badge--alt">{tr("Variant", "Variante")}</span>
                                                         <span className="book-page__variant-pill-title">{v.title}</span>
                                                         {v.price ? <span className="book-page__variant-pill-price">{v.price} €</span> : null}
                                                     </div>
@@ -2058,7 +2068,7 @@ export default function BookPage() {
                     <div className="book-edit-dialog__header">
                         <div className="book-edit-dialog__header-title">
                             <FontAwesomeIcon icon={faPen} />
-                            <h3>Modifier les informations du livre</h3>
+                            <h3>{tr("Edit book information", "Modifier les informations du livre")}</h3>
                         </div>
                         <button
                             type="button"
@@ -2075,14 +2085,14 @@ export default function BookPage() {
                     <div className="book-edit-dialog__series-bar">
                         <div className="book-edit-dialog__series-info">
                             <span className="book-edit-dialog__series-label">
-                                <FontAwesomeIcon icon={faLayerGroup} /> Série &amp; Tomaison
+                                <FontAwesomeIcon icon={faLayerGroup} /> {tr("Series & Volume", "Série & Tomaison")}
                             </span>
                             {book?.series?.name ? (
                                 <strong className="book-edit-dialog__series-name">
-                                    {book.series.name}{book.volume != null ? ` — Tome ${book.volume}` : ""}
+                                    {book.series.name}{book.volume != null ? ` — ${tr(`Volume ${book.volume}`, `Tome ${book.volume}`)}` : ""}
                                 </strong>
                             ) : (
-                                <span className="book-edit-dialog__series-empty">Aucune série associée (pas de tomaison)</span>
+                                <span className="book-edit-dialog__series-empty">{tr("No linked series (no volume)", "Aucune série associée (pas de tomaison)")}</span>
                             )}
                         </div>
                         <button
@@ -2091,7 +2101,7 @@ export default function BookPage() {
                             onClick={handleOpenSeriesModal}
                         >
                             <FontAwesomeIcon icon={book?.series?.name ? faPen : faPlus} />
-                            <span>{book?.series?.name ? "Modifier la série / tome" : "Associer à une série"}</span>
+                            <span>{book?.series?.name ? tr("Edit series / volume", "Modifier la série / tome") : tr("Link to a series", "Associer à une série")}</span>
                         </button>
                     </div>
 
@@ -2100,14 +2110,14 @@ export default function BookPage() {
                         <div className="tx-dialog__field">
                             <label>
                                 <FontAwesomeIcon icon={faBook} />
-                                <span>Titre de l'album *</span>
+                                <span>{tr("Book title *", "Titre de l'album *")}</span>
                             </label>
                             <input
                                 type="text"
                                 required
                                 value={editTitle}
                                 onChange={(e) => setEditTitle(e.target.value)}
-                                placeholder="Titre de l'ouvrage"
+                                placeholder={tr("Book title", "Titre de l'ouvrage")}
                             />
                         </div>
 
@@ -2116,7 +2126,7 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faCalendarDays} />
-                                    <span>Date de sortie</span>
+                                    <span>{tr("Release date", "Date de sortie")}</span>
                                 </label>
                                 <input
                                     type="date"
@@ -2144,27 +2154,27 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faBuilding} />
-                                    <span>Éditeur</span>
+                                    <span>{tr("Publisher", "Éditeur")}</span>
                                 </label>
                                 <SearchableSelect
                                     value={editEditorName}
                                     onChange={setEditEditorName}
                                     options={editorOptions.map((ed) => ed.name)}
-                                    placeholder="Rechercher ou saisir un éditeur..."
+                                    placeholder={tr("Search or enter a publisher...", "Rechercher ou saisir un éditeur...")}
                                 />
                             </div>
 
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faLayerGroup} />
-                                    <span>Collection</span>
+                                    <span>{tr("Collection", "Collection")}</span>
                                 </label>
                                 <SearchableSelect
                                     value={editCollectionName}
                                     onChange={setEditCollectionName}
                                     options={collectionOptions.map((col) => col.name)}
-                                    placeholder="Rechercher ou saisir une collection..."
-                                    emptyLabel="-- Aucun (sans collection) --"
+                                    placeholder={tr("Search or enter a collection...", "Rechercher ou saisir une collection...")}
+                                    emptyLabel={tr("-- None (no collection) --", "-- Aucun (sans collection) --")}
                                 />
                             </div>
                         </div>
@@ -2188,7 +2198,7 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faWeightHanging} />
-                                    <span>Poids (g)</span>
+                                    <span>{tr("Weight (g)", "Poids (g)")}</span>
                                 </label>
                                 <input
                                     type="number"
@@ -2205,7 +2215,7 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faRulerCombined} />
-                                    <span>Largeur (mm)</span>
+                                    <span>{tr("Width (mm)", "Largeur (mm)")}</span>
                                 </label>
                                 <input
                                     type="number"
@@ -2219,7 +2229,7 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faRulerCombined} />
-                                    <span>Hauteur (mm)</span>
+                                    <span>{tr("Height (mm)", "Hauteur (mm)")}</span>
                                 </label>
                                 <input
                                     type="number"
@@ -2233,7 +2243,7 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faRulerCombined} />
-                                    <span>Épaisseur (mm)</span>
+                                    <span>{tr("Thickness (mm)", "Épaisseur (mm)")}</span>
                                 </label>
                                 <input
                                     type="number"
@@ -2250,7 +2260,7 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faTag} />
-                                    <span>Prix (€)</span>
+                                    <span>{tr("Price (€)", "Prix (€)")}</span>
                                 </label>
                                 <input
                                     type="number"
@@ -2265,13 +2275,13 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faBookBookmark} />
-                                    <span>Format / Type</span>
+                                    <span>{tr("Format / Type", "Format / Type")}</span>
                                 </label>
                                 <SearchableSelect
                                     value={editType}
                                     onChange={setEditType}
                                     options={typeOptions}
-                                    placeholder="Rechercher ou choisir un format..."
+                                    placeholder={tr("Search or choose a format...", "Rechercher ou choisir un format...")}
                                     openDirection="up"
                                 />
                             </div>
@@ -2284,7 +2294,7 @@ export default function BookPage() {
                                 onClick={() => setEditModalOpen(false)}
                                 disabled={savingBookInfo}
                             >
-                                Annuler
+                                {tr("Cancel", "Annuler")}
                             </button>
                             <button
                                 type="submit"
@@ -2292,7 +2302,7 @@ export default function BookPage() {
                                 className="tx-dialog__btn-submit tx-dialog__btn-submit--bought"
                             >
                                 <FontAwesomeIcon icon={faCheck} />
-                                <span>{savingBookInfo ? "Enregistrement..." : "Enregistrer les modifications"}</span>
+                                <span>{savingBookInfo ? tr("Saving...", "Enregistrement...") : tr("Save changes", "Enregistrer les modifications")}</span>
                             </button>
                         </div>
                     </form>
@@ -2320,7 +2330,7 @@ export default function BookPage() {
                     <div className="cover-dialog__header">
                         <div className="cover-dialog__header-title">
                             <FontAwesomeIcon icon={faImage} />
-                            <h3>Changer la couverture</h3>
+                            <h3>{tr("Change cover", "Changer la couverture")}</h3>
                         </div>
                         <button
                             type="button"
@@ -2335,7 +2345,7 @@ export default function BookPage() {
 
                     {book && (
                         <p className="cover-dialog__subtitle">
-                            Choisissez une nouvelle image pour <strong>« {book.title} »</strong>. Elle sera automatiquement redimensionnée et convertie en WebP par <code>service-media</code>.
+                            {tr("Choose a new image for", "Choisissez une nouvelle image pour")} <strong>« {book.title} »</strong>. {tr("It will be automatically resized and converted to WebP by", "Elle sera automatiquement redimensionnée et convertie en WebP par")} <code>service-media</code>.
                         </p>
                     )}
 
@@ -2347,7 +2357,7 @@ export default function BookPage() {
                             disabled={uploadingCover}
                         >
                             <FontAwesomeIcon icon={faUpload} />
-                            <span>Fichier local</span>
+                            <span>{tr("Local file", "Fichier local")}</span>
                         </button>
                         <button
                             type="button"
@@ -2356,7 +2366,7 @@ export default function BookPage() {
                             disabled={uploadingCover}
                         >
                             <FontAwesomeIcon icon={faLink} />
-                            <span>Depuis une URL</span>
+                            <span>{tr("From URL", "Depuis une URL")}</span>
                         </button>
                     </div>
 
@@ -2386,21 +2396,21 @@ export default function BookPage() {
                                 />
                                 <FontAwesomeIcon icon={faUpload} className="cover-dialog__dropzone-icon" />
                                 <span className="cover-dialog__dropzone-title">
-                                    {coverFile ? coverFile.name : "Cliquez ou glissez-déposez une image ici"}
+                                    {coverFile ? coverFile.name : tr("Click or drag and drop an image here", "Cliquez ou glissez-déposez une image ici")}
                                 </span>
                                 <span className="cover-dialog__dropzone-hint">
-                                    JPG, PNG, WebP (optimisé automatiquement en WebP)
+                                    {tr("JPG, PNG, WebP (automatically optimized to WebP)", "JPG, PNG, WebP (optimisé automatiquement en WebP)")}
                                 </span>
                             </div>
                         ) : (
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faLink} />
-                                    <span>URL de l'image *</span>
+                                    <span>{tr("Image URL *", "URL de l'image *")}</span>
                                 </label>
                                 <input
                                     type="url"
-                                    placeholder="https://exemple.com/couverture.jpg"
+                                    placeholder={tr("https://example.com/cover.jpg", "https://exemple.com/couverture.jpg")}
                                     value={coverRemoteUrl}
                                     onChange={(e) => setCoverRemoteUrl(e.target.value)}
                                     required
@@ -2410,28 +2420,28 @@ export default function BookPage() {
 
                         <div className="cover-dialog__preview-section">
                             <div className="cover-dialog__preview-col">
-                                <span className="cover-dialog__preview-label">Actuelle</span>
+                                <span className="cover-dialog__preview-label">{tr("Current", "Actuelle")}</span>
                                 <div className="cover-dialog__preview-box">
                                     {book?.coverUrl ? (
-                                        <img src={book.coverUrl} alt="Couverture actuelle" />
+                                        <img src={book.coverUrl} alt={tr("Current cover", "Couverture actuelle")} />
                                     ) : (
                                         <div className="cover-dialog__preview-empty">
                                             <FontAwesomeIcon icon={faBook} />
-                                            <span>Aucune</span>
+                                            <span>{tr("None", "Aucune")}</span>
                                         </div>
                                     )}
                                 </div>
                             </div>
 
                             <div className="cover-dialog__preview-col">
-                                <span className="cover-dialog__preview-label">Nouvelle</span>
+                                <span className="cover-dialog__preview-label">{tr("New", "Nouvelle")}</span>
                                 <div className="cover-dialog__preview-box cover-dialog__preview-box--new">
                                     {currentCoverPreview ? (
-                                        <img src={currentCoverPreview} alt="Aperçu nouvelle couverture" />
+                                        <img src={currentCoverPreview} alt={tr("New cover preview", "Aperçu nouvelle couverture")} />
                                     ) : (
                                         <div className="cover-dialog__preview-empty">
                                             <FontAwesomeIcon icon={faImage} />
-                                            <span>Aperçu</span>
+                                            <span>{tr("Preview", "Aperçu")}</span>
                                         </div>
                                     )}
                                 </div>
@@ -2445,7 +2455,7 @@ export default function BookPage() {
                                 onClick={handleCloseCoverModal}
                                 disabled={uploadingCover}
                             >
-                                Annuler
+                                {tr("Cancel", "Annuler")}
                             </button>
                             <button
                                 type="submit"
@@ -2453,7 +2463,7 @@ export default function BookPage() {
                                 className="tx-dialog__btn-submit tx-dialog__btn-submit--bought"
                             >
                                 <FontAwesomeIcon icon={faCheck} />
-                                <span>{uploadingCover ? "Envoi vers service-media..." : "Enregistrer la couverture"}</span>
+                                <span>{uploadingCover ? tr("Uploading to service-media...", "Envoi vers service-media...") : tr("Save cover", "Enregistrer la couverture")}</span>
                             </button>
                         </div>
                     </form>
@@ -2480,7 +2490,7 @@ export default function BookPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                         <FontAwesomeIcon icon={faLayerGroup} style={{ color: "var(--accent-primary)" }} />
                         <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>
-                            {book?.series ? "Gérer la série de cet album" : "Associer à une série"}
+                            {book?.series ? tr("Manage this book's series", "Gérer la série de cet album") : tr("Link to a series", "Associer à une série")}
                         </h3>
                     </div>
                     <button
@@ -2509,7 +2519,7 @@ export default function BookPage() {
                             cursor: "pointer"
                         }}
                     >
-                        Série existante
+                        {tr("Existing series", "Série existante")}
                     </button>
                     <button
                         type="button"
@@ -2526,7 +2536,7 @@ export default function BookPage() {
                             cursor: "pointer"
                         }}
                     >
-                        + Nouvelle série
+                        {tr("+ New series", "+ Nouvelle série")}
                     </button>
                 </div>
 
@@ -2534,7 +2544,7 @@ export default function BookPage() {
                     <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                         <div className="tx-dialog__field">
                             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                Sélectionner une série
+                                {tr("Select a series", "Sélectionner une série")}
                             </label>
                             <SeriesSearchableSelect
                                 selectedId={selectedSeriesId}
@@ -2550,7 +2560,7 @@ export default function BookPage() {
                         {selectedSeriesId ? (
                             <div>
                                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                    Position dans la série (Tome n°)
+                                    {tr("Position in series (Volume #)", "Position dans la série (Tome n°)")}
                                 </label>
                                 <input
                                     type="number"
@@ -2570,7 +2580,7 @@ export default function BookPage() {
                             </div>
                         ) : (
                             <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)", fontStyle: "italic" }}>
-                                Sans série associée, cet album n'aura pas de tomaison.
+                                {tr("Without a linked series, this book will not have a volume number.", "Sans série associée, cet album n'aura pas de tomaison.")}
                             </p>
                         )}
                     </div>
@@ -2578,11 +2588,11 @@ export default function BookPage() {
                     <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                         <div>
                             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                Nom de la nouvelle série *
+                                {tr("New series name *", "Nom de la nouvelle série *")}
                             </label>
                             <input
                                 type="text"
-                                placeholder="ex: Batman Rebirth, Blackwater..."
+                                placeholder={tr("e.g. Batman Rebirth, Blackwater...", "ex: Batman Rebirth, Blackwater...")}
                                 value={newSeriesName}
                                 onChange={(e) => setNewSeriesName(e.target.value)}
                                 style={{
@@ -2600,7 +2610,7 @@ export default function BookPage() {
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                             <div>
                                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                    Catégorie
+                                    {tr("Category", "Catégorie")}
                                 </label>
                                 <select
                                     value={newSeriesCategory}
@@ -2615,17 +2625,17 @@ export default function BookPage() {
                                         outline: "none"
                                     }}
                                 >
-                                    <option value={3} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Comics</option>
-                                    <option value={2} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Bande dessinée</option>
-                                    <option value={4} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Manga</option>
-                                    <option value={5} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Roman Graphique</option>
-                                    <option value={1} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Roman</option>
+                                    <option value={3} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{translateCategory("Comics")}</option>
+                                    <option value={2} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{translateCategory("Bande dessinée")}</option>
+                                    <option value={4} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{translateCategory("Manga")}</option>
+                                    <option value={5} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{translateCategory("Roman Graphique")}</option>
+                                    <option value={1} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{translateCategory("Roman")}</option>
                                 </select>
                             </div>
 
                             <div>
                                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                    Position dans la série (Tome n°)
+                                    {tr("Position in series (Volume #)", "Position dans la série (Tome n°)")}
                                 </label>
                                 <input
                                     type="number"
@@ -2667,7 +2677,7 @@ export default function BookPage() {
                             }}
                         >
                             <FontAwesomeIcon icon={faTrash} />
-                            <span>Retirer de la série</span>
+                            <span>{tr("Remove from series", "Retirer de la série")}</span>
                         </button>
                     ) : <div />}
 
@@ -2685,7 +2695,7 @@ export default function BookPage() {
                                 fontWeight: 600
                             }}
                         >
-                            Annuler
+                            {tr("Cancel", "Annuler")}
                         </button>
                         <button
                             type="button"
@@ -2701,7 +2711,7 @@ export default function BookPage() {
                                 fontWeight: 600
                             }}
                         >
-                            {savingSeries ? "Enregistrement..." : "Valider"}
+                            {savingSeries ? tr("Saving...", "Enregistrement...") : tr("Confirm", "Valider")}
                         </button>
                     </div>
                 </div>
@@ -2755,8 +2765,8 @@ export default function BookPage() {
                             <div className="follow-dialog__body">
                                 <p className="follow-dialog__desc">
                                     {isFollowed
-                                        ? `Vous êtes abonné aux parutions de cet élément. Vous recevrez les actualités et nouveaux albums associés.`
-                                        : `Abonnez-vous à cet élément pour être alerté des futures sorties et facilement le retrouver dans vos suivis.`}
+                                        ? tr("You are following releases for this item. You will receive updates and related new books.", "Vous êtes abonné aux parutions de cet élément. Vous recevrez les actualités et nouveaux albums associés.")
+                                        : tr("Follow this item to be notified of future releases and easily find it in your follows.", "Abonnez-vous à cet élément pour être alerté des futures sorties et facilement le retrouver dans vos suivis.")}
                                 </p>
 
                                 <div className="follow-dialog__actions">
@@ -2767,7 +2777,7 @@ export default function BookPage() {
                                         disabled={followProcessing}
                                     >
                                         <FontAwesomeIcon icon={isFollowed ? faBellSlash : faBell} />
-                                        <span>{isFollowed ? "Ne plus suivre" : "Suivre"}</span>
+                                        <span>{isFollowed ? tr("Unfollow", "Ne plus suivre") : tr("Follow", "Suivre")}</span>
                                     </button>
                                 </div>
                             </div>
@@ -2796,26 +2806,26 @@ export default function BookPage() {
                     <div className="book-page__transactions-header">
                         <div className="book-page__transactions-header-title">
                             <FontAwesomeIcon icon={faCoins} />
-                            <h3>Historique d'achat {transactions.length > 0 ? `(${transactions.length})` : ""}</h3>
+                            <h3>{tr("Purchase history", "Historique d'achat")} {transactions.length > 0 ? `(${transactions.length})` : ""}</h3>
                         </div>
                         <div className="book-page__transactions-header-actions">
                             <button
                                 type="button"
                                 className="book-page__tx-btn book-page__tx-btn--buy"
                                 onClick={() => handleOpenPurchaseModal("BOUGHT")}
-                                title="Ajouter un achat pour cet album"
+                                title={tr("Add a purchase for this book", "Ajouter un achat pour cet album")}
                             >
                                 <FontAwesomeIcon icon={faCartShopping} />
-                                <span>Ajouter un achat</span>
+                                <span>{tr("Add purchase", "Ajouter un achat")}</span>
                             </button>
                             <button
                                 type="button"
                                 className="book-page__tx-btn book-page__tx-btn--gift"
                                 onClick={() => handleOpenPurchaseModal("GIFT")}
-                                title="Indiquer que cet album a été reçu en cadeau"
+                                title={tr("Mark this book as received as a gift", "Indiquer que cet album a été reçu en cadeau")}
                             >
                                 <FontAwesomeIcon icon={faGift} />
-                                <span>Reçu en cadeau</span>
+                                <span>{tr("Received as gift", "Reçu en cadeau")}</span>
                             </button>
                             <button
                                 type="button"
@@ -2832,25 +2842,25 @@ export default function BookPage() {
                         <div className="book-page__transactions-summary">
                             {hasBought && (
                                 <div className="book-page__summary-pill book-page__summary-pill--bought">
-                                    <span>Total acheté :</span>
+                                    <span>{tr("Total bought:", "Total acheté :")}</span>
                                     <strong>{totalBought.toFixed(2).replace('.', ',')} €</strong>
                                 </div>
                             )}
                             {hasGift && (
                                 <div className="book-page__summary-pill book-page__summary-pill--gift">
-                                    <span>Cadeaux reçus :</span>
+                                    <span>{tr("Gifts received:", "Cadeaux reçus :")}</span>
                                     <strong>{giftCount}</strong>
                                 </div>
                             )}
                             {hasSold && (
                                 <div className="book-page__summary-pill book-page__summary-pill--sold">
-                                    <span>Total vendu :</span>
+                                    <span>{tr("Total sold:", "Total vendu :")}</span>
                                     <strong>{totalSold.toFixed(2).replace('.', ',')} €</strong>
                                 </div>
                             )}
                             {(hasBought || hasGift) && hasSold && (
                                 <div className="book-page__summary-pill">
-                                    <span>Solde :</span>
+                                    <span>{tr("Balance:", "Solde :")}</span>
                                     <strong style={{ color: totalSold >= totalBought ? "var(--accent-primary)" : "#f87171" }}>
                                         {(totalSold - totalBought >= 0 ? "+" : "") + (totalSold - totalBought).toFixed(2).replace('.', ',')} €
                                     </strong>
@@ -2861,11 +2871,11 @@ export default function BookPage() {
 
                     {loadingTransactions ? (
                         <div className="book-page__transactions-empty">
-                            <p>Chargement de l'historique...</p>
+                            <p>{tr("Loading history...", "Chargement de l'historique...")}</p>
                         </div>
                     ) : transactions.length === 0 ? (
                         <div className="book-page__transactions-empty">
-                            <p>Aucun historique d'achat ou de vente renseigné pour cet album.</p>
+                            <p>{tr("No purchase or sale history recorded for this book.", "Aucun historique d'achat ou de vente renseigné pour cet album.")}</p>
                             <div style={{ marginTop: "10px", display: "flex", justifyContent: "center", gap: "8px", flexWrap: "wrap" }}>
                                 <button
                                     type="button"
@@ -2873,7 +2883,7 @@ export default function BookPage() {
                                     onClick={() => handleOpenPurchaseModal("BOUGHT")}
                                 >
                                     <FontAwesomeIcon icon={faCartShopping} />
-                                    <span>Ajouter un premier achat</span>
+                                    <span>{tr("Add first purchase", "Ajouter un premier achat")}</span>
                                 </button>
                                 <button
                                     type="button"
@@ -2881,7 +2891,7 @@ export default function BookPage() {
                                     onClick={() => handleOpenPurchaseModal("GIFT")}
                                 >
                                     <FontAwesomeIcon icon={faGift} />
-                                    <span>Reçu en cadeau</span>
+                                    <span>{tr("Received as gift", "Reçu en cadeau")}</span>
                                 </button>
                             </div>
                         </div>
@@ -2896,7 +2906,7 @@ export default function BookPage() {
                                         ? "book-page__tx-badge--gift"
                                         : "book-page__tx-badge--sold";
                                 const badgeIcon = isBuy ? faCartShopping : isGift ? faGift : faCoins;
-                                const badgeLabel = isBuy ? "Acheté" : isGift ? "Cadeau" : "Vendu";
+                                const badgeLabel = isBuy ? tr("Bought", "Acheté") : isGift ? tr("Gift", "Cadeau") : tr("Sold", "Vendu");
                                 return (
                                     <div key={tx.id} className="book-page__tx-item">
                                         <div className="book-page__tx-left">
@@ -2909,16 +2919,16 @@ export default function BookPage() {
                                                 <div className="book-page__tx-date-location">
                                                     <span>
                                                         {tx.date
-                                                            ? new Date(tx.date + 'T00:00:00').toLocaleDateString('fr-FR', {
+                                                            ? new Date(tx.date + 'T00:00:00').toLocaleDateString(locale, {
                                                                 day: 'numeric',
                                                                 month: 'short',
                                                                 year: 'numeric'
                                                             })
-                                                            : "Date non renseignée"}
+                                                            : tr("Date not specified", "Date non renseignée")}
                                                     </span>
 
                                                     {tx.location && (
-                                                        <span className="book-page__tx-location" title={isBuy ? "Lieu d'achat" : isGift ? "Offert par / Occasion" : "Canal / Acheteur"}>
+                                                        <span className="book-page__tx-location" title={isBuy ? tr("Purchase location", "Lieu d'achat") : isGift ? tr("Gifted by / Occasion", "Offert par / Occasion") : tr("Platform / Buyer", "Canal / Acheteur")}>
                                                             <FontAwesomeIcon icon={isGift ? faGift : faStore} />
                                                             <span>{tx.location}</span>
                                                         </span>
@@ -2936,14 +2946,14 @@ export default function BookPage() {
 
                                         <div className="book-page__tx-right">
                                             <span className={`book-page__tx-price ${isBuy ? 'book-page__tx-price--bought' : isGift ? 'book-page__tx-price--gift' : 'book-page__tx-price--sold'}`}>
-                                                {isGift ? "Offert" : tx.price != null ? `${Number(tx.price).toFixed(2).replace('.', ',')} €` : "- €"}
+                                                {isGift ? tr("Gifted", "Offert") : tx.price != null ? `${Number(tx.price).toFixed(2).replace('.', ',')} €` : "- €"}
                                             </span>
 
                                             <button
                                                 type="button"
                                                 className="book-page__tx-delete"
                                                 onClick={() => handleDeleteTransaction(tx.id)}
-                                                title="Supprimer cette ligne"
+                                                title={tr("Delete this entry", "Supprimer cette ligne")}
                                             >
                                                 <FontAwesomeIcon icon={faTrashCan} />
                                             </button>
@@ -2979,7 +2989,7 @@ export default function BookPage() {
                                 icon={buyType === "GIFT" ? faGift : faCartShopping}
                                 style={{ color: buyType === "GIFT" ? "#ec4899" : "var(--accent-primary)" }}
                             />
-                            <h3>{buyType === "GIFT" ? "Reçu en cadeau" : "Ajouter un achat"}</h3>
+                            <h3>{buyType === "GIFT" ? tr("Received as gift", "Reçu en cadeau") : tr("Add purchase", "Ajouter un achat")}</h3>
                         </div>
                         <button
                             type="button"
@@ -3004,7 +3014,7 @@ export default function BookPage() {
                             disabled={submittingTx}
                         >
                             <FontAwesomeIcon icon={faCartShopping} />
-                            <span>Achat</span>
+                            <span>{tr("Purchase", "Achat")}</span>
                         </button>
                         <button
                             type="button"
@@ -3013,16 +3023,16 @@ export default function BookPage() {
                             disabled={submittingTx}
                         >
                             <FontAwesomeIcon icon={faGift} />
-                            <span>Cadeau reçu</span>
+                            <span>{tr("Gift received", "Cadeau reçu")}</span>
                         </button>
                     </div>
 
                     {book && (
                         <p style={{ margin: "0 0 4px", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
                             {buyType === "GIFT" ? (
-                                <>Renseignez les détails du cadeau pour <strong>« {book.title} »</strong> :</>
+                                <>{tr("Enter gift details for", "Renseignez les détails du cadeau pour")} <strong>« {book.title} »</strong> :</>
                             ) : (
-                                <>Renseignez les détails d'achat pour <strong>« {book.title} »</strong> :</>
+                                <>{tr("Enter purchase details for", "Renseignez les détails d'achat pour")} <strong>« {book.title} »</strong> :</>
                             )}
                         </p>
                     )}
@@ -3033,7 +3043,7 @@ export default function BookPage() {
                                 <div className="tx-dialog__field">
                                     <label>
                                         <FontAwesomeIcon icon={faCalendarDays} />
-                                        <span>Date d'achat *</span>
+                                        <span>{tr("Purchase date *", "Date d'achat *")}</span>
                                     </label>
                                     <input
                                         type="date"
@@ -3046,13 +3056,13 @@ export default function BookPage() {
                                 <div className="tx-dialog__field">
                                     <label>
                                         <FontAwesomeIcon icon={faTag} />
-                                        <span>Prix d'achat (€)</span>
+                                        <span>{tr("Purchase price (€)", "Prix d'achat (€)")}</span>
                                     </label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         min="0"
-                                        placeholder="ex: 15.00"
+                                        placeholder={tr("e.g. 15.00", "ex: 15.00")}
                                         value={buyPrice}
                                         onChange={(e) => setBuyPrice(e.target.value)}
                                     />
@@ -3062,7 +3072,7 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faCalendarDays} />
-                                    <span>Date de réception *</span>
+                                    <span>{tr("Date received *", "Date de réception *")}</span>
                                 </label>
                                 <input
                                     type="date"
@@ -3076,11 +3086,11 @@ export default function BookPage() {
                         <div className="tx-dialog__field">
                             <label>
                                 <FontAwesomeIcon icon={buyType === "GIFT" ? faGift : faStore} />
-                                <span>{buyType === "GIFT" ? "Offert par / Occasion" : "Lieu d'achat"}</span>
+                                <span>{buyType === "GIFT" ? tr("Gifted by / Occasion", "Offert par / Occasion") : tr("Purchase location", "Lieu d'achat")}</span>
                             </label>
                             <input
                                 type="text"
-                                placeholder={buyType === "GIFT" ? "ex: Anniversaire, Noël, Offert par un ami..." : "ex: Librairie Album, Fnac, Vinted, Brocante..."}
+                                placeholder={buyType === "GIFT" ? tr("e.g. Birthday, Christmas, From a friend...", "ex: Anniversaire, Noël, Offert par un ami...") : tr("e.g. Local bookstore, Fnac, Vinted...", "ex: Librairie Album, Fnac, Vinted, Brocante...")}
                                 value={buyLocation}
                                 onChange={(e) => setBuyLocation(e.target.value)}
                             />
@@ -3089,10 +3099,10 @@ export default function BookPage() {
                         <div className="tx-dialog__field">
                             <label>
                                 <FontAwesomeIcon icon={faNoteSticky} />
-                                <span>Mémo / Remarques</span>
+                                <span>{tr("Memo / Notes", "Mémo / Remarques")}</span>
                             </label>
                             <textarea
-                                placeholder="ex: Édition spéciale, état neuf, dédicacé..."
+                                placeholder={tr("e.g. Special edition, mint condition, signed...", "ex: Édition spéciale, état neuf, dédicacé...")}
                                 value={buyMemo}
                                 onChange={(e) => setBuyMemo(e.target.value)}
                             />
@@ -3104,7 +3114,7 @@ export default function BookPage() {
                                 className="tx-dialog__btn-cancel"
                                 onClick={() => setPurchaseModalOpen(false)}
                             >
-                                Annuler
+                                {tr("Cancel", "Annuler")}
                             </button>
                             <button
                                 type="submit"
@@ -3114,10 +3124,10 @@ export default function BookPage() {
                                 <FontAwesomeIcon icon={faCheck} />
                                 <span>
                                     {submittingTx
-                                        ? "Enregistrement..."
+                                        ? tr("Saving...", "Enregistrement...")
                                         : buyType === "GIFT"
-                                            ? "Enregistrer le cadeau"
-                                            : "Enregistrer l'achat"}
+                                            ? tr("Save gift", "Enregistrer le cadeau")
+                                            : tr("Save purchase", "Enregistrer l'achat")}
                                 </span>
                             </button>
                         </div>
@@ -3145,13 +3155,13 @@ export default function BookPage() {
                     <div className="tx-dialog__header">
                         <div className="tx-dialog__header-title">
                             <FontAwesomeIcon icon={faTag} style={{ color: "var(--accent-primary)" }} />
-                            <h3>Mettre en vente</h3>
+                            <h3>{tr("List for sale", "Mettre en vente")}</h3>
                         </div>
                         <button
                             type="button"
                             className="tx-dialog__header-close"
                             onClick={() => setListingModalOpen(false)}
-                            aria-label="Fermer"
+                            aria-label={tr("Close", "Fermer")}
                         >
                             <FontAwesomeIcon icon={faXmark} />
                         </button>
@@ -3159,7 +3169,7 @@ export default function BookPage() {
 
                     {book && (
                         <p style={{ margin: "0 0 4px", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
-                            Indiquez les informations de l'annonce pour <strong>« {book.title} »</strong> :
+                            {tr("Enter listing details for", "Indiquez les informations de l'annonce pour")} <strong>« {book.title} »</strong> :
                         </p>
                     )}
 
@@ -3167,14 +3177,14 @@ export default function BookPage() {
                         <div className="tx-dialog__field">
                             <label>
                                 <FontAwesomeIcon icon={faCoins} />
-                                <span>Prix de mise en vente (€)</span>
+                                <span>{tr("Listing price (€)", "Prix de mise en vente (€)")}</span>
                             </label>
                             <input
                                 type="number"
                                 required
                                 step="0.01"
                                 min="0"
-                                placeholder="ex: 12.00"
+                                placeholder={tr("e.g. 12.00", "ex: 12.00")}
                                 value={listingPrice}
                                 onChange={(e) => setListingPrice(e.target.value)}
                             />
@@ -3183,8 +3193,8 @@ export default function BookPage() {
                         <div className="tx-dialog__field">
                             <label>
                                 <FontAwesomeIcon icon={faLink} />
-                                <span>Lien de l'annonce</span>
-                                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>(optionnel)</span>
+                                <span>{tr("Listing URL", "Lien de l'annonce")}</span>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>{tr("(optional)", "(optionnel)")}</span>
                             </label>
                             <input
                                 type="url"
@@ -3200,7 +3210,7 @@ export default function BookPage() {
                                 className="tx-dialog__btn-cancel"
                                 onClick={() => setListingModalOpen(false)}
                             >
-                                Annuler
+                                {tr("Cancel", "Annuler")}
                             </button>
                             <button
                                 type="submit"
@@ -3208,7 +3218,7 @@ export default function BookPage() {
                                 className="tx-dialog__btn-submit"
                             >
                                 <FontAwesomeIcon icon={faCheck} />
-                                <span>{submittingListing ? "Enregistrement..." : "Mettre en vente"}</span>
+                                <span>{submittingListing ? tr("Saving...", "Enregistrement...") : tr("List for sale", "Mettre en vente")}</span>
                             </button>
                         </div>
                     </form>
@@ -3235,13 +3245,13 @@ export default function BookPage() {
                     <div className="tx-dialog__header">
                         <div className="tx-dialog__header-title">
                             <FontAwesomeIcon icon={faCoins} style={{ color: "#f59e0b" }} />
-                            <h3>Renseigner la vente</h3>
+                            <h3>{tr("Record sale", "Renseigner la vente")}</h3>
                         </div>
                         <button
                             type="button"
                             className="tx-dialog__header-close"
                             onClick={() => setSaleModalOpen(false)}
-                            aria-label="Fermer"
+                            aria-label={tr("Close", "Fermer")}
                         >
                             <FontAwesomeIcon icon={faXmark} />
                         </button>
@@ -3249,7 +3259,7 @@ export default function BookPage() {
 
                     {book && (
                         <p style={{ margin: "0 0 4px", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
-                            Renseignez les détails de la vente pour <strong>« {book.title} »</strong> :
+                            {tr("Enter sale details for", "Renseignez les détails de la vente pour")} <strong>« {book.title} »</strong> :
                         </p>
                     )}
 
@@ -3258,8 +3268,8 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faCalendarDays} />
-                                    <span>Date de vente</span>
-                                    <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>(optionnel)</span>
+                                    <span>{tr("Sale date", "Date de vente")}</span>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>{tr("(optional)", "(optionnel)")}</span>
                                 </label>
                                 <input
                                     type="date"
@@ -3271,13 +3281,13 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faCoins} />
-                                    <span>Prix de vente (€)</span>
+                                    <span>{tr("Sale price (€)", "Prix de vente (€)")}</span>
                                 </label>
                                 <input
                                     type="number"
                                     step="0.01"
                                     min="0"
-                                    placeholder="ex: 12.00"
+                                    placeholder={tr("e.g. 12.00", "ex: 12.00")}
                                     value={sellPrice}
                                     onChange={(e) => setSellPrice(e.target.value)}
                                 />
@@ -3287,11 +3297,11 @@ export default function BookPage() {
                         <div className="tx-dialog__field">
                             <label>
                                 <FontAwesomeIcon icon={faStore} />
-                                <span>Lieu / Canal de vente (optionnel)</span>
+                                <span>{tr("Sale location / platform (optional)", "Lieu / Canal de vente (optionnel)")}</span>
                             </label>
                             <input
                                 type="text"
-                                placeholder="ex: Vinted, Brocante, Ami, etc."
+                                placeholder={tr("e.g. Vinted, Flea market, Friend, etc.", "ex: Vinted, Brocante, Ami, etc.")}
                                 value={sellLocation}
                                 onChange={(e) => setSellLocation(e.target.value)}
                             />
@@ -3300,10 +3310,10 @@ export default function BookPage() {
                         <div className="tx-dialog__field">
                             <label>
                                 <FontAwesomeIcon icon={faNoteSticky} />
-                                <span>Mémo / Remarques (optionnel)</span>
+                                <span>{tr("Memo / Notes (optional)", "Mémo / Remarques (optionnel)")}</span>
                             </label>
                             <textarea
-                                placeholder="ex: Remise en main propre, vendu en lot..."
+                                placeholder={tr("e.g. Local pickup, sold as a bundle...", "ex: Remise en main propre, vendu en lot...")}
                                 value={sellMemo}
                                 onChange={(e) => setSellMemo(e.target.value)}
                             />
@@ -3315,7 +3325,7 @@ export default function BookPage() {
                                 className="tx-dialog__btn-cancel"
                                 onClick={() => setSaleModalOpen(false)}
                             >
-                                Annuler
+                                {tr("Cancel", "Annuler")}
                             </button>
                             <button
                                 type="submit"
@@ -3323,7 +3333,7 @@ export default function BookPage() {
                                 className="tx-dialog__btn-submit tx-dialog__btn-submit--sold"
                             >
                                 <FontAwesomeIcon icon={faCheck} />
-                                <span>{submittingTx ? "Validation..." : "Valider la vente"}</span>
+                                <span>{submittingTx ? tr("Confirming...", "Validation...") : tr("Confirm sale", "Valider la vente")}</span>
                             </button>
                         </div>
                     </form>

@@ -89,6 +89,10 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   overflow: hidden;
+
+  &:has(.language-selector) {
+    overflow: visible;
+  }
   box-shadow: var(--shadow-sm);
 
   &__header {
@@ -377,6 +381,51 @@
 
     @media (max-width: 640px) {
       width: 100%;
+    }
+  }
+}
+
+.settings-field-block {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.settings-field-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+.settings-inline-field {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  width: 100%;
+
+  .form-group {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+  }
+
+  .settings-btn {
+    width: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+    align-self: flex-end;
+  }
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    align-items: stretch;
+
+    .form-group,
+    .settings-btn {
+      width: 100%;
+      align-self: stretch;
     }
   }
 }

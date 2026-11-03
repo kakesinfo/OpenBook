@@ -24,6 +24,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import UserStatisticsDTO from "../../dto/UserStatistics.dto.ts";
 import PieChart from "../../components/Charts/PieChart.tsx";
 import "./StatisticsPage.scss";
@@ -40,15 +41,16 @@ function StatisticsSectionPlaceholder() {
 
 export default function StatisticsPage() {
     const session = useSession();
+    const { tr, locale, translateCategory } = useLanguage();
     const [stats, setStats] = useState<UserStatisticsDTO | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [visibleSections, setVisibleSections] = useState(0);
-    const [error, setError] = useState<string | null>(null);
+    const [errorType, setErrorType] = useState<"load" | "network" | null>(null);
 
     const fetchStatistics = async () => {
         setLoading(true);
         setVisibleSections(0);
-        setError(null);
+        setErrorType(null);
         try {
             const resp = await session.customFetch("/user/statistics", { method: "GET" });
             if (resp.ok) {
@@ -59,10 +61,10 @@ export default function StatisticsPage() {
                     window.setTimeout(() => setVisibleSections(section), (index + 1) * 180);
                 });
             } else {
-                setError("Impossible de charger les statistiques.");
+                setErrorType("load");
             }
         } catch {
-            setError("Erreur réseau lors de la récupération des données.");
+            setErrorType("network");
         } finally {
             setLoading(false);
         }
@@ -71,6 +73,13 @@ export default function StatisticsPage() {
     useEffect(() => {
         fetchStatistics();
     }, [session]);
+
+    const error =
+        errorType === "load"
+            ? tr("Unable to load statistics.", "Impossible de charger les statistiques.")
+            : errorType === "network"
+            ? tr("Network error while fetching data.", "Erreur réseau lors de la récupération des données.")
+            : null;
 
     // Estimated reading hours (~1.5 minutes per page / 40 pages per hour)
     const estimatedReadingHours = stats && stats.totalPages > 0
@@ -82,7 +91,7 @@ export default function StatisticsPage() {
         try {
             const d = new Date(dateStr);
             if (isNaN(d.getTime())) return dateStr;
-            return d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" });
+            return d.toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" });
         } catch {
             return dateStr;
         }
@@ -100,9 +109,12 @@ export default function StatisticsPage() {
         <div className="stats-page">
             <WrapperHeader>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <h2>Statistiques</h2>
+                    <h2>{tr("Statistics", "Statistiques")}</h2>
                     <span style={{ fontSize: "0.9rem", color: "var(--text-muted, #94a3b8)" }}>
-                        Aperçu détaillé, progression de lecture et records de votre bibliothèque
+                        {tr(
+                            "Detailed overview, reading progress, and records of your library",
+                            "Aperçu détaillé, progression de lecture et records de votre bibliothèque"
+                        )}
                     </span>
                 </div>
             </WrapperHeader>
@@ -138,7 +150,7 @@ export default function StatisticsPage() {
                                 cursor: "pointer"
                             }}
                         >
-                            Réessayer
+                            {tr("Retry", "Réessayer")}
                         </button>
                     </div>
                 )}
@@ -147,10 +159,13 @@ export default function StatisticsPage() {
                     <div className="stats-page__section-card" style={{ textAlign: "center", padding: "48px 24px" }}>
                         <FontAwesomeIcon icon={faBook} style={{ fontSize: "2.5rem", color: "var(--text-muted, #64748b)", marginBottom: "16px" }} />
                         <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary, #fff)", marginBottom: "8px" }}>
-                            Votre bibliothèque est vide
+                            {tr("Your library is empty", "Votre bibliothèque est vide")}
                         </h3>
                         <p style={{ color: "var(--text-muted, #94a3b8)", maxWidth: "420px", margin: "0 auto 20px" }}>
-                            Ajoutez vos premiers albums ou séries pour découvrir vos statistiques personnalisées, votre état de lecture et la carte du monde !
+                            {tr(
+                                "Add your first books or series to discover your personalized statistics, reading status, and more!",
+                                "Ajoutez vos premiers albums ou séries pour découvrir vos statistiques personnalisées, votre état de lecture et la carte du monde !"
+                            )}
                         </p>
                         <Link
                             to="/app/collection"
@@ -166,7 +181,7 @@ export default function StatisticsPage() {
                                 textDecoration: "none"
                             }}
                         >
-                            <span>Explorer ma collection</span>
+                            <span>{tr("Explore my collection", "Explorer ma collection")}</span>
                             <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.85rem" }} />
                         </Link>
                     </div>
@@ -182,12 +197,12 @@ export default function StatisticsPage() {
                                     <FontAwesomeIcon icon={faBook} />
                                 </div>
                                 <div className="stats-page__metric-body">
-                                    <div className="stats-page__metric-label">Albums possédés</div>
+                                    <div className="stats-page__metric-label">{tr("Owned books", "Albums possédés")}</div>
                                     <div className="stats-page__metric-value">
                                         {stats.totalOwnedBooks}
                                     </div>
                                     <div className="stats-page__metric-subtext">
-                                        Dans votre collection
+                                        {tr("In your collection", "Dans votre collection")}
                                     </div>
                                 </div>
                             </div>
@@ -198,14 +213,17 @@ export default function StatisticsPage() {
                                     <FontAwesomeIcon icon={faLayerGroup} />
                                 </div>
                                 <div className="stats-page__metric-body">
-                                    <div className="stats-page__metric-label">Séries</div>
+                                    <div className="stats-page__metric-label">{tr("Series", "Séries")}</div>
                                     <div className="stats-page__metric-value">
                                         {stats.totalSeriesCount}
                                     </div>
                                     <div className="stats-page__metric-subtext">
                                         {stats.completedSeriesCount > 0
-                                            ? `${stats.completedSeriesCount} complétée${stats.completedSeriesCount > 1 ? "s" : ""}`
-                                            : "Séries représentées"}
+                                            ? tr(
+                                                  `${stats.completedSeriesCount} completed`,
+                                                  `${stats.completedSeriesCount} complétée${stats.completedSeriesCount > 1 ? "s" : ""}`
+                                              )
+                                            : tr("Represented series", "Séries représentées")}
                                     </div>
                                 </div>
                             </div>
@@ -216,12 +234,12 @@ export default function StatisticsPage() {
                                     <FontAwesomeIcon icon={faFileLines} />
                                 </div>
                                 <div className="stats-page__metric-body">
-                                    <div className="stats-page__metric-label">Total de pages</div>
+                                    <div className="stats-page__metric-label">{tr("Total pages", "Total de pages")}</div>
                                     <div className="stats-page__metric-value">
-                                        {stats.totalPages.toLocaleString("fr-FR")}
+                                        {stats.totalPages.toLocaleString(locale)}
                                     </div>
                                     <div className="stats-page__metric-subtext">
-                                        ~{stats.averagePagesPerBook} pages / album
+                                        ~{stats.averagePagesPerBook} {tr("pages / book", "pages / album")}
                                     </div>
                                 </div>
                             </div>
@@ -232,12 +250,14 @@ export default function StatisticsPage() {
                                     <FontAwesomeIcon icon={faCoins} />
                                 </div>
                                 <div className="stats-page__metric-body">
-                                    <div className="stats-page__metric-label">Valeur estimée</div>
+                                    <div className="stats-page__metric-label">{tr("Estimated value", "Valeur estimée")}</div>
                                     <div className="stats-page__metric-value">
-                                        {stats.totalEstimatedValue > 0 ? `${stats.totalEstimatedValue.toLocaleString("fr-FR")} €` : "—"}
+                                        {stats.totalEstimatedValue > 0 ? `${stats.totalEstimatedValue.toLocaleString(locale)} €` : "—"}
                                     </div>
                                     <div className="stats-page__metric-subtext">
-                                        {stats.averagePrice > 0 ? `~${stats.averagePrice.toFixed(2)} € / album` : "Prix non renseigné"}
+                                        {stats.averagePrice > 0
+                                            ? `~${stats.averagePrice.toFixed(2)} € / ${tr("book", "album")}`
+                                            : tr("Price not specified", "Prix non renseigné")}
                                     </div>
                                 </div>
                             </div>
@@ -248,12 +268,12 @@ export default function StatisticsPage() {
                                     <FontAwesomeIcon icon={faHourglassHalf} />
                                 </div>
                                 <div className="stats-page__metric-body">
-                                    <div className="stats-page__metric-label">Temps estimé</div>
+                                    <div className="stats-page__metric-label">{tr("Estimated time", "Temps estimé")}</div>
                                     <div className="stats-page__metric-value">
                                         ~{estimatedReadingHours} h
                                     </div>
                                     <div className="stats-page__metric-subtext">
-                                        Rythme : ~40 pages / heure
+                                        {tr("Pace: ~40 pages / hour", "Rythme : ~40 pages / heure")}
                                     </div>
                                 </div>
                             </div>
@@ -264,12 +284,14 @@ export default function StatisticsPage() {
                                     <FontAwesomeIcon icon={faHeart} />
                                 </div>
                                 <div className="stats-page__metric-body">
-                                    <div className="stats-page__metric-label">Dans les souhaits</div>
+                                    <div className="stats-page__metric-label">{tr("In wishlist", "Dans les souhaits")}</div>
                                     <div className="stats-page__metric-value">
                                         {stats.totalWishlistBooks}
                                     </div>
                                     <div className="stats-page__metric-subtext">
-                                        {stats.totalWishlistBooks > 1 ? "Albums convoités" : "Album convoité"}
+                                        {stats.totalWishlistBooks > 1
+                                            ? tr("Desired books", "Albums convoités")
+                                            : tr("Desired book", "Album convoité")}
                                     </div>
                                 </div>
                             </div>
@@ -281,9 +303,9 @@ export default function StatisticsPage() {
                                 <div>
                                     <h3>
                                         <FontAwesomeIcon icon={faBookOpen} style={{ color: "var(--accent-primary)" }} />
-                                        <span>Progression de lecture</span>
+                                        <span>{tr("Reading progress", "Progression de lecture")}</span>
                                     </h3>
-                                    <p>Suivi de vos lectures et état de votre Pile À Lire (PAL)</p>
+                                    <p>{tr("Track your reading and your To-Read pile", "Suivi de vos lectures et état de votre Pile À Lire (PAL)")}</p>
                                 </div>
 
                                 <div style={{
@@ -299,7 +321,12 @@ export default function StatisticsPage() {
                                     fontWeight: 700
                                 }}>
                                     <FontAwesomeIcon icon={faCheck} style={{ fontSize: "0.85rem" }} />
-                                    <span>{stats.readingProgressPercentage}% de la collection lue</span>
+                                    <span>
+                                        {tr(
+                                            `${stats.readingProgressPercentage}% of collection read`,
+                                            `${stats.readingProgressPercentage}% de la collection lue`
+                                        )}
+                                    </span>
                                 </div>
                             </div>
 
@@ -309,28 +336,28 @@ export default function StatisticsPage() {
                                     <div
                                         className="stats-page__progress-segment stats-page__progress-segment--read"
                                         style={{ width: `${(stats.booksReadCount / stats.totalOwnedBooks) * 100}%` }}
-                                        title={`Lus : ${stats.booksReadCount}`}
+                                        title={`${tr("Read", "Lus")} : ${stats.booksReadCount}`}
                                     />
                                     <div
                                         className="stats-page__progress-segment stats-page__progress-segment--reading"
                                         style={{ width: `${(stats.booksReadingCount / stats.totalOwnedBooks) * 100}%` }}
-                                        title={`En cours : ${stats.booksReadingCount}`}
+                                        title={`${tr("Reading", "En cours")} : ${stats.booksReadingCount}`}
                                     />
                                     <div
                                         className="stats-page__progress-segment stats-page__progress-segment--toread"
                                         style={{ width: `${(stats.booksToReadCount / stats.totalOwnedBooks) * 100}%` }}
-                                        title={`À lire : ${stats.booksToReadCount}`}
+                                        title={`${tr("To read", "À lire")} : ${stats.booksToReadCount}`}
                                     />
                                     <div
                                         className="stats-page__progress-segment stats-page__progress-segment--unread"
                                         style={{ width: `${(stats.booksUnreadCount / stats.totalOwnedBooks) * 100}%` }}
-                                        title={`Non lus : ${stats.booksUnreadCount}`}
+                                        title={`${tr("Unread", "Non lus")} : ${stats.booksUnreadCount}`}
                                     />
                                     {stats.booksAbandonedCount > 0 && (
                                         <div
                                             className="stats-page__progress-segment stats-page__progress-segment--abandoned"
                                             style={{ width: `${(stats.booksAbandonedCount / stats.totalOwnedBooks) * 100}%` }}
-                                            title={`Abandonnés : ${stats.booksAbandonedCount}`}
+                                            title={`${tr("Dropped", "Abandonnés")} : ${stats.booksAbandonedCount}`}
                                         />
                                     )}
                                 </div>
@@ -342,7 +369,7 @@ export default function StatisticsPage() {
                                         <div className="stats-page__status-chip-body">
                                             <span className="stats-page__status-chip-count">{stats.booksReadCount}</span>
                                             <span className="stats-page__status-chip-label">
-                                                Lus ({stats.totalOwnedBooks > 0 ? Math.round((stats.booksReadCount * 100) / stats.totalOwnedBooks) : 0}%)
+                                                {tr("Read", "Lus")} ({stats.totalOwnedBooks > 0 ? Math.round((stats.booksReadCount * 100) / stats.totalOwnedBooks) : 0}%)
                                             </span>
                                         </div>
                                     </div>
@@ -351,7 +378,7 @@ export default function StatisticsPage() {
                                         <div className="stats-page__status-chip-dot" style={{ background: "#3b82f6", boxShadow: "0 0 8px rgba(59, 130, 246, 0.4)" }} />
                                         <div className="stats-page__status-chip-body">
                                             <span className="stats-page__status-chip-count">{stats.booksReadingCount}</span>
-                                            <span className="stats-page__status-chip-label">En cours</span>
+                                            <span className="stats-page__status-chip-label">{tr("Reading", "En cours")}</span>
                                         </div>
                                     </div>
 
@@ -359,7 +386,7 @@ export default function StatisticsPage() {
                                         <div className="stats-page__status-chip-dot" style={{ background: "#f59e0b", boxShadow: "0 0 8px rgba(245, 158, 11, 0.4)" }} />
                                         <div className="stats-page__status-chip-body">
                                             <span className="stats-page__status-chip-count">{stats.booksToReadCount}</span>
-                                            <span className="stats-page__status-chip-label">À lire (PAL)</span>
+                                            <span className="stats-page__status-chip-label">{tr("To read", "À lire (PAL)")}</span>
                                         </div>
                                     </div>
 
@@ -367,7 +394,7 @@ export default function StatisticsPage() {
                                         <div className="stats-page__status-chip-dot" style={{ background: "rgba(255, 255, 255, 0.3)" }} />
                                         <div className="stats-page__status-chip-body">
                                             <span className="stats-page__status-chip-count">{stats.booksUnreadCount}</span>
-                                            <span className="stats-page__status-chip-label">Non lus</span>
+                                            <span className="stats-page__status-chip-label">{tr("Unread", "Non lus")}</span>
                                         </div>
                                     </div>
 
@@ -376,7 +403,7 @@ export default function StatisticsPage() {
                                             <div className="stats-page__status-chip-dot" style={{ background: "#ef4444" }} />
                                             <div className="stats-page__status-chip-body">
                                                 <span className="stats-page__status-chip-count">{stats.booksAbandonedCount}</span>
-                                                <span className="stats-page__status-chip-label">Abandonnés</span>
+                                                <span className="stats-page__status-chip-label">{tr("Dropped", "Abandonnés")}</span>
                                             </div>
                                         </div>
                                     )}
@@ -396,7 +423,10 @@ export default function StatisticsPage() {
                                     }}>
                                         <FontAwesomeIcon icon={faClock} style={{ color: "#818cf8" }} />
                                         <span>
-                                            <strong style={{ color: "var(--text-primary, #fff)" }}>{formatMinutes(stats.totalLoggedReadingMinutes)}</strong> de lecture chronométrée enregistrée sur <strong style={{ color: "var(--text-primary, #fff)" }}>{stats.totalReadingSessionsCount}</strong> session{stats.totalReadingSessionsCount > 1 ? "s" : ""}.
+                                            <strong style={{ color: "var(--text-primary, #fff)" }}>{formatMinutes(stats.totalLoggedReadingMinutes)}</strong>{" "}
+                                            {tr("of timed reading recorded across ", "de lecture chronométrée enregistrée sur ")}
+                                            <strong style={{ color: "var(--text-primary, #fff)" }}>{stats.totalReadingSessionsCount}</strong>{" "}
+                                            {stats.totalReadingSessionsCount > 1 ? tr("sessions.", "sessions.") : tr("session.", "session.")}
                                         </span>
                                     </div>
                                 )}
@@ -409,9 +439,9 @@ export default function StatisticsPage() {
                                 <div>
                                     <h3>
                                         <FontAwesomeIcon icon={faRulerVertical} style={{ color: "#818cf8" }} />
-                                        <span>Données physiques & Dimensions</span>
+                                        <span>{tr("Physical data & Dimensions", "Données physiques & Dimensions")}</span>
                                     </h3>
-                                    <p>Mensurations et poids cumulé de votre collection</p>
+                                    <p>{tr("Measurements and cumulative weight of your collection", "Mensurations et poids cumulé de votre collection")}</p>
                                 </div>
                             </div>
 
@@ -437,10 +467,10 @@ export default function StatisticsPage() {
                                     </div>
                                     <div>
                                         <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
-                                            Hauteur de la pile
+                                            {tr("Stack height", "Hauteur de la pile")}
                                         </div>
                                         <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
-                                            Hauteur cumulée si tous vos albums étaient empilés.
+                                            {tr("Cumulative height if all your books were stacked.", "Hauteur cumulée si tous vos albums étaient empilés.")}
                                         </div>
                                     </div>
                                 </div>
@@ -466,10 +496,10 @@ export default function StatisticsPage() {
                                     </div>
                                     <div>
                                         <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
-                                            Poids de la bibliothèque
+                                            {tr("Library weight", "Poids de la bibliothèque")}
                                         </div>
                                         <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
-                                            Poids total estimé selon le type et le format de chaque album.
+                                            {tr("Estimated total weight based on the type and format of each book.", "Poids total estimé selon le type et le format de chaque album.")}
                                         </div>
                                     </div>
                                 </div>
@@ -495,10 +525,10 @@ export default function StatisticsPage() {
                                     </div>
                                     <div>
                                         <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
-                                            Pagination moyenne
+                                            {tr("Average page count", "Pagination moyenne")}
                                         </div>
                                         <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
-                                            Nombre moyen de pages par volume dans votre collection.
+                                            {tr("Average number of pages per volume in your collection.", "Nombre moyen de pages par volume dans votre collection.")}
                                         </div>
                                     </div>
                                 </div>
@@ -513,13 +543,16 @@ export default function StatisticsPage() {
                                     <div>
                                         <h3>
                                             <FontAwesomeIcon icon={faChartPie} style={{ color: "#3b82f6" }} />
-                                            <span>Genres & Formats</span>
+                                            <span>{tr("Genres & Formats", "Genres & Formats")}</span>
                                         </h3>
-                                        <p>Répartition par catégorie d'ouvrages</p>
+                                        <p>{tr("Breakdown by book category", "Répartition par catégorie d'ouvrages")}</p>
                                     </div>
                                 </div>
                                 <PieChart
-                                    data={stats.categoryBreakdown}
+                                    data={(stats.categoryBreakdown || []).map((c) => ({
+                                        ...c,
+                                        name: translateCategory(c.name)
+                                    }))}
                                     totalCount={stats.totalOwnedBooks}
                                     title=""
                                 />
@@ -531,9 +564,9 @@ export default function StatisticsPage() {
                                     <div>
                                         <h3>
                                             <FontAwesomeIcon icon={faTimeline} style={{ color: "#a855f7" }} />
-                                            <span>Époques & Décennies</span>
+                                            <span>{tr("Eras & Decades", "Époques & Décennies")}</span>
                                         </h3>
-                                        <p>Répartition par période de parution</p>
+                                        <p>{tr("Breakdown by publication period", "Répartition par période de parution")}</p>
                                     </div>
                                 </div>
 
@@ -546,7 +579,8 @@ export default function StatisticsPage() {
                                                         {dec.decade}
                                                     </span>
                                                     <span style={{ color: "var(--text-muted, #94a3b8)", fontSize: "0.8rem" }}>
-                                                        <strong style={{ color: "var(--text-primary, #fff)" }}>{dec.count}</strong> {dec.count > 1 ? "albums" : "album"} ({dec.percentage}%)
+                                                        <strong style={{ color: "var(--text-primary, #fff)" }}>{dec.count}</strong>{" "}
+                                                        {dec.count > 1 ? tr("books", "albums") : tr("book", "album")} ({dec.percentage}%)
                                                     </span>
                                                 </div>
                                                 <div className="stats-page__decade-track">
@@ -560,7 +594,7 @@ export default function StatisticsPage() {
                                     </div>
                                 ) : (
                                     <div style={{ padding: "30px", textAlign: "center", color: "var(--text-muted, #64748b)", fontSize: "0.9rem" }}>
-                                        Dates de parution non renseignées
+                                        {tr("Publication dates not specified", "Dates de parution non renseignées")}
                                     </div>
                                 )}
                             </div>
@@ -574,9 +608,9 @@ export default function StatisticsPage() {
                                     <div>
                                         <h3>
                                             <FontAwesomeIcon icon={faUserPen} style={{ color: "#818cf8" }} />
-                                            <span>Auteurs les plus représentés</span>
+                                            <span>{tr("Most represented authors", "Auteurs les plus représentés")}</span>
                                         </h3>
-                                        <p>Auteurs ayant le plus d'albums dans votre collection</p>
+                                        <p>{tr("Authors with the most books in your collection", "Auteurs ayant le plus d'albums dans votre collection")}</p>
                                     </div>
                                 </div>
 
@@ -592,7 +626,7 @@ export default function StatisticsPage() {
                                                         <Link
                                                             to={`/app/author/${author.id}`}
                                                             className="stats-page__leaderboard-item-name"
-                                                            title={`Voir la page de ${author.name}`}
+                                                            title={tr(`View ${author.name}'s page`, `Voir la page de ${author.name}`)}
                                                         >
                                                             {author.name}
                                                         </Link>
@@ -603,14 +637,14 @@ export default function StatisticsPage() {
                                                     )}
                                                 </div>
                                                 <span className="stats-page__leaderboard-item-badge">
-                                                    {author.bookCount} {author.bookCount > 1 ? "albums" : "album"}
+                                                    {author.bookCount} {author.bookCount > 1 ? tr("books", "albums") : tr("book", "album")}
                                                 </span>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
                                     <div style={{ padding: "24px", textAlign: "center", color: "var(--text-muted, #64748b)", fontSize: "0.9rem" }}>
-                                        Aucun auteur répertorié
+                                        {tr("No authors listed", "Aucun auteur répertorié")}
                                     </div>
                                 )}
                             </div>
@@ -621,9 +655,9 @@ export default function StatisticsPage() {
                                     <div>
                                         <h3>
                                             <FontAwesomeIcon icon={faBuilding} style={{ color: "#fbbf24" }} />
-                                            <span>Éditeurs favoris</span>
+                                            <span>{tr("Favorite publishers", "Éditeurs favoris")}</span>
                                         </h3>
-                                        <p>Maisons d'édition dominantes de votre bibliothèque</p>
+                                        <p>{tr("Dominant publishing houses in your library", "Maisons d'édition dominantes de votre bibliothèque")}</p>
                                     </div>
                                 </div>
 
@@ -644,14 +678,14 @@ export default function StatisticsPage() {
                                                     color: "#fbbf24",
                                                     borderColor: "rgba(245, 158, 11, 0.25)"
                                                 }}>
-                                                    {pub.count} {pub.count > 1 ? "albums" : "album"} ({pub.percentage}%)
+                                                    {pub.count} {pub.count > 1 ? tr("books", "albums") : tr("book", "album")} ({pub.percentage}%)
                                                 </span>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
                                     <div style={{ padding: "24px", textAlign: "center", color: "var(--text-muted, #64748b)", fontSize: "0.9rem" }}>
-                                        Aucun éditeur répertorié
+                                        {tr("No publishers listed", "Aucun éditeur répertorié")}
                                     </div>
                                 )}
                             </div>
@@ -663,9 +697,9 @@ export default function StatisticsPage() {
                                 <div>
                                     <h3>
                                         <FontAwesomeIcon icon={faCrown} style={{ color: "#fbbf24" }} />
-                                        <span>Le Panthéon & Records de la collection</span>
+                                        <span>{tr("Hall of Fame & Collection Records", "Le Panthéon & Records de la collection")}</span>
                                     </h3>
-                                    <p>Les pièces maîtresses et records remarquables de votre bibliothèque</p>
+                                    <p>{tr("The centerpieces and notable records of your library", "Les pièces maîtresses et records remarquables de votre bibliothèque")}</p>
                                 </div>
                             </div>
 
@@ -675,7 +709,7 @@ export default function StatisticsPage() {
                                     <div className="stats-page__record-card">
                                         <div className="stats-page__record-header" style={{ color: "#818cf8" }}>
                                             <FontAwesomeIcon icon={faUserPen} />
-                                            <span>Auteur vedette</span>
+                                            <span>{tr("Featured author", "Auteur vedette")}</span>
                                         </div>
                                         <div className="stats-page__record-body">
                                             <div className="stats-page__record-cover-placeholder" style={{ color: "#818cf8" }}>
@@ -686,7 +720,7 @@ export default function StatisticsPage() {
                                                     <Link
                                                         to={`/app/author/${stats.topAuthor.id}`}
                                                         className="stats-page__record-title"
-                                                        title={`Voir la page de ${stats.topAuthor.name}`}
+                                                        title={tr(`View ${stats.topAuthor.name}'s page`, `Voir la page de ${stats.topAuthor.name}`)}
                                                     >
                                                         {stats.topAuthor.name}
                                                     </Link>
@@ -696,15 +730,18 @@ export default function StatisticsPage() {
                                                     </div>
                                                 )}
                                                 <div className="stats-page__record-meta">
-                                                    Auteur le plus représenté
+                                                    {tr("Most represented author", "Auteur le plus représenté")}
                                                 </div>
                                                 <span className="stats-page__record-tag" style={{ color: "#818cf8" }}>
-                                                    {stats.topAuthor.bookCount} {stats.topAuthor.bookCount > 1 ? "albums possédés" : "album possédé"}
+                                                    {stats.topAuthor.bookCount}{" "}
+                                                    {stats.topAuthor.bookCount > 1
+                                                        ? tr("owned books", "albums possédés")
+                                                        : tr("owned book", "album possédé")}
                                                 </span>
                                             </div>
                                         </div>
                                         <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #64748b)" }}>
-                                            Figure de proue de votre collection
+                                            {tr("Leading figure of your collection", "Figure de proue de votre collection")}
                                         </div>
                                     </div>
                                 )}
@@ -714,7 +751,7 @@ export default function StatisticsPage() {
                                     <div className="stats-page__record-card">
                                         <div className="stats-page__record-header" style={{ color: "#f59e0b" }}>
                                             <FontAwesomeIcon icon={faCalendarDays} />
-                                            <span>Le doyen</span>
+                                            <span>{tr("The oldest", "Le doyen")}</span>
                                         </div>
                                         <div className="stats-page__record-body">
                                             {stats.oldestBook.coverUrl ? (
@@ -735,11 +772,11 @@ export default function StatisticsPage() {
                                                     {stats.oldestBook.title}
                                                 </div>
                                                 <div className="stats-page__record-meta">
-                                                    Paru le {formatDate(stats.oldestBook.releaseDate)}
+                                                    {tr("Released on", "Paru le")} {formatDate(stats.oldestBook.releaseDate)}
                                                 </div>
                                                 {stats.oldestBook.category && (
                                                     <span className="stats-page__record-tag">
-                                                        {stats.oldestBook.category}
+                                                        {translateCategory(stats.oldestBook.category)}
                                                     </span>
                                                 )}
                                             </div>
@@ -749,7 +786,7 @@ export default function StatisticsPage() {
                                             className="stats-page__record-link"
                                             style={{ color: "#f59e0b" }}
                                         >
-                                            <span>Consulter la fiche</span>
+                                            <span>{tr("View details", "Consulter la fiche")}</span>
                                             <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.75rem" }} />
                                         </Link>
                                     </div>
@@ -760,7 +797,7 @@ export default function StatisticsPage() {
                                     <div className="stats-page__record-card">
                                         <div className="stats-page__record-header" style={{ color: "var(--accent-primary)" }}>
                                             <FontAwesomeIcon icon={faCalendarDays} />
-                                            <span>Dernière parution</span>
+                                            <span>{tr("Latest release", "Dernière parution")}</span>
                                         </div>
                                         <div className="stats-page__record-body">
                                             {stats.newestBook.coverUrl ? (
@@ -781,11 +818,11 @@ export default function StatisticsPage() {
                                                     {stats.newestBook.title}
                                                 </div>
                                                 <div className="stats-page__record-meta">
-                                                    Paru le {formatDate(stats.newestBook.releaseDate)}
+                                                    {tr("Released on", "Paru le")} {formatDate(stats.newestBook.releaseDate)}
                                                 </div>
                                                 {stats.newestBook.category && (
                                                     <span className="stats-page__record-tag">
-                                                        {stats.newestBook.category}
+                                                        {translateCategory(stats.newestBook.category)}
                                                     </span>
                                                 )}
                                             </div>
@@ -795,7 +832,7 @@ export default function StatisticsPage() {
                                             className="stats-page__record-link"
                                             style={{ color: "var(--accent-primary)" }}
                                         >
-                                            <span>Consulter la fiche</span>
+                                            <span>{tr("View details", "Consulter la fiche")}</span>
                                             <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.75rem" }} />
                                         </Link>
                                     </div>
@@ -806,7 +843,7 @@ export default function StatisticsPage() {
                                     <div className="stats-page__record-card">
                                         <div className="stats-page__record-header" style={{ color: "#38bdf8" }}>
                                             <FontAwesomeIcon icon={faFileLines} />
-                                            <span>Le plus gros volume</span>
+                                            <span>{tr("Largest volume", "Le plus gros volume")}</span>
                                         </div>
                                         <div className="stats-page__record-body">
                                             {stats.thickestBook.coverUrl ? (
@@ -827,7 +864,7 @@ export default function StatisticsPage() {
                                                     {stats.thickestBook.title}
                                                 </div>
                                                 <div className="stats-page__record-meta">
-                                                    Volume le plus imposant
+                                                    {tr("Most imposing volume", "Volume le plus imposant")}
                                                 </div>
                                                 <span className="stats-page__record-tag" style={{ color: "#38bdf8" }}>
                                                     {stats.thickestBook.highlightValue || `${stats.thickestBook.pageCount} pages`}
@@ -839,7 +876,7 @@ export default function StatisticsPage() {
                                             className="stats-page__record-link"
                                             style={{ color: "#38bdf8" }}
                                         >
-                                            <span>Consulter la fiche</span>
+                                            <span>{tr("View details", "Consulter la fiche")}</span>
                                             <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.75rem" }} />
                                         </Link>
                                     </div>
@@ -850,7 +887,7 @@ export default function StatisticsPage() {
                                     <div className="stats-page__record-card">
                                         <div className="stats-page__record-header" style={{ color: "#fbbf24" }}>
                                             <FontAwesomeIcon icon={faGem} />
-                                            <span>La plus belle pièce</span>
+                                            <span>{tr("Crown jewel", "La plus belle pièce")}</span>
                                         </div>
                                         <div className="stats-page__record-body">
                                             {stats.mostValuableBook.coverUrl ? (
@@ -871,7 +908,7 @@ export default function StatisticsPage() {
                                                     {stats.mostValuableBook.title}
                                                 </div>
                                                 <div className="stats-page__record-meta">
-                                                    Prix le plus élevé
+                                                    {tr("Highest price", "Prix le plus élevé")}
                                                 </div>
                                                 <span className="stats-page__record-tag" style={{ color: "#fbbf24" }}>
                                                     {stats.mostValuableBook.highlightValue || `${stats.mostValuableBook.price} €`}
@@ -883,7 +920,7 @@ export default function StatisticsPage() {
                                             className="stats-page__record-link"
                                             style={{ color: "#fbbf24" }}
                                         >
-                                            <span>Consulter la fiche</span>
+                                            <span>{tr("View details", "Consulter la fiche")}</span>
                                             <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.75rem" }} />
                                         </Link>
                                     </div>

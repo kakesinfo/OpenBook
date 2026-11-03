@@ -10,6 +10,7 @@ import {
     faBook
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import BookList from "../../components/BookList/BookList.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import CategoryMultiSelect, {
@@ -28,22 +29,35 @@ interface TimeTab {
     icon?: typeof faCalendarDays;
 }
 
-const TIME_TABS: TimeTab[] = [
-    { id: "upcoming", label: "À venir", icon: faCalendarDays },
-    { id: "recent", label: "Parus récemment", icon: faClockRotateLeft }
-];
-
 export default function PlanningPage() {
     const session = useSession();
+    const { tr, locale, translateCategory } = useLanguage();
     const [upcomingBooks, setUpcomingBooks] = useState<BookSummaryDTO[]>([]);
     const [recentBooks, setRecentBooks] = useState<BookSummaryDTO[]>([]);
     const [loadingUpcoming, setLoadingUpcoming] = useState<boolean>(true);
     const [loadingRecent, setLoadingRecent] = useState<boolean>(true);
     const [timeFilter, setTimeFilter] = useState<TimeFilter>("upcoming");
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-    const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>(DEFAULT_APP_CATEGORIES);
+    const [rawCategories, setRawCategories] = useState<CategoryOption[]>(DEFAULT_APP_CATEGORIES);
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [calendarModalOpen, setCalendarModalOpen] = useState<boolean>(false);
+
+    const timeTabs: TimeTab[] = useMemo(
+        () => [
+            { id: "upcoming", label: tr("Upcoming", "À venir"), icon: faCalendarDays },
+            { id: "recent", label: tr("Recently released", "Parus récemment"), icon: faClockRotateLeft }
+        ],
+        [tr]
+    );
+
+    const availableCategories: CategoryOption[] = useMemo(
+        () =>
+            rawCategories.map((cat) => ({
+                ...cat,
+                label: translateCategory(cat.id)
+            })),
+        [rawCategories, translateCategory]
+    );
 
     useEffect(() => {
         session.customFetch("/series/categories", { method: "GET" })
@@ -51,7 +65,7 @@ export default function PlanningPage() {
                 if (res.ok) {
                     const data = await res.json();
                     if (Array.isArray(data) && data.length > 0) {
-                        setAvailableCategories(
+                        setRawCategories(
                             data.map((cat: { id?: number; name: string }) => {
                                 const found = DEFAULT_APP_CATEGORIES.find(
                                     (d) => d.id.toLowerCase() === cat.name.toLowerCase()
@@ -184,7 +198,7 @@ export default function PlanningPage() {
             const month = date.getMonth(); // 0 to 11
             const sortKey = year * 100 + month;
 
-            const rawMonthTitle = date.toLocaleDateString("fr-FR", {
+            const rawMonthTitle = date.toLocaleDateString(locale, {
                 month: "long",
                 year: "numeric"
             });
@@ -223,14 +237,14 @@ export default function PlanningPage() {
         });
 
         return sortedGroups;
-    }, [finalFilteredBooks, timeFilter]);
+    }, [finalFilteredBooks, timeFilter, locale]);
 
     return (
         <div className="planning-page">
             <WrapperHeader>
                 <div className="planning-page__header-center">
                     <div className="planning-page__filters">
-                        {TIME_TABS.map((tab) => {
+                        {timeTabs.map((tab) => {
                             const isSelected = timeFilter === tab.id;
                             const count = tab.id === "upcoming" ? totalUpcomingCount : totalRecentCount;
                             const isLoading = tab.id === "upcoming" ? loadingUpcoming : loadingRecent;
@@ -263,7 +277,7 @@ export default function PlanningPage() {
                             options={availableCategories}
                             selected={selectedCategories}
                             onChange={(cats) => setSelectedCategories(cats)}
-                            allLabel="Toutes les catégories"
+                            allLabel={tr("All categories", "Toutes les catégories")}
                         />
                     </div>
 
@@ -273,7 +287,7 @@ export default function PlanningPage() {
                             <FontAwesomeIcon icon={faMagnifyingGlass} />
                             <input
                                 type="text"
-                                placeholder="Rechercher un album, une série, un auteur..."
+                                placeholder={tr("Search a book, series, author...", "Rechercher un album, une série, un auteur...")}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -282,7 +296,7 @@ export default function PlanningPage() {
                                     type="button"
                                     className="planning-page__search-clear"
                                     onClick={() => setSearchQuery("")}
-                                    aria-label="Effacer la recherche"
+                                    aria-label={tr("Clear search", "Effacer la recherche")}
                                 >
                                     <FontAwesomeIcon icon={faXmark} />
                                 </button>
@@ -296,10 +310,10 @@ export default function PlanningPage() {
                             type="button"
                             onClick={() => setCalendarModalOpen(true)}
                             className="planning-page__calendar-btn"
-                            title="Synchroniser avec Google Agenda ou exporter au format ICS"
+                            title={tr("Sync with Google Calendar or export as ICS", "Synchroniser avec Google Agenda ou exporter au format ICS")}
                         >
                             <FontAwesomeIcon icon={faCalendarPlus} />
-                            <span>Synchroniser / Exporter</span>
+                            <span>{tr("Sync / Export", "Synchroniser / Exporter")}</span>
                         </button>
                     </div>
                 </div>
@@ -308,8 +322,8 @@ export default function PlanningPage() {
                 {isCurrentLoading && (
                     <div className="planning-page__loading">
                         {timeFilter === "upcoming"
-                            ? "Chargement des prochaines sorties à venir..."
-                            : "Chargement des parutions récentes..."}
+                            ? tr("Loading upcoming releases...", "Chargement des prochaines sorties à venir...")
+                            : tr("Loading recent releases...", "Chargement des parutions récentes...")}
                     </div>
                 )}
 
@@ -319,13 +333,21 @@ export default function PlanningPage() {
                         <div className="planning-page__empty-icon">
                             <FontAwesomeIcon icon={faCalendarDays} />
                         </div>
-                        <h3>Aucune sortie trouvée</h3>
+                        <h3>{tr("No releases found", "Aucune sortie trouvée")}</h3>
                         <p>
                             {searchQuery.trim() || selectedCategories.length > 0
-                                ? "Aucun album ne correspond à vos critères de recherche pour cette période."
-                                : `Aucun album ne correspond à vos séries, auteurs, éditeurs ou collections suivis pour cette période (${
-                                      timeFilter === "recent" ? "2 derniers mois" : "6 prochains mois"
-                                  }).`}
+                                ? tr(
+                                      "No books match your search criteria for this period.",
+                                      "Aucun album ne correspond à vos critères de recherche pour cette période."
+                                  )
+                                : tr(
+                                      `No books match your followed series, authors, publishers, or collections for this period (${
+                                          timeFilter === "recent" ? "last 2 months" : "next 6 months"
+                                      }).`,
+                                      `Aucun album ne correspond à vos séries, auteurs, éditeurs ou collections suivis pour cette période (${
+                                          timeFilter === "recent" ? "2 derniers mois" : "6 prochains mois"
+                                      }).`
+                                  )}
                         </p>
                     </div>
                 )}
@@ -345,7 +367,10 @@ export default function PlanningPage() {
                             </div>
 
                             <span className="planning-page__month-count">
-                                {group.books.length} {group.books.length > 1 ? "parutions" : "parution"}
+                                {group.books.length}{" "}
+                                {group.books.length > 1
+                                    ? tr("releases", "parutions")
+                                    : tr("release", "parution")}
                             </span>
                         </div>
 

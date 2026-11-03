@@ -14,15 +14,16 @@ import {
     faUserPen
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import "./AdminMaintenancePage.scss";
 
 type TaskId = "utf8" | "dedup" | "dedup_authors" | "bnf" | "verify_isbn" | "migrate_covers";
 
 interface MaintenanceTaskDef {
     id: TaskId;
-    title: string;
-    tag: string;
-    desc: string;
+    title: [string, string];
+    tag: [string, string];
+    desc: [string, string];
     icon: typeof faWrench;
     iconClass: string;
 }
@@ -30,50 +31,67 @@ interface MaintenanceTaskDef {
 const TASKS: MaintenanceTaskDef[] = [
     {
         id: "utf8",
-        title: "Réparer l'UTF-8",
-        tag: "Encodage & Typographie",
-        desc: "Détecte et répare les textes corrompus par un double encodage UTF-8 (ex: dÃ©mon -> démon), normalise les tirets Unicode (–, —), nettoie les rôles parasites d'auteurs et consolide les séries corrompues.",
+        title: ["Repair UTF-8", "Réparer l'UTF-8"],
+        tag: ["Encoding & Typography", "Encodage & Typographie"],
+        desc: [
+            "Detects and repairs text corrupted by double UTF-8 encoding (e.g., dÃ©mon -> démon), normalizes Unicode dashes (–, —), cleans up stray author roles, and consolidates corrupted series.",
+            "Détecte et répare les textes corrompus par un double encodage UTF-8 (ex: dÃ©mon -> démon), normalise les tirets Unicode (–, —), nettoie les rôles parasites d'auteurs et consolide les séries corrompues."
+        ],
         icon: faWrench,
         iconClass: "admin-maintenance__task-icon--utf8"
     },
     {
         id: "dedup",
-        title: "Dédoupliquer les albums",
-        tag: "Intégrité du catalogue",
-        desc: "Recherche et fusionne les albums en double d'un même éditeur (même couverture, même ISBN, ou titres quasi-identiques avec variations de tirets ou casse). Réattribue automatiquement vos lectures et possessions vers le tome canonique sans perte de données.",
+        title: ["Deduplicate books", "Dédoupliquer les albums"],
+        tag: ["Catalog Integrity", "Intégrité du catalogue"],
+        desc: [
+            "Finds and merges duplicate books from the same publisher (same cover, same ISBN, or near-identical titles with dash or case variations). Automatically reassigns your readings and collection items to the canonical volume without data loss.",
+            "Recherche et fusionne les albums en double d'un même éditeur (même couverture, même ISBN, ou titres quasi-identiques avec variations de tirets ou casse). Réattribue automatiquement vos lectures et possessions vers le tome canonique sans perte de données."
+        ],
         icon: faClone,
         iconClass: "admin-maintenance__task-icon--dedup"
     },
     {
         id: "dedup_authors",
-        title: "Fusionner les auteurs en double",
-        tag: "Auteurs & Normalisation",
-        desc: "Analyse tous les auteurs du catalogue pour identifier les doublons (inversions prénom/nom, casse, accents, variations de ponctuation comme 'TYNION IV James' vs 'James Tynion IV'). Fusionne les profils vers le plus qualitatif, réattribue les albums et abonnements sans conflit, et supprime les doublons.",
+        title: ["Merge duplicate authors", "Fusionner les auteurs en double"],
+        tag: ["Authors & Normalization", "Auteurs & Normalisation"],
+        desc: [
+            "Analyzes all authors in the catalog to identify duplicates (swapped first/last names, case, accents, punctuation variations like 'TYNION IV James' vs 'James Tynion IV'). Merges profiles into the highest-quality entry, reassigns books and subscriptions without conflict, and removes duplicates.",
+            "Analyse tous les auteurs du catalogue pour identifier les doublons (inversions prénom/nom, casse, accents, variations de ponctuation comme 'TYNION IV James' vs 'James Tynion IV'). Fusionne les profils vers le plus qualitatif, réattribue les albums et abonnements sans conflit, et supprime les doublons."
+        ],
         icon: faUserPen,
         iconClass: "admin-maintenance__task-icon--authors"
-    
     },
     {
         id: "bnf",
-        title: "Enrichir via la BnF",
-        tag: "Catalogue & Métadonnées",
-        desc: "Interroge l'API SRU du catalogue de la Bibliothèque nationale de France (BnF) pour retrouver les ISBN/EAN manquants, le nombre de pages, la collection et les auteurs de vos albums.",
+        title: ["Enrich via BnF", "Enrichir via la BnF"],
+        tag: ["Catalog & Metadata", "Catalogue & Métadonnées"],
+        desc: [
+            "Queries the National Library of France (BnF) SRU catalog API to retrieve missing ISBN/EAN codes, page counts, collections, and authors for your books.",
+            "Interroge l'API SRU du catalogue de la Bibliothèque nationale de France (BnF) pour retrouver les ISBN/EAN manquants, le nombre de pages, la collection et les auteurs de vos albums."
+        ],
         icon: faBarcode,
         iconClass: "admin-maintenance__task-icon--bnf"
     },
     {
         id: "verify_isbn",
-        title: "Vérifier avec la BnF",
-        tag: "Contrôle & Pages",
-        desc: "Vérifie chaque album ayant un ISBN auprès du catalogue BnF pour corriger le nombre exact de pages, rattacher la collection officielle et compléter les auteurs manquants.",
+        title: ["Verify with BnF", "Vérifier avec la BnF"],
+        tag: ["Verification & Pages", "Contrôle & Pages"],
+        desc: [
+            "Verifies every book with an ISBN against the BnF catalog to fix exact page counts, link official collections, and fill in missing authors.",
+            "Vérifie chaque album ayant un ISBN auprès du catalogue BnF pour corriger le nombre exact de pages, rattacher la collection officielle et compléter les auteurs manquants."
+        ],
         icon: faCheckDouble,
         iconClass: "admin-maintenance__task-icon--verify"
     },
     {
         id: "migrate_covers",
-        title: "Migrer les couvertures",
-        tag: "Médias & Stockage",
-        desc: "Télécharge les couvertures encore référencées par une URL externe, les optimise en WebP via le service média, puis remplace l'URL par l'UUID de l'image en base. Les images inaccessibles conservent leur URL d'origine.",
+        title: ["Migrate covers", "Migrer les couvertures"],
+        tag: ["Media & Storage", "Médias & Stockage"],
+        desc: [
+            "Downloads covers still referenced by an external URL, optimizes them as WebP via the media service, and replaces the URL with the image UUID in the database. Unreachable images keep their original URL.",
+            "Télécharge les couvertures encore référencées par une URL externe, les optimise en WebP via le service média, puis remplace l'URL par l'UUID de l'image en base. Les images inaccessibles conservent leur URL d'origine."
+        ],
         icon: faImage,
         iconClass: "admin-maintenance__task-icon--media"
     }
@@ -94,6 +112,7 @@ interface MaintenanceResult {
 
 export default function AdminMaintenancePage() {
     const session = useSession();
+    const { tr, locale } = useLanguage();
     const [selectedTasks, setSelectedTasks] = useState<TaskId[]>([]);
     const [runningTasks, setRunningTasks] = useState<TaskId[]>([]);
     const [result, setResult] = useState<MaintenanceResult | null>(null);
@@ -119,7 +138,7 @@ export default function AdminMaintenancePage() {
 
     const nowFormatted = () => {
         const d = new Date();
-        return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     };
 
     const handleToggleSelect = (taskId: TaskId) => {
@@ -138,22 +157,22 @@ export default function AdminMaintenancePage() {
 
     const runSingleTask = async (taskId: TaskId): Promise<{ ok: boolean; message: string }> => {
         let endpoint = "/admin/scrapers/repair";
-        let taskName = "Réparation UTF-8";
+        let taskName = tr("UTF-8 repair", "Réparation UTF-8");
         if (taskId === "dedup") {
             endpoint = "/admin/scrapers/deduplicate";
-            taskName = "Déduplication des albums";
+            taskName = tr("Book deduplication", "Déduplication des albums");
         } else if (taskId === "dedup_authors") {
             endpoint = "/admin/scrapers/maintenance/deduplicate-authors";
-            taskName = "Fusion des auteurs";
+            taskName = tr("Author merging", "Fusion des auteurs");
         } else if (taskId === "bnf") {
             endpoint = "/admin/scrapers/enrich-bnf";
-            taskName = "Enrichissement BnF";
+            taskName = tr("BnF enrichment", "Enrichissement BnF");
         } else if (taskId === "verify_isbn") {
             endpoint = "/admin/scrapers/verify-isbn";
-            taskName = "Vérification BnF";
+            taskName = tr("BnF verification", "Vérification BnF");
         } else if (taskId === "migrate_covers") {
             endpoint = "/admin/scrapers/maintenance/migrate-covers";
-            taskName = "Migration des couvertures";
+            taskName = tr("Cover migration", "Migration des couvertures");
         }
 
         setTaskStatuses(prev => ({
@@ -164,7 +183,7 @@ export default function AdminMaintenancePage() {
         try {
             const resp = await session.customFetch(endpoint, { method: "POST" });
             const data = await resp.json();
-            const msg = data.message || `${taskName} effectuée avec succès.`;
+            const msg = data.message || tr(`${taskName} completed successfully.`, `${taskName} effectuée avec succès.`);
 
             setTaskStatuses(prev => ({
                 ...prev,
@@ -176,7 +195,7 @@ export default function AdminMaintenancePage() {
             }));
             return { ok: true, message: msg };
         } catch (err: any) {
-            const errorMsg = err?.message || `Erreur lors de l'exécution de ${taskName}.`;
+            const errorMsg = err?.message || tr(`Error while running ${taskName}.`, `Erreur lors de l'exécution de ${taskName}.`);
             setTaskStatuses(prev => ({
                 ...prev,
                 [taskId]: {
@@ -198,7 +217,7 @@ export default function AdminMaintenancePage() {
         const res = await runSingleTask(taskId);
 
         setResult({
-            taskName: taskDef?.title || taskId,
+            taskName: taskDef ? tr(taskDef.title[0], taskDef.title[1]) : taskId,
             type: res.ok ? "success" : "error",
             message: res.message,
             timestamp: nowFormatted()
@@ -223,7 +242,10 @@ export default function AdminMaintenancePage() {
         }
 
         setResult({
-            taskName: `Sélection (${targetIds.length} tâche${targetIds.length > 1 ? "s" : ""})`,
+            taskName: tr(
+                `Selection (${targetIds.length} task${targetIds.length > 1 ? "s" : ""})`,
+                `Sélection (${targetIds.length} tâche${targetIds.length > 1 ? "s" : ""})`
+            ),
             type: anyError ? "error" : "success",
             message: results.join(" | "),
             timestamp: nowFormatted()
@@ -265,7 +287,7 @@ export default function AdminMaintenancePage() {
         results.push(resCovers.message);
 
         setResult({
-            taskName: "Maintenance complète (Tout)",
+            taskName: tr("Full maintenance (All)", "Maintenance complète (Tout)"),
             type: anyError ? "error" : "success",
             message: results.join(" | "),
             timestamp: nowFormatted()
@@ -279,7 +301,7 @@ export default function AdminMaintenancePage() {
     return (
         <div className="admin-maintenance">
             <WrapperHeader>
-                <h2>Maintenance</h2>
+                <h2>{tr("Maintenance", "Maintenance")}</h2>
             </WrapperHeader>
 
             <div className="admin-maintenance__content">
@@ -291,7 +313,7 @@ export default function AdminMaintenancePage() {
                             <span><strong>{result.taskName} :</strong> {result.message}</span>
                         </div>
                         <div className="admin-maintenance__result-time">
-                            Exécuté à {result.timestamp}
+                            {tr(`Executed at ${result.timestamp}`, `Exécuté à ${result.timestamp}`)}
                         </div>
                     </div>
                 )}
@@ -301,18 +323,24 @@ export default function AdminMaintenancePage() {
                     <div className="admin-maintenance__panel-header">
                         <div className="admin-maintenance__panel-title-group">
                             <div className="admin-maintenance__panel-title-row">
-                                <h3>Tâches de maintenance</h3>
+                                <h3>{tr("Maintenance Tasks", "Tâches de maintenance")}</h3>
                                 <span className="admin-maintenance__badge">
-                                    {TASKS.length} disponibles
+                                    {tr(`${TASKS.length} available`, `${TASKS.length} disponibles`)}
                                 </span>
                                 {selectedTasks.length > 0 && (
                                     <span className="admin-maintenance__badge admin-maintenance__badge--selected">
-                                        {selectedTasks.length} cochée{selectedTasks.length > 1 ? "s" : ""}
+                                        {tr(
+                                            `${selectedTasks.length} selected`,
+                                            `${selectedTasks.length} cochée${selectedTasks.length > 1 ? "s" : ""}`
+                                        )}
                                     </span>
                                 )}
                             </div>
                             <p className="admin-maintenance__panel-subtitle">
-                                Cochez les tâches à exécuter ou lancez une maintenance complète en un clic.
+                                {tr(
+                                    "Check the tasks to run or launch a full maintenance in one click.",
+                                    "Cochez les tâches à exécuter ou lancez une maintenance complète en un clic."
+                                )}
                             </p>
                         </div>
 
@@ -323,11 +351,11 @@ export default function AdminMaintenancePage() {
                                     className="admin-maintenance__btn-action admin-maintenance__btn-action--execute"
                                     onClick={handleExecuteSelected}
                                     disabled={isRunning}
-                                    title="Exécuter les tâches sélectionnées"
+                                    title={tr("Run selected tasks", "Exécuter les tâches sélectionnées")}
                                 >
                                     <FontAwesomeIcon icon={isRunning ? faRotate : faPlay} spin={isRunning} />
                                     <span>
-                                        Exécuter la sélection ({selectedTasks.length})
+                                        {tr(`Run selected (${selectedTasks.length})`, `Exécuter la sélection (${selectedTasks.length})`)}
                                     </span>
                                 </button>
                             )}
@@ -337,10 +365,10 @@ export default function AdminMaintenancePage() {
                                 className="admin-maintenance__btn-action admin-maintenance__btn-action--all"
                                 onClick={handleExecuteAll}
                                 disabled={isRunning}
-                                title="Exécuter toutes les tâches de maintenance consécutivement"
+                                title={tr("Run all maintenance tasks consecutively", "Exécuter toutes les tâches de maintenance consécutivement")}
                             >
                                 <FontAwesomeIcon icon={isRunning ? faRotate : faPlay} spin={isRunning} />
-                                <span>Tout exécuter</span>
+                                <span>{tr("Run all", "Tout exécuter")}</span>
                             </button>
                         </div>
                     </div>
@@ -357,13 +385,13 @@ export default function AdminMaintenancePage() {
                                             checked={allSelected}
                                             onChange={handleSelectAll}
                                             disabled={isRunning}
-                                            title={allSelected ? "Tout désélectionner" : "Tout sélectionner"}
+                                            title={allSelected ? tr("Deselect all", "Tout désélectionner") : tr("Select all", "Tout sélectionner")}
                                         />
                                     </th>
-                                    <th style={{ width: "260px" }}>Tâche de maintenance</th>
-                                    <th>Description & Action effectuée</th>
-                                    <th style={{ width: "160px", textAlign: "center" }}>État</th>
-                                    <th style={{ width: "130px", textAlign: "right" }}>Action</th>
+                                    <th style={{ width: "260px" }}>{tr("Maintenance Task", "Tâche de maintenance")}</th>
+                                    <th>{tr("Description & Action Performed", "Description & Action effectuée")}</th>
+                                    <th style={{ width: "160px", textAlign: "center" }}>{tr("Status", "État")}</th>
+                                    <th style={{ width: "130px", textAlign: "right" }}>{tr("Action", "Action")}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -371,6 +399,9 @@ export default function AdminMaintenancePage() {
                                     const isSelected = selectedTasks.includes(task.id);
                                     const taskRunning = runningTasks.includes(task.id);
                                     const statusInfo = taskStatuses[task.id] || { state: "idle" };
+                                    const taskTitle = tr(task.title[0], task.title[1]);
+                                    const taskTag = tr(task.tag[0], task.tag[1]);
+                                    const taskDesc = tr(task.desc[0], task.desc[1]);
 
                                     return (
                                         <tr
@@ -399,8 +430,8 @@ export default function AdminMaintenancePage() {
                                                         <FontAwesomeIcon icon={task.icon} />
                                                     </div>
                                                     <div className="admin-maintenance__task-info">
-                                                        <span className="admin-maintenance__task-title">{task.title}</span>
-                                                        <span className="admin-maintenance__task-tag">{task.tag}</span>
+                                                        <span className="admin-maintenance__task-title">{taskTitle}</span>
+                                                        <span className="admin-maintenance__task-tag">{taskTag}</span>
                                                     </div>
                                                 </div>
                                             </td>
@@ -408,7 +439,7 @@ export default function AdminMaintenancePage() {
                                             {/* Description cell */}
                                             <td>
                                                 <div className="admin-maintenance__task-desc">
-                                                    {task.desc}
+                                                    {taskDesc}
                                                 </div>
                                             </td>
 
@@ -420,7 +451,7 @@ export default function AdminMaintenancePage() {
                                                 {taskRunning ? (
                                                     <span className="admin-maintenance__status-badge admin-maintenance__status-badge--running">
                                                         <FontAwesomeIcon icon={faRotate} spin />
-                                                        <span>En cours...</span>
+                                                        <span>{tr("Running...", "En cours...")}</span>
                                                     </span>
                                                 ) : statusInfo.state === "success" ? (
                                                     <span
@@ -428,7 +459,7 @@ export default function AdminMaintenancePage() {
                                                         title={statusInfo.message}
                                                     >
                                                         <FontAwesomeIcon icon={faCheck} />
-                                                        <span>Terminé</span>
+                                                        <span>{tr("Completed", "Terminé")}</span>
                                                     </span>
                                                 ) : statusInfo.state === "error" ? (
                                                     <span
@@ -436,11 +467,11 @@ export default function AdminMaintenancePage() {
                                                         title={statusInfo.message}
                                                     >
                                                         <FontAwesomeIcon icon={faTriangleExclamation} />
-                                                        <span>Erreur</span>
+                                                        <span>{tr("Error", "Erreur")}</span>
                                                     </span>
                                                 ) : (
                                                     <span className="admin-maintenance__status-badge admin-maintenance__status-badge--idle">
-                                                        <span>Prêt</span>
+                                                        <span>{tr("Ready", "Prêt")}</span>
                                                     </span>
                                                 )}
                                             </td>
@@ -455,10 +486,10 @@ export default function AdminMaintenancePage() {
                                                     className="admin-maintenance__row-btn"
                                                     onClick={() => handleExecuteTask(task.id)}
                                                     disabled={isRunning}
-                                                    title={`Exécuter « ${task.title} »`}
+                                                    title={tr(`Run "${taskTitle}"`, `Exécuter « ${taskTitle} »`)}
                                                 >
                                                     <FontAwesomeIcon icon={taskRunning ? faRotate : faPlay} spin={taskRunning} />
-                                                    <span>{taskRunning ? "En cours..." : "Exécuter"}</span>
+                                                    <span>{taskRunning ? tr("Running...", "En cours...") : tr("Run", "Exécuter")}</span>
                                                 </button>
                                             </td>
                                         </tr>

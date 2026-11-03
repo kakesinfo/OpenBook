@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faXmark, faCheck, faPlus } from "@fortawesome/free-solid-svg-icons";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 
 interface Props {
     value: string;
@@ -16,11 +17,14 @@ export default function SearchableSelect({
     value,
     onChange,
     options,
-    placeholder = "Sélectionner...",
-    emptyLabel = "-- Aucun --",
+    placeholder,
+    emptyLabel,
     openDirection = "down",
     allowCustom = true
 }: Props) {
+    const { tr } = useLanguage();
+    const resolvedPlaceholder = placeholder && placeholder !== "Sélectionner..." ? placeholder : tr("Select...", "Sélectionner...");
+    const resolvedEmptyLabel = emptyLabel && emptyLabel !== "-- Aucun --" ? emptyLabel : tr("-- None --", "-- Aucun --");
     const [isOpen, setIsOpen] = useState(false);
     const [isFiltering, setIsFiltering] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -45,13 +49,14 @@ export default function SearchableSelect({
         normalizedQuery !== "" &&
         ("aucun".includes(normalizedQuery) ||
             "aucune".includes(normalizedQuery) ||
-            emptyLabel.toLowerCase().includes(normalizedQuery));
+            "none".includes(normalizedQuery) ||
+            resolvedEmptyLabel.toLowerCase().includes(normalizedQuery));
 
     const showEmptyOption = !isFiltering || normalizedQuery === "" || isNoneQuery;
 
     const exactMatchExists = options.some(
         (opt) => opt.toLowerCase() === value.trim().toLowerCase()
-    ) || ["aucun", "aucune"].includes(value.trim().toLowerCase());
+    ) || ["aucun", "aucune", "none"].includes(value.trim().toLowerCase());
 
     const handleSelectOption = (opt: string) => {
         onChange(opt);
@@ -65,7 +70,7 @@ export default function SearchableSelect({
                 <input
                     type="text"
                     value={value}
-                    placeholder={placeholder}
+                    placeholder={resolvedPlaceholder}
                     onFocus={() => {
                         setIsOpen(true);
                         setIsFiltering(false);
@@ -107,8 +112,8 @@ export default function SearchableSelect({
                                 setIsFiltering(false);
                                 setIsOpen(true);
                             }}
-                            title="Effacer"
-                            aria-label="Effacer"
+                            title={tr("Clear", "Effacer")}
+                            aria-label={tr("Clear", "Effacer")}
                         >
                             <FontAwesomeIcon icon={faXmark} />
                         </button>
@@ -122,7 +127,7 @@ export default function SearchableSelect({
                             if (next) setIsFiltering(false);
                         }}
                         tabIndex={-1}
-                        aria-label="Ouvrir la liste"
+                        aria-label={tr("Open list", "Ouvrir la liste")}
                     >
                         <FontAwesomeIcon icon={faChevronDown} />
                     </button>
@@ -137,7 +142,7 @@ export default function SearchableSelect({
                             className={`searchable-select__option searchable-select__option--clear ${value.trim() === "" ? "searchable-select__option--selected" : ""}`}
                             onClick={() => handleSelectOption("")}
                         >
-                            <span>{emptyLabel}</span>
+                            <span>{resolvedEmptyLabel}</span>
                             {value.trim() === "" && <FontAwesomeIcon icon={faCheck} className="searchable-select__check" />}
                         </button>
                     )}
@@ -149,7 +154,7 @@ export default function SearchableSelect({
                             onClick={() => handleSelectOption(value.trim())}
                         >
                             <FontAwesomeIcon icon={faPlus} />
-                            <span>Utiliser « {value.trim()} »</span>
+                            <span>{tr(`Use "${value.trim()}"`, `Utiliser « ${value.trim()} »`)}</span>
                         </button>
                     )}
 
@@ -171,7 +176,7 @@ export default function SearchableSelect({
                     ) : (
                         !allowCustom && (
                             <div className="searchable-select__empty">
-                                Aucun résultat
+                                {tr("No results", "Aucun résultat")}
                             </div>
                         )
                     )}

@@ -1,6 +1,7 @@
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import { useEffect, useState } from "react";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import BookList from "../../components/BookList/BookList.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import { Link } from "react-router";
@@ -9,6 +10,7 @@ import { faHeart, faCompass } from "@fortawesome/free-solid-svg-icons";
 
 export default function WishlistPage() {
     const session = useSession();
+    const { tr } = useLanguage();
     const [books, setBooks] = useState<BookSummaryDTO[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -31,13 +33,13 @@ export default function WishlistPage() {
     return (
         <div className="wishlist-wrapper" style={{ width: "100%", display: "flex", flexDirection: "column" }}>
             <WrapperHeader>
-                <h2>Liste de souhaits {books.length > 0 ? `(${books.length})` : ''}</h2>
+                <h2>{tr("Wishlist", "Liste de souhaits")} {books.length > 0 ? `(${books.length})` : ''}</h2>
             </WrapperHeader>
 
             <div className="wishlist-body">
                 {loading ? (
                     <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
-                        Chargement de votre liste de souhaits...
+                        {tr("Loading your wishlist...", "Chargement de votre liste de souhaits...")}
                     </div>
                 ) : books.length > 0 ? (
                     <BookList
@@ -74,10 +76,10 @@ export default function WishlistPage() {
                             <FontAwesomeIcon icon={faHeart} />
                         </div>
                         <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>
-                            Aucun livre dans vos souhaits
+                            {tr("No books in your wishlist", "Aucun livre dans vos souhaits")}
                         </h3>
                         <p style={{ fontSize: "0.9375rem", maxWidth: "380px", marginBottom: "24px", lineHeight: 1.6 }}>
-                            Retrouvez ici tous les ouvrages que vous aimeriez acquérir ou lire plus tard.
+                            {tr("Find here all the books you would like to acquire or read later.", "Retrouvez ici tous les ouvrages que vous aimeriez acquérir ou lire plus tard.")}
                         </p>
                         <Link
                             to="/app/home"
@@ -96,7 +98,7 @@ export default function WishlistPage() {
                             }}
                         >
                             <FontAwesomeIcon icon={faCompass} />
-                            <span>Explorer le catalogue</span>
+                            <span>{tr("Explore catalog", "Explorer le catalogue")}</span>
                         </Link>
                     </div>
                 )}

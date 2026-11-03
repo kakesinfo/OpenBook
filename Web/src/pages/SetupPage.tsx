@@ -11,6 +11,7 @@ import {
     faArrowRight
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../hooks/UseSession.tsx";
+import useLanguage from "../hooks/UseLanguage.tsx";
 import { API_URL } from "../config/api.ts";
 import Card from "../components/Card/Card.tsx";
 import FormGroup from "../components/Form/FormGroup.tsx";
@@ -23,6 +24,7 @@ export default function SetupPage() {
     const [loading, setLoading] = useState(false);
 
     const session = useSession();
+    const { tr } = useLanguage();
     const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -32,15 +34,15 @@ export default function SetupPage() {
         const trimmedUser = username.trim();
 
         if (!trimmedUser || trimmedUser.length < 3) {
-            return enqueueSnackbar("Le nom d'utilisateur doit contenir au moins 3 caractères.", { variant: "error" });
+            return enqueueSnackbar(tr("Username must be at least 3 characters long.", "Le nom d'utilisateur doit contenir au moins 3 caractères."), { variant: "error" });
         }
 
         if (!password || password.length < 6) {
-            return enqueueSnackbar("Le mot de passe doit contenir au moins 6 caractères.", { variant: "error" });
+            return enqueueSnackbar(tr("Password must be at least 6 characters long.", "Le mot de passe doit contenir au moins 6 caractères."), { variant: "error" });
         }
 
         if (password !== confirmPassword) {
-            return enqueueSnackbar("Les deux mots de passe ne correspondent pas.", { variant: "error" });
+            return enqueueSnackbar(tr("Passwords do not match.", "Les deux mots de passe ne correspondent pas."), { variant: "error" });
         }
 
         setLoading(true);
@@ -58,7 +60,7 @@ export default function SetupPage() {
 
             if (!res.ok) {
                 const errorData = await res.json().catch(() => null);
-                const message = errorData?.message || "Erreur lors de la configuration de l'administrateur.";
+                const message = errorData?.message || tr("Error configuring administrator.", "Erreur lors de la configuration de l'administrateur.");
                 enqueueSnackbar(message, { variant: "error" });
                 return;
             }
@@ -67,12 +69,12 @@ export default function SetupPage() {
             if (data.token) {
                 session.updateToken(data.token);
                 await session.checkSetupStatus();
-                enqueueSnackbar("Serveur configuré avec succès ! Bienvenue dans l'administration.", { variant: "success" });
+                enqueueSnackbar(tr("Server configured successfully! Welcome to administration.", "Serveur configuré avec succès ! Bienvenue dans l'administration."), { variant: "success" });
                 navigate("/app/admin/indexation", { replace: true });
             }
         } catch (err) {
             console.error("Setup error:", err);
-            enqueueSnackbar("Impossible de joindre le serveur pour la configuration initiale.", { variant: "error" });
+            enqueueSnackbar(tr("Unable to reach server for initial setup.", "Impossible de joindre le serveur pour la configuration initiale."), { variant: "error" });
         } finally {
             setLoading(false);
         }
@@ -84,11 +86,11 @@ export default function SetupPage() {
                 <div className="setup-page__header">
                     <div className="setup-page__badge">
                         <FontAwesomeIcon icon={faServer} />
-                        <span>Premier Lancement</span>
+                        <span>{tr("First Launch", "Premier Lancement")}</span>
                     </div>
                     <h1 className="setup-page__title">Yet Another Library</h1>
                     <p className="setup-page__subtitle">
-                        Finalisez la configuration du serveur.
+                        {tr("Complete server configuration.", "Finalisez la configuration du serveur.")}
                     </p>
                 </div>
 
@@ -96,7 +98,7 @@ export default function SetupPage() {
                     <div className="setup-page__notice">
                         <FontAwesomeIcon icon={faCircleInfo} />
                         <div>
-                            <strong>Accès Administrateur dédié :</strong> Ce compte a un accès exclusif à l'administration du serveur. Il ne dispose pas de bibliothèque personnelle de lecture.
+                            <strong>{tr("Dedicated Administrator Access:", "Accès Administrateur dédié :")}</strong> {tr("This account has exclusive access to server administration. It does not have a personal reading library.", "Ce compte a un accès exclusif à l'administration du serveur. Il ne dispose pas de bibliothèque personnelle de lecture.")}
                         </div>
                     </div>
 
@@ -104,7 +106,7 @@ export default function SetupPage() {
                         <FormGroup>
                             <label htmlFor="admin-username" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                 <FontAwesomeIcon icon={faUser} style={{ fontSize: "0.8rem", color: "var(--text-muted)" }} />
-                                <span>Nom du compte administrateur *</span>
+                                <span>{tr("Administrator account name *", "Nom du compte administrateur *")}</span>
                             </label>
                             <input
                                 id="admin-username"
@@ -112,7 +114,7 @@ export default function SetupPage() {
                                 name="username"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
-                                placeholder="ex: admin"
+                                placeholder={tr("e.g., admin", "ex: admin")}
                                 required
                                 autoComplete="username"
                             />
@@ -121,7 +123,7 @@ export default function SetupPage() {
                         <FormGroup>
                             <label htmlFor="admin-password" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                 <FontAwesomeIcon icon={faLock} style={{ fontSize: "0.8rem", color: "var(--text-muted)" }} />
-                                <span>Mot de passe administrateur *</span>
+                                <span>{tr("Administrator password *", "Mot de passe administrateur *")}</span>
                             </label>
                             <input
                                 id="admin-password"
@@ -129,7 +131,7 @@ export default function SetupPage() {
                                 name="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Minimum 6 caractères"
+                                placeholder={tr("Minimum 6 characters", "Minimum 6 caractères")}
                                 required
                                 autoComplete="new-password"
                             />
@@ -138,7 +140,7 @@ export default function SetupPage() {
                         <FormGroup>
                             <label htmlFor="admin-confirm-password" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                 <FontAwesomeIcon icon={faLock} style={{ fontSize: "0.8rem", color: "var(--text-muted)" }} />
-                                <span>Confirmer le mot de passe *</span>
+                                <span>{tr("Confirm password *", "Confirmer le mot de passe *")}</span>
                             </label>
                             <input
                                 id="admin-confirm-password"
@@ -146,7 +148,7 @@ export default function SetupPage() {
                                 name="confirmPassword"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="Retapez le mot de passe"
+                                placeholder={tr("Re-enter password", "Retapez le mot de passe")}
                                 required
                                 autoComplete="new-password"
                             />
@@ -160,11 +162,11 @@ export default function SetupPage() {
                             {loading ? (
                                 <>
                                     <FontAwesomeIcon icon={faSpinner} spin />
-                                    <span>Configuration en cours...</span>
+                                    <span>{tr("Configuring...", "Configuration en cours...")}</span>
                                 </>
                             ) : (
                                 <>
-                                    <span>Finaliser et ouvrir l'administration</span>
+                                    <span>{tr("Finish and open administration", "Finaliser et ouvrir l'administration")}</span>
                                     <FontAwesomeIcon icon={faArrowRight} />
                                 </>
                             )}

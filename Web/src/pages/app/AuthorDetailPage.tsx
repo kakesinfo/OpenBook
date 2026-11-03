@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useSnackbar } from "notistack";
 import AuthorDTO from "../../dto/Author.dto.ts";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
@@ -24,6 +25,7 @@ export default function AuthorDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const session = useSession();
+    const { tr } = useLanguage();
     const { enqueueSnackbar } = useSnackbar();
 
     const [author, setAuthor] = useState<AuthorDTO | null>(null);
@@ -42,11 +44,11 @@ export default function AuthorDetailPage() {
                 const data: AuthorDTO = await res.json();
                 setAuthor(data);
             } else {
-                enqueueSnackbar("Auteur introuvable", { variant: "error" });
+                enqueueSnackbar(tr("Author not found", "Auteur introuvable"), { variant: "error" });
             }
         } catch (err) {
             console.error("Error loading author detail:", err);
-            enqueueSnackbar("Erreur lors du chargement de l'auteur", { variant: "error" });
+            enqueueSnackbar(tr("Error loading author", "Erreur lors du chargement de l'auteur"), { variant: "error" });
         } finally {
             setLoading(false);
         }
@@ -73,14 +75,19 @@ export default function AuthorDetailPage() {
                 const followed = Boolean(data.following);
                 setAuthor((prev) => (prev ? { ...prev, isFollowed: followed } : null));
                 enqueueSnackbar(
-                    followed ? "Auteur ajouté à vos suivis" : "Auteur retiré de vos suivis",
+                    followed
+                        ? tr("Author added to your followed list", "Auteur ajouté à vos suivis")
+                        : tr("Author removed from your followed list", "Auteur retiré de vos suivis"),
                     { variant: "info" }
                 );
             }
         } catch (err) {
             console.error("Error toggling follow:", err);
             setAuthor((prev) => (prev ? { ...prev, isFollowed: !newState } : null));
-            enqueueSnackbar("Erreur lors de la modification du suivi", { variant: "error" });
+            enqueueSnackbar(
+                tr("Error updating follow status", "Erreur lors de la modification du suivi"),
+                { variant: "error" }
+            );
         }
     };
 
@@ -132,16 +139,16 @@ export default function AuthorDetailPage() {
                             type="button"
                             className="author-detail-page__back-btn"
                             onClick={() => navigate(-1)}
-                            aria-label="Retour"
+                            aria-label={tr("Back", "Retour")}
                         >
                             <FontAwesomeIcon icon={faArrowLeft} />
                         </button>
-                        <h2 style={{ margin: 0 }}>Chargement de l'auteur...</h2>
+                        <h2 style={{ margin: 0 }}>{tr("Loading author...", "Chargement de l'auteur...")}</h2>
                     </div>
                 </WrapperHeader>
                 <div className="author-detail-page__content">
                     <div className="author-detail-page__empty">
-                        <p>Chargement des informations de l'auteur...</p>
+                        <p>{tr("Loading author information...", "Chargement des informations de l'auteur...")}</p>
                     </div>
                 </div>
             </div>
@@ -157,23 +164,23 @@ export default function AuthorDetailPage() {
                             type="button"
                             className="author-detail-page__back-btn"
                             onClick={() => navigate(-1)}
-                            aria-label="Retour"
+                            aria-label={tr("Back", "Retour")}
                         >
                             <FontAwesomeIcon icon={faArrowLeft} />
                         </button>
-                        <h2 style={{ margin: 0 }}>Auteur non trouvé</h2>
+                        <h2 style={{ margin: 0 }}>{tr("Author not found", "Auteur non trouvé")}</h2>
                     </div>
                 </WrapperHeader>
                 <div className="author-detail-page__content">
                     <div className="author-detail-page__empty">
                         <FontAwesomeIcon icon={faPenNib} className="author-detail-page__empty-icon" />
-                        <h3>Cet auteur n'existe pas ou a été supprimé</h3>
+                        <h3>{tr("This author does not exist or has been deleted", "Cet auteur n'existe pas ou a été supprimé")}</h3>
                         <button
                             type="button"
                             className="author-detail-page__btn author-detail-page__btn--primary"
                             onClick={() => navigate(-1)}
                         >
-                            Retour
+                            {tr("Back", "Retour")}
                         </button>
                     </div>
                 </div>
@@ -194,8 +201,8 @@ export default function AuthorDetailPage() {
                             type="button"
                             className="author-detail-page__back-btn"
                             onClick={() => navigate(-1)}
-                            aria-label="Retour"
-                            title="Retour"
+                            aria-label={tr("Back", "Retour")}
+                            title={tr("Back", "Retour")}
                         >
                             <FontAwesomeIcon icon={faArrowLeft} />
                         </button>
@@ -207,10 +214,14 @@ export default function AuthorDetailPage() {
                             type="button"
                             className={`author-detail-page__follow-btn ${author.isFollowed ? "is-followed" : ""}`}
                             onClick={handleToggleFollow}
-                            title={author.isFollowed ? "Auteur suivi (cliquer pour ne plus suivre)" : "Suivre cet auteur"}
+                            title={
+                                author.isFollowed
+                                    ? tr("Following author (click to unfollow)", "Auteur suivi (cliquer pour ne plus suivre)")
+                                    : tr("Follow this author", "Suivre cet auteur")
+                            }
                         >
                             <FontAwesomeIcon icon={author.isFollowed ? faCheck : faBell} />
-                            <span>{author.isFollowed ? "Auteur suivi" : "Suivre l'auteur"}</span>
+                            <span>{author.isFollowed ? tr("Following author", "Auteur suivi") : tr("Follow author", "Suivre l'auteur")}</span>
                         </button>
                     </div>
                 </div>
@@ -230,7 +241,7 @@ export default function AuthorDetailPage() {
                     <div className="author-detail-hero__info">
                         <div className="author-detail-hero__badge">
                             <FontAwesomeIcon icon={faPenNib} />
-                            <span>Auteur / Autrice</span>
+                            <span>{tr("Author", "Auteur / Autrice")}</span>
                         </div>
 
                         <h1 className="author-detail-hero__name">{fullName}</h1>
@@ -238,15 +249,15 @@ export default function AuthorDetailPage() {
                         <div className="author-detail-hero__stats">
                             <span className="author-detail-hero__stat-pill">
                                 <FontAwesomeIcon icon={faBook} />
-                                <strong>{totalBooks}</strong> album{totalBooks > 1 ? "s" : ""}
+                                <strong>{totalBooks}</strong> {totalBooks > 1 ? tr("books", "albums") : tr("book", "album")}
                             </span>
                             <span className="author-detail-hero__stat-pill author-detail-hero__stat-pill--owned">
-                                <strong>{ownedBooks}</strong> dans votre collection
+                                <strong>{ownedBooks}</strong> {tr("in your collection", "dans votre collection")}
                             </span>
                             {wishlistedBooks > 0 && (
                                 <span className="author-detail-hero__stat-pill author-detail-hero__stat-pill--wishlist">
                                     <FontAwesomeIcon icon={faHeart} />
-                                    <strong>{wishlistedBooks}</strong> souhait{wishlistedBooks > 1 ? "s" : ""}
+                                    <strong>{wishlistedBooks}</strong> {wishlistedBooks > 1 ? tr("wishlisted", "souhaits") : tr("wishlisted", "souhait")}
                                 </span>
                             )}
                         </div>
@@ -256,7 +267,7 @@ export default function AuthorDetailPage() {
                 {/* Albums section header and controls */}
                 <div className="author-detail-albums-header">
                     <div className="author-detail-albums-header__left">
-                        <h3>Albums ({filteredBooks.length})</h3>
+                        <h3>{tr("Books", "Albums")} ({filteredBooks.length})</h3>
 
                         {/* Filter pills */}
                         <div className="author-detail-albums-header__filter-pills">
@@ -265,14 +276,14 @@ export default function AuthorDetailPage() {
                                 className={`author-detail-filter-pill ${statusFilter === "all" ? "is-active" : ""}`}
                                 onClick={() => setStatusFilter("all")}
                             >
-                                Tous ({totalBooks})
+                                {tr("All", "Tous")} ({totalBooks})
                             </button>
                             <button
                                 type="button"
                                 className={`author-detail-filter-pill ${statusFilter === "owned" ? "is-active" : ""}`}
                                 onClick={() => setStatusFilter("owned")}
                             >
-                                Possédés ({ownedBooks})
+                                {tr("Owned", "Possédés")} ({ownedBooks})
                             </button>
                             {wishlistedBooks > 0 && (
                                 <button
@@ -280,7 +291,7 @@ export default function AuthorDetailPage() {
                                     className={`author-detail-filter-pill ${statusFilter === "wishlisted" ? "is-active" : ""}`}
                                     onClick={() => setStatusFilter("wishlisted")}
                                 >
-                                    Souhaits ({wishlistedBooks})
+                                    {tr("Wishlist", "Souhaits")} ({wishlistedBooks})
                                 </button>
                             )}
                         </div>
@@ -291,7 +302,7 @@ export default function AuthorDetailPage() {
                             <FontAwesomeIcon icon={faMagnifyingGlass} />
                             <input
                                 type="text"
-                                placeholder="Filtrer les albums..."
+                                placeholder={tr("Filter books...", "Filtrer les albums...")}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -307,8 +318,8 @@ export default function AuthorDetailPage() {
                                 type="button"
                                 className={`author-detail-albums-header__mode-btn ${viewMode === "grid" ? "is-active" : ""}`}
                                 onClick={() => setViewMode("grid")}
-                                title="Affichage grille"
-                                aria-label="Affichage grille"
+                                title={tr("Grid view", "Affichage grille")}
+                                aria-label={tr("Grid view", "Affichage grille")}
                             >
                                 <FontAwesomeIcon icon={faBorderAll} />
                             </button>
@@ -316,8 +327,8 @@ export default function AuthorDetailPage() {
                                 type="button"
                                 className={`author-detail-albums-header__mode-btn ${viewMode === "list" ? "is-active" : ""}`}
                                 onClick={() => setViewMode("list")}
-                                title="Affichage liste"
-                                aria-label="Affichage liste"
+                                title={tr("List view", "Affichage liste")}
+                                aria-label={tr("List view", "Affichage liste")}
                             >
                                 <FontAwesomeIcon icon={faList} />
                             </button>
@@ -331,13 +342,13 @@ export default function AuthorDetailPage() {
                         <FontAwesomeIcon icon={faBook} className="author-detail-page__empty-icon" />
                         <h3>
                             {searchQuery || statusFilter !== "all"
-                                ? "Aucun album ne correspond aux critères sélectionnés"
-                                : "Aucun album trouvé pour cet auteur"}
+                                ? tr("No books match the selected criteria", "Aucun album ne correspond aux critères sélectionnés")
+                                : tr("No books found for this author", "Aucun album trouvé pour cet auteur")}
                         </h3>
                         <p>
                             {searchQuery || statusFilter !== "all"
-                                ? "Modifiez vos filtres ou réinitialisez la recherche pour voir tous les albums."
-                                : "Cet auteur n'a pas encore d'album associé dans la base de données."}
+                                ? tr("Change your filters or reset the search to see all books.", "Modifiez vos filtres ou réinitialisez la recherche pour voir tous les albums.")
+                                : tr("This author does not have any books linked in the database yet.", "Cet auteur n'a pas encore d'album associé dans la base de données.")}
                         </p>
                     </div>
                 ) : viewMode === "grid" ? (
@@ -361,10 +372,10 @@ export default function AuthorDetailPage() {
                                     <div className="author-detail-list-item__meta">
                                         {b.seriesName ? (
                                             <Link to={`/app/series/${b.seriesId}`} className="author-detail-list-item__series-link">
-                                                {b.seriesName}{b.volume != null ? ` — Tome ${b.volume}` : ""}
+                                                {b.seriesName}{b.volume != null ? ` — ${tr(`Volume ${b.volume}`, `Tome ${b.volume}`)}` : ""}
                                             </Link>
                                         ) : (
-                                            <span>One-shot</span>
+                                            <span>{tr("One-shot", "One-shot")}</span>
                                         )}
                                         {b.releaseDate && (
                                             <span className="author-detail-list-item__date">
@@ -376,14 +387,18 @@ export default function AuthorDetailPage() {
 
                                 <div className="author-detail-list-item__badges">
                                     {b.status === "OWNED" && (
-                                        <span className="author-detail-list-item__badge owned">Possédé</span>
+                                        <span className="author-detail-list-item__badge owned">{tr("Owned", "Possédé")}</span>
                                     )}
                                     {b.status === "WISHLISTED" && (
-                                        <span className="author-detail-list-item__badge wishlisted">Souhait</span>
+                                        <span className="author-detail-list-item__badge wishlisted">{tr("Wishlist", "Souhait")}</span>
                                     )}
                                     {b.readingStatus && b.readingStatus !== "UNREAD" && (
                                         <span className="author-detail-list-item__badge reading">
-                                            {b.readingStatus === "READ" ? "Lu" : b.readingStatus === "READING" ? "En cours" : b.readingStatus}
+                                            {b.readingStatus === "READ"
+                                                ? tr("Read", "Lu")
+                                                : b.readingStatus === "READING"
+                                                ? tr("Reading", "En cours")
+                                                : b.readingStatus}
                                         </span>
                                     )}
                                 </div>

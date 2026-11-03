@@ -18,6 +18,7 @@ import {
 import { Link, useLocation } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import UserAvatar from "../UserAvatar/UserAvatar.tsx";
 
 export function WrapperAction({ children, icon, callback }: {
@@ -25,6 +26,7 @@ export function WrapperAction({ children, icon, callback }: {
     icon: IconDefinition;
     callback?: () => void;
 }) {
+    const { t } = useLanguage();
     return (
         <button
             onClick={callback}
@@ -35,7 +37,7 @@ export function WrapperAction({ children, icon, callback }: {
                 <FontAwesomeIcon icon={icon} />
             </span>
             <span className="wrapper-navigation__text">{children}</span>
-            <span className="wrapper-navigation__shortcut">Rechercher</span>
+            <span className="wrapper-navigation__shortcut">{t("nav.searchShortcut")}</span>
         </button>
     );
 }
@@ -101,10 +103,12 @@ export function WrapperNavigation({ title = "Yet Another Library", badge, childr
     onSearchClick?: () => void;
 }) {
     const session = useSession();
+    const { t } = useLanguage();
     const location = useLocation();
     const isSettingsActive = location.pathname.startsWith('/app/settings');
 
-    const adminBadge = badge !== undefined ? badge : (session.isAdmin ? "Administration" : null);
+    const adminBadge = badge !== undefined ? badge : (session.isAdmin ? t("nav.adminBadge") : null);
+    const defaultReaderName = t("nav.roleReader");
 
     return (
         <>
@@ -130,19 +134,19 @@ export function WrapperNavigation({ title = "Yet Another Library", badge, childr
                     <Link
                         to="/app/settings"
                         className={`wrapper-navigation__user ${isSettingsActive ? 'active' : ''}`}
-                        title="Paramètres de votre compte"
+                        title={t("nav.accountSettings")}
                     >
                         <UserAvatar
                             avatar={session.user?.avatar}
-                            name={session.user?.username || "Lecteur"}
+                            name={session.user?.username || defaultReaderName}
                             size="md"
                         />
                         <div className="wrapper-navigation__user-info">
                             <span className="wrapper-navigation__user-name">
-                                {session.user?.username || "Lecteur"}
+                                {session.user?.username || defaultReaderName}
                             </span>
                             <span className="wrapper-navigation__user-role">
-                                {session.isAdmin ? "Administrateur" : "Lecteur"}
+                                {session.isAdmin ? t("nav.roleAdmin") : defaultReaderName}
                             </span>
                         </div>
                         <span className="wrapper-navigation__user-gear">
@@ -172,7 +176,7 @@ export function WrapperNavigation({ title = "Yet Another Library", badge, childr
                             type="button"
                             onClick={onSearchClick}
                             className="wrapper-mobile-header__btn"
-                            aria-label="Recherche"
+                            aria-label={t("nav.search")}
                         >
                             <FontAwesomeIcon icon={faMagnifyingGlass} />
                         </button>
@@ -180,11 +184,11 @@ export function WrapperNavigation({ title = "Yet Another Library", badge, childr
                     <Link
                         to="/app/settings"
                         className={`wrapper-mobile-header__btn ${isSettingsActive ? 'active' : ''}`}
-                        aria-label="Paramètres"
+                        aria-label={t("nav.settings")}
                     >
                         <UserAvatar
                             avatar={session.user?.avatar}
-                            name={session.user?.username || "Lecteur"}
+                            name={session.user?.username || defaultReaderName}
                             size="sm"
                         />
                     </Link>
@@ -201,35 +205,35 @@ export function WrapperNavigation({ title = "Yet Another Library", badge, childr
                             className={`wrapper-bottom-nav__item ${location.pathname.includes('/home') ? 'active' : ''}`}
                         >
                             <FontAwesomeIcon icon={faNewspaper} />
-                            <span>Nouveautés</span>
+                            <span>{t("nav.news")}</span>
                         </Link>
                         <Link
                             to="/app/collection"
                             className={`wrapper-bottom-nav__item ${location.pathname.includes('/collection') || location.pathname.includes('/bibliotheque') ? 'active' : ''}`}
                         >
                             <FontAwesomeIcon icon={faBook} />
-                            <span>Bibliothèque</span>
+                            <span>{t("nav.library")}</span>
                         </Link>
                         <Link
                             to="/app/wishlist"
                             className={`wrapper-bottom-nav__item ${location.pathname.includes('/wishlist') ? 'active' : ''}`}
                         >
                             <FontAwesomeIcon icon={faHeart} />
-                            <span>Souhaits</span>
+                            <span>{t("nav.wishlist")}</span>
                         </Link>
                         <Link
                             to="/app/planning"
                             className={`wrapper-bottom-nav__item ${location.pathname.includes('/planning') ? 'active' : ''}`}
                         >
                             <FontAwesomeIcon icon={faCalendarDays} />
-                            <span>Planning</span>
+                            <span>{t("nav.planning")}</span>
                         </Link>
                         <Link
                             to="/app/statistics"
                             className={`wrapper-bottom-nav__item ${location.pathname.includes('/statistics') ? 'active' : ''}`}
                         >
                             <FontAwesomeIcon icon={faChartPie} />
-                            <span>Stats</span>
+                            <span>{t("nav.statsShort")}</span>
                         </Link>
                     </>
                 ) : (
@@ -239,28 +243,28 @@ export function WrapperNavigation({ title = "Yet Another Library", badge, childr
                             className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/indexation') ? 'active' : ''}`}
                         >
                             <FontAwesomeIcon icon={faRotate} />
-                            <span>Indexation</span>
+                            <span>{t("nav.indexation")}</span>
                         </Link>
                         <Link
                             to="/app/admin/maintenance"
                             className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/maintenance') ? 'active' : ''}`}
                         >
                             <FontAwesomeIcon icon={faWrench} />
-                            <span>Maintenance</span>
+                            <span>{t("nav.maintenance")}</span>
                         </Link>
                         <Link
                             to="/app/admin/conflicts"
                             className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/conflicts') ? 'active' : ''}`}
                         >
                             <FontAwesomeIcon icon={faCodeBranch} />
-                            <span>Conflits</span>
+                            <span>{t("nav.conflicts")}</span>
                         </Link>
                         <Link
                             to="/app/admin/deleted-books"
                             className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/deleted-books') ? 'active' : ''}`}
                         >
                             <FontAwesomeIcon icon={faTrashCanArrowUp} />
-                            <span>Supprimés</span>
+                            <span>{t("nav.deletedShort")}</span>
                         </Link>
                     </>
                 )}

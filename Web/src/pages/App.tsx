@@ -27,6 +27,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useState } from "react";
 import useSession from "../hooks/UseSession.tsx";
+import useLanguage from "../hooks/UseLanguage.tsx";
 import { useDebounce } from "../hooks/UseDebounce.tsx";
 import { Dialog } from "@mui/material";
 import Card from "../components/Card/Card.tsx";
@@ -49,6 +50,7 @@ export default function App() {
     const [searching, setSearching] = useState(false);
 
     const session = useSession();
+    const { t, tr } = useLanguage();
 
     const handleInit = () => {
         setSearch("");
@@ -120,24 +122,24 @@ export default function App() {
             <WrapperNavigation title="Yet Another Library" onSearchClick={!session.isAdmin ? handleOpen : undefined}>
                 {!session.isAdmin ? (
                     <>
-                        <WrapperAction icon={faMagnifyingGlass} callback={handleOpen}>Recherche</WrapperAction>
-                        <WrapperButton to={'/app/home'} icon={faNewspaper}>Nouveautés</WrapperButton>
-                        <WrapperButton to={'/app/collection'} icon={faBook} activeRoutes={['/app/series', '/app/collection/series', '/app/sales', '/app/ventes']}>Bibliothèque</WrapperButton>
+                        <WrapperAction icon={faMagnifyingGlass} callback={handleOpen}>{t("nav.search")}</WrapperAction>
+                        <WrapperButton to={'/app/home'} icon={faNewspaper}>{t("nav.news")}</WrapperButton>
+                        <WrapperButton to={'/app/collection'} icon={faBook} activeRoutes={['/app/series', '/app/collection/series', '/app/sales', '/app/ventes']}>{t("nav.library")}</WrapperButton>
                         <WrapperSubGroup>
-                            <WrapperSubButton to={'/app/collection'} icon={faBookOpen}>Mes Albums</WrapperSubButton>
-                            <WrapperSubButton to={'/app/series'} icon={faLayerGroup}>Mes Séries</WrapperSubButton>
-                            <WrapperSubButton to={'/app/sales'} icon={faTag}>Mes Ventes</WrapperSubButton>
+                            <WrapperSubButton to={'/app/collection'} icon={faBookOpen}>{t("nav.myBooks")}</WrapperSubButton>
+                            <WrapperSubButton to={'/app/series'} icon={faLayerGroup}>{t("nav.mySeries")}</WrapperSubButton>
+                            <WrapperSubButton to={'/app/sales'} icon={faTag}>{t("nav.mySales")}</WrapperSubButton>
                         </WrapperSubGroup>
-                        <WrapperButton to={'/app/wishlist'} icon={faHeart}>Souhaits</WrapperButton>
-                        <WrapperButton to={'/app/planning'} icon={faCalendarDays}>Planning</WrapperButton>
-                        <WrapperButton to={'/app/statistics'} icon={faChartPie}>Statistiques</WrapperButton>
+                        <WrapperButton to={'/app/wishlist'} icon={faHeart}>{t("nav.wishlist")}</WrapperButton>
+                        <WrapperButton to={'/app/planning'} icon={faCalendarDays}>{t("nav.planning")}</WrapperButton>
+                        <WrapperButton to={'/app/statistics'} icon={faChartPie}>{t("nav.statistics")}</WrapperButton>
                     </>
                 ) : (
                     <>
-                        <WrapperButton to={'/app/admin/indexation'} icon={faRotate}>Indexation</WrapperButton>
-                        <WrapperButton to={'/app/admin/maintenance'} icon={faWrench}>Maintenance</WrapperButton>
-                        <WrapperButton to={'/app/admin/conflicts'} icon={faCodeBranch}>Conflits</WrapperButton>
-                        <WrapperButton to={'/app/admin/deleted-books'} icon={faTrashCanArrowUp}>Livres supprimés</WrapperButton>
+                        <WrapperButton to={'/app/admin/indexation'} icon={faRotate}>{t("nav.indexation")}</WrapperButton>
+                        <WrapperButton to={'/app/admin/maintenance'} icon={faWrench}>{t("nav.maintenance")}</WrapperButton>
+                        <WrapperButton to={'/app/admin/conflicts'} icon={faCodeBranch}>{t("nav.conflicts")}</WrapperButton>
+                        <WrapperButton to={'/app/admin/deleted-books'} icon={faTrashCanArrowUp}>{t("nav.deletedBooks")}</WrapperButton>
                     </>
                 )}
             </WrapperNavigation>
@@ -166,7 +168,7 @@ export default function App() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "var(--accent-primary)" }} />
-                            <h3 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Recherche</h3>
+                            <h3 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{t("nav.search")}</h3>
                         </div>
                         <button
                             type="button"
@@ -179,7 +181,7 @@ export default function App() {
                                 fontSize: "16px",
                                 padding: "4px"
                             }}
-                            aria-label="Fermer"
+                            aria-label={tr("Close", "Fermer")}
                         >
                             <FontAwesomeIcon icon={faXmark} />
                         </button>
@@ -192,19 +194,19 @@ export default function App() {
                             autoComplete="off"
                             value={search}
                             onChange={handleChange}
-                            placeholder="Rechercher une série, un auteur, un album..."
+                            placeholder={tr("Search for a series, author, book...", "Rechercher une série, un auteur, un album...")}
                         />
                     </FormGroup>
 
                     {searching && (
                         <p style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px 0", fontSize: "0.875rem" }}>
-                            Recherche en cours...
+                            {tr("Searching...", "Recherche en cours...")}
                         </p>
                     )}
 
                     {!searching && search.trim() && totalResults === 0 && (
                         <p style={{ textAlign: "center", color: "var(--text-muted)", padding: "16px 0", fontSize: "0.875rem" }}>
-                            Aucun résultat trouvé pour « {search} »
+                            {tr(`No results found for "${search}"`, `Aucun résultat trouvé pour « ${search} »`)}
                         </p>
                     )}
 
@@ -214,7 +216,7 @@ export default function App() {
                             <div className="search-dialog-section">
                                 <div className="search-dialog-section__title">
                                     <FontAwesomeIcon icon={faLayerGroup} style={{ color: "#3b82f6" }} />
-                                    <span>Séries ({series.length})</span>
+                                    <span>{tr("Series", "Séries")} ({series.length})</span>
                                 </div>
                                 <ul className="search-dialog-section__list">
                                     {series.map((s) => (
@@ -229,7 +231,7 @@ export default function App() {
                             <div className="search-dialog-section">
                                 <div className="search-dialog-section__title">
                                     <FontAwesomeIcon icon={faUserPen} style={{ color: "#a855f7" }} />
-                                    <span>Auteurs ({authors.length})</span>
+                                    <span>{tr("Authors", "Auteurs")} ({authors.length})</span>
                                 </div>
                                 <ul className="search-dialog-section__list">
                                     {authors.map((a) => (
@@ -244,7 +246,7 @@ export default function App() {
                             <div className="search-dialog-section">
                                 <div className="search-dialog-section__title">
                                     <FontAwesomeIcon icon={faBook} style={{ color: "var(--accent-primary)" }} />
-                                    <span>Albums ({books.length})</span>
+                                    <span>{tr("Books", "Albums")} ({books.length})</span>
                                 </div>
                                 <ul className="search-dialog-section__list">
                                     {books.map((book) => (

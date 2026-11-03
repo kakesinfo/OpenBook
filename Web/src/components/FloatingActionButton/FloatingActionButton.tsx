@@ -4,10 +4,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import AddBookToLibraryModal from "./AddBookToLibraryModal.tsx";
 import CreateMissingBookModal from "./CreateMissingBookModal.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import "./FloatingActionButton.scss";
 
 export default function FloatingActionButton() {
     const location = useLocation();
+    const { tr } = useLanguage();
     const isSalesPage = location.pathname.startsWith("/app/sales") || location.pathname.startsWith("/app/ventes");
 
     const [addModalOpen, setAddModalOpen] = useState(false);
@@ -21,8 +23,8 @@ export default function FloatingActionButton() {
     };
 
     const fabLabel = isSalesPage
-        ? "Chercher un livre à mettre en vente"
-        : "Ajouter un livre à ma bibliothèque";
+        ? tr("Search for a book to list for sale", "Chercher un livre à mettre en vente")
+        : tr("Add a book to my library", "Ajouter un livre à ma bibliothèque");
 
     return (
         <>

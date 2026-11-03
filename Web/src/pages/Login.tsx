@@ -1,5 +1,6 @@
 import { useState } from "react";
 import useSession from "../hooks/UseSession.tsx";
+import useLanguage from "../hooks/UseLanguage.tsx";
 import { Link, useNavigate } from 'react-router';
 import { enqueueSnackbar } from "notistack";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -15,6 +16,7 @@ export default function Login() {
     const [loading, setLoading] = useState<boolean>(false);
 
     const session = useSession();
+    const { tr } = useLanguage();
     const navigate = useNavigate();
 
     const handleLogin = async (e?: React.FormEvent) => {
@@ -23,7 +25,7 @@ export default function Login() {
 
         const trimmedUsername = username.trim();
         if (!trimmedUsername || !password) {
-            return enqueueSnackbar("Veuillez saisir votre nom d'utilisateur et mot de passe", { variant: "error" });
+            return enqueueSnackbar(tr("Please enter your username and password", "Veuillez saisir votre nom d'utilisateur et mot de passe"), { variant: "error" });
         }
 
         setLoading(true);
@@ -32,14 +34,14 @@ export default function Login() {
 
             if (!result.success) {
                 setPassword("");
-                return enqueueSnackbar(result.error || "Nom d'utilisateur ou mot de passe invalide", { variant: "error" });
+                return enqueueSnackbar(result.error || tr("Invalid username or password", "Nom d'utilisateur ou mot de passe invalide"), { variant: "error" });
             }
 
             navigate('/app');
-            enqueueSnackbar("Bienvenue !", { variant: "success" });
+            enqueueSnackbar(tr("Welcome!", "Bienvenue !"), { variant: "success" });
         } catch (error) {
             console.error(error);
-            enqueueSnackbar("Une erreur inattendue est survenue", { variant: "error" });
+            enqueueSnackbar(tr("An unexpected error occurred", "Une erreur inattendue est survenue"), { variant: "error" });
         } finally {
             setLoading(false);
         }
@@ -53,19 +55,19 @@ export default function Login() {
                         <FontAwesomeIcon icon={faBookOpen} />
                     </div>
                     <h1 className="auth-page__title">Yet Another Library</h1>
-                    <p className="auth-page__subtitle">Connectez-vous à votre bibliothèque personnelle</p>
+                    <p className="auth-page__subtitle">{tr("Sign in to your personal library", "Connectez-vous à votre bibliothèque personnelle")}</p>
                 </div>
 
                 <Card>
                     <form onSubmit={handleLogin}>
                         <FormGroup>
-                            <label htmlFor="username">Nom d'utilisateur</label>
+                            <label htmlFor="username">{tr("Username", "Nom d'utilisateur")}</label>
                             <input
                                 id="username"
                                 type="text"
                                 name="username"
                                 autoComplete="username"
-                                placeholder="ex: admin"
+                                placeholder={tr("e.g., admin", "ex: admin")}
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 required
@@ -73,7 +75,7 @@ export default function Login() {
                         </FormGroup>
 
                         <FormGroup>
-                            <label htmlFor="password">Mot de passe</label>
+                            <label htmlFor="password">{tr("Password", "Mot de passe")}</label>
                             <input
                                 id="password"
                                 type="password"
@@ -88,12 +90,12 @@ export default function Login() {
 
                         <FormGroup>
                             <button type="submit" disabled={loading}>
-                                {loading ? "Connexion en cours..." : "Se connecter"}
+                                {loading ? tr("Signing in...", "Connexion en cours...") : tr("Sign in", "Se connecter")}
                             </button>
                         </FormGroup>
 
                         <FormGroup>
-                            <Link to={'/register'}>Pas encore de compte ? Inscrivez-vous</Link>
+                            <Link to={'/register'}>{tr("Don't have an account yet? Sign up", "Pas encore de compte ? Inscrivez-vous")}</Link>
                         </FormGroup>
                     </form>
                 </Card>

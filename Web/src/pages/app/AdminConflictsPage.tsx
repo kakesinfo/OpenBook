@@ -16,6 +16,7 @@ import {
     faPlus
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import "./AdminConflictsPage.scss";
 
 interface ConflictingBook {
@@ -46,6 +47,7 @@ interface ActionResult {
 
 export default function AdminConflictsPage() {
     const session = useSession();
+    const { tr, locale } = useLanguage();
     const [conflicts, setConflicts] = useState<SeriesConflict[]>([]);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<ActionResult | null>(null);
@@ -65,7 +67,7 @@ export default function AdminConflictsPage() {
 
     const nowFormatted = () => {
         const d = new Date();
-        return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     };
 
     const fetchConflicts = async () => {
@@ -169,11 +171,11 @@ export default function AdminConflictsPage() {
         const newName = (newSeriesNames[series.series_id] || "").trim();
 
         if (booksToMove.length === 0) {
-            alert("Veuillez sélectionner au moins un album à déplacer dans la nouvelle série.");
+            alert(tr("Please select at least one book to move to the new series.", "Veuillez sélectionner au moins un album à déplacer dans la nouvelle série."));
             return;
         }
         if (!newName) {
-            alert("Veuillez renseigner un nom pour la nouvelle série.");
+            alert(tr("Please enter a name for the new series.", "Veuillez renseigner un nom pour la nouvelle série."));
             return;
         }
 
@@ -192,7 +194,10 @@ export default function AdminConflictsPage() {
             if (resp.ok) {
                 setResult({
                     type: "success",
-                    message: `${booksToMove.length} album(s) déplacés avec succès vers la nouvelle série « ${newName} ».`,
+                    message: tr(
+                        `${booksToMove.length} book(s) moved successfully to the new series "${newName}".`,
+                        `${booksToMove.length} album(s) déplacés avec succès vers la nouvelle série « ${newName} ».`
+                    ),
                     timestamp: nowFormatted()
                 });
                 await fetchConflicts();
@@ -200,14 +205,14 @@ export default function AdminConflictsPage() {
                 const errData = await resp.json().catch(() => ({}));
                 setResult({
                     type: "error",
-                    message: errData.detail || "Erreur lors de la scission de la série.",
+                    message: errData.detail || tr("Error while splitting the series.", "Erreur lors de la scission de la série."),
                     timestamp: nowFormatted()
                 });
             }
         } catch (e: any) {
             setResult({
                 type: "error",
-                message: e?.message || "Erreur réseau lors de la scission.",
+                message: e?.message || tr("Network error while splitting.", "Erreur réseau lors de la scission."),
                 timestamp: nowFormatted()
             });
         } finally {
@@ -221,11 +226,11 @@ export default function AdminConflictsPage() {
         const variantIds = allVariants.filter(id => id !== parentId);
 
         if (!parentId) {
-            alert("Veuillez désigner l'album principal.");
+            alert(tr("Please designate the main book.", "Veuillez désigner l'album principal."));
             return;
         }
         if (variantIds.length === 0) {
-            alert("Veuillez cocher au moins un album à lier en tant que couverture variante.");
+            alert(tr("Please check at least one book to link as a variant cover.", "Veuillez cocher au moins un album à lier en tant que couverture variante."));
             return;
         }
 
@@ -243,7 +248,10 @@ export default function AdminConflictsPage() {
             if (resp.ok) {
                 setResult({
                     type: "success",
-                    message: `${variantIds.length} album(s) lié(s) comme couverture variante avec succès.`,
+                    message: tr(
+                        `${variantIds.length} book(s) linked as variant cover successfully.`,
+                        `${variantIds.length} album(s) lié(s) comme couverture variante avec succès.`
+                    ),
                     timestamp: nowFormatted()
                 });
                 await fetchConflicts();
@@ -251,14 +259,14 @@ export default function AdminConflictsPage() {
                 const errData = await resp.json().catch(() => ({}));
                 setResult({
                     type: "error",
-                    message: errData.detail || "Erreur lors de la liaison des variantes.",
+                    message: errData.detail || tr("Error while linking variants.", "Erreur lors de la liaison des variantes."),
                     timestamp: nowFormatted()
                 });
             }
         } catch (e: any) {
             setResult({
                 type: "error",
-                message: e?.message || "Erreur réseau lors de la liaison.",
+                message: e?.message || tr("Network error while linking.", "Erreur réseau lors de la liaison."),
                 timestamp: nowFormatted()
             });
         } finally {
@@ -269,7 +277,7 @@ export default function AdminConflictsPage() {
     return (
         <div className="admin-conflicts">
             <WrapperHeader>
-                <h2>Gestion des Conflits & Variantes</h2>
+                <h2>{tr("Conflicts & Variants Management", "Gestion des Conflits & Variantes")}</h2>
             </WrapperHeader>
 
             <div className="admin-conflicts__content">
@@ -281,7 +289,7 @@ export default function AdminConflictsPage() {
                             <span>{result.message}</span>
                         </div>
                         <div className="admin-conflicts__result-time">
-                            Effectué à {result.timestamp}
+                            {tr(`Completed at ${result.timestamp}`, `Effectué à ${result.timestamp}`)}
                         </div>
                     </div>
                 )}
@@ -291,13 +299,18 @@ export default function AdminConflictsPage() {
                     <div className="admin-conflicts__panel-header">
                         <div className="admin-conflicts__panel-title-group">
                             <div className="admin-conflicts__panel-title-row">
-                                <h3>Résolution des conflits de tomes</h3>
+                                <h3>{tr("Volume Conflict Resolution", "Résolution des conflits de tomes")}</h3>
                                 <span className={`admin-conflicts__badge ${conflicts.length > 0 ? "admin-conflicts__badge--warning" : "admin-conflicts__badge--clean"}`}>
-                                    {loading ? "Analyse..." : `${conflicts.length} série(s) en conflit`}
+                                    {loading
+                                        ? tr("Analyzing...", "Analyse...")
+                                        : tr(`${conflicts.length} conflicting series`, `${conflicts.length} série(s) en conflit`)}
                                 </span>
                             </div>
                             <p className="admin-conflicts__panel-subtitle">
-                                Pour chaque série présentant des doublons de volume, choisissez vous-même l'action appropriée : rattacher des couvertures alternatives au tome principal ou scinder les albums vers une nouvelle série indépendante.
+                                {tr(
+                                    "For each series with duplicate volume numbers, choose the appropriate action: link variant covers to the main volume or split the books into a new independent series.",
+                                    "Pour chaque série présentant des doublons de volume, choisissez vous-même l'action appropriée : rattacher des couvertures alternatives au tome principal ou scinder les albums vers une nouvelle série indépendante."
+                                )}
                             </p>
                         </div>
 
@@ -306,23 +319,23 @@ export default function AdminConflictsPage() {
                             className="admin-conflicts__btn-refresh"
                             onClick={fetchConflicts}
                             disabled={loading}
-                            title="Réanalyser la base de données"
+                            title={tr("Re-analyze database", "Réanalyser la base de données")}
                         >
                             <FontAwesomeIcon icon={faRotate} spin={loading} />
-                            <span>Actualiser</span>
+                            <span>{tr("Refresh", "Actualiser")}</span>
                         </button>
                     </div>
 
                     {loading ? (
                         <div className="admin-conflicts__loading-state">
                             <FontAwesomeIcon icon={faRotate} spin />
-                            <span>Analyse des séries et détection des conflits de tomes...</span>
+                            <span>{tr("Analyzing series and detecting volume conflicts...", "Analyse des séries et détection des conflits de tomes...")}</span>
                         </div>
                     ) : conflicts.length === 0 ? (
                         <div className="admin-conflicts__empty-state">
                             <FontAwesomeIcon icon={faCircleCheck} className="admin-conflicts__empty-icon" />
-                            <h4>Toutes vos séries sont parfaitement cohérentes</h4>
-                            <p>Aucun doublon de volume non lié n'a été détecté dans votre catalogue.</p>
+                            <h4>{tr("All your series are perfectly consistent", "Toutes vos séries sont parfaitement cohérentes")}</h4>
+                            <p>{tr("No unlinked volume duplicates were detected in your catalog.", "Aucun doublon de volume non lié n'a été détecté dans votre catalogue.")}</p>
                         </div>
                     ) : (
                         <div className="admin-conflicts__list">
@@ -350,10 +363,10 @@ export default function AdminConflictsPage() {
                                             <div className="admin-conflicts__card-title-group">
                                                 <span className="admin-conflicts__series-name">{series.series_name}</span>
                                                 <span className="admin-conflicts__vol-badge">
-                                                    Conflit Volume {series.conflicting_volume}
+                                                    {tr(`Volume ${series.conflicting_volume} Conflict`, `Conflit Volume ${series.conflicting_volume}`)}
                                                 </span>
                                                 <span className="admin-conflicts__count-badge">
-                                                    {series.books.length} tomes au total
+                                                    {tr(`${series.books.length} volumes total`, `${series.books.length} tomes au total`)}
                                                 </span>
                                             </div>
 
@@ -367,7 +380,7 @@ export default function AdminConflictsPage() {
                                                 {/* Action Choice Pills */}
                                                 <div className="admin-conflicts__choice-section">
                                                     <span className="admin-conflicts__choice-title">
-                                                        Que souhaitez-vous faire pour cette série ?
+                                                        {tr("What would you like to do for this series?", "Que souhaitez-vous faire pour cette série ?")}
                                                     </span>
 
                                                     <div className="admin-conflicts__mode-pills">
@@ -381,12 +394,12 @@ export default function AdminConflictsPage() {
                                                             </div>
                                                             <div className="admin-conflicts__mode-pill-content">
                                                                 <div className="admin-conflicts__mode-pill-heading">
-                                                                    <strong>Lier des couvertures variantes</strong>
+                                                                    <strong>{tr("Link variant covers", "Lier des couvertures variantes")}</strong>
                                                                     {series.books.some(b => b.is_variant_hint) && (
-                                                                        <span className="admin-conflicts__pill-hint-tag">Suggéré</span>
+                                                                        <span className="admin-conflicts__pill-hint-tag">{tr("Suggested", "Suggéré")}</span>
                                                                     )}
                                                                 </div>
-                                                                <p>Associer des éditions variantes, collectors ou N&B à un album principal de référence.</p>
+                                                                <p>{tr("Link variant, collector, or B&W editions to a main reference book.", "Associer des éditions variantes, collectors ou N&B à un album principal de référence.")}</p>
                                                             </div>
                                                         </button>
 
@@ -400,9 +413,9 @@ export default function AdminConflictsPage() {
                                                             </div>
                                                             <div className="admin-conflicts__mode-pill-content">
                                                                 <div className="admin-conflicts__mode-pill-heading">
-                                                                    <strong>Scinder en nouvelle série</strong>
+                                                                    <strong>{tr("Split into a new series", "Scinder en nouvelle série")}</strong>
                                                                 </div>
-                                                                <p>Déplacer des albums (ex: édition poche, réédition intégrale) vers une série distincte.</p>
+                                                                <p>{tr("Move books (e.g., pocket edition, omnibus reissue) into a separate series.", "Déplacer des albums (ex: édition poche, réédition intégrale) vers une série distincte.")}</p>
                                                             </div>
                                                         </button>
                                                     </div>
@@ -413,7 +426,11 @@ export default function AdminConflictsPage() {
                                                     <div className="admin-conflicts__mode-view">
                                                         <div className="admin-conflicts__instructions-bar">
                                                             <p className="admin-conflicts__hint">
-                                                                1. Choisissez l'<strong>album principal</strong> (bouton radio) — 2. Cochez les <strong>couvertures variantes</strong> à lui rattacher :
+                                                                {tr("1. Choose the ", "1. Choisissez l'")}
+                                                                <strong>{tr("main book", "album principal")}</strong>
+                                                                {tr(" (radio button) — 2. Check the ", " (bouton radio) — 2. Cochez les ")}
+                                                                <strong>{tr("variant covers", "couvertures variantes")}</strong>
+                                                                {tr(" to link to it:", " à lui rattacher :")}
                                                             </p>
                                                             <div className="admin-conflicts__quick-actions">
                                                                 <button
@@ -421,7 +438,7 @@ export default function AdminConflictsPage() {
                                                                     className="admin-conflicts__btn-text"
                                                                     onClick={() => selectAllOthersAsVariants(series)}
                                                                 >
-                                                                    Cocher toutes les autres
+                                                                    {tr("Check all others", "Cocher toutes les autres")}
                                                                 </button>
                                                                 <span className="admin-conflicts__quick-sep">•</span>
                                                                 <button
@@ -429,7 +446,7 @@ export default function AdminConflictsPage() {
                                                                     className="admin-conflicts__btn-text"
                                                                     onClick={() => clearVariantSelections(series.series_id)}
                                                                 >
-                                                                    Tout décocher
+                                                                    {tr("Uncheck all", "Tout décocher")}
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -451,24 +468,24 @@ export default function AdminConflictsPage() {
                                                                         }}
                                                                     >
                                                                         <div className="admin-conflicts__book-controls" onClick={(e) => e.stopPropagation()}>
-                                                                            <label className="admin-conflicts__choice-radio" title="Définir comme édition de référence (Album principal)">
+                                                                            <label className="admin-conflicts__choice-radio" title={tr("Set as reference edition (Main book)", "Définir comme édition de référence (Album principal)")}>
                                                                                 <input
                                                                                     type="radio"
                                                                                     name={`canonical_${series.series_id}`}
                                                                                     checked={isCanonical}
                                                                                     onChange={() => setCanonicalBook(series.series_id, b.id)}
                                                                                 />
-                                                                                <span>Principal</span>
+                                                                                <span>{tr("Main", "Principal")}</span>
                                                                             </label>
 
                                                                             {!isCanonical && (
-                                                                                <label className="admin-conflicts__choice-check" title="Cocher pour lier comme couverture variante de l'album principal">
+                                                                                <label className="admin-conflicts__choice-check" title={tr("Check to link as a variant cover of the main book", "Cocher pour lier comme couverture variante de l'album principal")}>
                                                                                     <input
                                                                                         type="checkbox"
                                                                                         checked={isVariantChecked}
                                                                                         onChange={() => toggleVariantSelection(series.series_id, b.id)}
                                                                                     />
-                                                                                    <span>Variante</span>
+                                                                                    <span>{tr("Variant", "Variante")}</span>
                                                                                 </label>
                                                                             )}
                                                                         </div>
@@ -489,22 +506,22 @@ export default function AdminConflictsPage() {
                                                                             <div className="admin-conflicts__badges-row">
                                                                                 {isCanonical && (
                                                                                     <span className="admin-conflicts__role-badge admin-conflicts__role-badge--canonical">
-                                                                                        <FontAwesomeIcon icon={faStar} /> Album Principal
+                                                                                        <FontAwesomeIcon icon={faStar} /> {tr("Main Book", "Album Principal")}
                                                                                     </span>
                                                                                 )}
                                                                                 {!isCanonical && isVariantChecked && (
                                                                                     <span className="admin-conflicts__role-badge admin-conflicts__role-badge--variant">
-                                                                                        <FontAwesomeIcon icon={faClone} /> Variante
+                                                                                        <FontAwesomeIcon icon={faClone} /> {tr("Variant", "Variante")}
                                                                                     </span>
                                                                                 )}
                                                                                 {isConflictVol && (
                                                                                     <span className="admin-conflicts__role-badge admin-conflicts__role-badge--conflict">
-                                                                                        Vol. {b.volume} en doublon
+                                                                                        {tr(`Duplicate Vol. ${b.volume}`, `Vol. ${b.volume} en doublon`)}
                                                                                     </span>
                                                                                 )}
                                                                                 {b.is_variant_hint && (
                                                                                     <span className="admin-conflicts__role-badge admin-conflicts__role-badge--hint">
-                                                                                        Mot-clé détecté
+                                                                                        {tr("Keyword detected", "Mot-clé détecté")}
                                                                                     </span>
                                                                                 )}
                                                                             </div>
@@ -529,11 +546,11 @@ export default function AdminConflictsPage() {
                                                         <div className="admin-conflicts__action-bar admin-conflicts__action-bar--variant">
                                                             <div className="admin-conflicts__action-summary">
                                                                 <span>
-                                                                    Album standard : <strong>{canonicalBook?.title}</strong>
+                                                                    {tr("Standard book:", "Album standard :")} <strong>{canonicalBook?.title}</strong>
                                                                 </span>
                                                                 <span className="admin-conflicts__dot-sep">•</span>
                                                                 <span>
-                                                                    <strong>{selectedVariantIds.length}</strong> variante(s) sélectionnée(s) à lui rattacher
+                                                                    <strong>{selectedVariantIds.length}</strong> {tr("variant(s) selected to link", "variante(s) sélectionnée(s) à lui rattacher")}
                                                                 </span>
                                                             </div>
 
@@ -545,7 +562,9 @@ export default function AdminConflictsPage() {
                                                             >
                                                                 <FontAwesomeIcon icon={isLinking ? faRotate : faClone} spin={isLinking} />
                                                                 <span>
-                                                                    {isLinking ? "Liaison en cours..." : `Lier comme couverture variante (${selectedVariantIds.length})`}
+                                                                    {isLinking
+                                                                        ? tr("Linking...", "Liaison en cours...")
+                                                                        : tr(`Link as variant cover (${selectedVariantIds.length})`, `Lier comme couverture variante (${selectedVariantIds.length})`)}
                                                                 </span>
                                                             </button>
                                                         </div>
@@ -557,7 +576,9 @@ export default function AdminConflictsPage() {
                                                     <div className="admin-conflicts__mode-view">
                                                         <div className="admin-conflicts__instructions-bar">
                                                             <p className="admin-conflicts__hint">
-                                                                Cochez les albums que vous souhaitez <strong>déplacer dans une nouvelle série</strong> :
+                                                                {tr("Check the books you want to ", "Cochez les albums que vous souhaitez ")}
+                                                                <strong>{tr("move into a new series", "déplacer dans une nouvelle série")}</strong>
+                                                                {tr(":", " :")}
                                                             </p>
                                                             <div className="admin-conflicts__quick-actions">
                                                                 <button
@@ -565,7 +586,7 @@ export default function AdminConflictsPage() {
                                                                     className="admin-conflicts__btn-text"
                                                                     onClick={() => selectAllForSplit(series)}
                                                                 >
-                                                                    Tout cocher
+                                                                    {tr("Check all", "Tout cocher")}
                                                                 </button>
                                                                 <span className="admin-conflicts__quick-sep">•</span>
                                                                 <button
@@ -573,7 +594,7 @@ export default function AdminConflictsPage() {
                                                                     className="admin-conflicts__btn-text"
                                                                     onClick={() => clearSplitSelections(series.series_id)}
                                                                 >
-                                                                    Tout décocher
+                                                                    {tr("Uncheck all", "Tout décocher")}
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -590,13 +611,13 @@ export default function AdminConflictsPage() {
                                                                         onClick={() => toggleSplitSelection(series.series_id, b.id)}
                                                                     >
                                                                         <div className="admin-conflicts__book-controls" onClick={(e) => e.stopPropagation()}>
-                                                                            <label className="admin-conflicts__choice-check" title="Cocher pour déplacer dans la nouvelle série">
+                                                                            <label className="admin-conflicts__choice-check" title={tr("Check to move to the new series", "Cocher pour déplacer dans la nouvelle série")}>
                                                                                 <input
                                                                                     type="checkbox"
                                                                                     checked={isChecked}
                                                                                     onChange={() => toggleSplitSelection(series.series_id, b.id)}
                                                                                 />
-                                                                                <span>Déplacer</span>
+                                                                                <span>{tr("Move", "Déplacer")}</span>
                                                                             </label>
                                                                         </div>
 
@@ -616,12 +637,12 @@ export default function AdminConflictsPage() {
                                                                             <div className="admin-conflicts__badges-row">
                                                                                 {isChecked && (
                                                                                     <span className="admin-conflicts__role-badge admin-conflicts__role-badge--split">
-                                                                                        <FontAwesomeIcon icon={faCodeBranch} /> À déplacer
+                                                                                        <FontAwesomeIcon icon={faCodeBranch} /> {tr("To move", "À déplacer")}
                                                                                     </span>
                                                                                 )}
                                                                                 {isConflictVol && (
                                                                                     <span className="admin-conflicts__role-badge admin-conflicts__role-badge--conflict">
-                                                                                        Vol. {b.volume} en doublon
+                                                                                        {tr(`Duplicate Vol. ${b.volume}`, `Vol. ${b.volume} en doublon`)}
                                                                                     </span>
                                                                                 )}
                                                                             </div>
@@ -646,7 +667,7 @@ export default function AdminConflictsPage() {
                                                         <div className="admin-conflicts__split-config">
                                                             <div className="admin-conflicts__split-input-wrapper">
                                                                 <label htmlFor={`new-series-${series.series_id}`}>
-                                                                    Nom de la nouvelle série :
+                                                                    {tr("New series name:", "Nom de la nouvelle série :")}
                                                                 </label>
                                                                 <input
                                                                     id={`new-series-${series.series_id}`}
@@ -654,26 +675,26 @@ export default function AdminConflictsPage() {
                                                                     className="admin-conflicts__split-input"
                                                                     value={newName}
                                                                     onChange={(e) => setNewSeriesNames(prev => ({ ...prev, [series.series_id]: e.target.value }))}
-                                                                    placeholder={`Ex: ${series.series_name} (Poche)`}
+                                                                    placeholder={tr(`E.g.: ${series.series_name} (Pocket)`, `Ex: ${series.series_name} (Poche)`)}
                                                                 />
                                                             </div>
 
                                                             {/* Suggestions pills */}
                                                             <div className="admin-conflicts__suggestions">
-                                                                <span className="admin-conflicts__suggestions-label">Suggestions :</span>
+                                                                <span className="admin-conflicts__suggestions-label">{tr("Suggestions:", "Suggestions :")}</span>
                                                                 <button
                                                                     type="button"
                                                                     className="admin-conflicts__suggestion-pill"
-                                                                    onClick={() => setNewSeriesNames(prev => ({ ...prev, [series.series_id]: `${series.series_name} (Poche)` }))}
+                                                                    onClick={() => setNewSeriesNames(prev => ({ ...prev, [series.series_id]: `${series.series_name} (${tr("Pocket", "Poche")})` }))}
                                                                 >
-                                                                    <FontAwesomeIcon icon={faPlus} /> {series.series_name} (Poche)
+                                                                    <FontAwesomeIcon icon={faPlus} /> {series.series_name} ({tr("Pocket", "Poche")})
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     className="admin-conflicts__suggestion-pill"
-                                                                    onClick={() => setNewSeriesNames(prev => ({ ...prev, [series.series_id]: `${series.series_name} (Autre édition)` }))}
+                                                                    onClick={() => setNewSeriesNames(prev => ({ ...prev, [series.series_id]: `${series.series_name} (${tr("Other edition", "Autre édition")})` }))}
                                                                 >
-                                                                    <FontAwesomeIcon icon={faPlus} /> {series.series_name} (Autre édition)
+                                                                    <FontAwesomeIcon icon={faPlus} /> {series.series_name} ({tr("Other edition", "Autre édition")})
                                                                 </button>
                                                                 {series.books.filter(b => selectedSplitIds.includes(b.id)).map(b => (
                                                                     <button
@@ -681,7 +702,7 @@ export default function AdminConflictsPage() {
                                                                         type="button"
                                                                         className="admin-conflicts__suggestion-pill"
                                                                         onClick={() => setNewSeriesNames(prev => ({ ...prev, [series.series_id]: b.title }))}
-                                                                        title={`Utiliser : ${b.title}`}
+                                                                        title={tr(`Use: ${b.title}`, `Utiliser : ${b.title}`)}
                                                                     >
                                                                         <FontAwesomeIcon icon={faPlus} /> {b.title.slice(0, 30)}{b.title.length > 30 ? "..." : ""}
                                                                     </button>
@@ -692,13 +713,13 @@ export default function AdminConflictsPage() {
                                                         <div className="admin-conflicts__action-bar admin-conflicts__action-bar--split">
                                                             <div className="admin-conflicts__action-summary">
                                                                 <span>
-                                                                    <strong>{selectedSplitIds.length}</strong> album(s) sélectionné(s)
+                                                                    <strong>{selectedSplitIds.length}</strong> {tr("book(s) selected", "album(s) sélectionné(s)")}
                                                                 </span>
                                                                 {newName.trim() && (
                                                                     <>
                                                                         <span className="admin-conflicts__dot-sep">•</span>
                                                                         <span>
-                                                                            Vers « <strong>{newName.trim()}</strong> »
+                                                                            {tr("To", "Vers")} « <strong>{newName.trim()}</strong> »
                                                                         </span>
                                                                     </>
                                                                 )}
@@ -712,7 +733,12 @@ export default function AdminConflictsPage() {
                                                             >
                                                                 <FontAwesomeIcon icon={isSplitting ? faRotate : faCodeBranch} spin={isSplitting} />
                                                                 <span>
-                                                                    {isSplitting ? "Scission en cours..." : `Scinder la série (${selectedSplitIds.length} album${selectedSplitIds.length > 1 ? "s" : ""})`}
+                                                                    {isSplitting
+                                                                        ? tr("Splitting...", "Scission en cours...")
+                                                                        : tr(
+                                                                            `Split series (${selectedSplitIds.length} book${selectedSplitIds.length > 1 ? "s" : ""})`,
+                                                                            `Scinder la série (${selectedSplitIds.length} album${selectedSplitIds.length > 1 ? "s" : ""})`
+                                                                        )}
                                                                 </span>
                                                             </button>
                                                         </div>

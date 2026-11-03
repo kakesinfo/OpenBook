@@ -18,6 +18,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { enqueueSnackbar } from "notistack";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import "./AdminDeletedBooksPage.scss";
 
 interface DeletedBook {
@@ -37,6 +38,7 @@ interface DeletedBook {
 
 export default function AdminDeletedBooksPage() {
     const session = useSession();
+    const { tr, locale } = useLanguage();
     const [books, setBooks] = useState<DeletedBook[]>([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState("");
@@ -55,15 +57,15 @@ export default function AdminDeletedBooksPage() {
                 const data = await resp.json();
                 setBooks(data.books || []);
             } else {
-                enqueueSnackbar("Impossible de charger les livres supprimés.", { variant: "error" });
+                enqueueSnackbar(tr("Unable to load deleted books.", "Impossible de charger les livres supprimés."), { variant: "error" });
             }
         } catch (err) {
             console.error("Failed to fetch deleted books:", err);
-            enqueueSnackbar("Erreur de connexion au serveur.", { variant: "error" });
+            enqueueSnackbar(tr("Server connection error.", "Erreur de connexion au serveur."), { variant: "error" });
         } finally {
             setLoading(false);
         }
-    }, [session]);
+    }, [session, tr]);
 
     useEffect(() => {
         fetchDeletedBooks();
@@ -77,16 +79,16 @@ export default function AdminDeletedBooksPage() {
                 method: "POST"
             });
             if (resp.ok) {
-                enqueueSnackbar(`« ${book.title} » a été restauré avec succès !`, { variant: "success" });
+                enqueueSnackbar(tr(`"${book.title}" has been restored successfully!`, `« ${book.title} » a été restauré avec succès !`), { variant: "success" });
                 setBooks(prev => prev.filter(b => b.id !== book.id));
                 setSelectedIds(prev => prev.filter(id => id !== book.id));
             } else {
                 const err = await resp.json().catch(() => null);
-                enqueueSnackbar(err?.message || "Erreur lors de la restauration du livre.", { variant: "error" });
+                enqueueSnackbar(err?.message || tr("Error while restoring the book.", "Erreur lors de la restauration du livre."), { variant: "error" });
             }
         } catch (err) {
             console.error("Failed to restore book:", err);
-            enqueueSnackbar("Erreur réseau lors de la restauration.", { variant: "error" });
+            enqueueSnackbar(tr("Network error while restoring.", "Erreur réseau lors de la restauration."), { variant: "error" });
         } finally {
             setRestoringIds(prev => ({ ...prev, [book.id]: false }));
         }
@@ -106,16 +108,19 @@ export default function AdminDeletedBooksPage() {
 
             if (resp.ok) {
                 const data = await resp.json();
-                enqueueSnackbar(data.message || `${selectedIds.length} albums restaurés avec succès !`, { variant: "success" });
+                enqueueSnackbar(
+                    data.message || tr(`${selectedIds.length} books restored successfully!`, `${selectedIds.length} albums restaurés avec succès !`),
+                    { variant: "success" }
+                );
                 setBooks(prev => prev.filter(b => !selectedIds.includes(b.id)));
                 setSelectedIds([]);
             } else {
                 const err = await resp.json().catch(() => null);
-                enqueueSnackbar(err?.message || "Erreur lors de la restauration groupée.", { variant: "error" });
+                enqueueSnackbar(err?.message || tr("Error during bulk restore.", "Erreur lors de la restauration groupée."), { variant: "error" });
             }
         } catch (err) {
             console.error("Bulk restore error:", err);
-            enqueueSnackbar("Erreur réseau lors de la restauration.", { variant: "error" });
+            enqueueSnackbar(tr("Network error while restoring.", "Erreur réseau lors de la restauration."), { variant: "error" });
         } finally {
             setBulkRestoring(false);
         }
@@ -124,7 +129,10 @@ export default function AdminDeletedBooksPage() {
     // Handle restore all
     const handleRestoreAll = async () => {
         if (books.length === 0 || bulkRestoring) return;
-        if (!window.confirm(`Êtes-vous sûr de vouloir restaurer les ${books.length} albums supprimés ?`)) {
+        if (!window.confirm(tr(
+            `Are you sure you want to restore all ${books.length} deleted books?`,
+            `Êtes-vous sûr de vouloir restaurer les ${books.length} albums supprimés ?`
+        ))) {
             return;
         }
 
@@ -136,16 +144,16 @@ export default function AdminDeletedBooksPage() {
 
             if (resp.ok) {
                 const data = await resp.json();
-                enqueueSnackbar(data.message || "Tous les albums ont été restaurés avec succès !", { variant: "success" });
+                enqueueSnackbar(data.message || tr("All books have been restored successfully!", "Tous les albums ont été restaurés avec succès !"), { variant: "success" });
                 setBooks([]);
                 setSelectedIds([]);
             } else {
                 const err = await resp.json().catch(() => null);
-                enqueueSnackbar(err?.message || "Erreur lors de la restauration générale.", { variant: "error" });
+                enqueueSnackbar(err?.message || tr("Error while restoring all books.", "Erreur lors de la restauration générale."), { variant: "error" });
             }
         } catch (err) {
             console.error("Restore all error:", err);
-            enqueueSnackbar("Erreur réseau lors de la restauration.", { variant: "error" });
+            enqueueSnackbar(tr("Network error while restoring.", "Erreur réseau lors de la restauration."), { variant: "error" });
         } finally {
             setBulkRestoring(false);
         }
@@ -181,10 +189,10 @@ export default function AdminDeletedBooksPage() {
     }, [books, search]);
 
     const formatDeletedDate = (dateStr?: string | null) => {
-        if (!dateStr) return "Date inconnue";
+        if (!dateStr) return tr("Unknown date", "Date inconnue");
         try {
             const d = new Date(dateStr);
-            return d.toLocaleDateString("fr-FR", {
+            return d.toLocaleDateString(locale, {
                 day: "2-digit",
                 month: "2-digit",
                 year: "numeric",
@@ -200,8 +208,8 @@ export default function AdminDeletedBooksPage() {
         <div className="admin-deleted-books">
             <WrapperHeader>
                 <div className="admin-deleted-books__header-title">
-                    <h2>Livres supprimés</h2>
-                    <p>Gestion et annulation de la suppression des albums du catalogue (deleted = false)</p>
+                    <h2>{tr("Deleted Books", "Livres supprimés")}</h2>
+                    <p>{tr("Manage and undo deletion of books from the catalog (deleted = false)", "Gestion et annulation de la suppression des albums du catalogue (deleted = false)")}</p>
                 </div>
             </WrapperHeader>
 
@@ -214,10 +222,18 @@ export default function AdminDeletedBooksPage() {
                         </div>
                         <div className="admin-deleted-books__banner-text">
                             <span className="admin-deleted-books__banner-count">
-                                {loading ? "Chargement..." : `${books.length} album${books.length > 1 ? "s" : ""} supprimé${books.length > 1 ? "s" : ""}`}
+                                {loading
+                                    ? tr("Loading...", "Chargement...")
+                                    : tr(
+                                        `${books.length} deleted book${books.length > 1 ? "s" : ""}`,
+                                        `${books.length} album${books.length > 1 ? "s" : ""} supprimé${books.length > 1 ? "s" : ""}`
+                                    )}
                             </span>
                             <span className="admin-deleted-books__banner-desc">
-                                Ces albums ont été marqués comme supprimés et sont invisibles pour les lecteurs.
+                                {tr(
+                                    "These books have been marked as deleted and are hidden from readers.",
+                                    "Ces albums ont été marqués comme supprimés et sont invisibles pour les lecteurs."
+                                )}
                             </span>
                         </div>
                     </div>
@@ -228,10 +244,10 @@ export default function AdminDeletedBooksPage() {
                             className="admin-deleted-books__btn admin-deleted-books__btn--ghost"
                             onClick={() => fetchDeletedBooks(search)}
                             disabled={loading}
-                            title="Actualiser la liste"
+                            title={tr("Refresh list", "Actualiser la liste")}
                         >
                             <FontAwesomeIcon icon={faRotate} spin={loading} />
-                            <span>Actualiser</span>
+                            <span>{tr("Refresh", "Actualiser")}</span>
                         </button>
 
                         {selectedIds.length > 0 && (
@@ -242,7 +258,7 @@ export default function AdminDeletedBooksPage() {
                                 disabled={bulkRestoring}
                             >
                                 <FontAwesomeIcon icon={bulkRestoring ? faCircleNotch : faTrashCanArrowUp} spin={bulkRestoring} />
-                                <span>Restaurer la sélection ({selectedIds.length})</span>
+                                <span>{tr(`Restore selected (${selectedIds.length})`, `Restaurer la sélection (${selectedIds.length})`)}</span>
                             </button>
                         )}
 
@@ -254,7 +270,7 @@ export default function AdminDeletedBooksPage() {
                                 disabled={bulkRestoring || loading}
                             >
                                 <FontAwesomeIcon icon={bulkRestoring ? faCircleNotch : faCheck} spin={bulkRestoring} />
-                                <span>Tout restaurer ({books.length})</span>
+                                <span>{tr(`Restore all (${books.length})`, `Tout restaurer ({books.length})`.replace("{books.length}", String(books.length)))}</span>
                             </button>
                         )}
                     </div>
@@ -267,7 +283,7 @@ export default function AdminDeletedBooksPage() {
                             <FontAwesomeIcon icon={faMagnifyingGlass} className="admin-deleted-books__search-icon" />
                             <input
                                 type="text"
-                                placeholder="Filtrer par titre, série, éditeur, auteur ou ISBN..."
+                                placeholder={tr("Filter by title, series, publisher, author, or ISBN...", "Filtrer par titre, série, éditeur, auteur ou ISBN...")}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
@@ -281,9 +297,12 @@ export default function AdminDeletedBooksPage() {
                         <div className="admin-deleted-books__empty-icon">
                             <FontAwesomeIcon icon={faCheck} />
                         </div>
-                        <h3>Aucun album supprimé</h3>
+                        <h3>{tr("No deleted books", "Aucun album supprimé")}</h3>
                         <p>
-                            Tous les albums de la bibliothèque sont actuellement actifs. Lorsqu'un album est supprimé, il apparaîtra ici afin que vous puissiez annuler sa suppression à tout moment.
+                            {tr(
+                                "All books in the library are currently active. When a book is deleted, it will appear here so you can undo its deletion at any time.",
+                                "Tous les albums de la bibliothèque sont actuellement actifs. Lorsqu'un album est supprimé, il apparaîtra ici afin que vous puissiez annuler sa suppression à tout moment."
+                            )}
                         </p>
                     </div>
                 )}
@@ -294,8 +313,8 @@ export default function AdminDeletedBooksPage() {
                         <div className="admin-deleted-books__empty-icon" style={{ background: "rgba(234, 179, 8, 0.12)", color: "#eab308", borderColor: "rgba(234, 179, 8, 0.3)" }}>
                             <FontAwesomeIcon icon={faTriangleExclamation} />
                         </div>
-                        <h3>Aucun résultat trouvé</h3>
-                        <p>Aucun album supprimé ne correspond à votre recherche « {search} ».</p>
+                        <h3>{tr("No results found", "Aucun résultat trouvé")}</h3>
+                        <p>{tr(`No deleted book matches your search "${search}".`, `Aucun album supprimé ne correspond à votre recherche « ${search} ».`)}</p>
                     </div>
                 )}
 
@@ -312,14 +331,14 @@ export default function AdminDeletedBooksPage() {
                                                 className="admin-deleted-books__checkbox"
                                                 checked={selectedIds.length > 0 && selectedIds.length === filteredBooks.length}
                                                 onChange={handleToggleSelectAll}
-                                                title="Tout sélectionner"
+                                                title={tr("Select all", "Tout sélectionner")}
                                             />
                                         </th>
-                                        <th style={{ width: "56px" }}>Couverture</th>
-                                        <th>Album & Métadonnées</th>
-                                        <th>Éditeur & Série</th>
-                                        <th>Date de suppression</th>
-                                        <th style={{ textAlign: "right" }}>Action</th>
+                                        <th style={{ width: "56px" }}>{tr("Cover", "Couverture")}</th>
+                                        <th>{tr("Book & Metadata", "Album & Métadonnées")}</th>
+                                        <th>{tr("Publisher & Series", "Éditeur & Série")}</th>
+                                        <th>{tr("Deletion Date", "Date de suppression")}</th>
+                                        <th style={{ textAlign: "right" }}>{tr("Action", "Action")}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -357,7 +376,7 @@ export default function AdminDeletedBooksPage() {
                                                             <span>{book.title}</span>
                                                             {book.volume !== null && book.volume !== undefined && (
                                                                 <span className="admin-deleted-books__table-volume-badge">
-                                                                    Tome {book.volume}
+                                                                    {tr(`Vol. ${book.volume}`, `Tome ${book.volume}`)}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -404,13 +423,13 @@ export default function AdminDeletedBooksPage() {
                                                         className="admin-deleted-books__btn admin-deleted-books__btn--restore"
                                                         onClick={() => handleRestoreSingle(book)}
                                                         disabled={isRestoring || bulkRestoring}
-                                                        title="Annuler la suppression et réactiver cet album"
+                                                        title={tr("Undo deletion and reactivate this book", "Annuler la suppression et réactiver cet album")}
                                                     >
                                                         <FontAwesomeIcon
                                                             icon={isRestoring ? faCircleNotch : faRotateLeft}
                                                             spin={isRestoring}
                                                         />
-                                                        <span>{isRestoring ? "Restauration..." : "Restaurer"}</span>
+                                                        <span>{isRestoring ? tr("Restoring...", "Restauration...") : tr("Restore", "Restaurer")}</span>
                                                     </button>
                                                 </td>
                                             </tr>

@@ -28,6 +28,7 @@ import CategoryMultiSelect, {
     DEFAULT_APP_CATEGORIES,
     bookMatchesCategories
 } from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import "./CollectionPage.scss";
 
 type TomeStatusFilter = "all" | "toread" | "read" | "abandoned";
@@ -35,7 +36,8 @@ type DisplayMode = "grid" | "list";
 
 interface StatusTab {
     id: TomeStatusFilter;
-    label: string;
+    labelEn: string;
+    labelFr: string;
     icon?: typeof faBook;
 }
 
@@ -47,10 +49,10 @@ interface HoveredCoverState {
 }
 
 const STATUS_TABS: StatusTab[] = [
-    { id: "all", label: "Tous", icon: faLayerGroup },
-    { id: "toread", label: "Pile à lire", icon: faBookBookmark },
-    { id: "read", label: "Lu", icon: faCheck },
-    { id: "abandoned", label: "Abandonné", icon: faBan }
+    { id: "all", labelEn: "All", labelFr: "Tous", icon: faLayerGroup },
+    { id: "toread", labelEn: "To read", labelFr: "Pile à lire", icon: faBookBookmark },
+    { id: "read", labelEn: "Read", labelFr: "Lu", icon: faCheck },
+    { id: "abandoned", labelEn: "Abandoned", labelFr: "Abandonné", icon: faBan }
 ];
 
 function matchesTomeStatus(book: BookSummaryDTO, filter: TomeStatusFilter): boolean {
@@ -70,13 +72,13 @@ function matchesTomeStatus(book: BookSummaryDTO, filter: TomeStatusFilter): bool
     return true;
 }
 
-function getReadingStatusBadge(book: BookSummaryDTO) {
+function getReadingStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string) => string) {
     const rStatus = (book.readingStatus || "").toUpperCase();
     if (rStatus === "READ" || rStatus === "LU") {
         return (
             <span className="collection-status-badge collection-status-badge--read">
                 <FontAwesomeIcon icon={faCheck} />
-                <span>Lu</span>
+                <span>{tr("Read", "Lu")}</span>
             </span>
         );
     }
@@ -84,7 +86,7 @@ function getReadingStatusBadge(book: BookSummaryDTO) {
         return (
             <span className="collection-status-badge collection-status-badge--toread">
                 <FontAwesomeIcon icon={faBookBookmark} />
-                <span>À lire</span>
+                <span>{tr("To read", "À lire")}</span>
             </span>
         );
     }
@@ -92,7 +94,7 @@ function getReadingStatusBadge(book: BookSummaryDTO) {
         return (
             <span className="collection-status-badge collection-status-badge--reading">
                 <FontAwesomeIcon icon={faBookOpen} />
-                <span>En cours</span>
+                <span>{tr("Reading", "En cours")}</span>
             </span>
         );
     }
@@ -100,19 +102,20 @@ function getReadingStatusBadge(book: BookSummaryDTO) {
         return (
             <span className="collection-status-badge collection-status-badge--abandoned">
                 <FontAwesomeIcon icon={faBan} />
-                <span>Abandonné</span>
+                <span>{tr("Abandoned", "Abandonné")}</span>
             </span>
         );
     }
     return (
         <span className="collection-status-badge collection-status-badge--unread">
-            <span>Non lu</span>
+            <span>{tr("Unread", "Non lu")}</span>
         </span>
     );
 }
 
 export default function CollectionPage() {
     const session = useSession();
+    const { tr, translateCategory } = useLanguage();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Read current page from URL (?page=X)
@@ -419,7 +422,7 @@ export default function CollectionPage() {
                                     className={`collection-page__filter-btn ${isSelected ? "is-active" : ""}`}
                                 >
                                     {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
-                                    <span>{tab.label}</span>
+                                    <span>{tr(tab.labelEn, tab.labelFr)}</span>
                                     <span className="collection-page__filter-count">
                                         {count}
                                     </span>
@@ -440,7 +443,7 @@ export default function CollectionPage() {
                                 options={availableCategories}
                                 selected={selectedCategories}
                                 onChange={handleCategoriesChange}
-                                allLabel="Toutes les catégories"
+                                allLabel={tr("All categories", "Toutes les catégories")}
                             />
                         </div>
 
@@ -450,7 +453,7 @@ export default function CollectionPage() {
                                 <FontAwesomeIcon icon={faMagnifyingGlass} />
                                 <input
                                     type="text"
-                                    placeholder="Rechercher un album..."
+                                    placeholder={tr("Search a book...", "Rechercher un album...")}
                                     value={searchQuery}
                                     onChange={(e) => handleSearchChange(e.target.value)}
                                 />
@@ -459,7 +462,7 @@ export default function CollectionPage() {
                                         type="button"
                                         className="collection-page__search-clear"
                                         onClick={() => handleSearchChange("")}
-                                        aria-label="Effacer la recherche"
+                                        aria-label={tr("Clear search", "Effacer la recherche")}
                                     >
                                         <FontAwesomeIcon icon={faXmark} />
                                     </button>
@@ -474,19 +477,19 @@ export default function CollectionPage() {
                                     type="button"
                                     className={`collection-page__view-btn ${displayMode === "grid" ? "is-active" : ""}`}
                                     onClick={() => handleSetDisplayMode("grid")}
-                                    title="Mode Galerie"
+                                    title={tr("Gallery view", "Mode Galerie")}
                                 >
                                     <FontAwesomeIcon icon={faBorderAll} />
-                                    <span>Galerie</span>
+                                    <span>{tr("Gallery", "Galerie")}</span>
                                 </button>
                                 <button
                                     type="button"
                                     className={`collection-page__view-btn ${displayMode === "list" ? "is-active" : ""}`}
                                     onClick={() => handleSetDisplayMode("list")}
-                                    title="Mode Liste compacte"
+                                    title={tr("Compact list view", "Mode Liste compacte")}
                                 >
                                     <FontAwesomeIcon icon={faList} />
-                                    <span>Liste</span>
+                                    <span>{tr("List", "Liste")}</span>
                                 </button>
                             </div>
                         </div>
@@ -496,7 +499,7 @@ export default function CollectionPage() {
                 {/* Body Content */}
                 {loading && books.length === 0 ? (
                     <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
-                        Chargement de votre bibliothèque...
+                        {tr("Loading your library...", "Chargement de votre bibliothèque...")}
                     </div>
                 ) : !hasAnyOwned && !isFiltering ? (
                     /* Empty Collection State */
@@ -525,10 +528,13 @@ export default function CollectionPage() {
                             <FontAwesomeIcon icon={faBook} />
                         </div>
                         <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>
-                            Votre bibliothèque est encore vide
+                            {tr("Your library is still empty", "Votre bibliothèque est encore vide")}
                         </h3>
                         <p style={{ fontSize: "0.9375rem", maxWidth: "380px", marginBottom: "24px", lineHeight: 1.6 }}>
-                            Parcourez les nouveautés et ajoutez vos albums favoris à votre bibliothèque pour suivre vos lectures.
+                            {tr(
+                                "Browse new releases and add your favorite books to your library to track your reading.",
+                                "Parcourez les nouveautés et ajoutez vos albums favoris à votre bibliothèque pour suivre vos lectures."
+                            )}
                         </p>
                         <Link
                             to="/app/home"
@@ -548,12 +554,12 @@ export default function CollectionPage() {
                             }}
                         >
                             <FontAwesomeIcon icon={faCompass} />
-                            <span>Découvrir les nouveautés</span>
+                            <span>{tr("Discover new releases", "Découvrir les nouveautés")}</span>
                         </Link>
                     </div>
                 ) : totalElements === 0 ? (
                     <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
-                        Aucun album ne correspond à vos filtres.
+                        {tr("No books match your filters.", "Aucun album ne correspond à vos filtres.")}
                     </div>
                 ) : (
                     <div style={{ opacity: loading ? 0.6 : 1, transition: "opacity 0.2s ease" }}>
@@ -571,12 +577,12 @@ export default function CollectionPage() {
                             /* Compact Table/List Mode (Backend Paginated) */
                             <div className="collection-list">
                                 <div className="collection-list__header">
-                                    <span className="collection-list__th collection-list__th--title">Titre</span>
-                                    <span className="collection-list__th collection-list__th--series">Série / Tome</span>
-                                    <span className="collection-list__th collection-list__th--author">Auteur</span>
-                                    <span className="collection-list__th collection-list__th--category">Catégorie</span>
-                                    <span className="collection-list__th collection-list__th--status">Statut</span>
-                                    <span className="collection-list__th collection-list__th--date">Date</span>
+                                    <span className="collection-list__th collection-list__th--title">{tr("Title", "Titre")}</span>
+                                    <span className="collection-list__th collection-list__th--series">{tr("Series / Vol.", "Série / Tome")}</span>
+                                    <span className="collection-list__th collection-list__th--author">{tr("Author", "Auteur")}</span>
+                                    <span className="collection-list__th collection-list__th--category">{tr("Category", "Catégorie")}</span>
+                                    <span className="collection-list__th collection-list__th--status">{tr("Status", "Statut")}</span>
+                                    <span className="collection-list__th collection-list__th--date">{tr("Date", "Date")}</span>
                                     <span className="collection-list__th collection-list__th--action"></span>
                                 </div>
 
@@ -596,9 +602,9 @@ export default function CollectionPage() {
                                                     {book.title}
                                                 </span>
                                                 {book.parentBookId && (
-                                                    <span className="collection-row__variant-badge" title="Couverture variante">
+                                                    <span className="collection-row__variant-badge" title={tr("Variant cover", "Couverture variante")}>
                                                         <FontAwesomeIcon icon={faClone} />
-                                                        <span>Variante</span>
+                                                        <span>{tr("Variant", "Variante")}</span>
                                                     </span>
                                                 )}
                                             </div>
@@ -612,7 +618,7 @@ export default function CollectionPage() {
                                                 )}
                                                 {book.volume > 0 && (
                                                     <span className="collection-row__volume-badge">
-                                                        T.{book.volume}
+                                                        {tr(`Vol.${book.volume}`, `T.${book.volume}`)}
                                                     </span>
                                                 )}
                                             </div>
@@ -630,14 +636,14 @@ export default function CollectionPage() {
                                             <div className="collection-row__col collection-row__col--category">
                                                 {cat && (
                                                     <span className="collection-row__tag">
-                                                        {cat}
+                                                        {translateCategory(cat)}
                                                     </span>
                                                 )}
                                             </div>
 
                                             {/* Status column */}
                                             <div className="collection-row__col collection-row__col--status">
-                                                {getReadingStatusBadge(book)}
+                                                {getReadingStatusBadge(book, tr)}
                                             </div>
 
                                             {/* Date column */}
@@ -670,7 +676,7 @@ export default function CollectionPage() {
                             pageSize={pageSize}
                             onPageSizeChange={handlePageSizeChange}
                             pageSizeOptions={displayMode === "grid" ? [24, 48, 96, 0] : [25, 50, 100, 0]}
-                            itemLabel="albums"
+                            itemLabel={tr("books", "albums")}
                         />
                     </div>
                 )}
@@ -684,7 +690,7 @@ export default function CollectionPage() {
                 >
                     <img
                         src={hoveredCover.url}
-                        alt={`Couverture de ${hoveredCover.title}`}
+                        alt={tr(`Cover of ${hoveredCover.title}`, `Couverture de ${hoveredCover.title}`)}
                         decoding="async"
                     />
                 </div>

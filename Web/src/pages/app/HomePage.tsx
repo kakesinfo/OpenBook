@@ -1,6 +1,7 @@
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import { useEffect, useState } from "react";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import BookList from "../../components/BookList/BookList.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -11,6 +12,7 @@ import "./HomePage.scss";
 
 export default function HomePage() {
     const session = useSession();
+    const { tr } = useLanguage();
     const [books, setBooks] = useState<BookSummaryDTO[]>([]);
     const [order, setOrder] = useState<"oldest" | "newest">("newest");
     const [loading, setLoading] = useState(true);
@@ -67,13 +69,13 @@ export default function HomePage() {
     return (
         <div className="newbooks-wrapper">
             <WrapperHeader>
-                <h2>Nouveautés</h2>
+                <h2>{tr("New Releases", "Nouveautés")}</h2>
                 <div className="newbooks-order-pill">
                     <FontAwesomeIcon icon={faSliders} />
-                    <span>Trier par :</span>
-                    <select value={order} onChange={handleOrderChange} aria-label="Trier par">
-                        <option value="newest">Les plus récentes</option>
-                        <option value="oldest">Les plus anciennes</option>
+                    <span>{tr("Sort by:", "Trier par :")}</span>
+                    <select value={order} onChange={handleOrderChange} aria-label={tr("Sort by", "Trier par")}>
+                        <option value="newest">{tr("Newest first", "Les plus récentes")}</option>
+                        <option value="oldest">{tr("Oldest first", "Les plus anciennes")}</option>
                     </select>
                 </div>
             </WrapperHeader>
@@ -81,7 +83,7 @@ export default function HomePage() {
             <div className="newbooks-body">
                 {loading ? (
                     <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
-                        Chargement des nouveautés...
+                        {tr("Loading new releases...", "Chargement des nouveautés...")}
                     </div>
                 ) : (
                     <>

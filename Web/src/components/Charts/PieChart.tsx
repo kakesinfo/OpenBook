@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CategoryStatDTO } from "../../dto/UserStatistics.dto.ts";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 
 interface PieChartProps {
     data: CategoryStatDTO[];
@@ -7,7 +8,9 @@ interface PieChartProps {
     title?: string;
 }
 
-export default function PieChart({ data, totalCount, title = "Répartition par genre" }: PieChartProps) {
+export default function PieChart({ data, totalCount, title }: PieChartProps) {
+    const { tr, translateCategory } = useLanguage();
+    const resolvedTitle = title ?? tr("Breakdown by genre", "Répartition par genre");
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
     const size = 280;
@@ -37,9 +40,9 @@ export default function PieChart({ data, totalCount, title = "Répartition par g
                     marginBottom: "12px",
                     color: "var(--text-muted, #9ca3af)"
                 }}>
-                    Aucun livre
+                    {tr("No books", "Aucun livre")}
                 </div>
-                <span>Pas encore de parutions enregistrées</span>
+                <span>{tr("No releases recorded yet", "Pas encore de parutions enregistrées")}</span>
             </div>
         );
     }
@@ -120,13 +123,13 @@ export default function PieChart({ data, totalCount, title = "Répartition par g
             gap: "18px",
             width: "100%"
         }}>
-            {title && (
+            {resolvedTitle && (
                 <div style={{
                     fontSize: "1.1rem",
                     fontWeight: 700,
                     color: "var(--text-primary, #ffffff)"
                 }}>
-                    {title}
+                    {resolvedTitle}
                 </div>
             )}
 
@@ -201,13 +204,13 @@ export default function PieChart({ data, totalCount, title = "Répartition par g
                                     textOverflow: "ellipsis",
                                     whiteSpace: "nowrap"
                                 }}>
-                                    {activeItem.name}
+                                    {translateCategory(activeItem.name)}
                                 </span>
                                 <span style={{
                                     fontSize: "0.75rem",
                                     color: "var(--text-muted, #9ca3af)"
                                 }}>
-                                    {activeItem.count} {activeItem.count > 1 ? "livres" : "livre"}
+                                    {activeItem.count} {activeItem.count > 1 ? tr("books", "livres") : tr("book", "livre")}
                                 </span>
                             </>
                         ) : (
@@ -227,7 +230,7 @@ export default function PieChart({ data, totalCount, title = "Répartition par g
                                     textTransform: "uppercase",
                                     letterSpacing: "0.05em"
                                 }}>
-                                    {totalCount > 1 ? "albums" : "album"}
+                                    {totalCount > 1 ? tr("books", "albums") : tr("book", "album")}
                                 </span>
                             </>
                         )}
@@ -275,7 +278,7 @@ export default function PieChart({ data, totalCount, title = "Répartition par g
                                         fontWeight: isHovered ? 700 : 500,
                                         color: "var(--text-primary, #ffffff)"
                                     }}>
-                                        {item.name}
+                                        {translateCategory(item.name)}
                                     </span>
                                 </div>
 

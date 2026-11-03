@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faUserPen } from "@fortawesome/free-solid-svg-icons";
 import AuthorDTO from "../../dto/Author.dto.ts";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 
 type Props = {
     author: AuthorDTO;
@@ -11,6 +12,7 @@ type Props = {
 
 export default function LogAuthorCard({ author, onClose }: Props) {
     const navigate = useNavigate();
+    const { tr } = useLanguage();
 
     const handleClick = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -28,7 +30,7 @@ export default function LogAuthorCard({ author, onClose }: Props) {
 
             <div className="logbook-card__content">
                 <span className="logbook-card__badge logbook-card__badge--author">
-                    Auteur
+                    {tr("Author", "Auteur")}
                 </span>
                 <h4 className="logbook-card__title" title={fullName}>
                     {fullName}
@@ -36,7 +38,7 @@ export default function LogAuthorCard({ author, onClose }: Props) {
                 {author.booksCount !== undefined && author.booksCount > 0 && (
                     <div className="logbook-card__meta">
                         <span className="logbook-card__date">
-                            {author.booksCount} album{author.booksCount > 1 ? "s" : ""}
+                            {author.booksCount} {tr(author.booksCount > 1 ? "books" : "book", `album${author.booksCount > 1 ? "s" : ""}`)}
                         </span>
                     </div>
                 )}

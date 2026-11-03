@@ -15,6 +15,7 @@ import {
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import BookDTO from "../../dto/Book.dto.ts";
 
 interface Props {
@@ -25,6 +26,7 @@ interface Props {
 
 export default function CreateMissingBookModal({ open, onClose, initialTitle }: Props) {
     const session = useSession();
+    const { tr } = useLanguage();
     const navigate = useNavigate();
     const { enqueueSnackbar } = useSnackbar();
 
@@ -94,7 +96,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
 
             if (!response.ok) {
                 const errData = await response.json().catch(() => null);
-                const message = errData?.message || "Erreur lors de la création du livre";
+                const message = errData?.message || tr("Error creating book", "Erreur lors de la création du livre");
                 enqueueSnackbar(message, { variant: "error" });
                 setSubmitting(false);
                 return;
@@ -116,7 +118,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                 }
             }
 
-            enqueueSnackbar(`Livre « ${createdBook.title} » créé avec succès !`, { variant: "success" });
+            enqueueSnackbar(tr(`Book "${createdBook.title}" created successfully!`, `Livre « ${createdBook.title} » créé avec succès !`), { variant: "success" });
             onClose();
 
             if (createdBook.id) {
@@ -124,7 +126,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
             }
         } catch (err) {
             console.error("Error creating book:", err);
-            enqueueSnackbar("Une erreur inattendue est survenue", { variant: "error" });
+            enqueueSnackbar(tr("An unexpected error occurred", "Une erreur inattendue est survenue"), { variant: "error" });
         } finally {
             setSubmitting(false);
         }
@@ -152,14 +154,14 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                 <div className="fab-modal__header">
                     <div className="fab-modal__header-title">
                         <FontAwesomeIcon icon={faPenNib} />
-                        <h3>Créer un livre manquant</h3>
+                        <h3>{tr("Create a missing book", "Créer un livre manquant")}</h3>
                     </div>
                     <button
                         type="button"
                         className="fab-modal__header-close"
                         onClick={onClose}
                         disabled={submitting}
-                        aria-label="Fermer"
+                        aria-label={tr("Close", "Fermer")}
                     >
                         <FontAwesomeIcon icon={faXmark} />
                     </button>
@@ -170,7 +172,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                     <div className="fab-form__field">
                         <label>
                             <FontAwesomeIcon icon={faBook} />
-                            <span>Titre de l'album *</span>
+                            <span>{tr("Book title *", "Titre de l'album *")}</span>
                         </label>
                         <input
                             ref={titleInputRef}
@@ -178,7 +180,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                             required
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="ex: Watchmen, Tome 1..."
+                            placeholder={tr("e.g., Watchmen, Volume 1...", "ex: Watchmen, Tome 1...")}
                             autoComplete="off"
                         />
                     </div>
@@ -194,14 +196,14 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                                 type="text"
                                 value={isbn}
                                 onChange={(e) => setIsbn(e.target.value)}
-                                placeholder="ex: 9782809499872"
+                                placeholder={tr("e.g., 9782809499872", "ex: 9782809499872")}
                             />
                         </div>
 
                         <div className="fab-form__field">
                             <label>
                                 <FontAwesomeIcon icon={faTag} />
-                                <span>Prix (€)</span>
+                                <span>{tr("Price (€)", "Prix (€)")}</span>
                             </label>
                             <input
                                 type="number"
@@ -209,7 +211,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                                 step="1"
                                 value={price}
                                 onChange={(e) => setPrice(e.target.value)}
-                                placeholder="ex: 20"
+                                placeholder={tr("e.g., 20", "ex: 20")}
                             />
                         </div>
                     </div>
@@ -218,11 +220,11 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                     <div className="fab-form__cover-section">
                         <div className="fab-form__cover-section-preview">
                             {coverMode === "file" && filePreview ? (
-                                <img src={filePreview} alt="Aperçu couverture" />
+                                <img src={filePreview} alt={tr("Cover preview", "Aperçu couverture")} />
                             ) : coverMode === "url" && coverUrl.trim() ? (
                                 <img
                                     src={coverUrl}
-                                    alt="Aperçu couverture"
+                                    alt={tr("Cover preview", "Aperçu couverture")}
                                     onError={(e) => { (e.target as HTMLElement).style.display = "none"; }}
                                 />
                             ) : (
@@ -238,7 +240,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                                     onClick={() => setCoverMode("url")}
                                 >
                                     <FontAwesomeIcon icon={faLink} />
-                                    <span>Lien URL</span>
+                                    <span>{tr("URL link", "Lien URL")}</span>
                                 </button>
                                 <button
                                     type="button"
@@ -246,7 +248,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                                     onClick={() => setCoverMode("file")}
                                 >
                                     <FontAwesomeIcon icon={faUpload} />
-                                    <span>Fichier</span>
+                                    <span>{tr("File", "Fichier")}</span>
                                 </button>
                             </div>
 
@@ -255,7 +257,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                                     type="text"
                                     value={coverUrl}
                                     onChange={(e) => setCoverUrl(e.target.value)}
-                                    placeholder="https://exemple.com/image.jpg"
+                                    placeholder={tr("https://example.com/image.jpg", "https://exemple.com/image.jpg")}
                                 />
                             ) : (
                                 <div className="fab-form__file-upload-zone">
@@ -272,7 +274,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                                         onClick={() => fileInputRef.current?.click()}
                                     >
                                         <FontAwesomeIcon icon={faUpload} />
-                                        <span>{coverFile ? coverFile.name : "Choisir une image..."}</span>
+                                        <span>{coverFile ? coverFile.name : tr("Choose an image...", "Choisir une image...")}</span>
                                     </button>
                                 </div>
                             )}
@@ -287,7 +289,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                             onClick={onClose}
                             disabled={submitting}
                         >
-                            Annuler
+                            {tr("Cancel", "Annuler")}
                         </button>
                         <button
                             type="submit"
@@ -295,7 +297,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
                             disabled={submitting || !title.trim()}
                         >
                             <FontAwesomeIcon icon={faCheck} />
-                            <span>{submitting ? "Création..." : "Créer le livre"}</span>
+                            <span>{submitting ? tr("Creating...", "Création...") : tr("Create book", "Créer le livre")}</span>
                         </button>
                     </div>
                 </form>

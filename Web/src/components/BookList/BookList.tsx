@@ -4,25 +4,26 @@ import "./BookList.scss";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBook, faHeart, faCheck } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useSnackbar } from "notistack";
 import BookCard from "../BookCard/BookCard.tsx";
 
-function getStatusBadge(book: BookSummaryDTO) {
+function getStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string) => string) {
     if (book.status === "FOR_SALE") {
-        return <span className="booklist-card__status-badge is-for-sale">À vendre</span>;
+        return <span className="booklist-card__status-badge is-for-sale">{tr("For sale", "À vendre")}</span>;
     }
     const rStatus = (book.readingStatus || "").toUpperCase();
     if (rStatus === "READ" || rStatus === "LU") {
-        return <span className="booklist-card__status-badge is-read">Lu</span>;
+        return <span className="booklist-card__status-badge is-read">{tr("Read", "Lu")}</span>;
     }
     if (rStatus === "TO_READ" || rStatus === "A_LIRE" || rStatus === "PILE_A_LIRE") {
-        return <span className="booklist-card__status-badge is-toread">À lire</span>;
+        return <span className="booklist-card__status-badge is-toread">{tr("To read", "À lire")}</span>;
     }
     if (rStatus === "READING" || rStatus === "EN_COURS") {
-        return <span className="booklist-card__status-badge is-reading">En cours</span>;
+        return <span className="booklist-card__status-badge is-reading">{tr("Reading", "En cours")}</span>;
     }
     if (rStatus === "ABANDONED" || rStatus === "ABANDONNE") {
-        return <span className="booklist-card__status-badge is-abandoned">Abandonné</span>;
+        return <span className="booklist-card__status-badge is-abandoned">{tr("Abandoned", "Abandonné")}</span>;
     }
     return null;
 }
@@ -35,6 +36,7 @@ interface BookListProps {
 
 export default function BookList({ books, onBookStatusChange, showReleaseDate = false }: BookListProps) {
     const session = useSession();
+    const { tr } = useLanguage();
     const { enqueueSnackbar } = useSnackbar();
     const [statusOverrides, setStatusOverrides] = useState<Record<string, string | null>>({});
     const [loadingIds, setLoadingIds] = useState<Record<string, boolean>>({});
@@ -79,24 +81,28 @@ export default function BookList({ books, onBookStatusChange, showReleaseDate = 
             if (response.ok) {
                 if (targetStatus === "WISHLISTED") {
                     enqueueSnackbar(
-                        isRemoving ? "Retiré de votre liste de souhaits" : "Ajouté à votre liste de souhaits",
+                        isRemoving
+                            ? tr("Removed from your wishlist", "Retiré de votre liste de souhaits")
+                            : tr("Added to your wishlist", "Ajouté à votre liste de souhaits"),
                         { variant: isRemoving ? "info" : "success" }
                     );
                 } else {
                     enqueueSnackbar(
-                        isRemoving ? "Retiré de votre bibliothèque" : "Ajouté à votre bibliothèque",
+                        isRemoving
+                            ? tr("Removed from your library", "Retiré de votre bibliothèque")
+                            : tr("Added to your library", "Ajouté à votre bibliothèque"),
                         { variant: isRemoving ? "info" : "success" }
                     );
                 }
                 onBookStatusChange?.(book.id, nextStatus);
             } else {
                 setStatusOverrides((prev) => ({ ...prev, [book.id]: currentStatus }));
-                enqueueSnackbar("Impossible de mettre à jour le statut de l'album", { variant: "error" });
+                enqueueSnackbar(tr("Failed to update book status", "Impossible de mettre à jour le statut de l'album"), { variant: "error" });
             }
         } catch (err) {
             console.error("Quick status toggle error:", err);
             setStatusOverrides((prev) => ({ ...prev, [book.id]: currentStatus }));
-            enqueueSnackbar("Erreur réseau lors de la mise à jour", { variant: "error" });
+            enqueueSnackbar(tr("Network error while updating", "Erreur réseau lors de la mise à jour"), { variant: "error" });
         } finally {
             setLoadingIds((prev) => ({ ...prev, [book.id]: false }));
         }
@@ -108,8 +114,8 @@ export default function BookList({ books, onBookStatusChange, showReleaseDate = 
                 <div className="booklist-empty__icon">
                     <FontAwesomeIcon icon={faBook} />
                 </div>
-                <h3>Aucun livre disponible</h3>
-                <p>Aucun ouvrage ne correspond à votre sélection pour le moment.</p>
+                <h3>{tr("No books available", "Aucun livre disponible")}</h3>
+                <p>{tr("No books match your selection at the moment.", "Aucun ouvrage ne correspond à votre sélection pour le moment.")}</p>
             </div>
         );
     }
@@ -125,8 +131,8 @@ export default function BookList({ books, onBookStatusChange, showReleaseDate = 
                     <BookCard
                         key={book.id}
                         book={book}
-                        statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" })}
-                        badgeText={book.volume > 0 ? `Vol. ${book.volume}` : "Unique"}
+                        statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" }, tr)}
+                        badgeText={book.volume > 0 ? `Vol. ${book.volume}` : tr("One-shot", "Unique")}
                         showReleaseDate={showReleaseDate}
                         actions={
                             <>
@@ -137,13 +143,13 @@ export default function BookList({ books, onBookStatusChange, showReleaseDate = 
                                     disabled={isBusy}
                                     title={
                                         isWishlisted
-                                            ? "Retirer de ma liste de souhaits"
-                                            : "Ajouter à ma liste de souhaits"
+                                            ? tr("Remove from wishlist", "Retirer de ma liste de souhaits")
+                                            : tr("Add to wishlist", "Ajouter à ma liste de souhaits")
                                     }
                                     aria-label={
                                         isWishlisted
-                                            ? "Retirer de ma liste de souhaits"
-                                            : "Ajouter à ma liste de souhaits"
+                                            ? tr("Remove from wishlist", "Retirer de ma liste de souhaits")
+                                            : tr("Add to wishlist", "Ajouter à ma liste de souhaits")
                                     }
                                 >
                                     <FontAwesomeIcon icon={faHeart} />
@@ -156,13 +162,13 @@ export default function BookList({ books, onBookStatusChange, showReleaseDate = 
                                     disabled={isBusy}
                                     title={
                                         isOwned
-                                            ? "Dans ma bibliothèque (cliquer pour retirer)"
-                                            : "Ajouter à ma bibliothèque"
+                                            ? tr("In my library (click to remove)", "Dans ma bibliothèque (cliquer pour retirer)")
+                                            : tr("Add to my library", "Ajouter à ma bibliothèque")
                                     }
                                     aria-label={
                                         isOwned
-                                            ? "Retirer de ma bibliothèque"
-                                            : "Ajouter à ma bibliothèque"
+                                            ? tr("Remove from my library", "Retirer de ma bibliothèque")
+                                            : tr("Add to my library", "Ajouter à ma bibliothèque")
                                     }
                                 >
                                     <FontAwesomeIcon icon={isOwned ? faCheck : faBook} />

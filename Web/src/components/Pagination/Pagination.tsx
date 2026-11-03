@@ -8,6 +8,7 @@ import {
     faChevronDown,
     faCheck
 } from "@fortawesome/free-solid-svg-icons";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import "./Pagination.scss";
 
 interface PaginationProps {
@@ -46,8 +47,10 @@ export default function Pagination({
     pageSize,
     onPageSizeChange,
     pageSizeOptions = [20, 50, 100],
-    itemLabel = "livres"
+    itemLabel
 }: PaginationProps) {
+    const { tr, locale } = useLanguage();
+    const resolvedItemLabel = itemLabel ? (itemLabel === "livres" ? tr("books", "livres") : itemLabel === "séries" ? tr("series", "séries") : itemLabel) : tr("books", "livres");
     const [sizeMenuOpen, setSizeMenuOpen] = useState(false);
     const sizeDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -76,8 +79,8 @@ export default function Pagination({
             <div className="pagination__info">
                 {totalItems !== undefined && (
                     <span className="pagination__count">
-                        Affichage de <strong>{totalItems === 0 ? 0 : startIndex + 1}</strong> à{" "}
-                        <strong>{endIndex}</strong> sur <strong>{totalItems.toLocaleString("fr-FR")}</strong> {itemLabel}
+                        {tr("Showing", "Affichage de")} <strong>{totalItems === 0 ? 0 : startIndex + 1}</strong> {tr("to", "à")}{" "}
+                        <strong>{endIndex}</strong> {tr("of", "sur")} <strong>{totalItems.toLocaleString(locale)}</strong> {resolvedItemLabel}
                     </span>
                 )}
 
@@ -92,11 +95,11 @@ export default function Pagination({
                             onClick={() => setSizeMenuOpen((prev) => !prev)}
                             aria-haspopup="listbox"
                             aria-expanded={sizeMenuOpen}
-                            aria-label="Nombre d'éléments par page"
+                            aria-label={tr("Items per page", "Nombre d'éléments par page")}
                         >
-                            <span className="pagination__size-label">Par page :</span>
+                            <span className="pagination__size-label">{tr("Per page:", "Par page :")}</span>
                             <span className="pagination__size-value">
-                                {pageSize === 0 ? "Tous" : pageSize}
+                                {pageSize === 0 ? tr("All", "Tous") : pageSize}
                             </span>
                             <FontAwesomeIcon
                                 icon={faChevronDown}
@@ -120,7 +123,7 @@ export default function Pagination({
                                                 setSizeMenuOpen(false);
                                             }}
                                         >
-                                            <span>{opt === 0 ? "Tous" : opt}</span>
+                                            <span>{opt === 0 ? tr("All", "Tous") : opt}</span>
                                             {isSelected && (
                                                 <FontAwesomeIcon icon={faCheck} className="pagination__size-check" />
                                             )}
@@ -141,8 +144,8 @@ export default function Pagination({
                         className="pagination__btn pagination__btn--nav"
                         onClick={() => onPageChange(1)}
                         disabled={currentPage <= 1}
-                        title="Première page"
-                        aria-label="Première page"
+                        title={tr("First page", "Première page")}
+                        aria-label={tr("First page", "Première page")}
                     >
                         <FontAwesomeIcon icon={faAnglesLeft} />
                     </button>
@@ -153,8 +156,8 @@ export default function Pagination({
                         className="pagination__btn pagination__btn--nav"
                         onClick={() => onPageChange(currentPage - 1)}
                         disabled={currentPage <= 1}
-                        title="Page précédente"
-                        aria-label="Page précédente"
+                        title={tr("Previous page", "Page précédente")}
+                        aria-label={tr("Previous page", "Page précédente")}
                     >
                         <FontAwesomeIcon icon={faChevronLeft} />
                     </button>
@@ -192,8 +195,8 @@ export default function Pagination({
                         className="pagination__btn pagination__btn--nav"
                         onClick={() => onPageChange(currentPage + 1)}
                         disabled={currentPage >= totalPages}
-                        title="Page suivante"
-                        aria-label="Page suivante"
+                        title={tr("Next page", "Page suivante")}
+                        aria-label={tr("Next page", "Page suivante")}
                     >
                         <FontAwesomeIcon icon={faChevronRight} />
                     </button>
@@ -204,8 +207,8 @@ export default function Pagination({
                         className="pagination__btn pagination__btn--nav"
                         onClick={() => onPageChange(totalPages)}
                         disabled={currentPage >= totalPages}
-                        title="Dernière page"
-                        aria-label="Dernière page"
+                        title={tr("Last page", "Dernière page")}
+                        aria-label={tr("Last page", "Dernière page")}
                     >
                         <FontAwesomeIcon icon={faAnglesRight} />
                     </button>

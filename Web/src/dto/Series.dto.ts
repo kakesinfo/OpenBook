@@ -1,4 +1,5 @@
 import BookSummaryDTO from "./BookSummary.dto.ts";
+import { getCurrentLanguage } from "../i18n";
 
 export default interface SeriesDTO {
 	id: number;
@@ -17,16 +18,17 @@ export default interface SeriesDTO {
 }
 
 export function getSeriesStatusLabel(status?: string | null): string {
+	const isFr = getCurrentLanguage() === "fr";
 	switch (status?.toUpperCase()) {
 		case "FINISHED":
-			return "Terminée";
+			return isFr ? "Terminée" : "Completed";
 		case "ANNOUNCED":
-			return "Annoncée";
+			return isFr ? "Annoncée" : "Announced";
 		case "ON_GOING":
-			return "En cours";
+			return isFr ? "En cours" : "Ongoing";
 		case "CANCELLED":
-			return "Annulée";
+			return isFr ? "Annulée" : "Cancelled";
 		default:
-			return status || "En cours";
+			return status || (isFr ? "En cours" : "Ongoing");
 	}
 }

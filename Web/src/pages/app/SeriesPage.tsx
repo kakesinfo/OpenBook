@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
+import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useSnackbar } from "notistack";
 import SeriesDTO, { getSeriesStatusLabel } from "../../dto/Series.dto.ts";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
@@ -47,6 +48,7 @@ const DEFAULT_CATEGORIES: CategoryOption[] = [
 export default function SeriesPage() {
     const navigate = useNavigate();
     const session = useSession();
+    const { tr, translateCategory } = useLanguage();
     const { enqueueSnackbar } = useSnackbar();
 
     const [mySeries, setMySeries] = useState<SeriesDTO[]>([]);
@@ -63,11 +65,11 @@ export default function SeriesPage() {
             );
             return {
                 id: cat.name,
-                label: cat.name,
+                label: translateCategory(cat.name),
                 icon: found?.icon
             };
         });
-    }, [categories]);
+    }, [categories, translateCategory]);
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -230,9 +232,14 @@ export default function SeriesPage() {
                 if (activeSeries && activeSeries.id === seriesId) {
                     setActiveSeries((prev) => (prev ? { ...prev, isFollowed: followed } : null));
                 }
-                enqueueSnackbar(followed ? "Série ajoutée à vos suivis" : "Série retirée de vos suivis", {
-                    variant: "info"
-                });
+                enqueueSnackbar(
+                    followed
+                        ? tr("Series added to your followed list", "Série ajoutée à vos suivis")
+                        : tr("Series removed from your followed list", "Série retirée de vos suivis"),
+                    {
+                        variant: "info"
+                    }
+                );
             }
         } catch (err) {
             console.error("Error toggling follow:", err);
@@ -243,7 +250,7 @@ export default function SeriesPage() {
     const handleCreateSeries = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!createName.trim()) {
-            enqueueSnackbar("Veuillez renseigner le nom de la série", { variant: "warning" });
+            enqueueSnackbar(tr("Please enter the series name", "Veuillez renseigner le nom de la série"), { variant: "warning" });
             return;
         }
 
@@ -262,7 +269,7 @@ export default function SeriesPage() {
 
             if (res.ok) {
                 const newSeries: SeriesDTO = await res.json();
-                enqueueSnackbar("Série créée avec succès !", { variant: "success" });
+                enqueueSnackbar(tr("Series created successfully!", "Série créée avec succès !"), { variant: "success" });
                 setCreateDialogOpen(false);
                 setCreateName("");
                 setCreateDescription("");
@@ -272,10 +279,10 @@ export default function SeriesPage() {
                 setActiveSeries(newSeries);
             } else {
                 const errData = await res.text();
-                enqueueSnackbar(`Erreur: ${errData}`, { variant: "error" });
+                enqueueSnackbar(`${tr("Error", "Erreur")}: ${errData}`, { variant: "error" });
             }
         } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
         } finally {
             setCreating(false);
         }
@@ -311,16 +318,16 @@ export default function SeriesPage() {
 
             if (res.ok) {
                 const updated: SeriesDTO = await res.json();
-                enqueueSnackbar("Informations de la série mises à jour", { variant: "success" });
+                enqueueSnackbar(tr("Series information updated", "Informations de la série mises à jour"), { variant: "success" });
                 setActiveSeries(updated);
                 setEditDialogOpen(false);
                 fetchUserSeries();
             } else {
                 const errData = await res.text();
-                enqueueSnackbar(`Erreur: ${errData}`, { variant: "error" });
+                enqueueSnackbar(`${tr("Error", "Erreur")}: ${errData}`, { variant: "error" });
             }
         } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
         } finally {
             setEditing(false);
         }
@@ -329,21 +336,26 @@ export default function SeriesPage() {
     // Handle Delete Series
     const handleDeleteSeries = async () => {
         if (!activeSeries) return;
-        const confirm = window.confirm(`Êtes-vous sûr de vouloir supprimer la série « ${activeSeries.name} » ? Les albums associés ne seront pas supprimés, mais ne feront plus partie de cette série.`);
+        const confirm = window.confirm(
+            tr(
+                `Are you sure you want to delete the series "${activeSeries.name}"? Associated books will not be deleted, but will no longer belong to this series.`,
+                `Êtes-vous sûr de vouloir supprimer la série « ${activeSeries.name} » ? Les albums associés ne seront pas supprimés, mais ne feront plus partie de cette série.`
+            )
+        );
         if (!confirm) return;
 
         try {
             const res = await session.customFetch(`/series/${activeSeries.id}`, { method: "DELETE" });
             if (res.ok) {
-                enqueueSnackbar("Série supprimée avec succès", { variant: "success" });
+                enqueueSnackbar(tr("Series deleted successfully", "Série supprimée avec succès"), { variant: "success" });
                 setActiveSeries(null);
                 fetchUserSeries();
             } else {
-                enqueueSnackbar("Erreur lors de la suppression de la série", { variant: "error" });
+                enqueueSnackbar(tr("Error deleting series", "Erreur lors de la suppression de la série"), { variant: "error" });
             }
         } catch (err) {
             console.error("Delete error:", err);
-            enqueueSnackbar("Erreur de connexion", { variant: "error" });
+            enqueueSnackbar(tr("Connection error", "Erreur de connexion"), { variant: "error" });
         }
     };
 
@@ -380,16 +392,22 @@ export default function SeriesPage() {
             if (res.ok) {
                 const updatedSeries: SeriesDTO = await res.json();
                 setActiveSeries(updatedSeries);
-                enqueueSnackbar(`Album « ${selectedBookForAdd.title} » ajouté au tome ${addVolume}`, {
-                    variant: "success"
-                });
+                enqueueSnackbar(
+                    tr(
+                        `Book "${selectedBookForAdd.title}" added as volume ${addVolume}`,
+                        `Album « ${selectedBookForAdd.title} » ajouté au tome ${addVolume}`
+                    ),
+                    {
+                        variant: "success"
+                    }
+                );
                 setAddBookDialogOpen(false);
                 fetchUserSeries();
             } else {
-                enqueueSnackbar("Erreur lors de l'ajout de l'album", { variant: "error" });
+                enqueueSnackbar(tr("Error adding book", "Erreur lors de l'ajout de l'album"), { variant: "error" });
             }
         } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
         } finally {
             setAddingBook(false);
         }
@@ -398,7 +416,12 @@ export default function SeriesPage() {
     // Remove Book from Series
     const handleRemoveBookFromSeries = async (bookId: number | string, bookTitle: string) => {
         if (!activeSeries) return;
-        const confirm = window.confirm(`Retirer « ${bookTitle} » de la série « ${activeSeries.name} » ?`);
+        const confirm = window.confirm(
+            tr(
+                `Remove "${bookTitle}" from series "${activeSeries.name}"?`,
+                `Retirer « ${bookTitle} » de la série « ${activeSeries.name} » ?`
+            )
+        );
         if (!confirm) return;
 
         try {
@@ -408,25 +431,25 @@ export default function SeriesPage() {
             if (res.ok) {
                 const updatedSeries: SeriesDTO = await res.json();
                 setActiveSeries(updatedSeries);
-                enqueueSnackbar("Album retiré de la série", { variant: "info" });
+                enqueueSnackbar(tr("Book removed from series", "Album retiré de la série"), { variant: "info" });
                 fetchUserSeries();
             } else {
-                enqueueSnackbar("Erreur lors du retrait de l'album", { variant: "error" });
+                enqueueSnackbar(tr("Error removing book", "Erreur lors du retrait de l'album"), { variant: "error" });
             }
         } catch (err) {
             console.error("Remove book error:", err);
-            enqueueSnackbar("Erreur de connexion", { variant: "error" });
+            enqueueSnackbar(tr("Connection error", "Erreur de connexion"), { variant: "error" });
         }
     };
 
     // Update Book Volume Number
     const handleUpdateVolume = async (bookId: number | string, currentVol?: number) => {
         if (!activeSeries) return;
-        const newVolStr = window.prompt("Modifier le numéro de tome :", String(currentVol || 1));
+        const newVolStr = window.prompt(tr("Edit volume number:", "Modifier le numéro de tome :"), String(currentVol || 1));
         if (newVolStr === null) return;
         const newVol = parseInt(newVolStr.trim(), 10);
         if (isNaN(newVol)) {
-            enqueueSnackbar("Numéro de tome invalide", { variant: "warning" });
+            enqueueSnackbar(tr("Invalid volume number", "Numéro de tome invalide"), { variant: "warning" });
             return;
         }
 
@@ -439,7 +462,7 @@ export default function SeriesPage() {
             if (res.ok) {
                 const updated: SeriesDTO = await res.json();
                 setActiveSeries(updated);
-                enqueueSnackbar(`Tome mis à jour : Volume ${newVol}`, { variant: "success" });
+                enqueueSnackbar(tr(`Volume updated: Volume ${newVol}`, `Tome mis à jour : Volume ${newVol}`), { variant: "success" });
             }
         } catch (err) {
             console.error("Update volume error:", err);
@@ -504,7 +527,7 @@ export default function SeriesPage() {
                                 setSelectedCategories(cats);
                                 setCurrentPage(1);
                             }}
-                            allLabel="Toutes les catégories"
+                            allLabel={tr("All categories", "Toutes les catégories")}
                         />
                     </div>
 
@@ -514,7 +537,7 @@ export default function SeriesPage() {
                             <FontAwesomeIcon icon={faMagnifyingGlass} />
                             <input
                                 type="text"
-                                placeholder="Rechercher une série..."
+                                placeholder={tr("Search series...", "Rechercher une série...")}
                                 value={searchQuery}
                                 onChange={(e) => {
                                     setSearchQuery(e.target.value);
@@ -529,7 +552,7 @@ export default function SeriesPage() {
                                         setSearchQuery("");
                                         setCurrentPage(1);
                                     }}
-                                    aria-label="Effacer la recherche"
+                                    aria-label={tr("Clear search", "Effacer la recherche")}
                                 >
                                     <FontAwesomeIcon icon={faXmark} />
                                 </button>
@@ -541,7 +564,7 @@ export default function SeriesPage() {
                 {/* Loading state */}
                 {loading && (
                     <div className="series-page__empty">
-                        <p>Chargement des séries...</p>
+                        <p>{tr("Loading series...", "Chargement des séries...")}</p>
                     </div>
                 )}
 
@@ -550,11 +573,11 @@ export default function SeriesPage() {
                     <>
                         <div className="series-list">
                             <div className="series-list__header">
-                                <span className="series-list__th series-list__th--title">Série</span>
-                                <span className="series-list__th series-list__th--category">Catégorie</span>
-                                <span className="series-list__th series-list__th--status">Statut</span>
-                                <span className="series-list__th series-list__th--volumes">Tomes possédés</span>
-                                <span className="series-list__th series-list__th--follow">Suivi</span>
+                                <span className="series-list__th series-list__th--title">{tr("Series", "Série")}</span>
+                                <span className="series-list__th series-list__th--category">{tr("Category", "Catégorie")}</span>
+                                <span className="series-list__th series-list__th--status">{tr("Status", "Statut")}</span>
+                                <span className="series-list__th series-list__th--volumes">{tr("Owned volumes", "Tomes possédés")}</span>
+                                <span className="series-list__th series-list__th--follow">{tr("Following", "Suivi")}</span>
                                 <span className="series-list__th series-list__th--action"></span>
                             </div>
 
@@ -586,7 +609,7 @@ export default function SeriesPage() {
                                     <div className="series-row__col series-row__col--category">
                                         {s.category && (
                                             <span className="series-row__tag series-row__tag--category">
-                                                {s.category}
+                                                {translateCategory(s.category)}
                                             </span>
                                         )}
                                     </div>
@@ -607,7 +630,7 @@ export default function SeriesPage() {
                                         <span className={`series-row__owned-badge ${(s.ownedCount || 0) > 0 ? "has-owned" : ""}`}>
                                             <FontAwesomeIcon icon={faBook} />
                                             <span>
-                                                {s.ownedCount || 0} / {Math.max(s.totalVolumes || 0, s.ownedCount || 0)} tomes
+                                                {s.ownedCount || 0} / {Math.max(s.totalVolumes || 0, s.ownedCount || 0)} {tr("volumes", "tomes")}
                                             </span>
                                         </span>
                                     </div>
@@ -617,11 +640,11 @@ export default function SeriesPage() {
                                         <button
                                             type="button"
                                             className={`series-row__follow-btn ${s.isFollowed ? "is-followed" : ""}`}
-                                            title={s.isFollowed ? "Suivi actif (cliquer pour ne plus suivre)" : "Suivre cette série"}
+                                            title={s.isFollowed ? tr("Following (click to unfollow)", "Suivi actif (cliquer pour ne plus suivre)") : tr("Follow this series", "Suivre cette série")}
                                             onClick={(e) => handleToggleFollow(s.id, e)}
                                         >
                                             <FontAwesomeIcon icon={s.isFollowed ? faCheck : faBell} />
-                                            <span>{s.isFollowed ? "Suivie" : "Suivre"}</span>
+                                            <span>{s.isFollowed ? tr("Following", "Suivie") : tr("Follow", "Suivre")}</span>
                                         </button>
                                     </div>
 
@@ -644,7 +667,7 @@ export default function SeriesPage() {
                             pageSize={pageSize}
                             onPageSizeChange={handlePageSizeChange}
                             pageSizeOptions={[20, 50, 100]}
-                            itemLabel="séries"
+                            itemLabel={tr("series", "séries")}
                         />
                     </>
                 )}
@@ -653,11 +676,21 @@ export default function SeriesPage() {
                 {!loading && displayedSeries.length === 0 && (
                     <div className="series-page__empty">
                         <FontAwesomeIcon icon={faLayerGroup} className="series-page__empty-icon" />
-                        <h3>{mySeries.length === 0 ? "Aucune série dans vos albums" : "Aucune série trouvée"}</h3>
+                        <h3>
+                            {mySeries.length === 0
+                                ? tr("No series in your books", "Aucune série dans vos albums")
+                                : tr("No series found", "Aucune série trouvée")}
+                        </h3>
                         <p>
                             {mySeries.length === 0
-                                ? "Vous ne possédez actuellement aucun album associé à une série dans vos albums. Vous pouvez créer une série et y associer vos albums !"
-                                : "Aucune série ne correspond à votre filtre de recherche. Créez-la en un clic !"}
+                                ? tr(
+                                      "You do not currently own any books associated with a series. You can create a series and link your books to it!",
+                                      "Vous ne possédez actuellement aucun album associé à une série dans vos albums. Vous pouvez créer une série et y associer vos albums !"
+                                  )
+                                : tr(
+                                      "No series match your search filter. Create it with one click!",
+                                      "Aucune série ne correspond à votre filtre de recherche. Créez-la en un clic !"
+                                  )}
                         </p>
                         <button
                             type="button"
@@ -665,7 +698,7 @@ export default function SeriesPage() {
                             onClick={() => setCreateDialogOpen(true)}
                         >
                             <FontAwesomeIcon icon={faPlus} />
-                            <span>Créer une nouvelle série</span>
+                            <span>{tr("Create a new series", "Créer une nouvelle série")}</span>
                         </button>
                     </div>
                 )}
@@ -679,7 +712,7 @@ export default function SeriesPage() {
                 >
                     <img
                         src={hoveredCover.url}
-                        alt={`Couverture de ${hoveredCover.title}`}
+                        alt={tr(`Cover of ${hoveredCover.title}`, `Couverture de ${hoveredCover.title}`)}
                         decoding="async"
                     />
                 </div>
@@ -704,7 +737,7 @@ export default function SeriesPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                         <FontAwesomeIcon icon={faLayerGroup} style={{ color: "var(--accent-primary)", fontSize: "1.25rem" }} />
-                        <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0 }}>Créer une série</h2>
+                        <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0 }}>{tr("Create a series", "Créer une série")}</h2>
                     </div>
                     <button
                         type="button"
@@ -718,12 +751,12 @@ export default function SeriesPage() {
                 <form onSubmit={handleCreateSeries} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     <div>
                         <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                            Nom de la série *
+                            {tr("Series name *", "Nom de la série *")}
                         </label>
                         <input
                             type="text"
                             required
-                            placeholder="Ex: Spider-Man, Tintin, One Piece..."
+                            placeholder={tr("E.g.: Spider-Man, Tintin, One Piece...", "Ex: Spider-Man, Tintin, One Piece...")}
                             value={createName}
                             onChange={(e) => setCreateName(e.target.value)}
                             style={{
@@ -741,7 +774,7 @@ export default function SeriesPage() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                         <div>
                             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                Catégorie
+                                {tr("Category", "Catégorie")}
                             </label>
                             <select
                                 value={createCategoryId}
@@ -758,7 +791,7 @@ export default function SeriesPage() {
                             >
                                 {categories.map((c) => (
                                     <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>
-                                        {c.name}
+                                        {translateCategory(c.name)}
                                     </option>
                                 ))}
                             </select>
@@ -766,7 +799,7 @@ export default function SeriesPage() {
 
                         <div>
                             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                Statut de parution
+                                {tr("Publication status", "Statut de parution")}
                             </label>
                             <select
                                 value={createStatus}
@@ -781,21 +814,21 @@ export default function SeriesPage() {
                                     outline: "none"
                                 }}
                             >
-                                <option value="ON_GOING" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>En cours</option>
-                                <option value="FINISHED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Terminée</option>
-                                <option value="ANNOUNCED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Annoncée</option>
-                                <option value="CANCELLED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Annulée</option>
+                                <option value="ON_GOING" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{tr("Ongoing", "En cours")}</option>
+                                <option value="FINISHED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{tr("Completed", "Terminée")}</option>
+                                <option value="ANNOUNCED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{tr("Announced", "Annoncée")}</option>
+                                <option value="CANCELLED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{tr("Cancelled", "Annulée")}</option>
                             </select>
                         </div>
                     </div>
 
                     <div>
                         <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                            Description
+                            {tr("Description", "Description")}
                         </label>
                         <textarea
                             rows={3}
-                            placeholder="Synopsis ou description générale de la série..."
+                            placeholder={tr("Synopsis or general description of the series...", "Synopsis ou description générale de la série...")}
                             value={createDescription}
                             onChange={(e) => setCreateDescription(e.target.value)}
                             style={{
@@ -825,14 +858,14 @@ export default function SeriesPage() {
                                 fontWeight: 600
                             }}
                         >
-                            Annuler
+                            {tr("Cancel", "Annuler")}
                         </button>
                         <button
                             type="submit"
                             disabled={creating}
                             className="series-page__create-btn"
                         >
-                            {creating ? "Création..." : "Créer la série"}
+                            {creating ? tr("Creating...", "Création...") : tr("Create series", "Créer la série")}
                         </button>
                     </div>
                 </form>
@@ -857,7 +890,7 @@ export default function SeriesPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                         <FontAwesomeIcon icon={faPen} style={{ color: "var(--accent-primary)", fontSize: "1.25rem" }} />
-                        <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0 }}>Modifier la série</h2>
+                        <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0 }}>{tr("Edit series", "Modifier la série")}</h2>
                     </div>
                     <button
                         type="button"
@@ -871,7 +904,7 @@ export default function SeriesPage() {
                 <form onSubmit={handleSaveEdit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     <div>
                         <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                            Nom de la série *
+                            {tr("Series name *", "Nom de la série *")}
                         </label>
                         <input
                             type="text"
@@ -893,7 +926,7 @@ export default function SeriesPage() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                         <div>
                             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                Catégorie
+                                {tr("Category", "Catégorie")}
                             </label>
                             <select
                                 value={editCategoryId}
@@ -910,7 +943,7 @@ export default function SeriesPage() {
                             >
                                 {categories.map((c) => (
                                     <option key={c.id} value={c.id} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>
-                                        {c.name}
+                                        {translateCategory(c.name)}
                                     </option>
                                 ))}
                             </select>
@@ -918,7 +951,7 @@ export default function SeriesPage() {
 
                         <div>
                             <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                Statut de parution
+                                {tr("Publication status", "Statut de parution")}
                             </label>
                             <select
                                 value={editStatus}
@@ -933,17 +966,17 @@ export default function SeriesPage() {
                                     outline: "none"
                                 }}
                             >
-                                <option value="ON_GOING" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>En cours</option>
-                                <option value="FINISHED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Terminée</option>
-                                <option value="ANNOUNCED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Annoncée</option>
-                                <option value="CANCELLED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>Annulée</option>
+                                <option value="ON_GOING" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{tr("Ongoing", "En cours")}</option>
+                                <option value="FINISHED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{tr("Completed", "Terminée")}</option>
+                                <option value="ANNOUNCED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{tr("Announced", "Annoncée")}</option>
+                                <option value="CANCELLED" style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{tr("Cancelled", "Annulée")}</option>
                             </select>
                         </div>
                     </div>
 
                     <div>
                         <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                            Description
+                            {tr("Description", "Description")}
                         </label>
                         <textarea
                             rows={3}
@@ -976,14 +1009,14 @@ export default function SeriesPage() {
                                 fontWeight: 600
                             }}
                         >
-                            Annuler
+                            {tr("Cancel", "Annuler")}
                         </button>
                         <button
                             type="submit"
                             disabled={editing}
                             className="series-page__create-btn"
                         >
-                            {editing ? "Enregistrement..." : "Enregistrer"}
+                            {editing ? tr("Saving...", "Enregistrement...") : tr("Save", "Enregistrer")}
                         </button>
                     </div>
                 </form>
@@ -1024,7 +1057,7 @@ export default function SeriesPage() {
                                         <div style={{ display: "flex", gap: "8px", marginBottom: "6px", flexWrap: "wrap" }}>
                                             {activeSeries.category && (
                                                 <span className="series-page__tag series-page__tag--category">
-                                                    {activeSeries.category}
+                                                    {translateCategory(activeSeries.category)}
                                                 </span>
                                             )}
                                             {activeSeries.status && (
@@ -1035,7 +1068,7 @@ export default function SeriesPage() {
                                                 </span>
                                             )}
                                             <span className="series-page__tag" style={{ background: "rgba(255, 255, 255, 0.08)", color: "var(--text-primary)" }}>
-                                                {activeSeries.books?.length || 0} tomes dans la série
+                                                {activeSeries.books?.length || 0} {tr("volumes in series", "tomes dans la série")}
                                             </span>
                                         </div>
                                         <h2 className="series-page__modal-title">{activeSeries.name}</h2>
@@ -1061,7 +1094,7 @@ export default function SeriesPage() {
                                         onClick={() => handleToggleFollow(activeSeries.id)}
                                     >
                                         <FontAwesomeIcon icon={faBell} />
-                                        <span>{activeSeries.isFollowed ? "Série suivie" : "Suivre la série"}</span>
+                                        <span>{activeSeries.isFollowed ? tr("Following series", "Série suivie") : tr("Follow series", "Suivre la série")}</span>
                                     </button>
 
                                     <button
@@ -1070,7 +1103,7 @@ export default function SeriesPage() {
                                         onClick={handleOpenEdit}
                                     >
                                         <FontAwesomeIcon icon={faPen} />
-                                        <span>Modifier</span>
+                                        <span>{tr("Edit", "Modifier")}</span>
                                     </button>
 
                                     <button
@@ -1079,7 +1112,7 @@ export default function SeriesPage() {
                                         onClick={handleDeleteSeries}
                                     >
                                         <FontAwesomeIcon icon={faTrash} />
-                                        <span>Supprimer la série</span>
+                                        <span>{tr("Delete series", "Supprimer la série")}</span>
                                     </button>
                                 </div>
                             </div>
@@ -1088,14 +1121,14 @@ export default function SeriesPage() {
                         {/* Albums / Books Section */}
                         <div className="series-page__books-section">
                             <div className="series-page__books-header">
-                                <h3>Albums associés ({activeSeries.books?.length || 0})</h3>
+                                <h3>{tr("Linked books", "Albums associés")} ({activeSeries.books?.length || 0})</h3>
                                 <button
                                     type="button"
                                     className="series-page__btn series-page__btn--primary"
                                     onClick={handleOpenAddBook}
                                 >
                                     <FontAwesomeIcon icon={faPlus} />
-                                    <span>Lier un album</span>
+                                    <span>{tr("Link a book", "Lier un album")}</span>
                                 </button>
                             </div>
 
@@ -1107,10 +1140,10 @@ export default function SeriesPage() {
                                                 type="button"
                                                 className="series-page__book-vol"
                                                 onClick={() => handleUpdateVolume(b.id, b.volume)}
-                                                title="Cliquer pour modifier le tome"
+                                                title={tr("Click to edit volume", "Cliquer pour modifier le tome")}
                                                 style={{ background: "transparent", border: "none", cursor: "pointer" }}
                                             >
-                                                T.{b.volume != null ? b.volume : "?"}
+                                                {tr("Vol.", "T.")}{b.volume != null ? b.volume : "?"}
                                                 <FontAwesomeIcon icon={faPen} style={{ fontSize: "0.65rem", opacity: 0.5 }} />
                                             </button>
 
@@ -1131,25 +1164,25 @@ export default function SeriesPage() {
                                                     {b.title}
                                                 </Link>
                                                 <span className="series-page__book-author">
-                                                    {b.author || "Auteur non renseigné"}
+                                                    {b.author || tr("Author not specified", "Auteur non renseigné")}
                                                 </span>
                                             </div>
 
                                             <div className="series-page__book-actions">
                                                 {b.status === "OWNED" && (
                                                     <span className="series-page__book-status-tag owned">
-                                                        Possédé
+                                                        {tr("Owned", "Possédé")}
                                                     </span>
                                                 )}
                                                 {b.status === "WISHLISTED" && (
                                                     <span className="series-page__book-status-tag wishlisted">
-                                                        Souhait
+                                                        {tr("Wishlist", "Souhait")}
                                                     </span>
                                                 )}
                                                 <button
                                                     type="button"
                                                     className="series-page__remove-btn"
-                                                    title="Retirer cet album de la série"
+                                                    title={tr("Remove this book from the series", "Retirer cet album de la série")}
                                                     onClick={() => handleRemoveBookFromSeries(b.id, b.title)}
                                                 >
                                                     <FontAwesomeIcon icon={faXmark} />
@@ -1160,14 +1193,14 @@ export default function SeriesPage() {
                                 </div>
                             ) : (
                                 <div style={{ textAlign: "center", padding: "30px 10px", color: "var(--text-muted)" }}>
-                                    <p style={{ margin: "0 0 12px 0" }}>Aucun album n'est encore lié à cette série.</p>
+                                    <p style={{ margin: "0 0 12px 0" }}>{tr("No books are linked to this series yet.", "Aucun album n'est encore lié à cette série.")}</p>
                                     <button
                                         type="button"
                                         className="series-page__btn series-page__btn--primary"
                                         onClick={handleOpenAddBook}
                                     >
                                         <FontAwesomeIcon icon={faPlus} />
-                                        <span>Ajouter le premier album</span>
+                                        <span>{tr("Add the first book", "Ajouter le premier album")}</span>
                                     </button>
                                 </div>
                             )}
@@ -1196,7 +1229,7 @@ export default function SeriesPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                         <FontAwesomeIcon icon={faPlus} style={{ color: "var(--accent-primary)" }} />
                         <h3 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0 }}>
-                            Lier un album à « {activeSeries?.name} »
+                            {tr(`Link a book to "${activeSeries?.name}"`, `Lier un album à « ${activeSeries?.name} »`)}
                         </h3>
                     </div>
                     <button
@@ -1211,12 +1244,12 @@ export default function SeriesPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     <div>
                         <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                            Rechercher un album dans la bibliothèque
+                            {tr("Search for a book in the library", "Rechercher un album dans la bibliothèque")}
                         </label>
                         <div style={{ position: "relative" }}>
                             <input
                                 type="text"
-                                placeholder="Rechercher par titre, auteur..."
+                                placeholder={tr("Search by title, author...", "Rechercher par titre, auteur...")}
                                 value={bookSearchQuery}
                                 onChange={(e) => setBookSearchQuery(e.target.value)}
                                 style={{
@@ -1234,7 +1267,7 @@ export default function SeriesPage() {
 
                     {searchingBooks && (
                         <p style={{ textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>
-                            Recherche en cours...
+                            {tr("Searching...", "Recherche en cours...")}
                         </p>
                     )}
 
@@ -1264,7 +1297,7 @@ export default function SeriesPage() {
                                             {b.title}
                                         </div>
                                         <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                                            {b.author || "Auteur inconnu"} {b.volume ? `• Tome ${b.volume}` : ""}
+                                            {b.author || tr("Unknown author", "Auteur inconnu")} {b.volume ? `• ${tr(`Volume ${b.volume}`, `Tome ${b.volume}`)}` : ""}
                                         </div>
                                     </div>
                                     <button
@@ -1280,7 +1313,7 @@ export default function SeriesPage() {
                                             cursor: "pointer"
                                         }}
                                     >
-                                        Choisir
+                                        {tr("Select", "Choisir")}
                                     </button>
                                 </div>
                             ))}
@@ -1310,7 +1343,7 @@ export default function SeriesPage() {
                             </div>
 
                             <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px" }}>
-                                <label style={{ fontSize: "0.85rem", fontWeight: 600 }}>Numéro de tome :</label>
+                                <label style={{ fontSize: "0.85rem", fontWeight: 600 }}>{tr("Volume number:", "Numéro de tome :")}</label>
                                 <input
                                     type="number"
                                     min={1}
@@ -1345,7 +1378,7 @@ export default function SeriesPage() {
                                 fontWeight: 600
                             }}
                         >
-                            Annuler
+                            {tr("Cancel", "Annuler")}
                         </button>
                         <button
                             type="submit"
@@ -1353,7 +1386,7 @@ export default function SeriesPage() {
                             onClick={handleAddBookToSeries}
                             className="series-page__create-btn"
                         >
-                            {addingBook ? "Ajout..." : "Confirmer l'ajout"}
+                            {addingBook ? tr("Adding...", "Ajout...") : tr("Confirm addition", "Confirmer l'ajout")}
                         </button>
                     </div>
                 </div>
