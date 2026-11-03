@@ -699,11 +699,12 @@ export default function BookPage() {
 
         setSubmittingListing(true);
         try {
+            const parsedPrice = listingPrice.trim() ? parseFloat(listingPrice) : null;
             const res = await session.customFetch(`/user/addBook/${encodeURIComponent(id)}/FOR_SALE`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    price: parseFloat(listingPrice),
+                    price: parsedPrice,
                     listingUrl: listingUrl.trim() || null
                 })
             });
@@ -3169,10 +3170,10 @@ export default function BookPage() {
                             <label>
                                 <FontAwesomeIcon icon={faCoins} />
                                 <span>{tr("Listing price (€)", "Prix de mise en vente (€)")}</span>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>{tr("(optional)", "(optionnel)")}</span>
                             </label>
                             <input
                                 type="number"
-                                required
                                 step="0.01"
                                 min="0"
                                 placeholder={tr("e.g. 12.00", "ex: 12.00")}

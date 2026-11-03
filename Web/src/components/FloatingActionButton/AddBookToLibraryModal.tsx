@@ -139,7 +139,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    price: parseFloat(listingPrice),
+                    price: listingPrice.trim() ? parseFloat(listingPrice) : null,
                     listingUrl: listingUrl.trim() || null
                 })
             });
@@ -257,11 +257,11 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                         <div className="fab-form__field">
                             <label>
                                 <FontAwesomeIcon icon={faCoins} />
-                                <span>{tr("Listing price (€) *", "Prix de mise en vente (€) *")}</span>
+                                <span>{tr("Listing price (€)", "Prix de mise en vente (€)")}</span>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>{tr("(optional)", "(optionnel)")}</span>
                             </label>
                             <input
                                 type="number"
-                                required
                                 step="0.01"
                                 min="0"
                                 placeholder={tr("e.g., 12.00", "ex: 12.00")}
