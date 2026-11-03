@@ -37,6 +37,9 @@ export interface BookHighlightDTO {
 }
 
 export default interface UserStatisticsDTO {
+    // Available activity years (sorted descending)
+    availableYears?: number[];
+
     // Totals
     totalOwnedBooks: number;
     totalWishlistBooks: number;
@@ -48,6 +51,14 @@ export default interface UserStatisticsDTO {
     totalEstimatedValue: number;
     averagePrice: number;
     averagePagesPerBook: number;
+
+    // Transactions (Purchases, Gifts, Sales)
+    totalBoughtCount?: number;
+    totalBoughtAmount?: number;
+    totalGiftCount?: number;
+    totalSoldCount?: number;
+    totalSoldAmount?: number;
+    netSpentAmount?: number;
 
     // Reading Status breakdown
     booksReadCount: number;

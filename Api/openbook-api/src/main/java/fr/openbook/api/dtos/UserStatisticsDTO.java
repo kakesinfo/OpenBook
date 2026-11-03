@@ -11,6 +11,9 @@ import java.util.List;
 
 @Data
 public class UserStatisticsDTO {
+    // Available activity years (sorted descending)
+    private List<Integer> availableYears;
+
     // Totals
     private int totalOwnedBooks;
     private int totalWishlistBooks;
@@ -22,6 +25,14 @@ public class UserStatisticsDTO {
     private int totalEstimatedValue;
     private double averagePrice;
     private int averagePagesPerBook;
+
+    // Transactions (Purchases, Gifts, Sales)
+    private int totalBoughtCount;
+    private double totalBoughtAmount;
+    private int totalGiftCount;
+    private int totalSoldCount;
+    private double totalSoldAmount;
+    private double netSpentAmount;
 
     // Reading Status breakdown
     private int booksReadCount;

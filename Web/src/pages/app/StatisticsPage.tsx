@@ -1,5 +1,5 @@
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faBook,
@@ -20,7 +20,11 @@ import {
     faGem,
     faChartPie,
     faTimeline,
-    faCheck
+    faCheck,
+    faChevronDown,
+    faCartShopping,
+    faGift,
+    faTag
 } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
@@ -43,22 +47,40 @@ export default function StatisticsPage() {
     const session = useSession();
     const { tr, locale, translateCategory } = useLanguage();
     const [stats, setStats] = useState<UserStatisticsDTO | null>(null);
+    const [selectedYear, setSelectedYear] = useState<number | null>(null);
+    const [availableYears, setAvailableYears] = useState<number[]>([]);
+    const [yearMenuOpen, setYearMenuOpen] = useState(false);
+    const yearDropdownRef = useRef<HTMLDivElement | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [visibleSections, setVisibleSections] = useState(0);
     const [errorType, setErrorType] = useState<"load" | "network" | null>(null);
 
-    const fetchStatistics = async () => {
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target as Node)) {
+                setYearMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const fetchStatistics = async (yearParam: number | null = selectedYear) => {
         setLoading(true);
         setVisibleSections(0);
         setErrorType(null);
         try {
-            const resp = await session.customFetch("/user/statistics", { method: "GET" });
+            const url = yearParam !== null ? `/user/statistics?year=${encodeURIComponent(yearParam)}` : "/user/statistics";
+            const resp = await session.customFetch(url, { method: "GET" });
             if (resp.ok) {
-                const data = await resp.json();
+                const data: UserStatisticsDTO = await resp.json();
                 setStats(data);
+                if (Array.isArray(data.availableYears)) {
+                    setAvailableYears(data.availableYears);
+                }
                 setVisibleSections(1);
                 [2, 3, 4, 5, 6, 7].forEach((section, index) => {
-                    window.setTimeout(() => setVisibleSections(section), (index + 1) * 180);
+                    window.setTimeout(() => setVisibleSections(section), (index + 1) * 150);
                 });
             } else {
                 setErrorType("load");
@@ -71,8 +93,14 @@ export default function StatisticsPage() {
     };
 
     useEffect(() => {
-        fetchStatistics();
-    }, [session]);
+        fetchStatistics(selectedYear);
+    }, [session, selectedYear]);
+
+    useEffect(() => {
+        if (stats && !Array.isArray(stats.availableYears) && !loading) {
+            fetchStatistics(selectedYear);
+        }
+    }, [stats]);
 
     const error =
         errorType === "load"
@@ -105,17 +133,92 @@ export default function StatisticsPage() {
         return `${h} h ${m} min`;
     };
 
+    const formatAmount = (amount?: number) => {
+        const val = amount ?? 0;
+        return `${val.toLocaleString(locale, { minimumFractionDigits: val % 1 !== 0 ? 2 : 0, maximumFractionDigits: 2 })} €`;
+    };
+
     return (
         <div className="stats-page">
             <WrapperHeader>
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <h2>{tr("Statistics", "Statistiques")}</h2>
-                    <span style={{ fontSize: "0.9rem", color: "var(--text-muted, #94a3b8)" }}>
-                        {tr(
-                            "Detailed overview, reading progress, and records of your library",
-                            "Aperçu détaillé, progression de lecture et records de votre bibliothèque"
+                <div className="stats-page__header-row">
+                    <div className="stats-page__header-titles">
+                        <h2>{tr("Statistics", "Statistiques")}</h2>
+                        <span className="stats-page__header-subtitle">
+                            {selectedYear !== null
+                                ? tr(
+                                      `Detailed overview, reading activity, and transactions for ${selectedYear}`,
+                                      `Aperçu détaillé, activité de lecture et transactions pour l'année ${selectedYear}`
+                                  )
+                                : tr(
+                                      "Detailed overview, reading progress, and records of your library",
+                                      "Aperçu détaillé, progression de lecture et records de votre bibliothèque"
+                                  )}
+                        </span>
+                    </div>
+
+                    <div className="stats-page__year-dropdown" ref={yearDropdownRef}>
+                        <button
+                            type="button"
+                            className={`stats-page__year-trigger ${yearMenuOpen ? "is-open" : ""}`}
+                            onClick={() => {
+                                if (!yearMenuOpen && availableYears.length === 0 && !loading) {
+                                    fetchStatistics(selectedYear);
+                                }
+                                setYearMenuOpen((prev) => !prev);
+                            }}
+                            aria-haspopup="listbox"
+                            aria-expanded={yearMenuOpen}
+                        >
+                            <FontAwesomeIcon icon={faCalendarDays} className="stats-page__year-icon" />
+                            <span>{selectedYear === null ? "All time" : selectedYear}</span>
+                            <FontAwesomeIcon
+                                icon={faChevronDown}
+                                className={`stats-page__year-chevron ${yearMenuOpen ? "is-open" : ""}`}
+                            />
+                        </button>
+
+                        {yearMenuOpen && (
+                            <div className="stats-page__year-menu" role="listbox">
+                                <button
+                                    type="button"
+                                    role="option"
+                                    aria-selected={selectedYear === null}
+                                    className={`stats-page__year-option ${selectedYear === null ? "is-active" : ""}`}
+                                    onClick={() => {
+                                        setSelectedYear(null);
+                                        setYearMenuOpen(false);
+                                    }}
+                                >
+                                    <span>All time</span>
+                                    {selectedYear === null && (
+                                        <FontAwesomeIcon icon={faCheck} className="stats-page__year-check" />
+                                    )}
+                                </button>
+                                {availableYears.map((yr) => {
+                                    const active = selectedYear === yr;
+                                    return (
+                                        <button
+                                            key={yr}
+                                            type="button"
+                                            role="option"
+                                            aria-selected={active}
+                                            className={`stats-page__year-option ${active ? "is-active" : ""}`}
+                                            onClick={() => {
+                                                setSelectedYear(yr);
+                                                setYearMenuOpen(false);
+                                            }}
+                                        >
+                                            <span>{yr}</span>
+                                            {active && (
+                                                <FontAwesomeIcon icon={faCheck} className="stats-page__year-check" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         )}
-                    </span>
+                    </div>
                 </div>
             </WrapperHeader>
 
@@ -139,7 +242,7 @@ export default function StatisticsPage() {
                     }}>
                         <p style={{ marginBottom: "12px", fontWeight: 500 }}>{error}</p>
                         <button
-                            onClick={fetchStatistics}
+                            onClick={() => fetchStatistics(selectedYear)}
                             style={{
                                 padding: "8px 18px",
                                 borderRadius: "8px",
@@ -159,13 +262,20 @@ export default function StatisticsPage() {
                     <div className="stats-page__section-card" style={{ textAlign: "center", padding: "48px 24px" }}>
                         <FontAwesomeIcon icon={faBook} style={{ fontSize: "2.5rem", color: "var(--text-muted, #64748b)", marginBottom: "16px" }} />
                         <h3 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary, #fff)", marginBottom: "8px" }}>
-                            {tr("Your library is empty", "Votre bibliothèque est vide")}
+                            {selectedYear !== null
+                                ? tr(`No activity recorded in ${selectedYear}`, `Aucune activité enregistrée en ${selectedYear}`)
+                                : tr("Your library is empty", "Votre bibliothèque est vide")}
                         </h3>
                         <p style={{ color: "var(--text-muted, #94a3b8)", maxWidth: "420px", margin: "0 auto 20px" }}>
-                            {tr(
-                                "Add your first books or series to discover your personalized statistics, reading status, and more!",
-                                "Ajoutez vos premiers albums ou séries pour découvrir vos statistiques personnalisées, votre état de lecture et la carte du monde !"
-                            )}
+                            {selectedYear !== null
+                                ? tr(
+                                      "Select another period or log readings, purchases, gifts, and sales.",
+                                      "Sélectionnez une autre période ou enregistrez des lectures, achats, cadeaux et ventes."
+                                  )
+                                : tr(
+                                      "Add your first books or series to discover your personalized statistics, reading status, and more!",
+                                      "Ajoutez vos premiers albums ou séries pour découvrir vos statistiques personnalisées, votre état de lecture et plus encore !"
+                                  )}
                         </p>
                         <Link
                             to="/app/collection"
@@ -191,18 +301,24 @@ export default function StatisticsPage() {
                     <>
                         {/* 1. KEY METRICS CARDS */}
                         {visibleSections >= 1 && <div className="stats-page__kpi-grid">
-                            {/* Owned Books */}
+                            {/* Owned / Active Books */}
                             <div className="stats-page__metric-card stats-page__metric-card--blue">
                                 <div className="stats-page__metric-icon" style={{ background: "rgba(99, 102, 241, 0.15)", color: "#818cf8" }}>
                                     <FontAwesomeIcon icon={faBook} />
                                 </div>
                                 <div className="stats-page__metric-body">
-                                    <div className="stats-page__metric-label">{tr("Owned books", "Albums possédés")}</div>
+                                    <div className="stats-page__metric-label">
+                                        {selectedYear !== null
+                                            ? tr(`Active books (${selectedYear})`, `Albums actifs (${selectedYear})`)
+                                            : tr("Owned books", "Albums possédés")}
+                                    </div>
                                     <div className="stats-page__metric-value">
                                         {stats.totalOwnedBooks}
                                     </div>
                                     <div className="stats-page__metric-subtext">
-                                        {tr("In your collection", "Dans votre collection")}
+                                        {selectedYear !== null
+                                            ? tr("Read, bought, gifted or sold", "Lus, achetés, reçus ou vendus")
+                                            : tr("In your collection", "Dans votre collection")}
                                     </div>
                                 </div>
                             </div>
@@ -295,10 +411,159 @@ export default function StatisticsPage() {
                                     </div>
                                 </div>
                             </div>
-                            </div>}
+                        </div>}
 
-                            {/* 2. READING PROGRESSION & PAL */}
+                        {/* 2. TRANSACTIONS: PURCHASES, GIFTS & SALES */}
                         {visibleSections >= 2 && <div className="stats-page__section-card">
+                            <div className="stats-page__section-header">
+                                <div>
+                                    <h3>
+                                        <FontAwesomeIcon icon={faCoins} style={{ color: "#fbbf24" }} />
+                                        <span>{tr("Purchases, Gifts & Sales", "Achats, Cadeaux & Ventes")}</span>
+                                    </h3>
+                                    <p>
+                                        {selectedYear !== null
+                                            ? tr(`Transactions recorded in ${selectedYear}`, `Transactions enregistrées en ${selectedYear}`)
+                                            : tr("Summary of your purchases, gifts received, and sales", "Bilan de vos achats, cadeaux reçus et ventes")}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="stats-page__physical-grid">
+                                {/* Purchases */}
+                                <div className="stats-page__physical-card">
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                        <div style={{
+                                            width: "38px",
+                                            height: "38px",
+                                            borderRadius: "10px",
+                                            background: "rgba(16, 185, 129, 0.15)",
+                                            color: "#34d399",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            fontSize: "16px"
+                                        }}>
+                                            <FontAwesomeIcon icon={faCartShopping} />
+                                        </div>
+                                        <div style={{ textAlign: "right" }}>
+                                            <div style={{ fontSize: "1.55rem", fontWeight: 800, color: "#34d399", lineHeight: 1.15 }}>
+                                                {stats.totalBoughtCount ?? 0}
+                                            </div>
+                                            <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary, #cbd5e1)" }}>
+                                                {formatAmount(stats.totalBoughtAmount)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
+                                            {tr("Purchases", "Achats")}
+                                        </div>
+                                        <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
+                                            {tr("Books bought and total amount spent.", "Albums achetés et montant total dépensé.")}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Gifts */}
+                                <div className="stats-page__physical-card">
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                        <div style={{
+                                            width: "38px",
+                                            height: "38px",
+                                            borderRadius: "10px",
+                                            background: "rgba(236, 72, 153, 0.15)",
+                                            color: "#f472b6",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            fontSize: "16px"
+                                        }}>
+                                            <FontAwesomeIcon icon={faGift} />
+                                        </div>
+                                        <div style={{ fontSize: "1.55rem", fontWeight: 800, color: "#f472b6" }}>
+                                            {stats.totalGiftCount ?? 0}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
+                                            {tr("Gifts received", "Cadeaux reçus")}
+                                        </div>
+                                        <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
+                                            {tr("Books added as gifts to your library.", "Albums offerts et ajoutés à votre collection.")}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Sales */}
+                                <div className="stats-page__physical-card">
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                        <div style={{
+                                            width: "38px",
+                                            height: "38px",
+                                            borderRadius: "10px",
+                                            background: "rgba(245, 158, 11, 0.15)",
+                                            color: "#fbbf24",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            fontSize: "16px"
+                                        }}>
+                                            <FontAwesomeIcon icon={faTag} />
+                                        </div>
+                                        <div style={{ textAlign: "right" }}>
+                                            <div style={{ fontSize: "1.55rem", fontWeight: 800, color: "#fbbf24", lineHeight: 1.15 }}>
+                                                {stats.totalSoldCount ?? 0}
+                                            </div>
+                                            <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--text-secondary, #cbd5e1)" }}>
+                                                {formatAmount(stats.totalSoldAmount)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
+                                            {tr("Sales", "Ventes")}
+                                        </div>
+                                        <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
+                                            {tr("Books sold and total amount earned.", "Albums vendus et montant total récupéré.")}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Net Spent */}
+                                <div className="stats-page__physical-card">
+                                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                        <div style={{
+                                            width: "38px",
+                                            height: "38px",
+                                            borderRadius: "10px",
+                                            background: "rgba(99, 102, 241, 0.15)",
+                                            color: "#818cf8",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            fontSize: "16px"
+                                        }}>
+                                            <FontAwesomeIcon icon={faCoins} />
+                                        </div>
+                                        <div style={{ fontSize: "1.55rem", fontWeight: 800, color: "#818cf8" }}>
+                                            {formatAmount(stats.netSpentAmount)}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--text-primary, #ffffff)" }}>
+                                            {tr("Net budget", "Budget net")}
+                                        </div>
+                                        <div style={{ fontSize: "0.82rem", color: "var(--text-muted, #94a3b8)", marginTop: "4px" }}>
+                                            {tr("Total purchases minus total sales.", "Total des achats moins le total des ventes.")}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>}
+
+                        {/* 3. READING PROGRESSION & PAL */}
+                        {visibleSections >= 3 && <div className="stats-page__section-card">
                             <div className="stats-page__section-header">
                                 <div>
                                     <h3>
@@ -322,10 +587,15 @@ export default function StatisticsPage() {
                                 }}>
                                     <FontAwesomeIcon icon={faCheck} style={{ fontSize: "0.85rem" }} />
                                     <span>
-                                        {tr(
-                                            `${stats.readingProgressPercentage}% of collection read`,
-                                            `${stats.readingProgressPercentage}% de la collection lue`
-                                        )}
+                                        {selectedYear !== null
+                                            ? tr(
+                                                  `${stats.readingProgressPercentage}% read (${selectedYear})`,
+                                                  `${stats.readingProgressPercentage}% lus (${selectedYear})`
+                                              )
+                                            : tr(
+                                                  `${stats.readingProgressPercentage}% of collection read`,
+                                                  `${stats.readingProgressPercentage}% de la collection lue`
+                                              )}
                                     </span>
                                 </div>
                             </div>
@@ -433,8 +703,8 @@ export default function StatisticsPage() {
                             </div>
                         </div>}
 
-                        {/* 3. PHYSICAL STATS (CLEAN, WITHOUT SILLY COMPARISONS) */}
-                        {visibleSections >= 3 && <div className="stats-page__section-card">
+                        {/* 4. PHYSICAL STATS */}
+                        {visibleSections >= 4 && <div className="stats-page__section-card">
                             <div className="stats-page__section-header">
                                 <div>
                                     <h3>
@@ -535,8 +805,8 @@ export default function StatisticsPage() {
                             </div>
                         </div>}
 
-                        {/* 4. GENRES & PUBLICATION ERAS (TWO COLS) */}
-                        {visibleSections >= 4 && <div className="stats-page__two-cols">
+                        {/* 5. GENRES & PUBLICATION ERAS (TWO COLS) */}
+                        {visibleSections >= 5 && <div className="stats-page__two-cols">
                             {/* Donut Chart: Genres */}
                             <div className="stats-page__section-card">
                                 <div className="stats-page__section-header">
@@ -600,8 +870,8 @@ export default function StatisticsPage() {
                             </div>
                         </div>}
 
-                        {/* 5. TOP AUTHORS & TOP PUBLISHERS (TWO COLS) */}
-                        {visibleSections >= 5 && <div className="stats-page__two-cols">
+                        {/* 6. TOP AUTHORS & TOP PUBLISHERS (TWO COLS) */}
+                        {visibleSections >= 6 && <div className="stats-page__two-cols">
                             {/* Top Authors */}
                             <div className="stats-page__section-card">
                                 <div className="stats-page__section-header">
@@ -692,7 +962,7 @@ export default function StatisticsPage() {
                         </div>}
 
                         {/* 7. HALL OF FAME / RECORDS */}
-                        {visibleSections >= 6 && <div className="stats-page__section-card">
+                        {visibleSections >= 7 && <div className="stats-page__section-card">
                             <div className="stats-page__section-header">
                                 <div>
                                     <h3>
