@@ -5,6 +5,7 @@ enum BookStatus {
   sold,
   lent,
   wishlist,
+  paused,
 }
 
 enum CoverSourceType {
@@ -35,6 +36,8 @@ extension BookStatusX on BookStatus {
         return 'Prêté';
       case BookStatus.wishlist:
         return 'Souhait';
+      case BookStatus.paused:
+        return 'En pause';
     }
   }
 }
@@ -114,6 +117,8 @@ class Book {
       status != BookStatus.sold && status != BookStatus.wishlist && status != BookStatus.lent;
 
   bool get isCurrentlyReading => status == BookStatus.reading;
+
+  bool get isPaused => status == BookStatus.paused;
 
   bool get isUnread => status == BookStatus.unread;
 

@@ -280,12 +280,16 @@ class BookDetailsPage extends ConsumerWidget {
                       ? AppTheme.accentRose
                       : (activeBook.status == BookStatus.reading
                           ? AppTheme.accentAmber
-                          : AppTheme.accentPrimary),
+                          : (activeBook.status == BookStatus.paused
+                              ? AppTheme.textSecondary
+                              : AppTheme.accentPrimary)),
                   bgColor: isWishlisted
                       ? AppTheme.accentRoseLight
                       : (activeBook.status == BookStatus.reading
                           ? AppTheme.accentAmberLight
-                          : AppTheme.accentPrimaryLight),
+                          : (activeBook.status == BookStatus.paused
+                              ? AppTheme.bgElevated
+                              : AppTheme.accentPrimaryLight)),
                 ),
                 if (activeBook.volume != null && activeBook.volume! > 0)
                   _TagPill(
@@ -692,6 +696,21 @@ class _BookStatusActions extends StatelessWidget {
               final targetStatus = book.status == BookStatus.reading
                   ? BookStatus.unread
                   : BookStatus.reading;
+              await onStatusSelected(targetStatus);
+            },
+          ),
+          _RoundStatusButton(
+            label: 'En pause',
+            icon: book.status == BookStatus.paused
+                ? Icons.pause_circle_rounded
+                : Icons.pause_circle_outline_rounded,
+            selected: book.status == BookStatus.paused,
+            activeColor: AppTheme.textSecondary,
+            activeBgColor: AppTheme.bgElevated,
+            onPressed: () async {
+              final targetStatus = book.status == BookStatus.paused
+                  ? BookStatus.unread
+                  : BookStatus.paused;
               await onStatusSelected(targetStatus);
             },
           ),

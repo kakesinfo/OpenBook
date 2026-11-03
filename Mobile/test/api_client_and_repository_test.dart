@@ -61,6 +61,7 @@ void main() {
       expect(BookStatus.unread.index, 0);
       expect(BookStatus.reading.index, 1);
       expect(BookStatus.read.index, 2);
+      expect(BookStatus.paused.index, 6);
     });
 
     test('searchBooks with empty or blank query returns empty list immediately', () async {

@@ -12,11 +12,13 @@ class BookCard extends ConsumerWidget {
     required this.book,
     required this.onEdit,
     this.onRecordSession,
+    this.onPause,
   });
 
   final Book book;
   final VoidCallback onEdit;
   final VoidCallback? onRecordSession;
+  final VoidCallback? onPause;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -66,6 +68,18 @@ class BookCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              if (onPause != null) ...[
+                IconButton(
+                  tooltip: 'Mettre en pause',
+                  icon: const Icon(Icons.pause_circle_outline_rounded, size: 20),
+                  color: AppTheme.textMuted,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  onPressed: onPause,
+                ),
+                const SizedBox(width: 4),
+              ],
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(

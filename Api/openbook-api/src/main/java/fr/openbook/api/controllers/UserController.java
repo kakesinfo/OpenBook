@@ -503,7 +503,7 @@ public class UserController {
             }
         }
 
-        // 3. Books from reading sessions
+        // 3. Books from reading sessions (only set to READING if reading status wasn't already specified)
         List<ReadingSessionEntity> sessions = repositoryService.getReadingSessionRepository().findAllByUserIdOrderByCreatedAtAsc(userId);
         for (ReadingSessionEntity rse : sessions) {
             if (rse.getBook() != null && !Boolean.TRUE.equals(rse.getBook().getDeleted())) {
