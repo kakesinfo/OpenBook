@@ -120,49 +120,13 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
         }
     };
 
-    const handleOpenListingStep = async (book: BookSummaryDTO, e: React.MouseEvent) => {
+    const handleOpenListingStep = (book: BookSummaryDTO, e: React.MouseEvent) => {
         e.stopPropagation();
         if (!session.token || addingIds.has(book.id)) return;
 
-        setAddingIds((prev) => new Set(prev).add(book.id));
-        try {
-            const res = await session.customFetch(`/user/books/${encodeURIComponent(book.id)}/transactions`, {
-                method: "GET"
-            });
-
-            if (res.ok) {
-                const txs: UserBookTransactionDTO[] = await res.json();
-                const acquiredCount = txs.filter((t) => t.type === "BOUGHT" || t.type === "GIFT").length;
-                const soldCount = txs.filter((t) => t.type === "SOLD").length;
-
-                if (acquiredCount <= soldCount) {
-                    enqueueSnackbar(
-                        tr(
-                            "You must have a purchase or a gift in the purchase history to sell this book.",
-                            "Vous devez avoir un achat ou un cadeau dans l'historique d'achat pour vendre ce livre."
-                        ),
-                        { variant: "warning" }
-                    );
-                    return;
-                }
-            } else {
-                enqueueSnackbar(tr("Unable to verify the purchase history for this book", "Impossible de vérifier l'historique d'achat de ce livre"), { variant: "error" });
-                return;
-            }
-
-            setListingTargetBook(book);
-            setListingPrice(book.price ? String(book.price) : "");
-            setListingUrl(book.listingUrl || "");
-        } catch (err) {
-            console.error("Error checking book transactions:", err);
-            enqueueSnackbar(tr("Connection error", "Erreur de connexion"), { variant: "error" });
-        } finally {
-            setAddingIds((prev) => {
-                const next = new Set(prev);
-                next.delete(book.id);
-                return next;
-            });
-        }
+        setListingTargetBook(book);
+        setListingPrice(book.price ? String(book.price) : "");
+        setListingUrl(book.listingUrl || "");
     };
 
     const handleSaveListing = async (e: React.FormEvent) => {

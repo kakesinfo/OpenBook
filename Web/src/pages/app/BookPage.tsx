@@ -678,13 +678,8 @@ export default function BookPage() {
 
     const acquiredCount = transactions.filter((t) => t.type === "BOUGHT" || t.type === "GIFT").length;
     const soldCount = transactions.filter((t) => t.type === "SOLD").length;
-    const canSellInHistory = acquiredCount > soldCount;
 
     const handleOpenSaleModal = () => {
-        if (!canSellInHistory) {
-            enqueueSnackbar(tr("You must have a purchase or a gift in your purchase history to sell this book.", "Vous devez avoir un achat ou un cadeau dans l'historique d'achat pour vendre ce livre."), { variant: "warning" });
-            return;
-        }
         setSellDate("");
         setSellPrice(book?.price ? String(book.price) : "");
         setSellLocation("");
@@ -693,10 +688,6 @@ export default function BookPage() {
     };
 
     const handleOpenListingModal = () => {
-        if (!canSellInHistory) {
-            enqueueSnackbar(tr("You must have a purchase or a gift in your purchase history to sell this book.", "Vous devez avoir un achat ou un cadeau dans l'historique d'achat pour vendre ce livre."), { variant: "warning" });
-            return;
-        }
         setListingPrice(book?.price ? String(book.price) : "");
         setListingUrl("");
         setListingModalOpen(true);
