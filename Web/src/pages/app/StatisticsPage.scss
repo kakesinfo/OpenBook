@@ -264,8 +264,12 @@
   &__physical-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    &--stacked { grid-template-columns: 1fr; gap: 10px; }
     gap: 16px;
+
+    &--stacked {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
   }
 
   &__physical-card {
@@ -273,11 +277,17 @@
     border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
     border-radius: var(--radius-md, 12px);
     padding: 13px 16px;
-    &--row { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; }
     display: flex;
     flex-direction: column;
     gap: 12px;
     transition: border-color var(--transition-fast, 150ms ease);
+
+    &--row {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
 
     &:hover {
       border-color: rgba(255, 255, 255, 0.18);
@@ -417,12 +427,18 @@
     border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
     border-radius: var(--radius-md, 14px);
     padding: 13px 16px;
-    &--row { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; }
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     gap: 14px;
     transition: transform var(--transition-fast, 150ms ease), border-color var(--transition-fast, 150ms ease);
+
+    &--row {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
 
     &:hover {
       border-color: rgba(99, 102, 241, 0.3);
