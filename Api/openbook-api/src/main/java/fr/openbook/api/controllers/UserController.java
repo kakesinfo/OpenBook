@@ -71,8 +71,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import fr.openbook.api.services.AvatarService;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -169,7 +167,12 @@ public class UserController {
         }
 
         if (request.getAvatar() != null) {
-            user.setAvatar(request.getAvatar().trim());
+            String oldAvatar = user.getAvatar();
+            String newAvatar = request.getAvatar().trim();
+            user.setAvatar(newAvatar);
+            if (oldAvatar != null && !oldAvatar.isBlank() && !oldAvatar.equals(newAvatar)) {
+                avatarService.deleteAvatarFile(oldAvatar);
+            }
         }
 
         user = repositoryService.getUserRepository().save(user);
@@ -208,11 +211,15 @@ public class UserController {
         UserEntity user = getAuthenticatedUser(session);
 
         try {
-            String filename = avatarService.saveAvatar(file);
-            String avatarUrl = "/user/avatar/" + filename;
+            String oldAvatar = user.getAvatar();
+            String avatarUrl = avatarService.saveAvatar(file);
 
             user.setAvatar(avatarUrl);
             user = repositoryService.getUserRepository().save(user);
+
+            if (oldAvatar != null && !oldAvatar.isBlank() && !oldAvatar.equals(avatarUrl)) {
+                avatarService.deleteAvatarFile(oldAvatar);
+            }
 
             if (session != null) {
                 session.setAttribute("user", user);
@@ -237,24 +244,6 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Erreur serveur lors de l'enregistrement de l'avatar."));
         }
-    }
-
-    @GetMapping("/avatar/{filename}")
-    public ResponseEntity<Resource> getAvatar(@PathVariable String filename) {
-        Resource resource = avatarService.loadAvatarResource(filename);
-        if (resource == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        MediaType mediaType = filename.toLowerCase().endsWith(".png")
-                ? MediaType.IMAGE_PNG
-                : MediaType.IMAGE_JPEG;
-
-        return ResponseEntity.ok()
-                .contentType(mediaType)
-                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
-                .header("X-Content-Type-Options", "nosniff")
-                .body(resource);
     }
 
     @PutMapping("/password")

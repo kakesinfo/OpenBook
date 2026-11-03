@@ -1,7 +1,8 @@
 package fr.openbook.api.services;
 
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
+import fr.openbook.api.services.media.MediaService;
+import fr.openbook.api.utils.MediaUrlUtils;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -9,32 +10,29 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
+@RequiredArgsConstructor
 public class AvatarService {
 
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
     private static final int MAX_DIMENSION = 4096;
     private static final int TARGET_AVATAR_SIZE = 512;
-    private final Path uploadDir;
 
     private static final byte[] PNG_SIGNATURE = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+    private static final Pattern UUID_EXTRACT_PATTERN = Pattern.compile("([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
 
-    public AvatarService() {
-        this.uploadDir = Paths.get("uploads", "avatars").toAbsolutePath().normalize();
-        try {
-            Files.createDirectories(this.uploadDir);
-        } catch (IOException e) {
-            throw new RuntimeException("Could not create avatar upload directory", e);
-        }
-    }
+    private final MediaService mediaService;
 
+    /**
+     * Validates, sanitizes, resizes, and stores the avatar image via openbook-media (Cache/media-data).
+     * Returns the public media URL (e.g. "/images/{uuid}/blob").
+     */
     public String saveAvatar(MultipartFile file) throws IOException {
         // 1. File presence and size check
         if (file == null || file.isEmpty()) {
@@ -99,9 +97,8 @@ public class AvatarService {
             throw new IllegalArgumentException("Dimensions d'image trop grandes (maximum 4096 x 4096 px).");
         }
 
-        // 6. Sanitization and re-encoding:
-        // By drawing into a fresh BufferedImage and writing a new PNG, all EXIF metadata,
-        // embedded script tags, polyglot payloads, and comment injections are completely stripped.
+        // 6. Sanitization and re-encoding in memory:
+        // Drawing into a fresh BufferedImage strips all EXIF metadata, embedded scripts, and polyglot payloads.
         int targetWidth = width;
         int targetHeight = height;
         if (width > TARGET_AVATAR_SIZE || height > TARGET_AVATAR_SIZE) {
@@ -125,51 +122,27 @@ public class AvatarService {
             g2d.dispose();
         }
 
-        // 7. Safe UUID file storage
-        String newFilename = UUID.randomUUID().toString() + ".png";
-        Path targetPath = this.uploadDir.resolve(newFilename).normalize();
-
-        // Path traversal defense check
-        if (!targetPath.startsWith(this.uploadDir)) {
-            throw new SecurityException("Tentative d'accès hors du répertoire d'upload détectée.");
+        byte[] sanitizedPngBytes;
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            ImageIO.write(sanitizedImage, "png", baos);
+            sanitizedPngBytes = baos.toByteArray();
         }
 
-        ImageIO.write(sanitizedImage, "png", targetPath.toFile());
+        // 7. Store in openbook-media (converts to WebP and saves in Cache/media-data)
+        String mediaUuid = mediaService.createVirtualImage();
+        mediaService.uploadImage(mediaUuid, sanitizedPngBytes, "image/png");
 
-        return newFilename;
-    }
-
-    public Resource loadAvatarResource(String filename) {
-        if (filename == null || !filename.matches("^[a-zA-Z0-9-]+\\.(png|jpg|jpeg)$")) {
-            throw new IllegalArgumentException("Nom de fichier d'avatar invalide.");
-        }
-
-        Path filePath = this.uploadDir.resolve(filename).normalize();
-        if (!filePath.startsWith(this.uploadDir)) {
-            throw new SecurityException("Accès non autorisé.");
-        }
-
-        try {
-            Resource resource = new UrlResource(filePath.toUri());
-            if (resource.exists() && resource.isReadable()) {
-                return resource;
-            } else {
-                return null;
-            }
-        } catch (Exception e) {
-            return null;
-        }
+        return MediaUrlUtils.formatCoverUrl(mediaUuid);
     }
 
     public void deleteAvatarFile(String avatarUrl) {
-        if (avatarUrl == null || !avatarUrl.startsWith("/user/avatar/")) return;
-        String filename = avatarUrl.substring("/user/avatar/".length());
-        if (!filename.matches("^[a-zA-Z0-9-]+\\.(png|jpg|jpeg)$")) return;
-        try {
-            Path filePath = this.uploadDir.resolve(filename).normalize();
-            if (filePath.startsWith(this.uploadDir)) {
-                Files.deleteIfExists(filePath);
-            }
-        } catch (Exception ignored) {}
+        if (avatarUrl == null || avatarUrl.isBlank()) return;
+        Matcher matcher = UUID_EXTRACT_PATTERN.matcher(avatarUrl);
+        if (matcher.find()) {
+            String uuid = matcher.group(1);
+            try {
+                mediaService.deleteImage(uuid);
+            } catch (Exception ignored) {}
+        }
     }
 }
