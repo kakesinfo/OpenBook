@@ -25,6 +25,11 @@
       gap: 14px;
     }
 
+    .booklist {
+      padding: 0;
+      margin-bottom: 24px;
+    }
+
     .pagination {
       padding: 16px 0 20px;
     }
@@ -269,26 +274,7 @@
   }
 }
 
-/* Grid View */
-.sales-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 22px;
-  width: 100%;
-  padding: 0;
-  margin-bottom: 24px;
-
-  @media (max-width: 900px) {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 16px;
-  }
-
-  @media (max-width: 600px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-  }
-}
-
+/* Sales Card */
 .sales-card {
   position: relative;
   display: flex;
@@ -298,192 +284,11 @@
   border-radius: var(--radius-md);
   transition: transform var(--transition-fast);
 
-  &:hover {
-    transform: translateY(-4px);
-
-    .sales-card__media {
-      box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-focus);
-    }
-
-    .sales-card__cover-link img {
-      transform: scale(1.04);
-    }
-
-    .sales-card__actions {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
-
-    .sales-card__title {
-      color: var(--accent-primary);
-    }
-  }
-
   &.is-sold {
     opacity: 0.72;
 
     &:hover {
       opacity: 0.95;
-    }
-  }
-
-  &__media {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 0.67;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    box-shadow: var(--shadow-md);
-    transition: all var(--transition-normal);
-  }
-
-  &__cover-link {
-    display: block;
-    width: 100%;
-    height: 100%;
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1);
-    }
-  }
-
-  &__placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    font-size: 2.5rem;
-    background: rgba(255, 255, 255, 0.02);
-  }
-
-  &__badge-row {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    right: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    pointer-events: none;
-  }
-
-  &__body {
-    display: flex;
-    flex-direction: column;
-    padding: 10px 2px 0;
-  }
-
-  &__title {
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    text-decoration: none;
-    line-height: 1.3;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-
-    &:hover {
-      color: var(--accent-amber);
-    }
-  }
-
-  &__series {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin-top: 3px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  &__actions {
-    position: absolute;
-    right: 10px;
-    bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    z-index: 3;
-    opacity: 0;
-    transform: translateY(6px);
-    pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-
-    @media (hover: none) {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
-  }
-
-  &__btn {
-    width: 34px;
-    height: 34px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border-radius: 50%;
-    border: 1px solid var(--border-subtle);
-    background: var(--bg-card);
-    backdrop-filter: blur(8px);
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    cursor: pointer;
-    box-shadow: var(--shadow-md);
-    transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-
-    &:hover:not(:disabled) {
-      transform: scale(1.1);
-    }
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: wait;
-    }
-
-    &--sold {
-      color: var(--accent-primary);
-      border-color: var(--border-focus);
-      background: var(--accent-primary-light);
-
-      &:hover {
-        background: var(--accent-primary);
-        border-color: var(--accent-primary);
-        color: #ffffff;
-      }
-    }
-
-    &--relist {
-      color: var(--accent-amber);
-      border-color: var(--accent-amber);
-      background: rgba(245, 158, 11, 0.08);
-
-      &:hover {
-        background: rgba(245, 158, 11, 0.18);
-        border-color: #f59e0b;
-      }
-    }
-
-    &--delete {
-      color: #ef4444;
-      border-color: rgba(239, 68, 68, 0.2);
-
-      &:hover {
-        background: rgba(239, 68, 68, 0.15);
-        border-color: #ef4444;
-      }
     }
   }
 }

@@ -549,7 +549,7 @@ export default function SalesPage() {
                     <>
                         {displayMode === "grid" ? (
                             /* Galerie Mode for Sales */
-                            <div className="sales-grid">
+                            <div className="booklist">
                                 {paginatedBooks.map((book) => {
                                     const isSold = book.status === "SOLD";
                                     const isActionLoading = actionLoadingId === book.id;
