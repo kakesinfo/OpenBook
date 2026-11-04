@@ -282,14 +282,18 @@ class BookDetailsPage extends ConsumerWidget {
                           ? AppTheme.accentAmber
                           : (activeBook.status == BookStatus.paused
                               ? AppTheme.textSecondary
-                              : AppTheme.accentPrimary)),
+                              : (activeBook.status == BookStatus.abandoned
+                                  ? AppTheme.accentRed
+                                  : AppTheme.accentPrimary))),
                   bgColor: isWishlisted
                       ? AppTheme.accentRoseLight
                       : (activeBook.status == BookStatus.reading
                           ? AppTheme.accentAmberLight
                           : (activeBook.status == BookStatus.paused
                               ? AppTheme.bgElevated
-                              : AppTheme.accentPrimaryLight)),
+                              : (activeBook.status == BookStatus.abandoned
+                                  ? AppTheme.accentRedLight
+                                  : AppTheme.accentPrimaryLight))),
                 ),
                 if (activeBook.volume != null && activeBook.volume! > 0)
                   _TagPill(
@@ -632,102 +636,141 @@ class _BookStatusActions extends StatelessWidget {
     final isWishlisted = book.status == BookStatus.wishlist;
     final isOwned = book.isOwned;
 
-    return Center(
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        alignment: WrapAlignment.center,
+    // Determine current reading status for the selector
+    BookStatus currentReadingStatus;
+    if (book.status == BookStatus.reading ||
+        book.status == BookStatus.read ||
+        book.status == BookStatus.paused ||
+        book.status == BookStatus.abandoned) {
+      currentReadingStatus = book.status;
+    } else {
+      currentReadingStatus = BookStatus.unread;
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Ligne 1 : Boutons ronds Collection et Souhait
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _RoundStatusButton(
+              label: 'Collection',
+              icon: isOwned
+                  ? Icons.collections_bookmark_rounded
+                  : Icons.collections_bookmark_outlined,
+              selected: isOwned,
+              activeColor: AppTheme.accentPrimary,
+              activeBgColor: AppTheme.accentPrimaryLight,
+              onPressed: () async {
+                final targetStatus = isOwned
+                    ? (book.status == BookStatus.unread
+                        ? BookStatus.wishlist
+                        : BookStatus.unread)
+                    : BookStatus.unread;
+                await onStatusSelected(targetStatus);
+              },
+            ),
+            const SizedBox(width: 28),
+            _RoundStatusButton(
+              label: 'Souhaits',
+              icon: isWishlisted
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
+              selected: isWishlisted,
+              activeColor: AppTheme.accentRose,
+              activeBgColor: AppTheme.accentRoseLight,
+              onPressed: () async {
+                final targetStatus =
+                    isWishlisted ? BookStatus.unread : BookStatus.wishlist;
+                await onStatusSelected(targetStatus);
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        // Ligne 2 : Sélecteur de statut de lecture
+        Container(
+          constraints: const BoxConstraints(maxWidth: 320),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppTheme.bgSurface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            border: Border.all(
+              color: isOwned ? AppTheme.accentPrimary.withValues(alpha: 0.35) : AppTheme.borderSubtle,
+              width: 1,
+            ),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<BookStatus>(
+              value: currentReadingStatus,
+              isExpanded: true,
+              dropdownColor: AppTheme.bgSurface,
+              icon: Icon(Icons.arrow_drop_down_rounded, color: AppTheme.textSecondary),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              onChanged: (newStatus) async {
+                if (newStatus != null && newStatus != book.status) {
+                  await onStatusSelected(newStatus);
+                }
+              },
+              items: [
+                _buildReadingDropdownItem(
+                  status: BookStatus.unread,
+                  label: 'Non lu',
+                  icon: Icons.menu_book_rounded,
+                  color: AppTheme.accentSecondary,
+                ),
+                _buildReadingDropdownItem(
+                  status: BookStatus.reading,
+                  label: 'En cours',
+                  icon: Icons.auto_stories_rounded,
+                  color: AppTheme.accentAmber,
+                ),
+                _buildReadingDropdownItem(
+                  status: BookStatus.read,
+                  label: 'Lu',
+                  icon: Icons.check_circle_rounded,
+                  color: AppTheme.accentPrimary,
+                ),
+                _buildReadingDropdownItem(
+                  status: BookStatus.paused,
+                  label: 'En pause',
+                  icon: Icons.pause_circle_rounded,
+                  color: AppTheme.textSecondary,
+                ),
+                _buildReadingDropdownItem(
+                  status: BookStatus.abandoned,
+                  label: 'Abandonné',
+                  icon: Icons.do_not_disturb_on_outlined,
+                  color: AppTheme.accentRed,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  DropdownMenuItem<BookStatus> _buildReadingDropdownItem({
+    required BookStatus status,
+    required String label,
+    required IconData icon,
+    required Color color,
+  }) {
+    return DropdownMenuItem<BookStatus>(
+      value: status,
+      child: Row(
         children: [
-          _RoundStatusButton(
-            label: 'Collection',
-            icon: isOwned
-                ? Icons.collections_bookmark_rounded
-                : Icons.collections_bookmark_outlined,
-            selected: isOwned,
-            activeColor: AppTheme.accentPrimary,
-            activeBgColor: AppTheme.accentPrimaryLight,
-            onPressed: () async {
-              final targetStatus = isOwned
-                  ? (book.status == BookStatus.unread
-                      ? BookStatus.wishlist
-                      : BookStatus.unread)
-                  : BookStatus.unread;
-              await onStatusSelected(targetStatus);
-            },
-          ),
-          _RoundStatusButton(
-            label: 'Souhaits',
-            icon: isWishlisted
-                ? Icons.favorite_rounded
-                : Icons.favorite_border_rounded,
-            selected: isWishlisted,
-            activeColor: AppTheme.accentRose,
-            activeBgColor: AppTheme.accentRoseLight,
-            onPressed: () async {
-              final targetStatus =
-                  isWishlisted ? BookStatus.unread : BookStatus.wishlist;
-              await onStatusSelected(targetStatus);
-            },
-          ),
-          _RoundStatusButton(
-            label: 'Lu',
-            icon: book.status == BookStatus.read
-                ? Icons.check_circle_rounded
-                : Icons.check_circle_outline_rounded,
-            selected: book.status == BookStatus.read,
-            activeColor: AppTheme.accentPrimary,
-            activeBgColor: AppTheme.accentPrimaryLight,
-            onPressed: () async {
-              final targetStatus = book.status == BookStatus.read
-                  ? BookStatus.unread
-                  : BookStatus.read;
-              await onStatusSelected(targetStatus);
-            },
-          ),
-          _RoundStatusButton(
-            label: 'En cours',
-            icon: book.status == BookStatus.reading
-                ? Icons.auto_stories_rounded
-                : Icons.auto_stories_outlined,
-            selected: book.status == BookStatus.reading,
-            activeColor: AppTheme.accentAmber,
-            activeBgColor: AppTheme.accentAmberLight,
-            onPressed: () async {
-              final targetStatus = book.status == BookStatus.reading
-                  ? BookStatus.unread
-                  : BookStatus.reading;
-              await onStatusSelected(targetStatus);
-            },
-          ),
-          _RoundStatusButton(
-            label: 'En pause',
-            icon: book.status == BookStatus.paused
-                ? Icons.pause_circle_rounded
-                : Icons.pause_circle_outline_rounded,
-            selected: book.status == BookStatus.paused,
-            activeColor: AppTheme.textSecondary,
-            activeBgColor: AppTheme.bgElevated,
-            onPressed: () async {
-              final targetStatus = book.status == BookStatus.paused
-                  ? BookStatus.unread
-                  : BookStatus.paused;
-              await onStatusSelected(targetStatus);
-            },
-          ),
-          _RoundStatusButton(
-            label: 'Vendu',
-            icon: book.status == BookStatus.sold
-                ? Icons.sell_rounded
-                : Icons.sell_outlined,
-            selected: book.status == BookStatus.sold,
-            activeColor: AppTheme.accentSecondary,
-            activeBgColor: AppTheme.accentSecondaryLight,
-            onPressed: () async {
-              final targetStatus = book.status == BookStatus.sold
-                  ? BookStatus.unread
-                  : BookStatus.sold;
-              await onStatusSelected(targetStatus);
-            },
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
           ),
         ],
       ),
