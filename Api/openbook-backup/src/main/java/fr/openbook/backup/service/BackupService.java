@@ -269,14 +269,62 @@ public class BackupService {
 
         List<BackupMetadata> result = new ArrayList<>();
         for (File f : files) {
-            result.add(BackupMetadata.builder()
-                    .filename(f.getName())
-                    .sizeBytes(f.length())
-                    .createdAt(Instant.ofEpochMilli(f.lastModified()))
-                    .openbookVersion("1.0")
-                    .build());
+            BackupMetadata meta = readMetadataFromZip(f);
+            if (meta == null) {
+                meta = BackupMetadata.builder()
+                        .filename(f.getName())
+                        .sizeBytes(f.length())
+                        .createdAt(Instant.ofEpochMilli(f.lastModified()))
+                        .openbookVersion("1.0")
+                        .build();
+            }
+            result.add(meta);
         }
         return result;
+    }
+
+    private BackupMetadata readMetadataFromZip(File zipFile) {
+        try (java.util.zip.ZipFile zf = new java.util.zip.ZipFile(zipFile)) {
+            ZipEntry entry = zf.getEntry("metadata.json");
+            if (entry != null) {
+                try (InputStream is = zf.getInputStream(entry)) {
+                    String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                    long dbSize = extractJsonLong(json, "databaseSizeBytes");
+                    int images = (int) extractJsonLong(json, "imageCount");
+                    String timestampStr = extractJsonString(json, "timestamp");
+                    Instant created = timestampStr != null ? Instant.parse(timestampStr) : Instant.ofEpochMilli(zipFile.lastModified());
+                    return BackupMetadata.builder()
+                            .filename(zipFile.getName())
+                            .sizeBytes(zipFile.length())
+                            .createdAt(created)
+                            .imageCount(images)
+                            .databaseSizeBytes(dbSize)
+                            .openbookVersion("1.0")
+                            .build();
+                }
+            }
+        } catch (Exception e) {
+            log.debug("[Backup] Could not read metadata.json from {}: {}", zipFile.getName(), e.getMessage());
+        }
+        return null;
+    }
+
+    private long extractJsonLong(String json, String field) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"" + field + "\"\\s*:\\s*([0-9]+)").matcher(json);
+        if (m.find()) {
+            try {
+                return Long.parseLong(m.group(1));
+            } catch (NumberFormatException ignored) {}
+        }
+        return 0;
+    }
+
+    private String extractJsonString(String json, String field) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"" + field + "\"\\s*:\\s*\"([^\"]+)\"").matcher(json);
+        if (m.find()) {
+            return m.group(1);
+        }
+        return null;
     }
 
     /**

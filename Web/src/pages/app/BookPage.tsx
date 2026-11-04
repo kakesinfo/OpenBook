@@ -676,9 +676,6 @@ export default function BookPage() {
         }
     };
 
-    const acquiredCount = transactions.filter((t) => t.type === "BOUGHT" || t.type === "GIFT").length;
-    const soldCount = transactions.filter((t) => t.type === "SOLD").length;
-
     const handleOpenSaleModal = () => {
         setSellDate("");
         setSellPrice(book?.price ? String(book.price) : "");
