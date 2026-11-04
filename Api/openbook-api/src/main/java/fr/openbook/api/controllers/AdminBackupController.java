@@ -1,6 +1,7 @@
 package fr.openbook.api.controllers;
 
 import fr.openbook.backup.model.BackupMetadata;
+import fr.openbook.backup.model.RestoreResult;
 import fr.openbook.backup.service.BackupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -73,6 +74,24 @@ public class AdminBackupController {
                     .body(resource);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Restores a backup by filename.
+     */
+    @PostMapping("/restore/{filename}")
+    public ResponseEntity<?> restoreBackup(@PathVariable String filename) {
+        try {
+            log.info("[AdminBackup] Received restore request for backup: {}", filename);
+            RestoreResult result = backupService.restoreBackup(filename);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("[AdminBackup] Restore failed for backup {}: {}", filename, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Restore failed: " + e.getMessage()));
         }
     }
 

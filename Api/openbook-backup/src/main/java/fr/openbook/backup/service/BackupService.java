@@ -2,6 +2,7 @@ package fr.openbook.backup.service;
 
 import fr.openbook.backup.config.BackupProperties;
 import fr.openbook.backup.model.BackupMetadata;
+import fr.openbook.backup.model.RestoreResult;
 import fr.openbook.media.config.MediaProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -351,6 +352,218 @@ public class BackupService {
         } catch (IOException e) {
             log.error("[Backup] Failed to delete backup file {}: {}", filename, e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Restores database and media images from a backup zip archive.
+     */
+    public RestoreResult restoreBackup(String filename) throws IOException {
+        Path backupFile = getBackupPath(filename);
+        log.info("[Restore] Starting restore from backup archive: {}", filename);
+        long startTime = System.currentTimeMillis();
+
+        Path tempDir = Files.createTempDirectory("openbook-restore-");
+        try {
+            // 1. Unzip archive into temp directory
+            int extractedImages = 0;
+            Path dumpSqlPath = null;
+
+            try (java.util.zip.ZipFile zf = new java.util.zip.ZipFile(backupFile.toFile())) {
+                var entries = zf.entries();
+                while (entries.hasMoreElements()) {
+                    ZipEntry entry = entries.nextElement();
+                    String name = entry.getName();
+
+                    // Security: prevent path traversal
+                    if (name.contains("..")) {
+                        continue;
+                    }
+
+                    Path destPath = tempDir.resolve(name).normalize();
+                    if (!destPath.startsWith(tempDir)) {
+                        continue;
+                    }
+
+                    if (entry.isDirectory()) {
+                        Files.createDirectories(destPath);
+                    } else {
+                        Files.createDirectories(destPath.getParent());
+                        try (InputStream is = zf.getInputStream(entry);
+                             OutputStream os = new BufferedOutputStream(new FileOutputStream(destPath.toFile()))) {
+                            is.transferTo(os);
+                        }
+
+                        if ("database/dump.sql".equals(name) || name.endsWith("dump.sql")) {
+                            dumpSqlPath = destPath;
+                        } else if (name.startsWith("images/")) {
+                            extractedImages++;
+                        }
+                    }
+                }
+            }
+
+            if (dumpSqlPath == null || !Files.exists(dumpSqlPath)) {
+                throw new IOException("Invalid backup archive: missing 'database/dump.sql'");
+            }
+
+            long dbSize = Files.size(dumpSqlPath);
+            log.info("[Restore] Archive unpacked. Dump size: {} bytes, extracted images files: {}", dbSize, extractedImages);
+
+            // 2. Restore PostgreSQL database using psql
+            restoreDatabase(dumpSqlPath);
+            log.info("[Restore] Database restored successfully");
+
+            // 3. Restore media images to MediaProperties data directory
+            Path mediaDestDir = Paths.get(mediaProperties.getDataDir());
+            Path extractedImagesDir = tempDir.resolve("images");
+            int restoredImagesCount = 0;
+
+            if (Files.exists(extractedImagesDir)) {
+                Files.createDirectories(mediaDestDir);
+                restoredImagesCount = copyDirectoryRecursively(extractedImagesDir, mediaDestDir);
+                log.info("[Restore] Copied {} media files to {}", restoredImagesCount, mediaDestDir);
+            }
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("[Restore] Completed successfully in {} ms", duration);
+
+            return RestoreResult.builder()
+                    .filename(filename)
+                    .success(true)
+                    .message("Backup restored successfully")
+                    .restoredAt(Instant.now())
+                    .restoredImagesCount(restoredImagesCount)
+                    .databaseSizeBytes(dbSize)
+                    .durationMs(duration)
+                    .build();
+
+        } finally {
+            deleteRecursively(tempDir);
+        }
+    }
+
+    /**
+     * Executes psql to restore the database from dump.sql.
+     */
+    private void restoreDatabase(Path sqlFile) throws IOException {
+        String activeUrl = datasourceUrlOverride != null ? datasourceUrlOverride : datasourceUrl;
+        String activeUser = datasourceUserOverride != null ? datasourceUserOverride : datasourceUser;
+        String activePassword = datasourcePasswordOverride != null ? datasourcePasswordOverride : datasourcePassword;
+
+        String host = "postgres";
+        String port = "5432";
+        String dbName = "openbook";
+
+        try {
+            if (activeUrl != null && activeUrl.startsWith("jdbc:postgresql://")) {
+                String clean = activeUrl.substring("jdbc:postgresql://".length());
+                int slashIdx = clean.indexOf('/');
+                if (slashIdx > 0) {
+                    String hostPort = clean.substring(0, slashIdx);
+                    dbName = clean.substring(slashIdx + 1);
+                    int questionIdx = dbName.indexOf('?');
+                    if (questionIdx > 0) {
+                        dbName = dbName.substring(0, questionIdx);
+                    }
+                    if (hostPort.contains(":")) {
+                        String[] parts = hostPort.split(":", 2);
+                        host = parts[0];
+                        port = parts[1];
+                    } else {
+                        host = hostPort;
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("[Restore] Could not parse datasourceUrl '{}', using defaults: {}", activeUrl, ex.getMessage());
+        }
+
+        List<String> cmd = new ArrayList<>(Arrays.asList(
+                "psql",
+                "-h", host,
+                "-p", port,
+                "-U", activeUser,
+                "-d", dbName,
+                "-f", sqlFile.toAbsolutePath().toString(),
+                "-q"
+        ));
+
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        pb.environment().put("PGPASSWORD", activePassword != null ? activePassword : "");
+
+        Process process = pb.start();
+        ByteArrayOutputStream errBaos = new ByteArrayOutputStream();
+
+        Thread errReader = new Thread(() -> {
+            try (InputStream is = process.getErrorStream()) {
+                is.transferTo(errBaos);
+            } catch (Exception ignored) {}
+        });
+        errReader.start();
+
+        try {
+            boolean finished = process.waitFor(180, TimeUnit.SECONDS);
+            errReader.join(2000);
+            if (!finished) {
+                process.destroyForcibly();
+                throw new IOException("psql restore timed out after 180s");
+            }
+
+            int exitCode = process.exitValue();
+            if (exitCode != 0) {
+                String errOutput = errBaos.toString(StandardCharsets.UTF_8);
+                throw new IOException("psql restore failed with exit code " + exitCode + ": " + errOutput);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Database restore was interrupted: " + e.getMessage(), e);
+        }
+    }
+
+    private int copyDirectoryRecursively(Path source, Path target) throws IOException {
+        AtomicInteger count = new AtomicInteger();
+        Files.walkFileTree(source, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                Path relative = source.relativize(dir);
+                Path destDir = target.resolve(relative);
+                Files.createDirectories(destDir);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Path relative = source.relativize(file);
+                Path destFile = target.resolve(relative);
+                Files.copy(file, destFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                count.incrementAndGet();
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        return count.get();
+    }
+
+    private void deleteRecursively(Path root) {
+        if (root == null || !Files.exists(root)) {
+            return;
+        }
+        try {
+            Files.walkFileTree(root, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.deleteIfExists(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.deleteIfExists(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) {
+            log.warn("[Backup] Could not clean temp directory {}: {}", root, e.getMessage());
         }
     }
 

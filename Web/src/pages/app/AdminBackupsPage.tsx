@@ -12,13 +12,14 @@ import {
     faImage,
     faCalendarDays,
     faCircleNotch,
-    faTriangleExclamation
+    faTriangleExclamation,
+    faRotateLeft
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
-import { BackupMetadataDTO } from "../../dto/BackupMetadata.dto.ts";
+import { BackupMetadataDTO, RestoreResultDTO } from "../../dto/BackupMetadata.dto.ts";
 import "./AdminBackupsPage.scss";
 
 export default function AdminBackupsPage() {
@@ -29,8 +30,14 @@ export default function AdminBackupsPage() {
     const [loading, setLoading] = useState<boolean>(true);
     const [creating, setCreating] = useState<boolean>(false);
     const [downloading, setDownloading] = useState<string | null>(null);
+
+    // Modal delete state
     const [backupToDelete, setBackupToDelete] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<boolean>(false);
+
+    // Modal restore state
+    const [backupToRestore, setBackupToRestore] = useState<string | null>(null);
+    const [restoring, setRestoring] = useState<boolean>(false);
 
     const formatBytes = (bytes: number): string => {
         if (!bytes || bytes <= 0) return "0 o";
@@ -182,6 +189,47 @@ export default function AdminBackupsPage() {
         }
     };
 
+    const handleRestoreBackup = async () => {
+        if (!backupToRestore || restoring) return;
+        setRestoring(true);
+        enqueueSnackbar(
+            tr("Restoring backup (database + images)...", "Restauration de la sauvegarde en cours (BDD + images)..."),
+            { variant: "info", autoHideDuration: 6000 }
+        );
+
+        try {
+            const res = await session.customFetch(`/admin/backup/restore/${encodeURIComponent(backupToRestore)}`, {
+                method: "POST"
+            });
+
+            if (res.ok) {
+                const result: RestoreResultDTO = await res.json();
+                enqueueSnackbar(
+                    tr(
+                        `Backup restored successfully in ${Math.round(result.durationMs / 1000)}s (${result.restoredImagesCount} images restored)`,
+                        `Sauvegarde restaurée avec succès en ${Math.round(result.durationMs / 1000)}s (${result.restoredImagesCount} images restaurées)`
+                    ),
+                    { variant: "success", autoHideDuration: 6000 }
+                );
+                setBackupToRestore(null);
+                await fetchBackups(true);
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                enqueueSnackbar(
+                    errData.error || tr("Failed to restore backup", "Échec lors de la restauration de la sauvegarde"),
+                    { variant: "error" }
+                );
+            }
+        } catch (e: any) {
+            enqueueSnackbar(
+                tr("Error while restoring backup", "Erreur lors de la restauration de la sauvegarde"),
+                { variant: "error" }
+            );
+        } finally {
+            setRestoring(false);
+        }
+    };
+
     return (
         <div className="admin-backups">
             <WrapperHeader>
@@ -215,7 +263,7 @@ export default function AdminBackupsPage() {
                         type="button"
                         className="admin-backups__create-btn"
                         onClick={handleCreateBackup}
-                        disabled={creating}
+                        disabled={creating || restoring}
                     >
                         <FontAwesomeIcon icon={creating ? faCircleNotch : faPlus} spin={creating} />
                         <span>
@@ -238,7 +286,7 @@ export default function AdminBackupsPage() {
                             type="button"
                             className="admin-backups__refresh-btn"
                             onClick={() => fetchBackups()}
-                            disabled={loading}
+                            disabled={loading || restoring}
                             title={tr("Refresh list", "Rafraîchir la liste")}
                         >
                             <FontAwesomeIcon icon={faRotate} spin={loading} />
@@ -296,7 +344,7 @@ export default function AdminBackupsPage() {
                                             type="button"
                                             className="admin-backups__action-btn admin-backups__action-btn--download"
                                             onClick={() => handleDownloadBackup(b.filename)}
-                                            disabled={downloading === b.filename}
+                                            disabled={downloading === b.filename || restoring}
                                             title={tr("Download backup archive", "Télécharger l'archive")}
                                         >
                                             <FontAwesomeIcon
@@ -312,9 +360,20 @@ export default function AdminBackupsPage() {
 
                                         <button
                                             type="button"
+                                            className="admin-backups__action-btn admin-backups__action-btn--restore"
+                                            onClick={() => setBackupToRestore(b.filename)}
+                                            disabled={restoring || deleting}
+                                            title={tr("Restore this backup", "Restaurer cette sauvegarde")}
+                                        >
+                                            <FontAwesomeIcon icon={faRotateLeft} />
+                                            <span>{tr("Restore", "Restaurer")}</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
                                             className="admin-backups__action-btn admin-backups__action-btn--delete"
                                             onClick={() => setBackupToDelete(b.filename)}
-                                            disabled={deleting && backupToDelete === b.filename}
+                                            disabled={(deleting && backupToDelete === b.filename) || restoring}
                                             title={tr("Delete backup", "Supprimer la sauvegarde")}
                                         >
                                             <FontAwesomeIcon icon={faTrashCan} />
@@ -328,7 +387,60 @@ export default function AdminBackupsPage() {
                 </div>
             </div>
 
-            {/* Confirmation Dialog for deletion */}
+            {/* Confirmation Dialog for Restore */}
+            <Dialog
+                open={backupToRestore !== null}
+                onClose={() => !restoring && setBackupToRestore(null)}
+                PaperProps={{
+                    style: {
+                        backgroundColor: "var(--bg-surface)",
+                        color: "var(--text-primary)",
+                        borderRadius: "16px",
+                        padding: "20px",
+                        maxWidth: "480px",
+                        width: "100%",
+                        border: "1px solid var(--border-subtle)"
+                    }
+                }}
+            >
+                <div className="admin-backups__dialog-content">
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "#d97706" }}>
+                        <FontAwesomeIcon icon={faTriangleExclamation} style={{ fontSize: "1.4rem" }} />
+                        <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                            {tr("Restore Backup?", "Restaurer la sauvegarde ?")}
+                        </h3>
+                    </div>
+
+                    <p style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                        {tr(
+                            `Are you sure you want to restore "${backupToRestore}"? Current database tables and media images will be overwritten by the state stored in this backup.`,
+                            `Êtes-vous sûr de vouloir restaurer la sauvegarde « ${backupToRestore} » ? La base de données actuelle et les médias seront remplacés par l'état contenu dans cette sauvegarde.`
+                        )}
+                    </p>
+
+                    <div className="admin-backups__dialog-actions">
+                        <button
+                            type="button"
+                            className="admin-backups__action-btn admin-backups__action-btn--download"
+                            onClick={() => setBackupToRestore(null)}
+                            disabled={restoring}
+                        >
+                            {tr("Cancel", "Annuler")}
+                        </button>
+                        <button
+                            type="button"
+                            className="admin-backups__action-btn admin-backups__action-btn--restore"
+                            onClick={handleRestoreBackup}
+                            disabled={restoring}
+                        >
+                            <FontAwesomeIcon icon={restoring ? faCircleNotch : faRotateLeft} spin={restoring} />
+                            <span>{restoring ? tr("Restoring...", "Restauration...") : tr("Confirm Restore", "Confirmer la restauration")}</span>
+                        </button>
+                    </div>
+                </div>
+            </Dialog>
+
+            {/* Confirmation Dialog for Deletion */}
             <Dialog
                 open={backupToDelete !== null}
                 onClose={() => !deleting && setBackupToDelete(null)}
