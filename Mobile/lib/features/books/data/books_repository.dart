@@ -377,6 +377,25 @@ class BooksRepository {
     return list.map((item) => _sessionFromMap(item as Map<String, dynamic>)).toList();
   }
 
+  Future<List<Book>> getUpcomingBooks({bool all = false}) async {
+    final response = await _apiClient.get('/books/upcoming?all=');
+    if (response.statusCode != 200) {
+      return [];
+    }
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((item) => _bookFromSummary(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<ReadingSession>> getAllReadingSessions() async {
+    final response = await _apiClient.get('/user/readingSessions');
+    if (response.statusCode != 200) {
+      return [];
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((item) => _sessionFromMap(item as Map<String, dynamic>)).toList();
+  }
+
   Future<Map<int, List<ReadingSession>>> getSessionsByBookIds(List<int> bookIds) async {
     final response = await _apiClient.get('/user/readingSessions');
     if (response.statusCode != 200) {
