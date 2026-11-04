@@ -575,6 +575,12 @@
     border: 1px solid rgba(245, 158, 11, 0.3);
   }
 
+  &--paused {
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+  }
+
   &--forsale {
     background: rgba(236, 72, 153, 0.15);
     color: #f472b6;

@@ -5,6 +5,7 @@ import java.io.Serializable;
 public enum BookReadingStatus implements Serializable {
     UNREAD,
     READING,
+    PAUSED,
     READ,
     ABANDONED;
 
@@ -16,6 +17,7 @@ public enum BookReadingStatus implements Serializable {
                 .replace("È", "E")
                 .replace("À", "A");
         return switch (normalized) {
+            case "PAUSED", "EN_PAUSE", "PAUSE" -> PAUSED;
             case "READ", "LU" -> READ;
             case "READING", "EN_COURS", "EN_COURS_DE_LECTURE" -> READING;
             case "TO_READ", "PILE_A_LIRE", "PAL", "A_LIRE", "UNREAD", "NON_LU" -> UNREAD;

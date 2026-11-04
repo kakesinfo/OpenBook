@@ -99,6 +99,24 @@ final readingSessionsForBookProvider = FutureProvider.family<List<ReadingSession
   return repository.getSessionsByBookId(id);
 });
 
+final allReadingSessionsProvider = FutureProvider<List<ReadingSession>>((ref) async {
+  final client = ref.watch(apiClientProvider);
+  if (!client.isInitialized || !client.isAuthenticated) {
+    return const <ReadingSession>[];
+  }
+  final repository = ref.watch(booksRepositoryProvider);
+  return repository.getAllReadingSessions();
+});
+
+final upcomingPlanningBooksProvider = FutureProvider<List<Book>>((ref) async {
+  final client = ref.watch(apiClientProvider);
+  if (!client.isInitialized || !client.isAuthenticated) {
+    return const <Book>[];
+  }
+  final repository = ref.watch(booksRepositoryProvider);
+  return repository.getUpcomingBooks();
+});
+
 final filteredBooksProvider = Provider<List<Book>>((ref) {
   final books = ref.watch(booksControllerProvider).value ?? const <Book>[];
   final filter = ref.watch(bookFilterProvider);
@@ -118,6 +136,18 @@ final filteredBooksProvider = Provider<List<Book>>((ref) {
 final readingBooksProvider = Provider<List<Book>>((ref) {
   final books = ref.watch(booksControllerProvider).value ?? const <Book>[];
   return books.where((book) => book.isCurrentlyReading).toList()
+    ..sort((left, right) => left.title.toLowerCase().compareTo(right.title.toLowerCase()));
+});
+
+final pausedBooksProvider = Provider<List<Book>>((ref) {
+  final books = ref.watch(booksControllerProvider).value ?? const <Book>[];
+  return books.where((book) => book.isPaused).toList()
+    ..sort((left, right) => left.title.toLowerCase().compareTo(right.title.toLowerCase()));
+});
+
+final abandonedBooksProvider = Provider<List<Book>>((ref) {
+  final books = ref.watch(booksControllerProvider).value ?? const <Book>[];
+  return books.where((book) => book.isAbandoned).toList()
     ..sort((left, right) => left.title.toLowerCase().compareTo(right.title.toLowerCase()));
 });
 
@@ -227,6 +257,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
     final bookId = book.id;
     if (bookId == null) return;
     await _repository.updateBookStatus(bookId, status);
+    ref.invalidate(bookDetailsProvider(bookId));
     await reload();
   }
 
@@ -321,6 +352,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
     await _repository.updateReadingStatus(bookId, completedBook ? 'READ' : 'READING');
     ref.invalidate(readingProgressByBookProvider);
     ref.invalidate(readingSessionsForBookProvider);
+    ref.invalidate(allReadingSessionsProvider);
     await reload();
   }
 
@@ -351,6 +383,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
 
     ref.invalidate(readingProgressByBookProvider);
     ref.invalidate(readingSessionsForBookProvider);
+    ref.invalidate(allReadingSessionsProvider);
     await reload();
   }
 
@@ -374,6 +407,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
 
     ref.invalidate(readingProgressByBookProvider);
     ref.invalidate(readingSessionsForBookProvider);
+    ref.invalidate(allReadingSessionsProvider);
     await reload();
   }
 
@@ -424,6 +458,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
     if (currentBook != null &&
         currentBook.status != BookStatus.read &&
         currentBook.status != BookStatus.reading &&
+        currentBook.status != BookStatus.paused &&
         currentBook.status != BookStatus.unread &&
         currentBook.status != BookStatus.lent &&
         currentBook.status != BookStatus.sold) {

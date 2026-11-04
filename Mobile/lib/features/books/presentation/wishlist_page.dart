@@ -26,15 +26,6 @@ class WishlistPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppHeader(
         title: titleWithCount,
-        actions: [
-          IconButton(
-            tooltip: 'Ajouter un souhait',
-            icon: Icon(Icons.add, color: AppTheme.accentPrimary),
-            onPressed: () {
-              showAddBookSheet(context, initialStatus: BookStatus.wishlist);
-            },
-          ),
-        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {

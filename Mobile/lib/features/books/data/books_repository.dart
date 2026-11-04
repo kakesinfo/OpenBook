@@ -83,8 +83,12 @@ class BooksRepository {
     } else {
       if (rawReading == 'READING') {
         bookStatus = BookStatus.reading;
+      } else if (rawReading == 'PAUSED') {
+        bookStatus = BookStatus.paused;
       } else if (rawReading == 'READ') {
         bookStatus = BookStatus.read;
+      } else if (rawReading == 'ABANDONED' || rawReading == 'ABANDONNE') {
+        bookStatus = BookStatus.abandoned;
       } else {
         bookStatus = BookStatus.unread;
       }
@@ -136,8 +140,12 @@ class BooksRepository {
 
     if (status == BookStatus.reading) {
       await updateReadingStatus(bookId, 'READING');
+    } else if (status == BookStatus.paused) {
+      await updateReadingStatus(bookId, 'PAUSED');
     } else if (status == BookStatus.read) {
       await updateReadingStatus(bookId, 'READ');
+    } else if (status == BookStatus.abandoned) {
+      await updateReadingStatus(bookId, 'ABANDONED');
     } else if (status == BookStatus.unread) {
       await updateReadingStatus(bookId, 'UNREAD');
     }
@@ -162,15 +170,26 @@ class BooksRepository {
         await _apiClient.post('/user/addBook/$bookId/OWNED');
         await updateReadingStatus(bookId, 'READING');
         break;
+      case BookStatus.paused:
+        await _apiClient.post('/user/addBook/$bookId/OWNED');
+        await updateReadingStatus(bookId, 'PAUSED');
+        break;
       case BookStatus.read:
         await _apiClient.post('/user/addBook/$bookId/OWNED');
         await updateReadingStatus(bookId, 'READ');
+        break;
+      case BookStatus.abandoned:
+        await _apiClient.post('/user/addBook/$bookId/OWNED');
+        await updateReadingStatus(bookId, 'ABANDONED');
         break;
     }
   }
 
   Future<void> updateReadingStatus(int bookId, String status) async {
-    await _apiClient.post('/user/readingStatus/$bookId/$status');
+    final response = await _apiClient.post('/user/readingStatus/$bookId/$status');
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Impossible de mettre à jour le statut de lecture: ${response.statusCode} - ${response.body}');
+    }
   }
 
   Future<Book> quickCreateBook({
@@ -358,6 +377,25 @@ class BooksRepository {
 
   Future<List<ReadingSession>> getSessionsByBookId(int bookId) async {
     final response = await _apiClient.get('/user/readingSessions/$bookId');
+    if (response.statusCode != 200) {
+      return [];
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((item) => _sessionFromMap(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<Book>> getUpcomingBooks({bool all = false}) async {
+    final response = await _apiClient.get('/books/upcoming?all=');
+    if (response.statusCode != 200) {
+      return [];
+    }
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((item) => _bookFromSummary(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<ReadingSession>> getAllReadingSessions() async {
+    final response = await _apiClient.get('/user/readingSessions');
     if (response.statusCode != 200) {
       return [];
     }

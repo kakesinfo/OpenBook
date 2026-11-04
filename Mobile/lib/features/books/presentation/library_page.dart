@@ -38,18 +38,9 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     final selectedFilter = ref.watch(bookFilterProvider);
 
     return Scaffold(
-      appBar: AppHeader(
+      appBar: const AppHeader(
         title: 'Mes Albums',
         subtitle: 'Bibliothèque & Filtres',
-        actions: [
-          IconButton(
-            tooltip: 'Ajouter un livre',
-            icon: Icon(Icons.add, color: AppTheme.accentPrimary),
-            onPressed: () {
-              showAddBookSheet(context);
-            },
-          ),
-        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {

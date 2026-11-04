@@ -12,11 +12,13 @@ class BookCard extends ConsumerWidget {
     required this.book,
     required this.onEdit,
     this.onRecordSession,
+    this.onPause,
   });
 
   final Book book;
   final VoidCallback onEdit;
   final VoidCallback? onRecordSession;
+  final VoidCallback? onPause;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -66,6 +68,7 @@ class BookCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
+
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(

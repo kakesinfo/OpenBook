@@ -1694,6 +1694,7 @@ export default function BookPage() {
                                     >
                                         <option value="UNREAD">{tr("Unread", "Non lu")}</option>
                                         <option value="READING">{tr("Currently reading", "En cours de lecture")}</option>
+                                        <option value="PAUSED">{tr("Paused", "En pause")}</option>
                                         <option value="READ">{tr("Read", "Lu")}</option>
                                         <option value="ABANDONED">{tr("Abandoned", "Abandonné")}</option>
                                     </select>
