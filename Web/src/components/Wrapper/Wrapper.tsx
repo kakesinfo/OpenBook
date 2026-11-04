@@ -13,6 +13,7 @@ import {
     faRotate,
     faWrench,
     faCodeBranch,
+    faBoxArchive,
     faTrashCanArrowUp
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useLocation } from "react-router";
@@ -258,6 +259,13 @@ export function WrapperNavigation({ title = "Yet Another Library", badge, childr
                         >
                             <FontAwesomeIcon icon={faCodeBranch} />
                             <span>{t("nav.conflicts")}</span>
+                        </Link>
+                        <Link
+                            to="/app/admin/backups"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/backups') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faBoxArchive} />
+                            <span>{t("nav.backupsShort")}</span>
                         </Link>
                         <Link
                             to="/app/admin/deleted-books"

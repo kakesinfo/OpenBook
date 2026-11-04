@@ -19,7 +19,6 @@ import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
-import UserBookTransactionDTO from "../../dto/UserBookTransaction.dto.ts";
 
 interface Props {
     open: boolean;

@@ -26,6 +26,7 @@ services:
         condition: service_healthy
     environment:
       DATA_DIR: /data/media
+      BACKUP_DIR: /data/backups
       MAX_WIDTH: 640
       MAX_HEIGHT: 960
       WEBP_QUALITY: 82
@@ -36,10 +37,11 @@ services:
       - ./Api:/usr/src/app
       - ./Cache/api/.m2:/root/.m2
       - ./Cache/media-data:/data/media
+      - ./Cache/backup-data:/data/backups
     ports:
       - "8080:8080"
     working_dir: /usr/src/app
-    entrypoint: ["sh", "-c", "mvn install -DskipTests && mvn -f openbook-api/pom.xml spring-boot:run"]
+    entrypoint: ["sh", "-c", "/usr/local/bin/ensure-pg-client.sh 2>/dev/null || true; mvn install -DskipTests && mvn -f openbook-api/pom.xml spring-boot:run"]
 
   # Run frontend using node 20
   openbook-web:
