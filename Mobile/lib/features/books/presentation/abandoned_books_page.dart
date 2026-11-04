@@ -17,10 +17,10 @@ class AbandonedBooksPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppHeader(
-        title: 'Livres abandonnés',
+        title: 'Lectures abandonnées',
         subtitle: abandonedBooks.isEmpty
-            ? 'Aucun livre abandonné'
-            : '${abandonedBooks.length} livre${abandonedBooks.length > 1 ? 's' : ''} abandonné${abandonedBooks.length > 1 ? 's' : ''}',
+            ? 'Aucune lecture abandonnée'
+            : '${abandonedBooks.length} lecture${abandonedBooks.length > 1 ? 's' : ''} abandonnée${abandonedBooks.length > 1 ? 's' : ''}',
         showLogo: false,
         leading: IconButton(
           tooltip: 'Retour',
@@ -68,7 +68,7 @@ class AbandonedBooksPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Aucun livre abandonné',
+                      'Aucune lecture abandonnée',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -97,7 +97,7 @@ class AbandonedBooksPage extends ConsumerWidget {
                     crossAxisCount: 3,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 16,
-                    childAspectRatio: 0.56,
+                    childAspectRatio: 0.49,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {

@@ -30,23 +30,23 @@ class BookGridCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
+          // Cover with consistent aspect ratio 0.67 (2:3) matching Web client
+          AspectRatio(
+            aspectRatio: 0.67,
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Center(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = constraints.maxWidth;
-                      final height = constraints.maxHeight;
-                      return BookCover(
-                        book: book,
-                        width: width,
-                        height: height,
-                        borderRadius: AppTheme.radiusMd,
-                      );
-                    },
-                  ),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = constraints.maxWidth;
+                    final height = constraints.maxHeight;
+                    return BookCover(
+                      book: book,
+                      width: width,
+                      height: height,
+                      borderRadius: AppTheme.radiusMd,
+                    );
+                  },
                 ),
                 Positioned(
                   top: 6,

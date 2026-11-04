@@ -97,7 +97,7 @@ class PausedBooksPage extends ConsumerWidget {
                     crossAxisCount: 3,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 16,
-                    childAspectRatio: 0.56,
+                    childAspectRatio: 0.49,
                   ),
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {

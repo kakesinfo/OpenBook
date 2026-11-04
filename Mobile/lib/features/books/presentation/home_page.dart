@@ -422,7 +422,7 @@ class HomePage extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Livres abandonnés',
+                                  'Lectures abandonnées',
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
@@ -432,8 +432,8 @@ class HomePage extends ConsumerWidget {
                                 const SizedBox(height: 2),
                                 Text(
                                   abandonedBooks.isEmpty
-                                      ? 'Aucun livre abandonné'
-                                      : '${abandonedBooks.length} livre${abandonedBooks.length > 1 ? 's' : ''} abandonné${abandonedBooks.length > 1 ? 's' : ''}',
+                                      ? 'Aucune lecture abandonnée'
+                                      : '${abandonedBooks.length} lecture${abandonedBooks.length > 1 ? 's' : ''} abandonnée${abandonedBooks.length > 1 ? 's' : ''}',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: AppTheme.textMuted,
