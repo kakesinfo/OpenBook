@@ -19,6 +19,7 @@
 	<modules>
 		<module>openbook-core</module>
 		<module>openbook-media</module>
+		<module>openbook-backup</module>
 		<module>openbook-import</module>
 		<module>openbook-scraper</module>
 		<module>openbook-api</module>
@@ -56,6 +57,11 @@
 			<dependency>
 				<groupId>fr.openbook</groupId>
 				<artifactId>openbook-scraper</artifactId>
+				<version>${project.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>fr.openbook</groupId>
+				<artifactId>openbook-backup</artifactId>
 				<version>${project.version}</version>
 			</dependency>
 			<dependency>
