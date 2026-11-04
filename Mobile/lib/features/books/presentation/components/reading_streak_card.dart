@@ -53,13 +53,49 @@ class ReadingStreakCard extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Text(
-                          'Série de lecture',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimary,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Série de lecture',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            sessionsAsync.when(
+                              loading: () => Text(
+                                'Calcul...',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textMuted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              error: (_, _) => Text(
+                                '0 jour',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textMuted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              data: (sessions) {
+                                final count = _calculateStreakDays(sessions);
+                                final label = '$count jour${count > 1 ? 's' : ''}';
+                                return Text(
+                                  label,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: count > 0 ? AppTheme.accentAmber : AppTheme.textMuted,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -113,6 +149,46 @@ class ReadingStreakCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  int _calculateStreakDays(List<dynamic> sessions) {
+    if (sessions.isEmpty) return 0;
+
+    final readDays = <String>{};
+    for (final s in sessions) {
+      final d = s.createdAt as DateTime;
+      readDays.add('${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}');
+    }
+
+    final now = DateTime.now();
+    var checkDate = DateTime(now.year, now.month, now.day);
+
+    String key(DateTime d) =>
+        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+    int streak = 0;
+
+    // If read today, streak starts from today
+    if (readDays.contains(key(checkDate))) {
+      while (readDays.contains(key(checkDate))) {
+        streak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      }
+      return streak;
+    }
+
+    // If not read today, check if yesterday was read (ongoing streak waiting for today's session)
+    final yesterday = checkDate.subtract(const Duration(days: 1));
+    if (readDays.contains(key(yesterday))) {
+      checkDate = yesterday;
+      while (readDays.contains(key(checkDate))) {
+        streak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      }
+      return streak;
+    }
+
+    return 0;
   }
 
   Widget _buildWeekRow({

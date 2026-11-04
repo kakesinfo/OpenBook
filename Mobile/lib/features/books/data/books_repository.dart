@@ -87,6 +87,8 @@ class BooksRepository {
         bookStatus = BookStatus.paused;
       } else if (rawReading == 'READ') {
         bookStatus = BookStatus.read;
+      } else if (rawReading == 'ABANDONED' || rawReading == 'ABANDONNE') {
+        bookStatus = BookStatus.abandoned;
       } else {
         bookStatus = BookStatus.unread;
       }
@@ -142,6 +144,8 @@ class BooksRepository {
       await updateReadingStatus(bookId, 'PAUSED');
     } else if (status == BookStatus.read) {
       await updateReadingStatus(bookId, 'READ');
+    } else if (status == BookStatus.abandoned) {
+      await updateReadingStatus(bookId, 'ABANDONED');
     } else if (status == BookStatus.unread) {
       await updateReadingStatus(bookId, 'UNREAD');
     }
@@ -173,6 +177,10 @@ class BooksRepository {
       case BookStatus.read:
         await _apiClient.post('/user/addBook/$bookId/OWNED');
         await updateReadingStatus(bookId, 'READ');
+        break;
+      case BookStatus.abandoned:
+        await _apiClient.post('/user/addBook/$bookId/OWNED');
+        await updateReadingStatus(bookId, 'ABANDONED');
         break;
     }
   }

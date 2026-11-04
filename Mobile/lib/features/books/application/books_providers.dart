@@ -145,6 +145,12 @@ final pausedBooksProvider = Provider<List<Book>>((ref) {
     ..sort((left, right) => left.title.toLowerCase().compareTo(right.title.toLowerCase()));
 });
 
+final abandonedBooksProvider = Provider<List<Book>>((ref) {
+  final books = ref.watch(booksControllerProvider).value ?? const <Book>[];
+  return books.where((book) => book.isAbandoned).toList()
+    ..sort((left, right) => left.title.toLowerCase().compareTo(right.title.toLowerCase()));
+});
+
 final wishlistBooksProvider = Provider<List<Book>>((ref) {
   final books = ref.watch(booksControllerProvider).value ?? const <Book>[];
   return books.where((book) => book.status == BookStatus.wishlist).toList()

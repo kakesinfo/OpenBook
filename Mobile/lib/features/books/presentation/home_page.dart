@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/books_providers.dart';
 import '../data/book.dart';
+import 'abandoned_books_page.dart';
 import 'book_details_page.dart';
 import 'book_reading_session_page.dart';
 import 'components/app_header.dart';
@@ -21,6 +22,7 @@ class HomePage extends ConsumerWidget {
     final booksAsync = ref.watch(booksControllerProvider);
     final readingBooks = ref.watch(readingBooksProvider);
     final pausedBooks = ref.watch(pausedBooksProvider);
+    final abandonedBooks = ref.watch(abandonedBooksProvider);
     final wishlistBooks = ref.watch(wishlistBooksProvider);
     final viewportHeight = MediaQuery.of(context).size.height;
     final carouselHeight = (viewportHeight * 0.28).clamp(200.0, 245.0);
@@ -189,9 +191,95 @@ class HomePage extends ConsumerWidget {
                     ),
             ),
           ),
-          // Bouton horizontal vers la liste des lectures en pause
+
+          // Bouton horizontal vers le Calendrier de lectures
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.bgSurface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  border: Border.all(color: AppTheme.borderSubtle, width: 1),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const ReadingCalendarPage(),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentPrimaryLight,
+                              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.calendar_month_rounded,
+                                color: AppTheme.accentPrimary,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Calendrier de lectures',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Consulter l\'historique et les sessions par jour',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.textMuted,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppTheme.textMuted,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Section Série de lecture (flammes de la semaine courante)
+          const SliverPadding(
+            padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: ReadingStreakCard(),
+            ),
+          ),
+
+          // Bouton horizontal vers la liste des lectures en pause
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
             sliver: SliverToBoxAdapter(
               child: Container(
                 decoration: BoxDecoration(
@@ -290,7 +378,7 @@ class HomePage extends ConsumerWidget {
             ),
           ),
 
-          // Bouton horizontal vers le Calendrier de lectures
+          // Bouton horizontal vers les Livres abandonnés
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
             sliver: SliverToBoxAdapter(
@@ -306,7 +394,7 @@ class HomePage extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const ReadingCalendarPage(),
+                        builder: (_) => const AbandonedBooksPage(),
                       ),
                     ),
                     child: Padding(
@@ -317,13 +405,13 @@ class HomePage extends ConsumerWidget {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: AppTheme.accentPrimaryLight,
+                              color: AppTheme.accentRedLight,
                               borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                             ),
                             child: Center(
                               child: Icon(
-                                Icons.calendar_month_rounded,
-                                color: AppTheme.accentPrimary,
+                                Icons.do_not_disturb_on_outlined,
+                                color: AppTheme.accentRed,
                                 size: 20,
                               ),
                             ),
@@ -334,7 +422,7 @@ class HomePage extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Calendrier de lectures',
+                                  'Livres abandonnés',
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
@@ -343,7 +431,9 @@ class HomePage extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Consulter l\'historique et les sessions par jour',
+                                  abandonedBooks.isEmpty
+                                      ? 'Aucun livre abandonné'
+                                      : '${abandonedBooks.length} livre${abandonedBooks.length > 1 ? 's' : ''} abandonné${abandonedBooks.length > 1 ? 's' : ''}',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: AppTheme.textMuted,
@@ -353,6 +443,28 @@ class HomePage extends ConsumerWidget {
                               ],
                             ),
                           ),
+                          if (abandonedBooks.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppTheme.accentRedLight,
+                                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                                border: Border.all(
+                                  color: AppTheme.accentRed.withValues(alpha: 0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                '${abandonedBooks.length}',
+                                style: TextStyle(
+                                  color: AppTheme.accentRed,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           Icon(
                             Icons.chevron_right_rounded,
                             color: AppTheme.textMuted,
@@ -364,14 +476,6 @@ class HomePage extends ConsumerWidget {
                   ),
                 ),
               ),
-            ),
-          ),
-
-          // Section Série de lecture (flammes de la semaine courante)
-          const SliverPadding(
-            padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: ReadingStreakCard(),
             ),
           ),
 
