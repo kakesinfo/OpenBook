@@ -80,12 +80,18 @@ final readingProgressByBookProvider = FutureProvider.family<ReadingProgress, Boo
       ? 0.0
       : (lastProgressSession.currentPage / totalPages).clamp(0.0, 1.0);
 
+  final startSession = lastStartIndex != -1
+      ? sessions[lastStartIndex]
+      : (sessions.isNotEmpty ? sessions.first : null);
+  final startedAt = book.startedAt ?? startSession?.createdAt;
+
   return ReadingProgress(
     currentPage: lastProgressSession.currentPage,
     totalPages: totalPages,
     totalSecondsRead: totalSeconds,
     progress: progress,
     sessionsCount: activeCycleSessions.length,
+    startedAt: startedAt,
   );
 });
 
@@ -175,6 +181,7 @@ class ReadingProgress {
     required this.totalSecondsRead,
     required this.progress,
     required this.sessionsCount,
+    this.startedAt,
   });
 
   final int currentPage;
@@ -182,16 +189,18 @@ class ReadingProgress {
   final int totalSecondsRead;
   final double progress;
   final int sessionsCount;
+  final DateTime? startedAt;
 
   int get totalMinutesRead => totalSecondsRead ~/ 60;
 
-  factory ReadingProgress.empty({int? totalPages}) {
+  factory ReadingProgress.empty({int? totalPages, DateTime? startedAt}) {
     return ReadingProgress(
       currentPage: 0,
       totalPages: totalPages,
       totalSecondsRead: 0,
       progress: 0,
       sessionsCount: 0,
+      startedAt: startedAt,
     );
   }
 }

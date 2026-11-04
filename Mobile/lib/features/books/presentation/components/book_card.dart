@@ -26,7 +26,7 @@ class BookCard extends ConsumerWidget {
     final progress = progressAsync.value ?? ReadingProgress.empty(totalPages: book.totalPages);
     final totalPages = progress.totalPages ?? 0;
     final currentPage = progress.currentPage;
-    final startedAt = book.startedAt;
+    final startedAt = progress.startedAt ?? book.startedAt;
 
     final daysReading = startedAt == null
         ? 0

@@ -254,6 +254,28 @@ public class BookmoryImportService {
 
             // 12. Reading sessions
             if (b.getReads() != null) {
+                Long earliestSessionMs = null;
+                for (BookmoryRead read : b.getReads()) {
+                    if (read.getReadTimerList() != null) {
+                        for (BookmoryReadTimer timer : read.getReadTimerList()) {
+                            if (timer.getElapsedSec() != null && timer.getElapsedSec() > 0) {
+                                Long timerTime = timer.getReadStartedAt() != null && timer.getReadStartedAt() > 0
+                                        ? timer.getReadStartedAt()
+                                        : timer.getCreatedAt();
+                                if (timerTime != null && timerTime > 0) {
+                                    if (earliestSessionMs == null || timerTime < earliestSessionMs) {
+                                        earliestSessionMs = timerTime;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (earliestSessionMs != null) {
+                    dbService.ensureReadingStartSession(job.getUserId(), bookId, Instant.ofEpochMilli(earliestSessionMs).minusMillis(1));
+                }
+
                 for (BookmoryRead read : b.getReads()) {
                     Map<Long, Integer> pageByTime = new HashMap<>();
                     if (read.getPageLogList() != null) {

@@ -518,4 +518,32 @@ public class BookmoryDbService {
             return false;
         }
     }
+
+    public boolean ensureReadingStartSession(Long userId, Long bookId, Instant startTime) {
+        if (userId == null || bookId == null || startTime == null) {
+            return false;
+        }
+
+        try {
+            Integer exists = jdbcTemplate.queryForObject(
+                    "SELECT 1 FROM reading_session WHERE user_id = ? AND book_id = ? AND session_type = 0 LIMIT 1",
+                    Integer.class, userId, bookId
+            );
+            if (exists != null) {
+                return false;
+            }
+        } catch (EmptyResultDataAccessException ignored) {}
+
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO reading_session (user_id, book_id, current_page, minutes_read, seconds_read, session_type, created_at) " +
+                    "VALUES (?, ?, 0, 0, 0, 0, ?)",
+                    userId, bookId, Timestamp.from(startTime)
+            );
+            return true;
+        } catch (Exception ex) {
+            log.warn("Failed to insert reading start session for user {} book {}: {}", userId, bookId, ex.getMessage());
+            return false;
+        }
+    }
 }
