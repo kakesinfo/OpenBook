@@ -17,6 +17,8 @@ Future<Book?> showQuickCreateBookSheet(
   BuildContext context, {
   String? initialTitle,
   String? initialIsbn,
+  int? initialPrice,
+  String? initialCoverUrl,
   BookStatus? initialStatus,
 }) {
   return showModalBottomSheet<Book>(
@@ -31,6 +33,8 @@ Future<Book?> showQuickCreateBookSheet(
       return QuickCreateBookSheet(
         initialTitle: initialTitle,
         initialIsbn: initialIsbn,
+        initialPrice: initialPrice,
+        initialCoverUrl: initialCoverUrl,
         initialStatus: initialStatus,
       );
     },
@@ -42,11 +46,15 @@ class QuickCreateBookSheet extends ConsumerStatefulWidget {
     super.key,
     this.initialTitle,
     this.initialIsbn,
+    this.initialPrice,
+    this.initialCoverUrl,
     this.initialStatus,
   });
 
   final String? initialTitle;
   final String? initialIsbn;
+  final int? initialPrice;
+  final String? initialCoverUrl;
   final BookStatus? initialStatus;
 
   @override
@@ -73,15 +81,35 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
     super.initState();
     _titleController = TextEditingController(text: widget.initialTitle ?? '');
     _isbnController = TextEditingController(text: widget.initialIsbn ?? '');
-    _priceController = TextEditingController();
-    _coverUrlController = TextEditingController();
+    _priceController = TextEditingController(
+      text: widget.initialPrice != null && widget.initialPrice! > 0
+          ? widget.initialPrice.toString()
+          : '',
+    );
+    _coverUrlController = TextEditingController(text: widget.initialCoverUrl ?? '');
+    if (widget.initialCoverUrl != null && widget.initialCoverUrl!.trim().isNotEmpty) {
+      _coverMode = _CoverMode.url;
+    }
     _targetStatus = widget.initialStatus == BookStatus.wishlist
         ? BookStatus.wishlist
         : BookStatus.unread;
+
+    _titleController.addListener(_onFieldChanged);
+    _isbnController.addListener(_onFieldChanged);
+    _priceController.addListener(_onFieldChanged);
+    _coverUrlController.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _titleController.removeListener(_onFieldChanged);
+    _isbnController.removeListener(_onFieldChanged);
+    _priceController.removeListener(_onFieldChanged);
+    _coverUrlController.removeListener(_onFieldChanged);
     _titleController.dispose();
     _isbnController.dispose();
     _priceController.dispose();
@@ -121,6 +149,24 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
           duration: const Duration(seconds: 2),
         ),
       );
+
+      try {
+        final bnf = await ref.read(bnfServiceProvider).lookupByIsbn(scannedCode);
+        if (bnf != null && mounted) {
+          setState(() {
+            if (_titleController.text.trim().isEmpty) {
+              _titleController.text = bnf.title;
+            }
+            if (_priceController.text.trim().isEmpty && bnf.price != null && bnf.price! > 0) {
+              _priceController.text = bnf.price.toString();
+            }
+            if (_localCoverPath == null) {
+              _coverUrlController.text = bnf.coverUrl;
+              _coverMode = _CoverMode.url;
+            }
+          });
+        }
+      } catch (_) {}
     }
   }
 
@@ -553,6 +599,129 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
     );
   }
 
+  Widget _buildImageThumbnail({required double width, required double height}) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: AppTheme.bgElevated,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        border: Border.all(color: AppTheme.borderSubtle, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        child: _buildImageContent(width: width, height: height),
+      ),
+    );
+  }
+
+  Widget _buildImageContent({required double width, required double height}) {
+    if (_localCoverPath != null) {
+      return Image.file(
+        File(_localCoverPath!),
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildPlaceholder(width, height),
+      );
+    }
+
+    final url = _coverUrlController.text.trim();
+    if (url.isNotEmpty) {
+      return Image.network(
+        url,
+        headers: const {
+          'User-Agent': 'YetAnotherLibrary/1.0',
+          'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+        },
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: width,
+            height: height,
+            color: AppTheme.bgElevated,
+            child: Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppTheme.accentPrimary,
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                ),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          final isbn = _cleanBarcode(_isbnController.text);
+          if (url.contains('bnf.fr') && isbn.isNotEmpty) {
+            return Image.network(
+              'https://covers.openlibrary.org/b/isbn/$isbn-M.jpg',
+              headers: const {'User-Agent': 'YetAnotherLibrary/1.0'},
+              width: width,
+              height: height,
+              fit: BoxFit.cover,
+              loadingBuilder: (ctx, child, progress) {
+                if (progress == null) return child;
+                return Container(
+                  width: width,
+                  height: height,
+                  color: AppTheme.bgElevated,
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.accentPrimary),
+                    ),
+                  ),
+                );
+              },
+              errorBuilder: (_, __, ___) => _buildPlaceholder(width, height),
+            );
+          }
+          return _buildPlaceholder(width, height);
+        },
+      );
+    }
+
+    return _buildPlaceholder(width, height);
+  }
+
+  Widget _buildPlaceholder(double width, double height) {
+    return Container(
+      width: width,
+      height: height,
+      color: AppTheme.bgElevated,
+      padding: const EdgeInsets.all(6),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.broken_image_rounded, size: 24, color: AppTheme.textMuted),
+          const SizedBox(height: 4),
+          Text(
+            'Aperçu indisponible',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.textMuted, fontSize: 9),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCoverSection() {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -627,7 +796,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.check_circle_rounded, size: 14, color: AppTheme.accentPrimary),
-                              SizedBox(width: 4),
+                              const SizedBox(width: 4),
                               Text(
                                 'Photo prête',
                                 style: TextStyle(
@@ -720,28 +889,98 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
             TextFormField(
               controller: _coverUrlController,
               style: TextStyle(color: AppTheme.textPrimary, fontSize: 13),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'https://exemple.com/couverture.jpg',
-                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                suffixIcon: _coverUrlController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear_rounded, size: 18, color: AppTheme.textMuted),
+                        onPressed: () {
+                          setState(() {
+                            _coverUrlController.clear();
+                          });
+                        },
+                      )
+                    : null,
               ),
               onChanged: (_) => setState(() {}),
             ),
             if (_coverUrlController.text.trim().isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                  child: Image.network(
-                    _coverUrlController.text.trim(),
-                    height: 100,
-                    width: 70,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Text(
-                      'Lien d\'image non valide',
-                      style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildImageThumbnail(width: 72, height: 104),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _coverUrlController.text.contains('bnf.fr')
+                                ? AppTheme.accentPrimaryLight
+                                : AppTheme.bgElevated,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                            border: Border.all(color: AppTheme.borderSubtle),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _coverUrlController.text.contains('bnf.fr')
+                                    ? Icons.verified_rounded
+                                    : Icons.image_rounded,
+                                size: 14,
+                                color: _coverUrlController.text.contains('bnf.fr')
+                                    ? AppTheme.accentPrimary
+                                    : AppTheme.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _coverUrlController.text.contains('bnf.fr')
+                                    ? 'Couverture BnF active'
+                                    : 'Image URL active',
+                                style: TextStyle(
+                                  color: _coverUrlController.text.contains('bnf.fr')
+                                      ? AppTheme.accentPrimary
+                                      : AppTheme.textSecondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _coverUrlController.text.contains('bnf.fr')
+                              ? 'L\'image provient du service officiel de la Bibliothèque nationale de France.'
+                              : 'L\'image sera téléchargée et enregistrée avec le livre.',
+                          style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.accentRed,
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            textStyle: const TextStyle(fontSize: 12),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _coverUrlController.clear();
+                            });
+                          },
+                          icon: const Icon(Icons.delete_outline_rounded, size: 15),
+                          label: const Text('Supprimer l\'image'),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                ],
               ),
             ],
           ],

@@ -528,6 +528,9 @@ public class BookController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le titre de l'album ne peut pas être vide");
         }
         String cleanTitle = req.getTitle().trim();
+        if (repositoryService.getBookRepository().findByTitleIgnoreCaseAndIdNot(cleanTitle, -1L).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Un album possède déjà ce titre (« " + cleanTitle + " »)");
+        }
 
         String cleanIsbn = null;
         if (req.getIsbn() != null && !req.getIsbn().trim().isEmpty()) {
@@ -558,7 +561,18 @@ public class BookController {
         }
 
         if (req.getCoverUrl() != null && !req.getCoverUrl().trim().isEmpty()) {
-            book.setCoverUrl(req.getCoverUrl().trim());
+            String remoteCover = req.getCoverUrl().trim();
+            if (remoteCover.startsWith("http://") || remoteCover.startsWith("https://")) {
+                try {
+                    String newCoverUuid = mediaServiceClient.createVirtualImage();
+                    mediaServiceClient.uploadRemoteUrl(newCoverUuid, remoteCover);
+                    book.setCoverUrl(newCoverUuid);
+                } catch (Exception e) {
+                    book.setCoverUrl(remoteCover);
+                }
+            } else {
+                book.setCoverUrl(remoteCover);
+            }
         }
 
         if (req.getReleaseDate() != null && !req.getReleaseDate().trim().isEmpty()) {

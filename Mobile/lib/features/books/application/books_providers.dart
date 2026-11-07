@@ -3,11 +3,16 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
+import '../data/bnf_service.dart';
 import '../data/book.dart';
 import '../data/book_transaction.dart';
 import '../data/books_repository.dart';
 import '../data/cover_image_service.dart';
 import '../data/reading_session.dart';
+
+final bnfServiceProvider = Provider<BnfService>((ref) {
+  return BnfService();
+});
 
 final booksRepositoryProvider = Provider<BooksRepository>((ref) {
   final clientNotifier = ref.watch(apiClientProvider.notifier);

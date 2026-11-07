@@ -89,31 +89,68 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
     }
 
     _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
-      if (requestId != _searchRequestId) return;
-
-      setState(() {
-        _isSearching = true;
-        _searchError = null;
-      });
-
-      try {
-        final repo = ref.read(booksRepositoryProvider);
-        final results = await repo.searchBooks(trimmed);
-        if (mounted && requestId == _searchRequestId) {
-          setState(() {
-            _searchResults = results;
-            _isSearching = false;
-          });
-        }
-      } catch (e) {
-        if (mounted && requestId == _searchRequestId) {
-          setState(() {
-            _searchError = 'Erreur lors de la recherche : $e';
-            _isSearching = false;
-          });
-        }
-      }
+      _executeSearch(trimmed, requestId);
     });
+  }
+
+  bool _isIsbn(String raw) {
+    final clean = _cleanBarcode(raw);
+    return RegExp(r'^[0-9Xx\-]+$').hasMatch(raw.trim()) &&
+        (clean.length == 10 || clean.length == 13);
+  }
+
+  Future<void> _executeSearch(String trimmed, int requestId) async {
+    if (requestId != _searchRequestId) return;
+
+    setState(() {
+      _isSearching = true;
+      _searchError = null;
+    });
+
+    try {
+      final repo = ref.read(booksRepositoryProvider);
+      final results = await repo.searchBooks(trimmed);
+      if (!mounted || requestId != _searchRequestId) return;
+
+      if (results.isNotEmpty) {
+        setState(() {
+          _searchResults = results;
+          _isSearching = false;
+        });
+      } else {
+        // S'il n'existe pas en BDD, vérifier s'il s'agit d'un ISBN pour chercher sur la BNF
+        if (_isIsbn(trimmed)) {
+          final bnf = await ref.read(bnfServiceProvider).lookupByIsbn(trimmed);
+          if (!mounted || requestId != _searchRequestId) return;
+
+          if (bnf != null) {
+            setState(() {
+              _isSearching = false;
+            });
+            await _openQuickCreate(
+              initialTitle: bnf.title,
+              initialIsbn: bnf.isbn,
+              initialPrice: bnf.price,
+              initialCoverUrl: bnf.coverUrl,
+            );
+            return;
+          }
+        }
+
+        // Sinon comme d'habitude affiche introuvable
+        setState(() {
+          _searchResults = [];
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      if (mounted && requestId == _searchRequestId) {
+        setState(() {
+          _searchError = 'Erreur lors de la recherche : $e';
+          _isSearching = false;
+        });
+      }
+    }
   }
 
   String _cleanBarcode(String raw) {
@@ -153,10 +190,26 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
               _scanNotFound = false;
             });
           } else {
-            setState(() {
-              _scannedBook = null;
-              _scanNotFound = true;
-            });
+            // S'il n'existe pas en BDD, rechercher sur la BNF
+            final bnf = await ref.read(bnfServiceProvider).lookupByIsbn(code);
+            if (!mounted) return;
+
+            if (bnf != null) {
+              // S'il existe sur la BNF, ouvrir le menu de création rapide pré-rempli
+              await _openQuickCreate(
+                initialTitle: bnf.title,
+                initialIsbn: bnf.isbn,
+                initialPrice: bnf.price,
+                initialCoverUrl: bnf.coverUrl,
+              );
+              return;
+            } else {
+              // Sinon comme d'habitude affiche introuvable
+              setState(() {
+                _scannedBook = null;
+                _scanNotFound = true;
+              });
+            }
           }
         } catch (e) {
           if (!mounted) return;
@@ -179,12 +232,19 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
     });
   }
 
-  Future<void> _openQuickCreate({String? initialTitle, String? initialIsbn}) async {
+  Future<void> _openQuickCreate({
+    String? initialTitle,
+    String? initialIsbn,
+    int? initialPrice,
+    String? initialCoverUrl,
+  }) async {
     Navigator.of(context).pop();
     await showQuickCreateBookSheet(
       context,
       initialTitle: initialTitle,
       initialIsbn: initialIsbn,
+      initialPrice: initialPrice,
+      initialCoverUrl: initialCoverUrl,
       initialStatus: widget.initialStatus,
     );
   }
@@ -356,6 +416,14 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
               controller: _searchController,
               focusNode: _searchFocusNode,
               onChanged: _onSearchChanged,
+              onSubmitted: (query) {
+                final trimmed = query.trim();
+                if (trimmed.isNotEmpty) {
+                  _debounceTimer?.cancel();
+                  final requestId = ++_searchRequestId;
+                  _executeSearch(trimmed, requestId);
+                }
+              },
               style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Rechercher par titre, ISBN, auteur...',
@@ -1021,7 +1089,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                   CircularProgressIndicator(color: AppTheme.accentPrimary),
                   SizedBox(height: 16),
                   Text(
-                    'Recherche du livre...',
+                    'Recherche du livre (catalogue & BnF)...',
                     style: TextStyle(color: Colors.white, fontSize: 15),
                   ),
                 ],

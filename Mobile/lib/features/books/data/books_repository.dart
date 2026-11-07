@@ -218,12 +218,37 @@ class BooksRepository {
 
     final response = await _apiClient.post('/books', body: payload);
     if (response.statusCode != 200 && response.statusCode != 201) {
-      if (response.statusCode == 409 && cleanIsbn != null && cleanIsbn.isNotEmpty) {
+      if ((response.statusCode == 409 || response.statusCode == 500) &&
+          ((cleanIsbn != null && cleanIsbn.isNotEmpty) || cleanTitle.isNotEmpty)) {
         try {
-          final existing = await searchBooks(cleanIsbn);
+          List<Book> existing = [];
+          if (cleanIsbn != null && cleanIsbn.isNotEmpty) {
+            existing = await searchBooks(cleanIsbn);
+          }
+          if (existing.isEmpty && cleanTitle.isNotEmpty) {
+            final titleMatches = await searchBooks(cleanTitle);
+            existing = titleMatches
+                .where((b) => b.title.trim().toLowerCase() == cleanTitle.toLowerCase())
+                .toList();
+            if (existing.isEmpty && titleMatches.isNotEmpty) {
+              existing = [titleMatches.first];
+            }
+          }
+
           if (existing.isNotEmpty && existing.first.id != null) {
             final bookId = existing.first.id!;
             await addBookToUser(bookId, status: status);
+
+            if (cleanCoverUrl != null &&
+                cleanCoverUrl.isNotEmpty &&
+                (existing.first.coverUrl == null || existing.first.coverUrl!.isEmpty)) {
+              try {
+                await _apiClient.put(
+                  '/books/$bookId/cover',
+                  body: {'url': cleanCoverUrl},
+                );
+              } catch (_) {}
+            }
 
             if (localCoverPath != null && localCoverPath.trim().isNotEmpty) {
               try {
