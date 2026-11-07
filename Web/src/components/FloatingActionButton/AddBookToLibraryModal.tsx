@@ -12,7 +12,10 @@ import {
     faCoins,
     faLink,
     faArrowLeft,
-    faBuildingColumns
+    faBuildingColumns,
+    faSpinner,
+    faPen,
+    faSliders
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router";
@@ -44,6 +47,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
     const [bnfResult, setBnfResult] = useState<BnfBookResult | null>(null);
     const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+    const [creatingFromBnf, setCreatingFromBnf] = useState(false);
 
     // Listing details step when putting a book up for sale
     const [listingTargetBook, setListingTargetBook] = useState<BookSummaryDTO | null>(null);
@@ -61,6 +65,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
             setSearching(false);
             setBnfResult(null);
             setAddedIds(new Set());
+            setCreatingFromBnf(false);
             setListingTargetBook(null);
             setListingPrice("");
             setListingUrl("");
@@ -220,7 +225,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
         onOpenCreateBook?.(query.trim());
     };
 
-    const handleCreateFromBnf = (bnf: BnfBookResult) => {
+    const handleCustomizeFromBnf = (bnf: BnfBookResult) => {
         onClose();
         onOpenCreateBook?.({
             title: bnf.title,
@@ -228,6 +233,72 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
             price: bnf.price,
             coverUrl: bnf.coverUrl
         });
+    };
+
+    const handleDirectCreateFromBnf = async (bnf: BnfBookResult) => {
+        if (!session.token || creatingFromBnf) return;
+
+        setCreatingFromBnf(true);
+        try {
+            const payload = {
+                title: bnf.title,
+                isbn: bnf.isbn || null,
+                price: bnf.price != null && bnf.price >= 0 ? bnf.price : 0,
+                seriesName: null,
+                volume: bnf.volume != null ? bnf.volume : null,
+                editorName: bnf.editorName || null,
+                collectionName: bnf.collectionName || null,
+                pageCount: bnf.pageCount || 0,
+                height: bnf.height || 0,
+                length: bnf.length || 0,
+                thickness: bnf.thickness || 0,
+                releaseDate: bnf.releaseDate || null,
+                description: bnf.description || null,
+                type: bnf.docType || null,
+                coverUrl: bnf.coverUrl || null,
+                authors: bnf.authors && bnf.authors.length > 0
+                    ? bnf.authors.map((a) => ({
+                        firstname: a.firstname,
+                        lastname: a.lastname,
+                        type: a.type
+                    }))
+                    : [],
+                addToLibrary: true
+            };
+
+            const res = await session.customFetch("/books", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                const createdBook = await res.json();
+                enqueueSnackbar(
+                    tr(`"${bnf.title}" has been created and added to your library!`, `« ${bnf.title} » a été créé et ajouté à votre bibliothèque !`),
+                    { variant: "success" }
+                );
+                onClose();
+                if (createdBook?.id) {
+                    navigate(`/app/book/${createdBook.id}`);
+                }
+            } else {
+                let errMsg = tr("Error creating book", "Erreur lors de la création de l'album");
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.message || errData.error || errMsg;
+                } catch {
+                    const text = await res.text().catch(() => "");
+                    if (text) errMsg = text;
+                }
+                enqueueSnackbar(errMsg, { variant: "error" });
+            }
+        } catch (err) {
+            console.error("Error creating book from BnF:", err);
+            enqueueSnackbar(tr("Connection error", "Erreur de connexion"), { variant: "error" });
+        } finally {
+            setCreatingFromBnf(false);
+        }
     };
 
     return (
@@ -377,7 +448,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                     <FontAwesomeIcon icon={faBuildingColumns} />
                                     <span>{tr("Found in BnF (Bibliothèque Nationale de France)", "Trouvé dans la BnF (Bibliothèque Nationale de France)")}</span>
                                 </div>
-                                <div className="fab-search-item" style={{ cursor: "default" }}>
+                                <div className="fab-search-item fab-search-item--bnf" style={{ cursor: "default" }}>
                                     <div className="fab-search-item__left">
                                         <div className="fab-search-item__thumb">
                                             {bnfResult.coverUrl ? (
@@ -392,20 +463,52 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                         </div>
                                         <div className="fab-search-item__info">
                                             <span className="fab-search-item__title">{bnfResult.title}</span>
+
+                                            {bnfResult.authors && bnfResult.authors.length > 0 && (
+                                                <div className="fab-search-item__authors">
+                                                    <FontAwesomeIcon icon={faPen} style={{ fontSize: "0.7rem", opacity: 0.7 }} />
+                                                    <span>
+                                                        {bnfResult.authors.map((a) => `${a.firstname ? a.firstname + " " : ""}${a.lastname}`).join(", ")}
+                                                    </span>
+                                                </div>
+                                            )}
+
                                             <div className="fab-search-item__meta">
-                                                <span>ISBN: {bnfResult.isbn}</span>
+                                                {bnfResult.volume !== null && bnfResult.volume !== undefined && (
+                                                    <span>{bnfResult.volume > 0 ? `${tr("Volume", "Tome")} ${bnfResult.volume}` : "One-shot"}</span>
+                                                )}
+                                                {bnfResult.editorName && (
+                                                    <span>• {bnfResult.editorName}</span>
+                                                )}
+                                                {bnfResult.releaseDate && (
+                                                    <span>• {bnfResult.releaseDate.substring(0, 4)}</span>
+                                                )}
+                                                {bnfResult.pageCount ? (
+                                                    <span>• {bnfResult.pageCount} p.</span>
+                                                ) : null}
                                                 {bnfResult.price != null && <span>• {bnfResult.price} €</span>}
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="fab-search-item__actions">
+                                    <div className="fab-search-item__actions fab-search-item__actions--bnf">
                                         <button
                                             type="button"
                                             className="fab-btn-add"
-                                            onClick={() => handleCreateFromBnf(bnfResult)}
+                                            disabled={creatingFromBnf}
+                                            onClick={() => handleDirectCreateFromBnf(bnfResult)}
                                         >
-                                            <FontAwesomeIcon icon={faPlus} />
-                                            <span>{tr("Create & Add", "Créer et ajouter")}</span>
+                                            <FontAwesomeIcon icon={creatingFromBnf ? faSpinner : faPlus} spin={creatingFromBnf} />
+                                            <span>{creatingFromBnf ? tr("Creating...", "Création...") : tr("Create & Add", "Créer et ajouter")}</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="fab-btn-modify"
+                                            disabled={creatingFromBnf}
+                                            onClick={() => handleCustomizeFromBnf(bnfResult)}
+                                            title={tr("Edit details before creating", "Modifier les détails avant de créer")}
+                                        >
+                                            <FontAwesomeIcon icon={faSliders} />
+                                            <span>{tr("Edit", "Modifier")}</span>
                                         </button>
                                     </div>
                                 </div>
