@@ -222,16 +222,6 @@ public class PaniniComicsSource extends AbstractHttpSource {
             }
         }
 
-        // Variant detection
-        boolean isVariant = VariantDetector.isVariantBook(cleanTitle, coverUrl, isbn);
-        if (!isVariant && !prodUrl.isBlank() && prodUrl.toLowerCase().contains("collector")) {
-            isVariant = true;
-        }
-
-        if (isVariant && !VariantDetector.isVariantTitle(cleanTitle)) {
-            cleanTitle = cleanTitle + " - Edition collector";
-        }
-
         // Series & Volume
         VariantDetector.SeriesVolume sv = VariantDetector.extractCanonicalSeriesAndVolume(cleanTitle);
         String seriesName = sv.series().isBlank() ? cleanTitle : sv.series();
@@ -251,7 +241,6 @@ public class PaniniComicsSource extends AbstractHttpSource {
                 .releaseDate(releaseDate)
                 .bookType("Comics")
                 .sourceUrl(prodUrl)
-                .isVariant(isVariant)
                 .build();
     }
 

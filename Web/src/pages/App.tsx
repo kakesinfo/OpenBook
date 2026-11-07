@@ -21,7 +21,6 @@ import {
     faChartPie,
     faRotate,
     faWrench,
-    faCodeBranch,
     faBoxArchive,
     faTrashCanArrowUp,
     faUserPen
@@ -139,7 +138,6 @@ export default function App() {
                     <>
                         <WrapperButton to={'/app/admin/indexation'} icon={faRotate}>{t("nav.indexation")}</WrapperButton>
                         <WrapperButton to={'/app/admin/maintenance'} icon={faWrench}>{t("nav.maintenance")}</WrapperButton>
-                        <WrapperButton to={'/app/admin/conflicts'} icon={faCodeBranch}>{t("nav.conflicts")}</WrapperButton>
                         <WrapperButton to={'/app/admin/backups'} icon={faBoxArchive}>{t("nav.backups")}</WrapperButton>
                         <WrapperButton to={'/app/admin/deleted-books'} icon={faTrashCanArrowUp}>{t("nav.deletedBooks")}</WrapperButton>
                     </>

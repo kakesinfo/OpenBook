@@ -57,10 +57,4 @@ public class ScrapedBookDTO {
 
     @JsonProperty("source_url")
     private String sourceUrl;
-
-    @JsonProperty("parent_book_id")
-    private Long parentBookId;
-
-    @JsonProperty("is_variant")
-    private boolean isVariant;
 }

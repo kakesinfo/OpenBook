@@ -414,6 +414,50 @@
       border: 1px solid var(--border-subtle);
       color: var(--text-secondary);
     }
+
+    &--collector {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #fbbf24;
+      gap: 6px;
+
+      svg {
+        color: #f59e0b;
+        font-size: 0.75rem;
+      }
+
+      [data-theme="beige"] & {
+        color: #b45309;
+        background: rgba(217, 119, 6, 0.12);
+        border-color: rgba(217, 119, 6, 0.35);
+
+        svg {
+          color: #b45309;
+        }
+      }
+    }
+
+    &--limited {
+      background: rgba(168, 85, 247, 0.15);
+      border: 1px solid rgba(168, 85, 247, 0.45);
+      color: #c084fc;
+      gap: 6px;
+
+      svg {
+        color: #a855f7;
+        font-size: 0.75rem;
+      }
+
+      [data-theme="beige"] & {
+        color: #7c3aed;
+        background: rgba(124, 58, 237, 0.12);
+        border-color: rgba(124, 58, 237, 0.35);
+
+        svg {
+          color: #7c3aed;
+        }
+      }
+    }
   }
 
   &__headings {
@@ -1011,200 +1055,6 @@
       opacity: 0.6;
       cursor: not-allowed;
     }
-  }
-}
-
-
-/* =========================================
-   Variant Covers & Alternative Editions
-   ========================================= */
-.book-page__tag--variant {
-  background: rgba(139, 92, 246, 0.15);
-  border: 1px solid rgba(139, 92, 246, 0.35);
-  color: #c4b5fd;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-
-  [data-theme="beige"] & {
-    color: #6d28d9;
-    background: rgba(109, 40, 217, 0.1);
-    border-color: rgba(109, 40, 217, 0.28);
-  }
-
-  &:hover {
-    background: rgba(139, 92, 246, 0.25);
-    color: #ffffff;
-
-    [data-theme="beige"] & {
-      background: rgba(109, 40, 217, 0.18);
-      color: #4c1d95;
-    }
-  }
-}
-
-.book-page__variant-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 18px;
-  border-radius: var(--radius-md);
-  background: rgba(139, 92, 246, 0.12);
-  border: 1px solid rgba(139, 92, 246, 0.3);
-  color: #ddd6fe;
-  font-size: 0.9rem;
-  margin-top: 4px;
-
-  [data-theme="beige"] & {
-    color: #4c1d95;
-    background: rgba(109, 40, 217, 0.08);
-    border-color: rgba(109, 40, 217, 0.24);
-
-    svg { color: #6d28d9; }
-    a { color: #5b21b6; }
-  }
-
-  svg {
-    color: #a78bfa;
-    font-size: 1.1rem;
-    flex-shrink: 0;
-  }
-
-  a {
-    color: #c4b5fd;
-    font-weight: 600;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-
-    &:hover {
-      color: #ffffff;
-    }
-  }
-}
-
-.book-page__variants-card {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 20px 24px;
-  border-radius: var(--radius-lg);
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-
-.book-page__variants-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  svg {
-    color: #a78bfa;
-    font-size: 1.1rem;
-  }
-
-  h3 {
-    margin: 0;
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--text-primary);
-  }
-}
-
-.book-page__variants-desc {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-
-.book-page__variants-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.book-page__variant-pill {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-subtle);
-  text-decoration: none;
-  transition: all var(--transition-fast);
-  cursor: pointer;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.07);
-    border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
-  }
-
-  &--active {
-    background: rgba(139, 92, 246, 0.12);
-    border-color: rgba(139, 92, 246, 0.45);
-    cursor: default;
-
-    &:hover {
-      transform: none;
-    }
-  }
-
-  &-img,
-  &-fallback,
-  &-thumb {
-    width: 44px;
-    height: 62px;
-    border-radius: var(--radius-sm);
-    object-fit: cover;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-muted);
-  }
-
-  &-info {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    gap: 2px;
-  }
-
-  &-badge {
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: var(--accent-primary);
-
-    &--alt {
-      color: #c4b5fd;
-    }
-
-    &--active {
-      color: var(--accent-primary);
-    }
-  }
-
-  &-title {
-    font-size: 0.825rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  &-price {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
   }
 }
 

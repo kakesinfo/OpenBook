@@ -101,21 +101,6 @@ public class AdminScraperController {
         return ResponseEntity.ok(scraperService.verifyBooksFromBnf(limit));
     }
 
-    @GetMapping("/maintenance/conflicts")
-    public ResponseEntity<Map<String, Object>> getConflicts() {
-        return ResponseEntity.ok(scraperService.getVolumeConflicts());
-    }
-
-    @PostMapping("/maintenance/split")
-    public ResponseEntity<Map<String, Object>> splitSeries(@RequestBody Map<String, Object> payload) {
-        return ResponseEntity.ok(scraperService.splitSeries(payload));
-    }
-
-    @PostMapping("/maintenance/link-variant")
-    public ResponseEntity<Map<String, Object>> linkVariant(@RequestBody Map<String, Object> payload) {
-        return ResponseEntity.ok(scraperService.linkVariant(payload));
-    }
-
     @PostMapping({"/migrate-covers", "/maintenance/migrate-covers"})
     public ResponseEntity<Map<String, Object>> migrateCovers(
             @RequestBody(required = false) Map<String, Object> request

@@ -61,35 +61,6 @@ public class ScraperService {
         return dbService.verifyBooksFromBnf(effectiveLimit, false);
     }
 
-    public Map<String, Object> getVolumeConflicts() {
-        return Map.of("conflicts", dbService.detectVolumeConflicts());
-    }
-
-    public Map<String, Object> splitSeries(Map<String, Object> payload) {
-        if (payload == null) {
-            return Map.of("error", "Missing payload", "status", "error");
-        }
-        int sourceSeriesId = payload.get("source_series_id") instanceof Number n ? n.intValue() : 0;
-        String newSeriesName = payload.get("new_series_name") != null ? payload.get("new_series_name").toString() : "";
-        List<Integer> bookIds = List.of();
-        if (payload.get("book_ids") instanceof List<?> list) {
-            bookIds = list.stream().filter(Number.class::isInstance).map(n -> ((Number) n).intValue()).toList();
-        }
-        return dbService.splitSeries(sourceSeriesId, newSeriesName, bookIds);
-    }
-
-    public Map<String, Object> linkVariant(Map<String, Object> payload) {
-        if (payload == null) {
-            return Map.of("error", "Missing payload", "status", "error");
-        }
-        int parentBookId = payload.get("parent_book_id") instanceof Number n ? n.intValue() : 0;
-        List<Integer> variantBookIds = List.of();
-        if (payload.get("variant_book_ids") instanceof List<?> list) {
-            variantBookIds = list.stream().filter(Number.class::isInstance).map(n -> ((Number) n).intValue()).toList();
-        }
-        return dbService.linkVariant(parentBookId, variantBookIds);
-    }
-
     public Map<String, Object> getMaintenanceStats() {
         return dbService.getMaintenanceStats();
     }

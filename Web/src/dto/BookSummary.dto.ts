@@ -16,5 +16,4 @@ export default interface BookSummaryDTO {
     seriesTotalVolumes?: number;
     seriesCoverUrl?: string;
     readingStatus?: string;
-    parentBookId?: number | null;
 }

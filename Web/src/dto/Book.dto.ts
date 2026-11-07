@@ -32,9 +32,6 @@ export default interface BookDTO {
     editor?: EditorDTO | null;
     collection?: CollectionDTO | null;
     authors?: AuthorSummaryDTO[];
-    parentBookId?: number | null;
-    parentBookTitle?: string | null;
-    variants?: BookSummaryDTO[];
     previousBookId?: string | number | null;
     nextBookId?: string | number | null;
     previousBook?: BookSummaryDTO | null;

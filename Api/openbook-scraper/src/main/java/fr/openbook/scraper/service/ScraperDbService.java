@@ -179,59 +179,6 @@ public class ScraperDbService {
             book.setVolume(canonVol);
         }
 
-        boolean incomingIsVariant = VariantDetector.isVariantBook(cleanTitle, book.getCoverUrl(), "") || book.isVariant();
-        Integer parentBookId = book.getParentBookId() != null ? book.getParentBookId().intValue() : null;
-        if (parentBookId == null && incomingIsVariant && editorId != null) {
-            String baseTitle = VariantDetector.stripVariantSuffix(cleanTitle);
-            try {
-                List<Map<String, Object>> candidates = jdbcTemplate.queryForList("""
-                    SELECT id, title FROM book
-                    WHERE editor_id = ?
-                      AND COALESCE(deleted, FALSE) = FALSE
-                      AND (parent_book_id IS NULL OR parent_book_id = 0)
-                      AND regexp_replace(lower(title), '[^a-z0-9]', '', 'g') = regexp_replace(lower(?), '[^a-z0-9]', '', 'g')
-                    ORDER BY id ASC
-                    LIMIT 1;
-                """, editorId, baseTitle);
-
-                if (!candidates.isEmpty()) {
-                    String candTitle = (String) candidates.get(0).get("title");
-                    if (!VariantDetector.isVariantBook(candTitle, "", "")) {
-                        parentBookId = ((Number) candidates.get(0).get("id")).intValue();
-                    }
-                }
-            } catch (Exception e) {
-                log.debug("Parent book matching error: {}", e.getMessage());
-            }
-
-            if (parentBookId == null && book.getVolume() != null && book.getVolume() > 0) {
-                try {
-                    List<Map<String, Object>> pRows = jdbcTemplate.queryForList("""
-                        SELECT id, COALESCE(title, '') as title FROM book
-                        WHERE editor_id = ? AND volume = ?
-                          AND COALESCE(deleted, FALSE) = FALSE
-                          AND (parent_book_id IS NULL OR parent_book_id = 0)
-                        ORDER BY id ASC;
-                    """, editorId, book.getVolume());
-
-                    String lowClean = cleanTitle.toLowerCase();
-                    String lowBase = baseTitle.toLowerCase();
-                    for (Map<String, Object> row : pRows) {
-                        String pTitle = (String) row.get("title");
-                        if (!VariantDetector.isVariantBook(pTitle, "", "")) {
-                            String pClean = VariantDetector.stripVariantSuffix(TextCleaner.cleanText(pTitle)).toLowerCase();
-                            if (lowClean.contains(pClean) || pClean.contains(lowBase)) {
-                                parentBookId = ((Number) row.get("id")).intValue();
-                                break;
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    log.debug("Parent volume matching error: {}", e.getMessage());
-                }
-            }
-        }
-
         // BNF enrichment if ISBN exists but releaseDate or pageCount is missing
         if (!cleanISBN.isEmpty() && (book.getReleaseDate() == null || book.getPageCount() == null || book.getPageCount() == 0 || collectionId == null)) {
             try {
@@ -354,27 +301,6 @@ public class ScraperDbService {
             } catch (EmptyResultDataAccessException ignored) {}
         }
 
-        // Criterion D: Volume and base title match for same editor
-        if (bookId == null && editorId != null && book.getVolume() != null && book.getVolume() > 0) {
-            String baseClean = VariantDetector.stripVariantSuffix(cleanTitle).toLowerCase();
-            try {
-                List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                        "SELECT id, COALESCE(title, '') as title FROM book WHERE editor_id = ? AND volume = ? ORDER BY id ASC;",
-                        editorId, book.getVolume()
-                );
-                for (Map<String, Object> r : rows) {
-                    String candTitle = (String) r.get("title");
-                    boolean candIsVariant = VariantDetector.isVariantBook(candTitle, "", "");
-                    if (incomingIsVariant == candIsVariant) {
-                        if (candTitle.equalsIgnoreCase(cleanTitle) || VariantDetector.stripVariantSuffix(candTitle).toLowerCase().equals(baseClean)) {
-                            bookId = (Integer) r.get("id");
-                            break;
-                        }
-                    }
-                }
-            } catch (Exception ignored) {}
-        }
-
         if (bookId != null) {
             Boolean isDeleted = Boolean.FALSE;
             try {
@@ -387,11 +313,6 @@ public class ScraperDbService {
             if (Boolean.TRUE.equals(isDeleted)) {
                 log.info("Book {} ('{}') is marked deleted; skipping upsert.", bookId, cleanTitle);
                 return null;
-            }
-
-            // Update existing book
-            if (parentBookId != null && parentBookId.equals(bookId)) {
-                parentBookId = null;
             }
 
             String existingCover = "";
@@ -421,12 +342,7 @@ public class ScraperDbService {
                     release_date = COALESCE(?, release_date),
                     description = COALESCE(?, description),
                     cover_url = COALESCE(?, cover_url),
-                    collection_id = COALESCE(?, collection_id),
-                    parent_book_id = CASE
-                        WHEN ?::int IS NOT NULL AND ?::int != id THEN ?::int
-                        WHEN parent_book_id = id THEN NULL
-                        ELSE parent_book_id
-                    END
+                    collection_id = COALESCE(?, collection_id)
                 WHERE id = ?;
             """,
                     book.getPrice(),
@@ -435,7 +351,6 @@ public class ScraperDbService {
                     cleanDesc.isEmpty() ? null : cleanDesc,
                     storedCover,
                     collectionId,
-                    parentBookId, parentBookId, parentBookId,
                     bookId
             );
 
@@ -492,7 +407,6 @@ public class ScraperDbService {
             String finalCleanISBN = cleanISBN;
             Integer finalEditorId = editorId;
             Integer finalCollectionId = collectionId;
-            Integer finalParentBookId = parentBookId;
 
             KeyHolder keyHolder = new GeneratedKeyHolder();
             jdbcTemplate.update(connection -> {
@@ -500,12 +414,12 @@ public class ScraperDbService {
                     INSERT INTO book (
                         title, series_id, editor_id, collection_id,
                         volume, isbn, page_count, price, description,
-                        cover_url, release_date, type, parent_book_id,
+                        cover_url, release_date, type,
                         deleted, created_at, updated_at
                     ) VALUES (
                         ?, NULL, ?, ?,
                         ?, ?, ?, ?, ?,
-                        ?, ?, ?, ?,
+                        ?, ?, ?,
                         FALSE, NOW(), NOW()
                     ) RETURNING id;
                 """, Statement.RETURN_GENERATED_KEYS);
@@ -520,7 +434,6 @@ public class ScraperDbService {
                 ps.setString(9, storedCover);
                 if (relTimestamp != null) ps.setTimestamp(10, relTimestamp); else ps.setNull(10, java.sql.Types.TIMESTAMP);
                 ps.setString(11, bType);
-                if (finalParentBookId != null) ps.setInt(12, finalParentBookId); else ps.setNull(12, java.sql.Types.INTEGER);
                 return ps;
             }, keyHolder);
 
@@ -781,260 +694,6 @@ public class ScraperDbService {
     }
 
     /**
-     * Detects volume conflicts in series where multiple books share the same volume.
-     */
-    public List<Map<String, Object>> detectVolumeConflicts() {
-        List<Map<String, Object>> conflictRows = jdbcTemplate.queryForList("""
-            SELECT b.series_id, s.name as series_name, b.volume, COUNT(*) as count
-            FROM book b
-            JOIN series s ON b.series_id = s.id
-            WHERE COALESCE(b.deleted, FALSE) = FALSE AND b.volume IS NOT NULL AND b.parent_book_id IS NULL
-            GROUP BY b.series_id, s.name, b.volume
-            HAVING COUNT(*) > 1
-            ORDER BY s.name, b.volume;
-        """);
-
-        List<Map<String, Object>> result = new ArrayList<>();
-        Set<Integer> seenSeries = new HashSet<>();
-
-        for (Map<String, Object> c : conflictRows) {
-            int sid = (Integer) c.get("series_id");
-            if (seenSeries.contains(sid)) {
-                continue;
-            }
-            seenSeries.add(sid);
-
-            List<Map<String, Object>> books = jdbcTemplate.queryForList("""
-                SELECT b.id, COALESCE(b.title, '') as title, b.volume, b.isbn, b.price, b.page_count,
-                       b.release_date, b.cover_url, col.name as collection_name,
-                       b.parent_book_id
-                FROM book b
-                LEFT JOIN collection col ON b.collection_id = col.id
-                WHERE b.series_id = ? AND COALESCE(b.deleted, FALSE) = FALSE AND b.parent_book_id IS NULL
-                ORDER BY b.volume, b.release_date, b.id;
-            """, sid);
-
-            List<Map<String, Object>> mappedBooks = new ArrayList<>();
-            for (Map<String, Object> b : books) {
-                String title = (String) b.get("title");
-                Timestamp relDate = (Timestamp) b.get("release_date");
-                String relStr = relDate != null ? relDate.toLocalDateTime().format(DateTimeFormatter.ISO_LOCAL_DATE) : null;
-
-                Map<String, Object> bm = new LinkedHashMap<>();
-                bm.put("id", b.get("id"));
-                bm.put("title", title);
-                bm.put("volume", b.get("volume"));
-                bm.put("isbn", b.get("isbn"));
-                bm.put("price", b.get("price"));
-                bm.put("page_count", b.get("page_count"));
-                bm.put("release_date", relStr);
-                bm.put("cover_url", b.get("cover_url"));
-                bm.put("collection_name", b.get("collection_name"));
-                bm.put("is_variant_hint", VariantDetector.isVariantTitle(title));
-                mappedBooks.add(bm);
-            }
-
-            Map<String, Object> conflictEntry = new LinkedHashMap<>();
-            conflictEntry.put("series_id", sid);
-            conflictEntry.put("series_name", c.get("series_name"));
-            conflictEntry.put("conflicting_volume", c.get("volume"));
-            conflictEntry.put("books", mappedBooks);
-            result.add(conflictEntry);
-        }
-
-        return result;
-    }
-
-    /**
-     * Splits selected books out of a series into a new series.
-     */
-    @Transactional
-    public Map<String, Object> splitSeries(int sourceSeriesId, String newSeriesName, List<Integer> bookIds) {
-        if (newSeriesName == null || newSeriesName.isBlank() || bookIds == null || bookIds.isEmpty()) {
-            throw new IllegalArgumentException("newSeriesName and bookIds are required");
-        }
-        String cleanNewName = TextCleaner.cleanText(newSeriesName);
-
-        Map<String, Object> srcSeries;
-        try {
-            srcSeries = jdbcTemplate.queryForMap(
-                    "SELECT category_id, status FROM series WHERE id = ?;",
-                    sourceSeriesId
-            );
-        } catch (EmptyResultDataAccessException e) {
-            throw new IllegalArgumentException("Series with id " + sourceSeriesId + " not found");
-        }
-
-        Integer newSeriesId;
-        try {
-            newSeriesId = jdbcTemplate.queryForObject(
-                    "SELECT id FROM series WHERE LOWER(name) = LOWER(?) LIMIT 1;",
-                    Integer.class,
-                    cleanNewName
-            );
-        } catch (EmptyResultDataAccessException e) {
-            newSeriesId = jdbcTemplate.queryForObject("""
-                INSERT INTO series (name, status, category_id, created_at, updated_at)
-                VALUES (?, ?, ?, NOW(), NOW())
-                RETURNING id;
-            """, Integer.class, cleanNewName, srcSeries.get("status"), srcSeries.get("category_id"));
-        }
-
-        int movedCount = 0;
-        for (Integer bid : bookIds) {
-            movedCount += jdbcTemplate.update(
-                    "UPDATE book SET series_id = ?, updated_at = NOW() WHERE id = ? AND series_id = ?;",
-                    newSeriesId, bid, sourceSeriesId
-            );
-        }
-
-        log.info("Split series {} -> {} ({}): moved {} books", sourceSeriesId, newSeriesId, cleanNewName, movedCount);
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("status", "success");
-        result.put("moved_count", movedCount);
-        result.put("source_series_id", sourceSeriesId);
-        result.put("new_series_id", newSeriesId);
-        result.put("new_series_name", cleanNewName);
-        return result;
-    }
-
-    /**
-     * Links books as variants of a parent book.
-     */
-    @Transactional
-    public Map<String, Object> linkVariant(int parentBookId, List<Integer> variantBookIds) {
-        if (parentBookId <= 0 || variantBookIds == null || variantBookIds.isEmpty()) {
-            throw new IllegalArgumentException("parentBookId and variantBookIds are required");
-        }
-
-        int linkedCount = 0;
-        for (Integer vid : variantBookIds) {
-            if (vid != parentBookId) {
-                linkedCount += jdbcTemplate.update(
-                        "UPDATE book SET parent_book_id = ?, updated_at = NOW() WHERE id = ?;",
-                        parentBookId, vid
-                );
-            }
-        }
-
-        log.info("Linked {} books as variant of book {}", linkedCount, parentBookId);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("status", "success");
-        result.put("linked_count", linkedCount);
-        result.put("parent_book_id", parentBookId);
-        result.put("variant_book_ids", variantBookIds);
-        return result;
-    }
-
-    /**
-     * Reconciles variants across the entire database.
-     */
-    @Transactional
-    public Map<String, Object> reconcileVariants() {
-        // 1. Break self-referencing and dangling parent links
-        int selfRefFixed = jdbcTemplate.update("""
-            UPDATE book
-            SET parent_book_id = NULL, updated_at = NOW()
-            WHERE parent_book_id = id;
-        """);
-
-        int danglingFixed = jdbcTemplate.update("""
-            UPDATE book
-            SET parent_book_id = NULL, updated_at = NOW()
-            WHERE parent_book_id IS NOT NULL
-              AND parent_book_id NOT IN (SELECT id FROM book WHERE COALESCE(deleted, FALSE) = FALSE);
-        """);
-
-        // 2. Clean up duplicate 'Edition collector' repetitions
-        jdbcTemplate.update("""
-            UPDATE book
-            SET title = regexp_replace(title, '(\\s*-\\s*Edition collector)+', ' - Edition collector', 'gi')
-            WHERE title ILIKE '%Edition collector%Edition collector%';
-        """);
-
-        // 3. Append ' - Edition collector' if cover is variant but title lacked suffix
-        List<Map<String, Object>> vRows = jdbcTemplate.queryForList("""
-            SELECT id, COALESCE(title, '') as title, COALESCE(cover_url, '') as cover_url FROM book
-            WHERE COALESCE(deleted, FALSE) = FALSE
-              AND cover_url ~* '[a-z0-9]+v_\\d+\\.(?:jpg|jpeg|png|webp)'
-              AND NOT (title ~* '\\b(?:couverture\\s+variante|variant(?:e)?|collector)\\b');
-        """);
-        for (Map<String, Object> vb : vRows) {
-            int vid = (Integer) vb.get("id");
-            String newTitle = TextCleaner.cleanText((String) vb.get("title")) + " - Edition collector";
-            jdbcTemplate.update("UPDATE book SET title = ?, updated_at = NOW() WHERE id = ?;", newTitle, vid);
-        }
-
-        // 4. Group books by editor and base title to match and link variants
-        List<Map<String, Object>> allRows = jdbcTemplate.queryForList("""
-            SELECT b.id, COALESCE(b.title, '') as title, b.volume, b.editor_id, b.parent_book_id, COALESCE(b.cover_url, '') as cover_url
-            FROM book b
-            WHERE COALESCE(b.deleted, FALSE) = FALSE AND b.editor_id IS NOT NULL
-            ORDER BY b.editor_id, b.volume NULLS LAST, b.id ASC;
-        """);
-
-        record BookEntry(int id, String title, int editorId, Integer parentBookId, String coverUrl, boolean isVariant) {}
-
-        Map<String, List<BookEntry>> groupMap = new LinkedHashMap<>();
-        for (Map<String, Object> r : allRows) {
-            int id = (Integer) r.get("id");
-            String title = (String) r.get("title");
-            int editorId = (Integer) r.get("editor_id");
-            Integer parentBookId = (Integer) r.get("parent_book_id");
-            String coverUrl = (String) r.get("cover_url");
-            boolean isVariant = VariantDetector.isVariantBook(title, coverUrl, "");
-
-            String bKey = editorId + "_" + VariantDetector.stripVariantSuffix(title).toLowerCase();
-            groupMap.computeIfAbsent(bKey, k -> new ArrayList<>()).add(new BookEntry(id, title, editorId, parentBookId, coverUrl, isVariant));
-        }
-
-        int variantsLinked = 0;
-        for (List<BookEntry> booksInGroup : groupMap.values()) {
-            if (booksInGroup.size() < 2) {
-                continue;
-            }
-
-            List<BookEntry> standards = new ArrayList<>();
-            List<BookEntry> variants = new ArrayList<>();
-            for (BookEntry b : booksInGroup) {
-                if (b.isVariant()) {
-                    variants.add(b);
-                } else {
-                    standards.add(b);
-                }
-            }
-
-            if (!standards.isEmpty() && !variants.isEmpty()) {
-                int parentId = standards.get(0).id();
-                for (BookEntry v : variants) {
-                    if (v.id() != parentId && (v.parentBookId() == null || v.parentBookId() != parentId)) {
-                        int c = jdbcTemplate.update(
-                                "UPDATE book SET parent_book_id = ?, updated_at = NOW() WHERE id = ?;",
-                                parentId, v.id()
-                        );
-                        variantsLinked += c;
-                    }
-                }
-                if (standards.get(0).parentBookId() != null) {
-                    jdbcTemplate.update("UPDATE book SET parent_book_id = NULL, updated_at = NOW() WHERE id = ?;", parentId);
-                }
-            }
-        }
-
-        log.info("Reconciled variants: self_ref_fixed={}, dangling_fixed={}, variants_linked={}",
-                selfRefFixed, danglingFixed, variantsLinked);
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("status", "success");
-        result.put("self_ref_fixed", selfRefFixed);
-        result.put("dangling_fixed", danglingFixed);
-        result.put("series_reassigned", 0);
-        result.put("variants_linked", variantsLinked);
-        return result;
-    }
-
-    /**
      * Enriches books missing ISBN from BNF.
      */
     @Transactional
@@ -1064,7 +723,6 @@ public class ScraperDbService {
             Integer collectionId = (Integer) b.get("collection_id");
             String coverUrl = (String) b.get("cover_url");
 
-            boolean isVar = VariantDetector.isVariantBook(title, coverUrl, "");
             BnfBookData bnfData = bnfClient.searchBook(title, "", editorName, volume, 8);
             if (bnfData == null || bnfData.getIsbn() == null || bnfData.getIsbn().isBlank()) {
                 continue;

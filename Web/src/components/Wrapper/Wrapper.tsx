@@ -12,7 +12,6 @@ import {
     faChartPie,
     faRotate,
     faWrench,
-    faCodeBranch,
     faBoxArchive,
     faTrashCanArrowUp
 } from "@fortawesome/free-solid-svg-icons";
@@ -252,13 +251,6 @@ export function WrapperNavigation({ title = "Yet Another Library", badge, childr
                         >
                             <FontAwesomeIcon icon={faWrench} />
                             <span>{t("nav.maintenance")}</span>
-                        </Link>
-                        <Link
-                            to="/app/admin/conflicts"
-                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/conflicts') ? 'active' : ''}`}
-                        >
-                            <FontAwesomeIcon icon={faCodeBranch} />
-                            <span>{t("nav.conflicts")}</span>
                         </Link>
                         <Link
                             to="/app/admin/backups"

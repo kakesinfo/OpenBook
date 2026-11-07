@@ -181,9 +181,6 @@ public class AuthorController {
             dto.setAuthor(authorStr);
         }
         dto.setType(book.getType());
-        if (book.getParentBook() != null) {
-            dto.setParentBookId(book.getParentBook().getId());
-        }
         return dto;
     }
 }

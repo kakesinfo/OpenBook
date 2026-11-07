@@ -14,7 +14,8 @@ import {
     faCheck,
     faBorderAll,
     faList,
-    faClone,
+    faStar,
+    faGem,
     faTrashCan,
     faRotateLeft,
     faCoins,
@@ -31,6 +32,7 @@ import CategoryMultiSelect, {
 } from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
 import BookCard from "../../components/BookCard/BookCard.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
+import { detectEditionBadge } from "../../utils/editionBadge.ts";
 import "./SalesPage.scss";
 
 type SalesStatusFilter = "all" | "FOR_SALE" | "SOLD";
@@ -635,12 +637,16 @@ export default function SalesPage() {
                                                 <span className="sales-row__title" title={book.title}>
                                                     {book.title}
                                                 </span>
-                                                {book.parentBookId && (
-                                                    <span className="sales-row__variant-badge" title={tr("Variant cover", "Couverture variante")}>
-                                                        <FontAwesomeIcon icon={faClone} />
-                                                        <span>{tr("Variant", "Variante")}</span>
-                                                    </span>
-                                                )}
+                                                {(() => {
+                                                    const badge = detectEditionBadge(book);
+                                                    if (!badge) return null;
+                                                    return (
+                                                        <span className={`sales-row__variant-badge sales-row__variant-badge--${badge.type}`} title={badge.label}>
+                                                            <FontAwesomeIcon icon={badge.type === "limited" ? faGem : faStar} />
+                                                            <span>{badge.label}</span>
+                                                        </span>
+                                                    );
+                                                })()}
                                             </Link>
 
                                             {/* Series / Volume column */}

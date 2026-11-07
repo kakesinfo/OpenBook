@@ -482,16 +482,6 @@ public class ScraperEngineService {
                 log.info("Scraper {} finished: {} scraped, {} saved/updated", sName, booksCount, savedThisSource[0]);
             }
 
-            // Post-scan variant coupling pass
-            log.info("Executing post-scan variant coupling pass...");
-            try {
-                Map<String, Object> recRes = scraperDbService.reconcileVariants();
-                summary.put("variant_reconciliation", recRes);
-                log.info("Variant coupling pass completed: {}", recRes);
-            } catch (Exception e) {
-                log.warn("Error during post-scan variant coupling pass: {}", e.getMessage());
-            }
-
             // Post-scan BNF enrichment pass for books with missing ISBN
             log.info("Executing post-scan BNF enrichment pass...");
             try {

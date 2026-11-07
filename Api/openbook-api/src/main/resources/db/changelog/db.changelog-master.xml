@@ -1561,4 +1561,15 @@
             UPDATE book_status SET status = 'UNREAD' WHERE status = 'TO_READ' OR status = 'PILE_A_LIRE' OR status = 'A_LIRE' OR status = 'PAL';
         </sql>
     </changeSet>
+    <changeSet id="39" author="Axel">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="book" columnName="parent_book_id" />
+        </preConditions>
+        <sql>
+            UPDATE book SET parent_book_id = NULL WHERE parent_book_id IS NOT NULL;
+        </sql>
+        <dropForeignKeyConstraint baseTableName="book" constraintName="fk_book_parent_book_id" />
+        <dropIndex tableName="book" indexName="idx_book_parent_book_id" />
+        <dropColumn tableName="book" columnName="parent_book_id" />
+    </changeSet>
 </databaseChangeLog>

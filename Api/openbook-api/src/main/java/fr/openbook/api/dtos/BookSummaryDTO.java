@@ -23,7 +23,6 @@ public class BookSummaryDTO {
     private Integer pageCount;
     private String status;
     private String readingStatus;
-    private Long parentBookId;
 
     public String getCoverUrl() {
         return MediaUrlUtils.formatCoverUrl(this.coverUrl);
