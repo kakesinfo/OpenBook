@@ -26,13 +26,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RequiredArgsConstructor
 public class ScraperEngineService {
 
-    private static final List<String> SCRAPER_ORDER = List.of(
+    private static final List<String> PREFERRED_ORDER = List.of(
             "urban_comics",
             "panini",
             "mangetsu",
             "morgen_bd",
             "label619",
-            "monsieur_toussaint_louverture"
+            "monsieur_toussaint_louverture",
+            "komics_initiative"
     );
 
     private final ScraperProperties properties;
@@ -142,9 +143,24 @@ public class ScraperEngineService {
         }
     }
 
+    public List<String> getAllSourceIds() {
+        List<String> ids = new ArrayList<>();
+        for (String id : PREFERRED_ORDER) {
+            if (sourceMap.containsKey(id)) {
+                ids.add(id);
+            }
+        }
+        for (String id : sourceMap.keySet()) {
+            if (!ids.contains(id)) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
     public List<Map<String, Object>> getSources() {
         List<Map<String, Object>> list = new ArrayList<>();
-        for (String id : SCRAPER_ORDER) {
+        for (String id : getAllSourceIds()) {
             ScraperSource src = sourceMap.get(id);
             if (src == null) continue;
             Map<String, Object> item = new LinkedHashMap<>();
@@ -171,8 +187,9 @@ public class ScraperEngineService {
 
     public Map<String, Object> getStatus() {
         List<String> disabledList = new ArrayList<>(disabledSources);
+        List<String> allIds = getAllSourceIds();
         List<String> enabledList = new ArrayList<>();
-        for (String s : SCRAPER_ORDER) {
+        for (String s : allIds) {
             if (!disabledSources.contains(s) && sourceMap.containsKey(s)) {
                 enabledList.add(s);
             }
@@ -189,7 +206,7 @@ public class ScraperEngineService {
         status.put("last_run", lastRun != null ? lastRun.toString() : null);
         status.put("last_status", lastStatus);
         status.put("sources", getSources());
-        status.put("available_sources", SCRAPER_ORDER);
+        status.put("available_sources", allIds);
         status.put("disabled_sources", disabledList);
         status.put("enabled_sources", enabledList);
         status.put("schedule", Map.of(
@@ -255,7 +272,7 @@ public class ScraperEngineService {
                 }
             }
         } else {
-            for (String s : SCRAPER_ORDER) {
+            for (String s : getAllSourceIds()) {
                 if (!disabledSources.contains(s) && sourceMap.containsKey(s)) {
                     sourcesToRun.add(s);
                 }
