@@ -33,7 +33,8 @@ public class ScraperEngineService {
             "morgen_bd",
             "label619",
             "monsieur_toussaint_louverture",
-            "komics_initiative"
+            "komics_initiative",
+            "bubble_editions"
     );
 
     private final ScraperProperties properties;
@@ -476,6 +477,16 @@ public class ScraperEngineService {
                 log.info("Variant coupling pass completed: {}", recRes);
             } catch (Exception e) {
                 log.warn("Error during post-scan variant coupling pass: {}", e.getMessage());
+            }
+
+            // Post-scan BNF enrichment pass for books with missing ISBN
+            log.info("Executing post-scan BNF enrichment pass...");
+            try {
+                Map<String, Object> bnfRes = scraperDbService.enrichBooksFromBnf(100);
+                summary.put("bnf_enrichment", bnfRes);
+                log.info("BNF enrichment pass completed: {}", bnfRes);
+            } catch (Exception e) {
+                log.warn("Error during post-scan BNF enrichment pass: {}", e.getMessage());
             }
 
         } finally {

@@ -233,11 +233,11 @@ public class ScraperDbService {
         }
 
         // BNF enrichment if ISBN exists but releaseDate or pageCount is missing
-        if (!cleanISBN.isEmpty() && (book.getReleaseDate() == null || book.getPageCount() == 0 || collectionId == null)) {
+        if (!cleanISBN.isEmpty() && (book.getReleaseDate() == null || book.getPageCount() == null || book.getPageCount() == 0 || collectionId == null)) {
             try {
                 BnfBookData bnfData = bnfClient.lookupByIsbn(cleanISBN);
                 if (bnfData != null) {
-                    if (book.getPageCount() == 0 && bnfData.getPageCount() != null) {
+                    if ((book.getPageCount() == null || book.getPageCount() == 0) && bnfData.getPageCount() != null) {
                         book.setPageCount(bnfData.getPageCount());
                     }
                     if (collectionId == null && bnfData.getCollectionName() != null && !bnfData.getCollectionName().isBlank()) {
@@ -284,7 +284,7 @@ public class ScraperDbService {
                 if (bnfData != null && bnfData.getIsbn() != null && !bnfData.getIsbn().isBlank()) {
                     cleanISBN = bnfData.getIsbn();
                     book.setIsbn(cleanISBN);
-                    if (book.getPageCount() == 0 && bnfData.getPageCount() != null) {
+                    if ((book.getPageCount() == null || book.getPageCount() == 0) && bnfData.getPageCount() != null) {
                         book.setPageCount(bnfData.getPageCount());
                     }
                     if (collectionId == null && bnfData.getCollectionName() != null && !bnfData.getCollectionName().isBlank()) {
@@ -514,8 +514,8 @@ public class ScraperDbService {
                 if (finalCollectionId != null) ps.setInt(3, finalCollectionId); else ps.setNull(3, java.sql.Types.INTEGER);
                 ps.setInt(4, volVal);
                 if (!finalCleanISBN.isEmpty()) ps.setString(5, finalCleanISBN); else ps.setNull(5, java.sql.Types.VARCHAR);
-                ps.setInt(6, book.getPageCount());
-                ps.setInt(7, book.getPrice());
+                if (book.getPageCount() != null) ps.setInt(6, book.getPageCount()); else ps.setInt(6, 0);
+                if (book.getPrice() != null) ps.setInt(7, book.getPrice()); else ps.setInt(7, 0);
                 if (!cleanDesc.isEmpty()) ps.setString(8, cleanDesc); else ps.setNull(8, java.sql.Types.VARCHAR);
                 ps.setString(9, storedCover);
                 if (relTimestamp != null) ps.setTimestamp(10, relTimestamp); else ps.setNull(10, java.sql.Types.TIMESTAMP);

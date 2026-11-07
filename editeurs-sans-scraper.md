@@ -4,7 +4,7 @@ Ce document répertorie tous les éditeurs présents dans la base de données qu
 
 ---
 
-## 📌 Scrapers existants (7)
+## 📌 Scrapers existants (8)
 
 Les éditeurs suivants disposent déjà d'une source de scraping :
 - **Urban Comics** (`UrbanComicsSource`)
@@ -14,6 +14,7 @@ Les éditeurs suivants disposent déjà d'une source de scraping :
 - **Monsieur Toussaint Louverture** (`MonsieurToussaintLouvertureSource`)
 - **Morgen BD** (`MorgenBdSource`)
 - **Komics Initiative** (`KomicsInitiativeSource`)
+- **Bubble Éditions** (`BubbleEditionsSource`)
 
 ---
 
@@ -35,7 +36,6 @@ Ces éditeurs possèdent déjà des ouvrages en base (importations manuelles, en
 | 78 | **Astrolabe** (`ASTROLABE`) | 5 |
 | 54 | **Bliss Éditions** (`BLISS`) | 4 |
 | 64 | **Bourgois** | 4 |
-| 16 | **Bubble Editions** | 2 |
 | 66 | **Le Tripode** (`LE TRIPODE`) | 2 |
 | 21, 63 | **Robert Laffont** (`Robert Laffont`, `Robert Laffont — Collection Ailleurs & Demain`) | 2 |
 | 22 | **Albin Michel** | 1 |
