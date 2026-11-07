@@ -1,7 +1,7 @@
 import { useState } from "react";
 import useSession from "../hooks/UseSession.tsx";
 import useLanguage from "../hooks/UseLanguage.tsx";
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { enqueueSnackbar } from "notistack";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBookOpen } from "@fortawesome/free-solid-svg-icons";
@@ -35,6 +35,12 @@ export default function Login() {
             if (!result.success) {
                 setPassword("");
                 return enqueueSnackbar(result.error || tr("Invalid username or password", "Nom d'utilisateur ou mot de passe invalide"), { variant: "error" });
+            }
+
+            if (result.mustChangePassword) {
+                navigate('/change-password');
+                enqueueSnackbar(tr("First login: Please set your new password.", "Première connexion : Veuillez définir votre nouveau mot de passe."), { variant: "info" });
+                return;
             }
 
             navigate('/app');
@@ -92,10 +98,6 @@ export default function Login() {
                             <button type="submit" disabled={loading}>
                                 {loading ? tr("Signing in...", "Connexion en cours...") : tr("Sign in", "Se connecter")}
                             </button>
-                        </FormGroup>
-
-                        <FormGroup>
-                            <Link to={'/register'}>{tr("Don't have an account yet? Sign up", "Pas encore de compte ? Inscrivez-vous")}</Link>
                         </FormGroup>
                     </form>
                 </Card>

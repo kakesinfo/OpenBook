@@ -56,6 +56,10 @@ public class AuthService
 
         UserEntity userEntity = result.get();
 
+        if (userEntity.isBlocked()) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Ce compte a été suspendu ou bloqué par un administrateur.");
+        }
+
         if (!bCryptPasswordEncoder.matches(loginDTO.getPassword(), userEntity.getPassword()))
             return null;
 

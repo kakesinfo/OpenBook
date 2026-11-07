@@ -6,7 +6,7 @@ import '@fontsource/roboto/700.css';
 import {Routes, Route, Navigate, useLocation} from "react-router";
 
 import Login from "./pages/Login.tsx";
-import Register from "./pages/Register.tsx";
+import ChangePassword from "./pages/ChangePassword.tsx";
 import SetupPage from "./pages/SetupPage.tsx";
 import useSession from "./hooks/UseSession.tsx";
 import App from "./pages/App.tsx";
@@ -24,6 +24,7 @@ import AdminIndexationPage from "./pages/app/AdminIndexationPage.tsx";
 import AdminMaintenancePage from "./pages/app/AdminMaintenancePage.tsx";
 import AdminBackupsPage from "./pages/app/AdminBackupsPage.tsx";
 import AdminDeletedBooksPage from "./pages/app/AdminDeletedBooksPage.tsx";
+import AdminUsersPage from "./pages/app/AdminUsersPage.tsx";
 import StatisticsPage from "./pages/app/StatisticsPage.tsx";
 
 function ProtectedRoute({ redirectPath = "/login", children }: { redirectPath?: string, children: React.ReactNode }) {
@@ -37,6 +38,10 @@ function ProtectedRoute({ redirectPath = "/login", children }: { redirectPath?: 
         return <Navigate replace to={redirectPath} />;
     }
 
+    if (session.user?.mustChangePassword) {
+        return <Navigate replace to="/change-password" />;
+    }
+
     return <>{children}</>;
 }
 
@@ -48,6 +53,27 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
     }
 
     if (session.token) {
+        if (session.user?.mustChangePassword) {
+            return <Navigate replace to="/change-password" />;
+        }
+        return <Navigate replace to={session.isAdmin ? "/app/admin/indexation" : "/app/home"} />;
+    }
+
+    return <>{children}</>;
+}
+
+function ChangePasswordRoute({ children }: { children: React.ReactNode }) {
+    const session = useSession();
+
+    if (session.setupRequired === true) {
+        return <Navigate replace to="/setup" />;
+    }
+
+    if (!session.token) {
+        return <Navigate replace to="/login" />;
+    }
+
+    if (!session.user?.mustChangePassword) {
         return <Navigate replace to={session.isAdmin ? "/app/admin/indexation" : "/app/home"} />;
     }
 
@@ -94,13 +120,15 @@ export default function Routing() {
                 session.setupRequired === true
                     ? <Navigate replace to="/setup" />
                     : (session.token
-                        ? <Navigate replace to={session.isAdmin ? "/app/admin/indexation" : "/app/home"} />
+                        ? (session.user?.mustChangePassword
+                            ? <Navigate replace to="/change-password" />
+                            : <Navigate replace to={session.isAdmin ? "/app/admin/indexation" : "/app/home"} />)
                         : <Navigate replace to="/login" />)
             } />
 
             <Route path="/setup" element={
                 session.setupRequired === false
-                    ? <Navigate replace to={session.token ? (session.isAdmin ? "/app/admin/indexation" : "/app/home") : "/login"} />
+                    ? <Navigate replace to={session.token ? (session.user?.mustChangePassword ? "/change-password" : (session.isAdmin ? "/app/admin/indexation" : "/app/home")) : "/login"} />
                     : <SetupPage />
             } />
 
@@ -109,10 +137,11 @@ export default function Routing() {
                     <Login />
                 </PublicOnlyRoute>
             } />
-            <Route path="/register" element={
-                <PublicOnlyRoute>
-                    <Register />
-                </PublicOnlyRoute>
+            <Route path="/register" element={<Navigate replace to="/login" />} />
+            <Route path="/change-password" element={
+                <ChangePasswordRoute>
+                    <ChangePassword />
+                </ChangePasswordRoute>
             } />
 
             <Route path="/app" element={
@@ -140,12 +169,13 @@ export default function Routing() {
                 <Route path="statistics" element={<UserOnlyRoute><StatisticsPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="book/:id" element={<UserOnlyRoute><BookPage key={location.pathname}/></UserOnlyRoute>} />
 
-                {/* Routes Admin (Indexation, Maintenance, Sauvegardes, Livres supprimés) - accessibles uniquement par l'admin */}
+                {/* Routes Admin (Indexation, Maintenance, Sauvegardes, Livres supprimés, Utilisateurs) - accessibles uniquement par l'admin */}
                 <Route path="admin" element={<AdminOnlyRoute><Navigate replace to="/app/admin/indexation" /></AdminOnlyRoute>} />
                 <Route path="admin/indexation" element={<AdminOnlyRoute><AdminIndexationPage key={location.pathname}/></AdminOnlyRoute>} />
                 <Route path="admin/maintenance" element={<AdminOnlyRoute><AdminMaintenancePage key={location.pathname}/></AdminOnlyRoute>} />
                 <Route path="admin/backups" element={<AdminOnlyRoute><AdminBackupsPage key={location.pathname}/></AdminOnlyRoute>} />
                 <Route path="admin/deleted-books" element={<AdminOnlyRoute><AdminDeletedBooksPage key={location.pathname}/></AdminOnlyRoute>} />
+                <Route path="admin/users" element={<AdminOnlyRoute><AdminUsersPage key={location.pathname}/></AdminOnlyRoute>} />
 
                 {/* Routes communes */}
                 <Route path="settings" element={<SettingsPage key={location.pathname}/>} />

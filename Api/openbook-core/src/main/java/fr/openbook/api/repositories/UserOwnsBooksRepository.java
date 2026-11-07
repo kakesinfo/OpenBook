@@ -13,6 +13,7 @@ public interface UserOwnsBooksRepository extends JpaRepository<UserOwnsBookEntit
     Optional<UserOwnsBookEntity> findByUserIdAndBookId(Long userId, Long bookId);
 
     List<UserOwnsBookEntity> findAllByUserId(Long userId);
+    long countByUserId(Long userId);
 
     List<UserOwnsBookEntity> findAllByUserIdAndStatus(Long userId, String status);
 

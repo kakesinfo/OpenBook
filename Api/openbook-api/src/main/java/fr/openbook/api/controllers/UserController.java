@@ -149,6 +149,8 @@ public class UserController {
         userProfileDTO.setUsername(user.getRealUsername());
         userProfileDTO.setAvatar(user.getAvatar());
         userProfileDTO.setRole(user.getRole());
+        userProfileDTO.setMustChangePassword(user.isMustChangePassword());
+        userProfileDTO.setBlocked(user.isBlocked());
         userProfileDTO.setBooksCount(0);
         userProfileDTO.setBooksToReadCount(0);
         userProfileDTO.setBooksReadThisYearCount(0);
@@ -253,21 +255,41 @@ public class UserController {
         UserEntity user = getAuthenticatedUser(session);
 
         if (request.getCurrentPassword() == null || request.getCurrentPassword().isEmpty()) {
-            return ResponseEntity.badRequest().body("Le mot de passe actuel est requis.");
+            return ResponseEntity.badRequest().body(Map.of("message", "Le mot de passe actuel est requis."));
         }
 
-        if (!bCryptPasswordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            return ResponseEntity.badRequest().body("Mot de passe actuel incorrect.");
+        UserEntity freshUser = repositoryService.getUserRepository().findById(user.getId())
+                .orElse(user);
+
+        if (!bCryptPasswordEncoder.matches(request.getCurrentPassword(), freshUser.getPassword())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Mot de passe actuel incorrect."));
         }
 
         if (request.getNewPassword() == null || request.getNewPassword().length() < 6) {
-            return ResponseEntity.badRequest().body("Le nouveau mot de passe doit comporter au moins 6 caractères.");
+            return ResponseEntity.badRequest().body(Map.of("message", "Le nouveau mot de passe doit comporter au moins 6 caractères."));
         }
 
-        user.setPassword(bCryptPasswordEncoder.encode(request.getNewPassword()));
-        repositoryService.getUserRepository().save(user);
+        freshUser.setPassword(bCryptPasswordEncoder.encode(request.getNewPassword()));
+        freshUser.setMustChangePassword(false);
+        freshUser = repositoryService.getUserRepository().save(freshUser);
 
-        return ResponseEntity.ok(Map.of("message", "Mot de passe modifié avec succès."));
+        if (session != null) {
+            session.setAttribute("user", freshUser);
+        }
+
+        HashMap<String, Object> claims = new HashMap<>();
+        claims.put("username", freshUser.getRealUsername());
+        claims.put("avatar", freshUser.getAvatar());
+        claims.put("role", freshUser.getRole());
+        claims.put("mustChangePassword", false);
+
+        String newToken = jwtService.generateToken(claims, freshUser);
+
+        return ResponseEntity.ok(Map.of(
+            "message", "Mot de passe modifié avec succès.",
+            "token", newToken,
+            "mustChangePassword", false
+        ));
     }
 
     @DeleteMapping("/account")

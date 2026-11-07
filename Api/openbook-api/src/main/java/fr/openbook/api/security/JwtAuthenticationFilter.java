@@ -49,6 +49,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
+                    if (!userDetails.isAccountNonLocked() || !userDetails.isEnabled()) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json");
+                        response.setCharacterEncoding("UTF-8");
+                        response.getWriter().write("{\"message\":\"Ce compte a été suspendu ou bloqué.\"}");
+                        return;
+                    }
+
+                    if (userDetails instanceof fr.openbook.api.entities.UserEntity userEntity && userEntity.isMustChangePassword()) {
+                        String uri = request.getRequestURI();
+                        boolean isAllowedWhenPasswordChangeRequired = uri.startsWith("/user/password")
+                                || uri.startsWith("/user/profile")
+                                || uri.startsWith("/auth/")
+                                || uri.startsWith("/setup/")
+                                || uri.startsWith("/images/");
+                        if (!isAllowedWhenPasswordChangeRequired) {
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType("application/json");
+                            response.setCharacterEncoding("UTF-8");
+                            response.getWriter().write("{\"message\":\"Changement de mot de passe obligatoire\",\"mustChangePassword\":true}");
+                            return;
+                        }
+                    }
+
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,

@@ -12,6 +12,8 @@ public class UserProfileDTO implements Serializable
     private String username;
     private String avatar;
     private String role;
+    private boolean mustChangePassword;
+    private boolean blocked;
 
     private long booksCount;
     private long booksToReadCount;

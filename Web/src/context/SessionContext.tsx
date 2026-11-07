@@ -6,6 +6,8 @@ export interface SessionUser {
     sub?: string;
     exp?: number;
     role?: string;
+    mustChangePassword?: boolean;
+    blocked?: boolean;
 }
 
 export interface SessionContextType {
@@ -15,7 +17,7 @@ export interface SessionContextType {
     isAdmin: boolean;
     setupRequired: boolean | null;
     checkSetupStatus: () => Promise<boolean>;
-    login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    login: (username: string, password: string) => Promise<{ success: boolean; error?: string; mustChangePassword?: boolean }>;
     register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<boolean>;
     customFetch: (url: string, options?: RequestInit) => Promise<Response>;

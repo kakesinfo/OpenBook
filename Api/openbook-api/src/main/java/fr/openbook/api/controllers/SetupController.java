@@ -67,12 +67,14 @@ public class SetupController {
         claims.put("username", savedAdmin.getRealUsername());
         claims.put("avatar", savedAdmin.getAvatar());
         claims.put("role", savedAdmin.getRole());
+        claims.put("mustChangePassword", false);
 
         String jwtToken = jwtService.generateToken(claims, savedAdmin);
 
         Map<String, Object> response = new HashMap<>();
         response.put("token", jwtToken);
         response.put("expiresIn", jwtService.getExpirationTime());
+        response.put("mustChangePassword", false);
         response.put("role", savedAdmin.getRole());
         response.put("username", savedAdmin.getRealUsername());
 

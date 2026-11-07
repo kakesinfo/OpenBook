@@ -1572,4 +1572,17 @@
         <dropIndex tableName="book" indexName="idx_book_parent_book_id" />
         <dropColumn tableName="book" columnName="parent_book_id" />
     </changeSet>
+    <changeSet id="40" author="Antigravity">
+        <addColumn tableName="user">
+            <column name="blocked" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false" />
+            </column>
+            <column name="must_change_password" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+        <createIndex tableName="user" indexName="idx_user_blocked">
+            <column name="blocked" />
+        </createIndex>
+    </changeSet>
 </databaseChangeLog>

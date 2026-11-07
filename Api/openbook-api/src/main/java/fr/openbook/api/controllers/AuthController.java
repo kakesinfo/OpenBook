@@ -2,8 +2,6 @@ package fr.openbook.api.controllers;
 
 import fr.openbook.api.dtos.auth.LoginRequestDTO;
 import fr.openbook.api.dtos.auth.LoginResponseDTO;
-import fr.openbook.api.dtos.auth.RegisterRequestDTO;
-import fr.openbook.api.dtos.auth.RegisterResponseDTO;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.services.AuthService;
 import fr.openbook.api.services.JwtService;
@@ -12,12 +10,16 @@ import jakarta.servlet.http.HttpSession;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @AllArgsConstructor
@@ -25,42 +27,46 @@ import java.util.HashMap;
 public class AuthController
 {
     private final AuthService authService;
-
     private final JwtService jwtService;
-
-    @PostMapping("/register")
-    public ResponseEntity<Object> register(@RequestBody RegisterRequestDTO request) throws Exception {
-        RegisterResponseDTO user = authService.register(request);
-
-        if (user == null)
-            return ResponseEntity.badRequest().body("User already exists");
-
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(new RegisterResponseDTO(user.getId()));
-    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginDTO, HttpSession session) {
-        UserEntity result = authService.login(loginDTO);
+        try {
+            UserEntity result = authService.login(loginDTO);
 
-        if (result == null)
-            return ResponseEntity.badRequest().body("Invalid credentials");
+            if (result == null)
+                return ResponseEntity.badRequest().body(Map.of("message", "Identifiants invalides"));
 
-        session.setAttribute("user", result);
+            if (result.isBlocked()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "Ce compte a été suspendu ou bloqué par un administrateur."));
+            }
 
-        HashMap<String, Object> claims = new HashMap<>();
-        claims.put("username", result.getRealUsername());
-        claims.put("avatar", result.getAvatar());
-        claims.put("role", result.getRole());
+            session.setAttribute("user", result);
 
-        String jwtToken = jwtService.generateToken(claims, result);
+            HashMap<String, Object> claims = new HashMap<>();
+            claims.put("username", result.getRealUsername());
+            claims.put("avatar", result.getAvatar());
+            claims.put("role", result.getRole());
+            claims.put("mustChangePassword", result.isMustChangePassword());
 
-        LoginResponseDTO responseDTO = new LoginResponseDTO();
-        responseDTO.setToken(jwtToken);
-        responseDTO.setExpiresIn(jwtService.getExpirationTime());
-        responseDTO.setRole(result.getRole());
+            String jwtToken = jwtService.generateToken(claims, result);
 
-        return ResponseEntity.ok().body(responseDTO);
+            LoginResponseDTO responseDTO = new LoginResponseDTO();
+            responseDTO.setToken(jwtToken);
+            responseDTO.setExpiresIn(jwtService.getExpirationTime());
+            responseDTO.setRole(result.getRole());
+            responseDTO.setMustChangePassword(result.isMustChangePassword());
+
+            return ResponseEntity.ok().body(responseDTO);
+        } catch (ResponseStatusException rse) {
+            return ResponseEntity.status(rse.getStatusCode()).body(Map.of("message", rse.getReason()));
+        } catch (LockedException | DisabledException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Ce compte a été suspendu ou bloqué par un administrateur."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Identifiants invalides"));
+        }
     }
 
     @PostMapping("/logout")
