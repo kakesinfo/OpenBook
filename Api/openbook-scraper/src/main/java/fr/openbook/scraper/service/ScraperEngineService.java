@@ -259,6 +259,11 @@ public class ScraperEngineService {
         currentJob = targetDesc;
         lastStatus = "running";
 
+        resetLiveScan();
+        liveScan.put("is_running", true);
+        liveScan.put("job_name", currentJob);
+        liveScan.put("started_at", Instant.now().toString());
+
         Thread.ofVirtual().name("scraper-worker").start(() -> runScrape(sources, fullScan, currentJob));
 
         String modeStr = fullScan ? "full catalog scan" : "standard scan";

@@ -3,19 +3,15 @@ package fr.openbook.scraper.sources;
 import fr.openbook.scraper.config.ScraperProperties;
 import fr.openbook.scraper.model.ScanOptions;
 import fr.openbook.scraper.model.ScrapedBookDTO;
-import fr.openbook.scraper.utils.FrenchDateParser;
 import fr.openbook.scraper.utils.TextCleaner;
 import fr.openbook.scraper.utils.VariantDetector;
 import lombok.extern.slf4j.Slf4j;
-import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.function.BooleanSupplier;
@@ -27,18 +23,12 @@ import java.util.regex.Pattern;
 @Component
 public class PaniniComicsSource extends AbstractHttpSource {
 
-    public static final List<String> CATALOG_URLS = List.of(
-            "https://www.panini.fr/shp_fra_fr/comics/marvel.html",
-            "https://www.panini.fr/shp_fra_fr/comics/star-wars.html",
-            "https://www.panini.fr/shp_fra_fr/comics/disney.html",
-            "https://www.panini.fr/shp_fra_fr/comics/autres-comics.html"
-    );
+    public static final String CATALOG_URL = "https://www.excalibur-comics.fr/715-panini-comics-france";
 
-    private static final Pattern RE_JS_REDIRECT = Pattern.compile("decodeURIComponent\\(['\"]([^'\"]+)['\"]\\)");
-    private static final Pattern RE_ALT_PREFIX = Pattern.compile("(?i)^Panini:\\s*Comics[_\\s]*");
-    private static final Pattern RE_PRICE = Pattern.compile("(\\d+)[,\\.]\\d+");
-    private static final Pattern RE_VAR_URL = Pattern.compile("(?i)-[a-zA-Z0-9]+v-[a-zA-Z0-9]+\\.html");
-    private static final Pattern RE_ISBN13 = Pattern.compile("(97[89]\\d{10})");
+    private static final Pattern RE_URL_ISBN = Pattern.compile("-(\\d{10}|\\d{13})\\.html");
+    private static final Pattern RE_ISBN_ANY = Pattern.compile("\\b(97[89][0-9Xx\\- ]{10,18})\\b");
+    private static final Pattern RE_PRICE = Pattern.compile("(\\d+(?:[,\\.]\\d+)?)\\s*€?");
+    private static final Pattern RE_DATE = Pattern.compile("(\\d{2})/(\\d{2})/(\\d{4})");
 
     public PaniniComicsSource(ScraperProperties properties) {
         super(properties);
@@ -56,7 +46,7 @@ public class PaniniComicsSource extends AbstractHttpSource {
 
     @Override
     public String getDescription() {
-        return "Marvel, Star Wars, Disney, Autres Comics";
+        return "Catalogue Panini Comics via Excalibur Comics (Marvel, Star Wars, DC, etc.)";
     }
 
     @Override
@@ -73,55 +63,71 @@ public class PaniniComicsSource extends AbstractHttpSource {
         int maxItems = options.getMaxItems() > 0 ? options.getMaxItems() : properties.getMaxBooksPerSource();
         boolean fullScan = options.isFullScan();
         List<ScrapedBookDTO> books = new ArrayList<>();
+        Set<String> seenIsbns = new HashSet<>();
         Set<String> seenTitles = new HashSet<>();
         Set<String> seenUrls = new HashSet<>();
 
-        for (String categoryUrl : CATALOG_URLS) {
+        String currentPageUrl = CATALOG_URL;
+        Set<String> visitedPages = new HashSet<>();
+
+        while (currentPageUrl != null && !currentPageUrl.isBlank()) {
             if (isStopped != null && isStopped.getAsBoolean()) break;
             if (!fullScan && books.size() >= maxItems) break;
+            if (!visitedPages.add(currentPageUrl)) break;
 
-            String currentPageUrl = categoryUrl;
-            Set<String> visitedPages = new HashSet<>();
+            log.info("[Panini] Fetching listing {}", currentPageUrl);
+            Document doc = fetchDocument(currentPageUrl);
+            if (doc == null) {
+                log.warn("[Panini] Failed to fetch {}", currentPageUrl);
+                break;
+            }
 
-            while (currentPageUrl != null && !currentPageUrl.isBlank()) {
+            Elements cards = doc.select("#js-product-list article.product-miniature");
+            if (cards.isEmpty()) {
+                cards = doc.select(".products article.product-miniature");
+            }
+            if (cards.isEmpty()) {
+                log.info("[Panini] No cards found on page {}, stopping.", currentPageUrl);
+                break;
+            }
+
+            for (Element card : cards) {
                 if (isStopped != null && isStopped.getAsBoolean()) break;
                 if (!fullScan && books.size() >= maxItems) break;
-                if (!visitedPages.add(currentPageUrl)) break;
 
-                log.info("[Panini] Fetching listing {}", currentPageUrl);
-                String html = fetchPageHtml(currentPageUrl);
-                if (html == null || html.isBlank()) {
+                ScrapedBookDTO book = parseCard(card, currentPageUrl);
+                if (book == null) continue;
+
+                String isbnKey = book.getIsbn() != null ? book.getIsbn().trim() : "";
+                if (!isbnKey.isBlank() && seenIsbns.contains(isbnKey)) {
+                    continue;
+                }
+                if (seenTitles.contains(book.getTitle()) || (book.getSourceUrl() != null && seenUrls.contains(book.getSourceUrl()))) {
+                    continue;
+                }
+
+                if (!isbnKey.isBlank()) {
+                    seenIsbns.add(isbnKey);
+                }
+                seenTitles.add(book.getTitle());
+                if (book.getSourceUrl() != null) {
+                    seenUrls.add(book.getSourceUrl());
+                }
+
+                books.add(book);
+                if (onBookFound != null) {
+                    onBookFound.accept(book);
+                }
+            }
+
+            currentPageUrl = extractNextPageUrl(doc, currentPageUrl);
+            if (currentPageUrl != null && !currentPageUrl.isBlank()) {
+                try {
+                    Thread.sleep(150);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     break;
                 }
-
-                Document doc = Jsoup.parse(html, currentPageUrl);
-                Elements cards = doc.select("li.item.product.product-item");
-                if (cards.isEmpty()) {
-                    cards = doc.select("div.product-item-info");
-                }
-
-                for (Element card : cards) {
-                    if (isStopped != null && isStopped.getAsBoolean()) break;
-                    if (!fullScan && books.size() >= maxItems) break;
-
-                    ScrapedBookDTO book = parseCard(card, currentPageUrl);
-                    if (book == null) continue;
-
-                    if (seenTitles.contains(book.getTitle()) || (book.getSourceUrl() != null && seenUrls.contains(book.getSourceUrl()))) {
-                        continue;
-                    }
-                    seenTitles.add(book.getTitle());
-                    if (book.getSourceUrl() != null) {
-                        seenUrls.add(book.getSourceUrl());
-                    }
-
-                    books.add(book);
-                    if (onBookFound != null) {
-                        onBookFound.accept(book);
-                    }
-                }
-
-                currentPageUrl = extractNextPageUrl(doc, currentPageUrl);
             }
         }
 
@@ -129,90 +135,96 @@ public class PaniniComicsSource extends AbstractHttpSource {
         return books;
     }
 
-    private String fetchPageHtml(String targetUrl) {
-        String currentUrl = targetUrl;
-        for (int i = 0; i < 5; i++) {
-            String content = fetchString(currentUrl);
-            if (content == null) return null;
-
-            Matcher m = RE_JS_REDIRECT.matcher(content);
-            if (m.find()) {
-                try {
-                    String redirectPath = URLDecoder.decode(m.group(1), StandardCharsets.UTF_8);
-                    currentUrl = resolveUrl(currentUrl, redirectPath);
-                    continue;
-                } catch (Exception ignored) {}
-            }
-            return content;
-        }
-        return null;
-    }
-
     public ScrapedBookDTO parseCard(Element card, String baseUrl) {
-        String rawTitle = "";
-        String prodUrl = "";
-
-        for (Element a : card.select("a[href]")) {
-            String t = a.text().trim();
-            String low = t.toLowerCase();
-            if (!t.isBlank() && !low.contains("liste d") && !low.contains("panier")
-                    && !low.contains("aperçu") && !low.contains("voir")) {
-                rawTitle = t;
-                String href = a.attr("href");
-                prodUrl = resolveUrl(baseUrl, href);
-                break;
-            }
-        }
+        Element titleEl = card.select("h3.product-title a").first();
+        String rawTitle = titleEl != null ? titleEl.text().trim() : "";
+        Element imgTag = card.select("img").first();
+        String altText = imgTag != null ? imgTag.attr("alt").trim() : "";
 
         if (rawTitle.isBlank()) {
-            Element img = card.select("img").first();
-            if (img != null) {
-                String alt = img.attr("alt");
-                if (!alt.isBlank()) {
-                    rawTitle = RE_ALT_PREFIX.matcher(alt).replaceAll("").trim();
+            rawTitle = altText;
+        }
+
+        if (rawTitle.endsWith("...") || rawTitle.endsWith("…")) {
+            if (!altText.isBlank() && !altText.endsWith("...") && !altText.endsWith("…")) {
+                String prefix = rawTitle.replaceAll("[\\.…]+\\s*$", "").trim().toLowerCase();
+                if (altText.toLowerCase().startsWith(prefix) || altText.length() > rawTitle.length()) {
+                    rawTitle = altText;
                 }
             }
         }
-
-        if (rawTitle.isBlank()) return null;
-
+        rawTitle = rawTitle.replaceAll("[\\.…]+\\s*$", "").trim();
         String cleanTitle = TextCleaner.cleanText(rawTitle);
         if (cleanTitle.isBlank()) return null;
 
+        // Product URL
+        String prodUrl = "";
+        if (titleEl != null && !titleEl.attr("href").isBlank()) {
+            prodUrl = resolveUrl(baseUrl, titleEl.attr("href"));
+        } else {
+            Element a = card.select("a.thumbnail").first();
+            if (a != null && !a.attr("href").isBlank()) {
+                prodUrl = resolveUrl(baseUrl, a.attr("href"));
+            }
+        }
+
+        // ISBN / EAN
+        String isbn = "";
+        if (!prodUrl.isBlank()) {
+            Matcher m = RE_URL_ISBN.matcher(prodUrl);
+            if (m.find()) {
+                isbn = m.group(1);
+            }
+        }
+        if (isbn.isBlank()) {
+            Matcher m = RE_ISBN_ANY.matcher(card.text());
+            if (m.find()) {
+                isbn = m.group(1).replaceAll("[^0-9Xx]", "");
+            }
+        }
+
         // Price
-        int price = 0;
-        Element priceEl = card.select("span.price").first();
+        Integer price = 0;
+        Element priceEl = card.select("span.price, .product-price-and-shipping .price").first();
         if (priceEl != null) {
-            Matcher pm = RE_PRICE.matcher(priceEl.text());
+            Matcher pm = RE_PRICE.matcher(priceEl.text().replace("\u00a0", " ").trim());
             if (pm.find()) {
                 try {
-                    price = Integer.parseInt(pm.group(1));
-                } catch (NumberFormatException ignored) {}
+                    price = (int) Math.round(Double.parseDouble(pm.group(1).replace(',', '.')));
+                } catch (Exception ignored) {}
             }
         }
 
         // Cover
         String coverUrl = "";
-        Element imgTag = card.select("img.product-image-photo, img[class*='product-image-photo']").first();
-        if (imgTag == null) imgTag = card.select("img").first();
         if (imgTag != null) {
-            String src = imgTag.attr("src");
+            String src = imgTag.attr("data-full-size-image-url");
+            if (src.isBlank()) src = imgTag.attr("src");
             if (src.isBlank()) src = imgTag.attr("data-src");
-            if (!src.isBlank()) {
-                coverUrl = src.split("\\?")[0];
+            if (!src.isBlank() && !src.contains("default-home_default") && !src.contains("/assets/")) {
+                src = src.replace("home_default", "large_default");
+                coverUrl = resolveUrl(baseUrl, src.split("\\?")[0]);
             }
         }
 
-        // SKU
-        String skuVal = "";
-        Element skuEl = card.select("[data-product-sku]").first();
-        if (skuEl != null) {
-            skuVal = skuEl.attr("data-product-sku").trim();
+        // Release date
+        LocalDate releaseDate = null;
+        Element dateEl = card.select(".date-btn, .product-date, .release-date").first();
+        if (dateEl != null) {
+            Matcher dm = RE_DATE.matcher(dateEl.text());
+            if (dm.find()) {
+                try {
+                    int d = Integer.parseInt(dm.group(1));
+                    int m = Integer.parseInt(dm.group(2));
+                    int y = Integer.parseInt(dm.group(3));
+                    releaseDate = LocalDate.of(y, m, d);
+                } catch (Exception ignored) {}
+            }
         }
 
         // Variant detection
-        boolean isVariant = VariantDetector.isVariantBook(cleanTitle, coverUrl, skuVal);
-        if (!isVariant && !prodUrl.isBlank() && RE_VAR_URL.matcher(prodUrl).find()) {
+        boolean isVariant = VariantDetector.isVariantBook(cleanTitle, coverUrl, isbn);
+        if (!isVariant && !prodUrl.isBlank() && prodUrl.toLowerCase().contains("collector")) {
             isVariant = true;
         }
 
@@ -224,29 +236,6 @@ public class PaniniComicsSource extends AbstractHttpSource {
         VariantDetector.SeriesVolume sv = VariantDetector.extractCanonicalSeriesAndVolume(cleanTitle);
         String seriesName = sv.series().isBlank() ? cleanTitle : sv.series();
         Integer volume = sv.volume();
-
-        // Release date
-        LocalDate releaseDate = null;
-        Element dateEl = card.select(".product-item-attribute-release-date small, .product-item-attribute-release-date").first();
-        if (dateEl != null) {
-            releaseDate = FrenchDateParser.parse(dateEl.text().trim());
-        }
-        
-
-        // ISBN
-        String isbn = "";
-        if (!prodUrl.isBlank()) {
-            Matcher im = RE_ISBN13.matcher(prodUrl);
-            if (im.find()) {
-                isbn = im.group(1);
-            }
-        }
-        if (isbn.isBlank() && !skuVal.isBlank()) {
-            Matcher im = RE_ISBN13.matcher(skuVal);
-            if (im.find()) {
-                isbn = im.group(1);
-            }
-        }
 
         return ScrapedBookDTO.builder()
                 .title(TextCleaner.truncate(cleanTitle, 255))
@@ -267,46 +256,14 @@ public class PaniniComicsSource extends AbstractHttpSource {
     }
 
     public static String extractNextPageUrl(Document doc, String currentUrl) {
-        Elements items = doc.select("div.pages ul.pages-items li.item");
-        if (items.isEmpty()) return null;
-
-        for (Element item : items) {
-            if (item.hasClass("pages-item-next")) {
-                Element a = item.select("a[href]").first();
-                if (a != null && !a.attr("href").isBlank()) {
-                    return resolveUrl(currentUrl, a.attr("href"));
-                }
-            }
-
-            Element aNext = item.select("a.next").first();
-            if (aNext != null && !aNext.attr("href").isBlank()) {
-                return resolveUrl(currentUrl, aNext.attr("href"));
-            }
-
-            String txt = item.text().trim().toLowerCase();
-            if (txt.contains("suivant") || txt.contains("next")) {
-                Element a = item.select("a[href]").first();
-                if (a != null && !a.attr("href").isBlank()) {
-                    return resolveUrl(currentUrl, a.attr("href"));
-                }
+        if (doc == null) return null;
+        Element nextLink = doc.select("nav.pagination a[rel='next'], nav.pagination a.next, a.next.js-search-link, a[rel='next']").first();
+        if (nextLink != null) {
+            String href = nextLink.attr("href");
+            if (href != null && !href.isBlank()) {
+                return resolveUrl(currentUrl, href);
             }
         }
-
-        // Fallback: item after 'current'
-        boolean foundCurrent = false;
-        for (Element item : items) {
-            if (item.hasClass("current")) {
-                foundCurrent = true;
-                continue;
-            }
-            if (foundCurrent && !item.hasClass("pages-item-previous")) {
-                Element a = item.select("a[href]").first();
-                if (a != null && !a.attr("href").isBlank()) {
-                    return resolveUrl(currentUrl, a.attr("href"));
-                }
-            }
-        }
-
         return null;
     }
 

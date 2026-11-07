@@ -5,6 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
+import java.net.CookieHandler;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -16,12 +19,15 @@ public abstract class AbstractHttpSource implements ScraperSource {
 
     protected final ScraperProperties properties;
     protected final HttpClient httpClient;
+    protected final CookieManager cookieManager;
 
     protected AbstractHttpSource(ScraperProperties properties) {
         this.properties = properties;
+        this.cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(properties.getRequestTimeout()))
                 .followRedirects(HttpClient.Redirect.NORMAL)
+                .cookieHandler(this.cookieManager)
                 .build();
     }
 
@@ -53,7 +59,8 @@ public abstract class AbstractHttpSource implements ScraperSource {
                     .GET()
                     .timeout(Duration.ofSeconds(properties.getRequestTimeout()))
                     .header("User-Agent", properties.getUserAgent())
-                    .header("Accept", "*/*")
+                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+                    .header("Accept-Language", "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7")
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
