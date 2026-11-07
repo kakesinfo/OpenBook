@@ -1290,6 +1290,31 @@ public class ScraperDbService {
     }
 
     /**
+     * Returns a map of lowercase editor name -> count of non-deleted books.
+     */
+    public Map<String, Integer> getBookCountsByEditor() {
+        Map<String, Integer> counts = new HashMap<>();
+        try {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                SELECT LOWER(e.name) as editor_name, COUNT(b.id) as book_count
+                FROM editor e
+                JOIN book b ON b.editor_id = e.id AND COALESCE(b.deleted, FALSE) = FALSE
+                GROUP BY LOWER(e.name);
+            """);
+            for (Map<String, Object> r : rows) {
+                String edName = (String) r.get("editor_name");
+                Number cnt = (Number) r.get("book_count");
+                if (edName != null && cnt != null) {
+                    counts.put(edName.trim().toLowerCase(), cnt.intValue());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch book counts by editor: {}", e.getMessage());
+        }
+        return counts;
+    }
+
+    /**
      * Returns maintenance statistics.
      */
     public Map<String, Object> getMaintenanceStats() {

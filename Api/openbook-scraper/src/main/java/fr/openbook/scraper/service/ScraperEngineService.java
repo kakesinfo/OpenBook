@@ -160,6 +160,7 @@ public class ScraperEngineService {
     }
 
     public List<Map<String, Object>> getSources() {
+        Map<String, Integer> editorCounts = scraperDbService.getBookCountsByEditor();
         List<Map<String, Object>> list = new ArrayList<>();
         for (String id : getAllSourceIds()) {
             ScraperSource src = sourceMap.get(id);
@@ -170,6 +171,13 @@ public class ScraperEngineService {
             item.put("desc", src.getDescription());
             item.put("color", src.getColor());
             item.put("enabled", !disabledSources.contains(src.getId()));
+
+            int bookCount = 0;
+            if (src.getName() != null) {
+                String key = src.getName().trim().toLowerCase();
+                bookCount = editorCounts.getOrDefault(key, 0);
+            }
+            item.put("book_count", bookCount);
             list.add(item);
         }
         return list;

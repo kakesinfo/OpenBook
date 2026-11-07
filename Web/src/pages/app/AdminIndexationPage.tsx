@@ -22,6 +22,7 @@ export interface ScraperSource {
     desc: string;
     color: string;
     enabled: boolean;
+    book_count?: number;
 }
 
 interface JobHistory {
@@ -717,6 +718,7 @@ export default function AdminIndexationPage() {
                                     </th>
                                     <th>{tr("Source / Publisher Name", "Nom de la source / Éditeur")}</th>
                                     <th>{tr("Description", "Description")}</th>
+                                    <th style={{ width: "130px", textAlign: "center" }}>{tr("Books", "Livres")}</th>
                                     <th style={{ width: "190px", textAlign: "center" }}>{tr("Scraper Status", "État du Scraper")}</th>
                                     <th style={{ width: "120px", textAlign: "right" }}>{tr("Action", "Action")}</th>
                                 </tr>
@@ -760,6 +762,14 @@ export default function AdminIndexationPage() {
 
                                             <td>
                                                 <span className="source-description">{source.desc}</span>
+                                            </td>
+
+                                            {/* Books count column */}
+                                            <td style={{ textAlign: "center" }}>
+                                                <span className="source-books-badge">
+                                                    <FontAwesomeIcon icon={faBookOpen} style={{ fontSize: "0.75rem", opacity: 0.7 }} />
+                                                    <span>{source.book_count ?? 0}</span>
+                                                </span>
                                             </td>
 
                                             {/* Toggle switch: always available to re-enable or disable */}

@@ -44,6 +44,7 @@ class ScraperEngineServiceTest {
         when(mockSource.getColor()).thenReturn("#00a3e0");
 
         when(scraperDbService.getRecentBooks(anyInt())).thenReturn(List.of());
+        when(scraperDbService.getBookCountsByEditor()).thenReturn(Map.of("urban comics", 42));
 
         engineService = new ScraperEngineService(
                 properties,
@@ -62,6 +63,7 @@ class ScraperEngineServiceTest {
         assertEquals("urban_comics", sources.get(0).get("id"));
         assertEquals("Urban Comics", sources.get(0).get("name"));
         assertTrue((Boolean) sources.get(0).get("enabled"));
+        assertEquals(42, sources.get(0).get("book_count"));
     }
 
     @Test
