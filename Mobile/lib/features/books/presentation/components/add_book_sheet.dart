@@ -10,7 +10,7 @@ import '../../data/book.dart';
 import 'book_cover.dart';
 import 'quick_create_book_sheet.dart';
 
-enum AddBookMode { search, scan }
+enum AddBookMode { scan, search }
 
 Future<void> showAddBookSheet(
   BuildContext context, {
@@ -40,7 +40,7 @@ class _AddBookSheet extends ConsumerStatefulWidget {
 }
 
 class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
-  AddBookMode _mode = AddBookMode.search;
+  AddBookMode _mode = AddBookMode.scan;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   Timer? _debounceTimer;
@@ -358,19 +358,6 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                 children: [
                   Expanded(
                     child: _ModeTabButton(
-                      title: 'Recherche',
-                      icon: Icons.search_rounded,
-                      isSelected: _mode == AddBookMode.search,
-                      onTap: () {
-                        setState(() {
-                          _mode = AddBookMode.search;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: _ModeTabButton(
                       title: 'Scanner code-barres',
                       icon: Icons.qr_code_scanner_rounded,
                       isSelected: _mode == AddBookMode.scan,
@@ -378,6 +365,19 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                         setState(() {
                           _mode = AddBookMode.scan;
                           _resumeScanning();
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: _ModeTabButton(
+                      title: 'Recherche',
+                      icon: Icons.search_rounded,
+                      isSelected: _mode == AddBookMode.search,
+                      onTap: () {
+                        setState(() {
+                          _mode = AddBookMode.search;
                         });
                       },
                     ),
