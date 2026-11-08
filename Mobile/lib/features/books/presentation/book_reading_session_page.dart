@@ -4,11 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/books_providers.dart';
 import '../data/book.dart';
+import 'components/book_completion_dialog.dart';
 
 class BookReadingSessionPage extends ConsumerStatefulWidget {
-  const BookReadingSessionPage({super.key, required this.book});
+  const BookReadingSessionPage({
+    super.key,
+    required this.book,
+    this.initialDuration,
+  });
 
   final Book book;
+  final Duration? initialDuration;
 
   @override
   ConsumerState<BookReadingSessionPage> createState() => _BookReadingSessionPageState();
@@ -25,7 +31,7 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
     super.initState();
     final progress = ref.read(readingProgressByBookProvider(widget.book)).value;
     _sessionDateTime = DateTime.now();
-    _duration = Duration.zero;
+    _duration = widget.initialDuration ?? Duration.zero;
     _currentPage = progress?.currentPage ?? 0;
   }
 
@@ -117,6 +123,9 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
     final book = widget.book;
     setState(() => _saving = true);
     try {
+      final totalPages = book.totalPages;
+      final completed = totalPages != null && totalPages > 0 && _currentPage >= totalPages;
+
       await ref.read(booksControllerProvider.notifier).logReadingSession(
             book: book,
             currentPage: _currentPage,
@@ -127,6 +136,12 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
         return;
       }
       Navigator.of(context).pop();
+
+      if (completed) {
+        // Afficher la célébration de complétion si le contexte est toujours disponible
+        final currentContext = Navigator.of(context).context;
+        await BookCompletionDialog.show(currentContext, book);
+      }
     } finally {
       if (mounted) {
         setState(() => _saving = false);

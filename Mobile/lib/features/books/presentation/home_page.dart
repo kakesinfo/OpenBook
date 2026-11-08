@@ -11,6 +11,7 @@ import 'book_reading_session_page.dart';
 import 'components/app_header.dart';
 import 'components/book_card.dart';
 import 'components/reading_streak_card.dart';
+import 'components/reading_timer_modal.dart';
 import 'paused_books_page.dart';
 import 'reading_calendar_page.dart';
 
@@ -170,6 +171,7 @@ class HomePage extends ConsumerWidget {
                                     builder: (_) => BookReadingSessionPage(book: book),
                                   ),
                                 ),
+                                onTimer: () => ReadingTimerModal.show(context, book),
                                 onPause: () async {
                                   await ref
                                       .read(booksControllerProvider.notifier)

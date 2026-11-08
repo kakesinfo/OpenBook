@@ -12,12 +12,14 @@ class BookCard extends ConsumerWidget {
     required this.book,
     required this.onEdit,
     this.onRecordSession,
+    this.onTimer,
     this.onPause,
   });
 
   final Book book;
   final VoidCallback onEdit;
   final VoidCallback? onRecordSession;
+  final VoidCallback? onTimer;
   final VoidCallback? onPause;
 
   @override
@@ -203,40 +205,83 @@ class BookCard extends ConsumerWidget {
                         borderRadius: AppTheme.radiusMd,
                       ),
                     ),
-                    // Quick Action Button (log session)
-                    if (onRecordSession != null)
+                    // Quick Action Buttons (timer + log session)
+                    if (onRecordSession != null || onTimer != null)
                       Positioned(
                         right: 14,
                         bottom: -10,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: AppTheme.primaryGradient,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.accentPrimary.withValues(alpha: 0.35),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            shape: const CircleBorder(),
-                            child: InkWell(
-                              customBorder: const CircleBorder(),
-                              onTap: onRecordSession,
-                              child: const SizedBox(
-                                width: 44,
-                                height: 44,
-                                child: Icon(
-                                  Icons.edit_note_rounded,
-                                  color: Colors.white,
-                                  size: 22,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (onTimer != null) ...[
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppTheme.bgElevated,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppTheme.borderMedium,
+                                    width: 1.2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.35),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  shape: const CircleBorder(),
+                                  child: InkWell(
+                                    customBorder: const CircleBorder(),
+                                    onTap: onTimer,
+                                    child: SizedBox(
+                                      width: 44,
+                                      height: 44,
+                                      child: Icon(
+                                        Icons.timer_outlined,
+                                        color: AppTheme.accentPrimary,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
+                              const SizedBox(width: 8),
+                            ],
+                            if (onRecordSession != null)
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: AppTheme.primaryGradient,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppTheme.accentPrimary.withValues(alpha: 0.35),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  shape: const CircleBorder(),
+                                  child: InkWell(
+                                    customBorder: const CircleBorder(),
+                                    onTap: onRecordSession,
+                                    child: const SizedBox(
+                                      width: 44,
+                                      height: 44,
+                                      child: Icon(
+                                        Icons.edit_note_rounded,
+                                        color: Colors.white,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                   ],

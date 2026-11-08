@@ -9,8 +9,10 @@ import '../data/books_repository.dart';
 import 'book_purchase_history_page.dart';
 import 'book_reading_history_page.dart';
 import 'book_reading_session_page.dart';
+import 'components/book_completion_dialog.dart';
 import 'components/book_cover.dart';
 import 'components/edit_book_sheet.dart';
+import 'components/reading_timer_modal.dart';
 
 class BookDetailsPage extends ConsumerWidget {
   const BookDetailsPage({
@@ -349,6 +351,9 @@ class BookDetailsPage extends ConsumerWidget {
                     activeBook,
                     status,
                   );
+              if (status == BookStatus.read && context.mounted) {
+                await BookCompletionDialog.show(context, activeBook);
+              }
             },
           ),
           const SizedBox(height: 20),
@@ -466,47 +471,89 @@ class BookDetailsPage extends ConsumerWidget {
               ),
             ),
           ] else if (activeBook.isCurrentlyReading) ...[
-            Container(
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.accentPrimaryGlow,
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => BookReadingSessionPage(book: activeBook),
-                      ),
-                    );
-                  },
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.edit_note_rounded, color: Colors.white, size: 22),
-                      SizedBox(width: 8),
-                      Text(
-                        'Enregistrer une session',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.accentPrimaryGlow,
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
                         ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => BookReadingSessionPage(book: activeBook),
+                            ),
+                          );
+                        },
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.edit_note_rounded, color: Colors.white, size: 22),
+                            SizedBox(width: 8),
+                            Text(
+                              'Enregistrer une session',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  height: 48,
+                  width: 48,
+                  decoration: BoxDecoration(
+                    color: AppTheme.bgElevated,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppTheme.borderMedium,
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
+                  child: Material(
+                    color: Colors.transparent,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () => ReadingTimerModal.show(context, activeBook),
+                      child: Tooltip(
+                        message: 'Chronomètre de lecture',
+                        child: Icon(
+                          Icons.timer_outlined,
+                          color: AppTheme.accentPrimary,
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ],
