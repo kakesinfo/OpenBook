@@ -14,8 +14,7 @@ import {
     faArrowLeft,
     faBuildingColumns,
     faSpinner,
-    faPen,
-    faSliders
+    faPen
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router";
@@ -223,16 +222,6 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
     const handleCreateMissingFromScratch = () => {
         onClose();
         onOpenCreateBook?.(query.trim());
-    };
-
-    const handleCustomizeFromBnf = (bnf: BnfBookResult) => {
-        onClose();
-        onOpenCreateBook?.({
-            title: bnf.title,
-            isbn: bnf.isbn,
-            price: bnf.price,
-            coverUrl: bnf.coverUrl
-        });
     };
 
     const handleDirectCreateFromBnf = async (bnf: BnfBookResult) => {
@@ -443,74 +432,86 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
 
                         {/* Livre trouvé dans la BNF */}
                         {!searching && query.trim() && books.length === 0 && bnfResult && (
-                            <div className="fab-bnf-result">
-                                <div className="fab-bnf-badge">
-                                    <FontAwesomeIcon icon={faBuildingColumns} />
-                                    <span>{tr("Found in BnF (Bibliothèque Nationale de France)", "Trouvé dans la BnF (Bibliothèque Nationale de France)")}</span>
+                            <div className="fab-bnf-card">
+                                <div className="fab-bnf-card__header">
+                                    <div className="fab-bnf-card__badge">
+                                        <FontAwesomeIcon icon={faBuildingColumns} />
+                                        <span>{tr("Found in BnF (Bibliothèque Nationale de France)", "Trouvé dans la BnF (Bibliothèque Nationale de France)")}</span>
+                                    </div>
+                                    {bnfResult.isbn && (
+                                        <span className="fab-bnf-card__isbn-tag">
+                                            ISBN {bnfResult.isbn}
+                                        </span>
+                                    )}
                                 </div>
-                                <div className="fab-search-item fab-search-item--bnf" style={{ cursor: "default" }}>
-                                    <div className="fab-search-item__left">
-                                        <div className="fab-search-item__thumb">
-                                            {bnfResult.coverUrl ? (
-                                                <img
-                                                    src={bnfResult.coverUrl}
-                                                    alt={bnfResult.title}
-                                                    onError={(e) => { (e.target as HTMLElement).style.display = "none"; }}
-                                                />
-                                            ) : (
-                                                <FontAwesomeIcon icon={faBook} />
-                                            )}
-                                        </div>
-                                        <div className="fab-search-item__info">
-                                            <span className="fab-search-item__title">{bnfResult.title}</span>
 
-                                            {bnfResult.authors && bnfResult.authors.length > 0 && (
-                                                <div className="fab-search-item__authors">
-                                                    <FontAwesomeIcon icon={faPen} style={{ fontSize: "0.7rem", opacity: 0.7 }} />
-                                                    <span>
-                                                        {bnfResult.authors.map((a) => `${a.firstname ? a.firstname + " " : ""}${a.lastname}`).join(", ")}
-                                                    </span>
-                                                </div>
-                                            )}
+                                <div className="fab-bnf-card__body">
+                                    <div className="fab-bnf-card__cover">
+                                        {bnfResult.coverUrl ? (
+                                            <img
+                                                src={bnfResult.coverUrl}
+                                                alt={bnfResult.title}
+                                                onError={(e) => { (e.target as HTMLElement).style.display = "none"; }}
+                                            />
+                                        ) : (
+                                            <FontAwesomeIcon icon={faBook} />
+                                        )}
+                                    </div>
 
-                                            <div className="fab-search-item__meta">
-                                                {bnfResult.volume !== null && bnfResult.volume !== undefined && (
-                                                    <span>{bnfResult.volume > 0 ? `${tr("Volume", "Tome")} ${bnfResult.volume}` : "One-shot"}</span>
-                                                )}
-                                                {bnfResult.editorName && (
-                                                    <span>• {bnfResult.editorName}</span>
-                                                )}
-                                                {bnfResult.releaseDate && (
-                                                    <span>• {bnfResult.releaseDate.substring(0, 4)}</span>
-                                                )}
-                                                {bnfResult.pageCount ? (
-                                                    <span>• {bnfResult.pageCount} p.</span>
-                                                ) : null}
-                                                {bnfResult.price != null && <span>• {bnfResult.price} €</span>}
+                                    <div className="fab-bnf-card__content">
+                                        <h4 className="fab-bnf-card__title">
+                                            {bnfResult.title}
+                                        </h4>
+
+                                        {bnfResult.authors && bnfResult.authors.length > 0 && (
+                                            <div className="fab-bnf-card__authors">
+                                                <FontAwesomeIcon icon={faPen} />
+                                                <span>
+                                                    {bnfResult.authors.map((a) => `${a.firstname ? a.firstname + " " : ""}${a.lastname}`).join(", ")}
+                                                </span>
                                             </div>
+                                        )}
+
+                                        <div className="fab-bnf-card__chips">
+                                            {bnfResult.volume !== null && bnfResult.volume !== undefined && (
+                                                <span className="fab-bnf-chip fab-bnf-chip--volume">
+                                                    {bnfResult.volume > 0 ? `${tr("Volume", "Tome")} ${bnfResult.volume}` : "One-shot"}
+                                                </span>
+                                            )}
+                                            {bnfResult.editorName && (
+                                                <span className="fab-bnf-chip">
+                                                    {bnfResult.editorName}
+                                                </span>
+                                            )}
+                                            {bnfResult.releaseDate && (
+                                                <span className="fab-bnf-chip">
+                                                    {bnfResult.releaseDate.substring(0, 4)}
+                                                </span>
+                                            )}
+                                            {bnfResult.pageCount ? (
+                                                <span className="fab-bnf-chip">
+                                                    {bnfResult.pageCount} p.
+                                                </span>
+                                            ) : null}
+                                            {bnfResult.price != null && (
+                                                <span className="fab-bnf-chip fab-bnf-chip--price">
+                                                    {bnfResult.price} €
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="fab-search-item__actions fab-search-item__actions--bnf">
-                                        <button
-                                            type="button"
-                                            className="fab-btn-add"
-                                            disabled={creatingFromBnf}
-                                            onClick={() => handleDirectCreateFromBnf(bnfResult)}
-                                        >
-                                            <FontAwesomeIcon icon={creatingFromBnf ? faSpinner : faPlus} spin={creatingFromBnf} />
-                                            <span>{creatingFromBnf ? tr("Creating...", "Création...") : tr("Create & Add", "Créer et ajouter")}</span>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="fab-btn-modify"
-                                            disabled={creatingFromBnf}
-                                            onClick={() => handleCustomizeFromBnf(bnfResult)}
-                                            title={tr("Edit details before creating", "Modifier les détails avant de créer")}
-                                        >
-                                            <FontAwesomeIcon icon={faSliders} />
-                                            <span>{tr("Edit", "Modifier")}</span>
-                                        </button>
-                                    </div>
+                                </div>
+
+                                <div className="fab-bnf-card__footer">
+                                    <button
+                                        type="button"
+                                        className="fab-btn-add fab-bnf-card__submit-btn"
+                                        disabled={creatingFromBnf}
+                                        onClick={() => handleDirectCreateFromBnf(bnfResult)}
+                                    >
+                                        <FontAwesomeIcon icon={creatingFromBnf ? faSpinner : faPlus} spin={creatingFromBnf} />
+                                        <span>{creatingFromBnf ? tr("Creating...", "Création...") : tr("Create & Add", "Créer et ajouter")}</span>
+                                    </button>
                                 </div>
                             </div>
                         )}
