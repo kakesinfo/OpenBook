@@ -83,13 +83,7 @@ class AppLoadingScreen extends StatelessWidget {
                 gradient: AppTheme.cardGradient,
                 borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                 border: Border.all(color: AppTheme.borderSubtle, width: 1),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x66000000),
-                    blurRadius: 20,
-                    offset: Offset(0, 8),
-                  ),
-                ],
+                boxShadow: AppTheme.cardShadow,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

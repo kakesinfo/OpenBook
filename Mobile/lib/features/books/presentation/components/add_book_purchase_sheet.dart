@@ -73,18 +73,6 @@ class _AddBookPurchaseSheetState extends State<AddBookPurchaseSheet> {
       initialDate: initial,
       firstDate: DateTime(1900),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.dark(
-              primary: AppTheme.accentPrimary,
-              surface: AppTheme.bgCard,
-              onSurface: AppTheme.textPrimary,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (picked != null) {

@@ -58,11 +58,7 @@ class _BookCompletionDialogState extends State<BookCompletionDialog> {
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
               border: Border.all(color: AppTheme.borderMedium, width: 1.5),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  blurRadius: 28,
-                  offset: const Offset(0, 12),
-                ),
+                ...AppTheme.modalShadow,
                 BoxShadow(
                   color: AppTheme.accentPrimary.withValues(alpha: 0.2),
                   blurRadius: 36,

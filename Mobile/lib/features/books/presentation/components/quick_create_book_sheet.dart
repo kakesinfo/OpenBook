@@ -607,13 +607,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
         color: AppTheme.bgElevated,
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         border: Border.all(color: AppTheme.borderSubtle, width: 1),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x33000000),
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
+        boxShadow: AppTheme.cardShadow,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),

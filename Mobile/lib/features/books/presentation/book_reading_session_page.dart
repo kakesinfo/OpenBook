@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/books_providers.dart';
 import '../data/book.dart';
+import 'components/app_header.dart';
 import 'components/book_completion_dialog.dart';
 
 class BookReadingSessionPage extends ConsumerStatefulWidget {
@@ -158,8 +159,15 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
         : 'p. $normalizedPage / $totalPages';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Enregistrer la session'),
+      appBar: AppHeader(
+        title: 'Enregistrer la session',
+        subtitle: widget.book.title,
+        showLogo: false,
+        leading: IconButton(
+          tooltip: 'Retour',
+          icon: Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),

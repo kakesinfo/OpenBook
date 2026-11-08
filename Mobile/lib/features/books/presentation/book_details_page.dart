@@ -9,6 +9,8 @@ import '../data/books_repository.dart';
 import 'book_purchase_history_page.dart';
 import 'book_reading_history_page.dart';
 import 'book_reading_session_page.dart';
+import 'components/add_book_purchase_sheet.dart';
+import 'components/app_header.dart';
 import 'components/book_completion_dialog.dart';
 import 'components/book_cover.dart';
 import 'components/edit_book_sheet.dart';
@@ -110,12 +112,21 @@ class BookDetailsPage extends ConsumerWidget {
     final isWishlisted = activeBook.status == BookStatus.wishlist;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Détail du livre'),
+      appBar: AppHeader(
+        title: 'Détail de l\'album',
+        subtitle: activeBook.series.isNotEmpty
+            ? (activeBook.volume != null ? '${activeBook.series} • Tome ${activeBook.volume}' : activeBook.series)
+            : (activeBook.author.isNotEmpty ? activeBook.author : null),
+        showLogo: false,
+        leading: IconButton(
+          tooltip: 'Retour',
+          icon: Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         actions: [
           IconButton(
             tooltip: 'Historique des sessions',
-            icon: const Icon(Icons.history_rounded),
+            icon: Icon(Icons.history_rounded, color: AppTheme.textPrimary),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
@@ -125,9 +136,13 @@ class BookDetailsPage extends ConsumerWidget {
             },
           ),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.menu_rounded),
+            icon: Icon(Icons.more_vert_rounded, color: AppTheme.textPrimary),
             tooltip: 'Menu de l\'album',
             color: AppTheme.bgElevated,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              side: BorderSide(color: AppTheme.borderSubtle),
+            ),
             onSelected: (value) async {
               if (value == 'history') {
                 Navigator.of(context).push(

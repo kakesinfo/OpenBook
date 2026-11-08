@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/books_providers.dart';
 import '../data/book.dart';
 import '../data/reading_session.dart';
+import 'components/app_header.dart';
 
 class BookReadingHistoryPage extends ConsumerWidget {
   const BookReadingHistoryPage({
@@ -19,8 +20,15 @@ class BookReadingHistoryPage extends ConsumerWidget {
     final sessionsAsync = ref.watch(readingSessionsForBookProvider(book));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Historique des sessions'),
+      appBar: AppHeader(
+        title: 'Historique des sessions',
+        subtitle: book.title,
+        showLogo: false,
+        leading: IconButton(
+          tooltip: 'Retour',
+          icon: Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),

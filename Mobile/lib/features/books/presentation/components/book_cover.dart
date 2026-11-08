@@ -29,13 +29,7 @@ class BookCover extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(color: AppTheme.borderSubtle, width: 1),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
+        boxShadow: AppTheme.cardShadow,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
