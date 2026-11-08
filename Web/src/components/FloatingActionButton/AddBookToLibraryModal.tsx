@@ -11,7 +11,10 @@ import {
     faTag,
     faCoins,
     faLink,
-    faArrowLeft
+    faArrowLeft,
+    faBuildingColumns,
+    faSpinner,
+    faPen
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router";
@@ -19,11 +22,13 @@ import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
+import { lookupBnfByIsbn, isIsbn, BnfBookResult } from "../../services/bnfService.ts";
+import { InitialBookData } from "./CreateMissingBookModal.tsx";
 
 interface Props {
     open: boolean;
     onClose: () => void;
-    onOpenCreateBook?: (initialTitle?: string) => void;
+    onOpenCreateBook?: (initialData?: InitialBookData | string) => void;
     mode?: "library" | "sale";
 }
 
@@ -38,8 +43,10 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
     const [query, setQuery] = useState("");
     const [books, setBooks] = useState<BookSummaryDTO[]>([]);
     const [searching, setSearching] = useState(false);
+    const [bnfResult, setBnfResult] = useState<BnfBookResult | null>(null);
     const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+    const [creatingFromBnf, setCreatingFromBnf] = useState(false);
 
     // Listing details step when putting a book up for sale
     const [listingTargetBook, setListingTargetBook] = useState<BookSummaryDTO | null>(null);
@@ -48,13 +55,16 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
     const [submittingListing, setSubmittingListing] = useState(false);
 
     const inputRef = useRef<HTMLInputElement | null>(null);
+    const searchRequestIdRef = useRef(0);
 
     useEffect(() => {
         if (open) {
             setQuery("");
             setBooks([]);
             setSearching(false);
+            setBnfResult(null);
             setAddedIds(new Set());
+            setCreatingFromBnf(false);
             setListingTargetBook(null);
             setListingPrice("");
             setListingUrl("");
@@ -65,30 +75,60 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
         }
     }, [open]);
 
-    useDebounce(query, 280, (val) => {
+    useDebounce(query, 280, async (val) => {
         const trimmed = val?.trim();
+        const requestId = ++searchRequestIdRef.current;
+
         if (!trimmed) {
             setBooks([]);
             setSearching(false);
+            setBnfResult(null);
             return;
         }
 
         setSearching(true);
-        session.customFetch(`/books/search?query=${encodeURIComponent(trimmed)}`, {
-            method: "GET"
-        })
-            .then(async (res) => {
-                if (res.ok) {
-                    const data: BookSummaryDTO[] = await res.json();
-                    setBooks(data);
-                }
-            })
-            .catch((err) => {
-                console.error("Search error:", err);
-            })
-            .finally(() => {
-                setSearching(false);
+        setBnfResult(null);
+
+        try {
+            // 1. Chercher d'abord dans la base de données
+            const res = await session.customFetch(`/books/search?query=${encodeURIComponent(trimmed)}`, {
+                method: "GET"
             });
+
+            if (requestId !== searchRequestIdRef.current) return;
+
+            let dbBooks: BookSummaryDTO[] = [];
+            if (res.ok) {
+                dbBooks = await res.json();
+            }
+
+            if (dbBooks.length > 0) {
+                setBooks(dbBooks);
+                setBnfResult(null);
+                setSearching(false);
+                return;
+            }
+
+            // 2. Si pas trouvé en BDD et que la saisie ressemble à un ISBN, chercher dans la BNF
+            setBooks([]);
+            if (isIsbn(trimmed)) {
+                const bnf = await lookupBnfByIsbn(trimmed);
+                if (requestId !== searchRequestIdRef.current) return;
+                setBnfResult(bnf);
+            } else {
+                setBnfResult(null);
+            }
+        } catch (err) {
+            console.error("Search error:", err);
+            if (requestId === searchRequestIdRef.current) {
+                setBooks([]);
+                setBnfResult(null);
+            }
+        } finally {
+            if (requestId === searchRequestIdRef.current) {
+                setSearching(false);
+            }
+        }
     });
 
     const handleAddBook = async (book: BookSummaryDTO, e: React.MouseEvent) => {
@@ -179,9 +219,75 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
         navigate(`/app/book/${bookId}`);
     };
 
-    const handleCreateMissing = () => {
+    const handleCreateMissingFromScratch = () => {
         onClose();
         onOpenCreateBook?.(query.trim());
+    };
+
+    const handleDirectCreateFromBnf = async (bnf: BnfBookResult) => {
+        if (!session.token || creatingFromBnf) return;
+
+        setCreatingFromBnf(true);
+        try {
+            const payload = {
+                title: bnf.title,
+                isbn: bnf.isbn || null,
+                price: bnf.price != null && bnf.price >= 0 ? bnf.price : 0,
+                seriesName: null,
+                volume: bnf.volume != null ? bnf.volume : null,
+                editorName: bnf.editorName || null,
+                collectionName: bnf.collectionName || null,
+                pageCount: bnf.pageCount || 0,
+                height: bnf.height || 0,
+                length: bnf.length || 0,
+                thickness: bnf.thickness || 0,
+                releaseDate: bnf.releaseDate || null,
+                description: bnf.description || null,
+                type: bnf.docType || null,
+                coverUrl: bnf.coverUrl || null,
+                authors: bnf.authors && bnf.authors.length > 0
+                    ? bnf.authors.map((a) => ({
+                        firstname: a.firstname,
+                        lastname: a.lastname,
+                        type: a.type
+                    }))
+                    : [],
+                addToLibrary: true
+            };
+
+            const res = await session.customFetch("/books", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                const createdBook = await res.json();
+                enqueueSnackbar(
+                    tr(`"${bnf.title}" has been created and added to your library!`, `« ${bnf.title} » a été créé et ajouté à votre bibliothèque !`),
+                    { variant: "success" }
+                );
+                onClose();
+                if (createdBook?.id) {
+                    navigate(`/app/book/${createdBook.id}`);
+                }
+            } else {
+                let errMsg = tr("Error creating book", "Erreur lors de la création de l'album");
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.message || errData.error || errMsg;
+                } catch {
+                    const text = await res.text().catch(() => "");
+                    if (text) errMsg = text;
+                }
+                enqueueSnackbar(errMsg, { variant: "error" });
+            }
+        } catch (err) {
+            console.error("Error creating book from BnF:", err);
+            enqueueSnackbar(tr("Connection error", "Erreur de connexion"), { variant: "error" });
+        } finally {
+            setCreatingFromBnf(false);
+        }
     };
 
     return (
@@ -324,7 +430,94 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                             </p>
                         )}
 
-                        {!searching && query.trim() && books.length === 0 && (
+                        {/* Livre trouvé dans la BNF */}
+                        {!searching && query.trim() && books.length === 0 && bnfResult && (
+                            <div className="fab-bnf-card">
+                                <div className="fab-bnf-card__header">
+                                    <div className="fab-bnf-card__badge">
+                                        <FontAwesomeIcon icon={faBuildingColumns} />
+                                        <span>{tr("Found in BnF (Bibliothèque Nationale de France)", "Trouvé dans la BnF (Bibliothèque Nationale de France)")}</span>
+                                    </div>
+                                    {bnfResult.isbn && (
+                                        <span className="fab-bnf-card__isbn-tag">
+                                            ISBN {bnfResult.isbn}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="fab-bnf-card__body">
+                                    <div className="fab-bnf-card__cover">
+                                        {bnfResult.coverUrl ? (
+                                            <img
+                                                src={bnfResult.coverUrl}
+                                                alt={bnfResult.title}
+                                                onError={(e) => { (e.target as HTMLElement).style.display = "none"; }}
+                                            />
+                                        ) : (
+                                            <FontAwesomeIcon icon={faBook} />
+                                        )}
+                                    </div>
+
+                                    <div className="fab-bnf-card__content">
+                                        <h4 className="fab-bnf-card__title">
+                                            {bnfResult.title}
+                                        </h4>
+
+                                        {bnfResult.authors && bnfResult.authors.length > 0 && (
+                                            <div className="fab-bnf-card__authors">
+                                                <FontAwesomeIcon icon={faPen} />
+                                                <span>
+                                                    {bnfResult.authors.map((a) => `${a.firstname ? a.firstname + " " : ""}${a.lastname}`).join(", ")}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        <div className="fab-bnf-card__chips">
+                                            {bnfResult.volume !== null && bnfResult.volume !== undefined && (
+                                                <span className="fab-bnf-chip fab-bnf-chip--volume">
+                                                    {bnfResult.volume > 0 ? `${tr("Volume", "Tome")} ${bnfResult.volume}` : "One-shot"}
+                                                </span>
+                                            )}
+                                            {bnfResult.editorName && (
+                                                <span className="fab-bnf-chip">
+                                                    {bnfResult.editorName}
+                                                </span>
+                                            )}
+                                            {bnfResult.releaseDate && (
+                                                <span className="fab-bnf-chip">
+                                                    {bnfResult.releaseDate.substring(0, 4)}
+                                                </span>
+                                            )}
+                                            {bnfResult.pageCount ? (
+                                                <span className="fab-bnf-chip">
+                                                    {bnfResult.pageCount} p.
+                                                </span>
+                                            ) : null}
+                                            {bnfResult.price != null && (
+                                                <span className="fab-bnf-chip fab-bnf-chip--price">
+                                                    {bnfResult.price} €
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="fab-bnf-card__footer">
+                                    <button
+                                        type="button"
+                                        className="fab-btn-add fab-bnf-card__submit-btn"
+                                        disabled={creatingFromBnf}
+                                        onClick={() => handleDirectCreateFromBnf(bnfResult)}
+                                    >
+                                        <FontAwesomeIcon icon={creatingFromBnf ? faSpinner : faPlus} spin={creatingFromBnf} />
+                                        <span>{creatingFromBnf ? tr("Creating...", "Création...") : tr("Create & Add", "Créer et ajouter")}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Aucun livre en BDD ni dans la BNF */}
+                        {!searching && query.trim() && books.length === 0 && !bnfResult && (
                             <div className="fab-no-results">
                                 <p className="fab-no-results__text">
                                     {tr("No books found for", "Aucun livre trouvé pour")} « <strong>{query}</strong> »
@@ -332,7 +525,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                 <button
                                     type="button"
                                     className="fab-no-results__btn"
-                                    onClick={handleCreateMissing}
+                                    onClick={handleCreateMissingFromScratch}
                                 >
                                     <FontAwesomeIcon icon={faPenNib} />
                                     <span>{tr("Create a missing book", "Créer un livre manquant")}</span>

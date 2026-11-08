@@ -3,7 +3,7 @@ import { useLocation } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import AddBookToLibraryModal from "./AddBookToLibraryModal.tsx";
-import CreateMissingBookModal from "./CreateMissingBookModal.tsx";
+import CreateMissingBookModal, { InitialBookData } from "./CreateMissingBookModal.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import "./FloatingActionButton.scss";
 
@@ -14,11 +14,11 @@ export default function FloatingActionButton() {
 
     const [addModalOpen, setAddModalOpen] = useState(false);
     const [createModalOpen, setCreateModalOpen] = useState(false);
-    const [initialTitle, setInitialTitle] = useState("");
+    const [initialData, setInitialData] = useState<InitialBookData | string | undefined>(undefined);
 
-    const handleOpenCreateModal = (title?: string) => {
+    const handleOpenCreateModal = (data?: InitialBookData | string) => {
         setAddModalOpen(false);
-        setInitialTitle(title || "");
+        setInitialData(data);
         setCreateModalOpen(true);
     };
 
@@ -55,7 +55,7 @@ export default function FloatingActionButton() {
             <CreateMissingBookModal
                 open={createModalOpen}
                 onClose={() => setCreateModalOpen(false)}
-                initialTitle={initialTitle}
+                initialData={initialData}
             />
         </>
     );

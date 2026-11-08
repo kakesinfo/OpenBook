@@ -18,13 +18,21 @@ import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import BookDTO from "../../dto/Book.dto.ts";
 
+export interface InitialBookData {
+    title?: string;
+    isbn?: string;
+    price?: number | null;
+    coverUrl?: string | null;
+}
+
 interface Props {
     open: boolean;
     onClose: () => void;
+    initialData?: InitialBookData | string;
     initialTitle?: string;
 }
 
-export default function CreateMissingBookModal({ open, onClose, initialTitle }: Props) {
+export default function CreateMissingBookModal({ open, onClose, initialData, initialTitle }: Props) {
     const session = useSession();
     const { tr } = useLanguage();
     const navigate = useNavigate();
@@ -50,11 +58,27 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
     useEffect(() => {
         if (!open) return;
 
-        setTitle(initialTitle || "");
-        setIsbn("");
-        setPrice("");
+        let resolvedTitle = initialTitle || "";
+        let resolvedIsbn = "";
+        let resolvedPrice = "";
+        let resolvedCoverUrl = "";
+
+        if (initialData) {
+            if (typeof initialData === "string") {
+                resolvedTitle = initialData;
+            } else {
+                resolvedTitle = initialData.title || "";
+                resolvedIsbn = initialData.isbn || "";
+                resolvedPrice = initialData.price != null ? String(initialData.price) : "";
+                resolvedCoverUrl = initialData.coverUrl || "";
+            }
+        }
+
+        setTitle(resolvedTitle);
+        setIsbn(resolvedIsbn);
+        setPrice(resolvedPrice);
         setCoverMode("url");
-        setCoverUrl("");
+        setCoverUrl(resolvedCoverUrl);
         setCoverFile(null);
         setFilePreview(null);
         setSubmitting(false);
@@ -62,7 +86,7 @@ export default function CreateMissingBookModal({ open, onClose, initialTitle }: 
         setTimeout(() => {
             titleInputRef.current?.focus();
         }, 120);
-    }, [open, initialTitle]);
+    }, [open, initialData, initialTitle]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
