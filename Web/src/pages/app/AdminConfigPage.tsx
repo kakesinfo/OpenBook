@@ -18,6 +18,7 @@ import { enqueueSnackbar } from "notistack";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { AdminConfigurationDTO } from "../../dto/AdminConfiguration.dto.ts";
+import SearchableSelect from "../../components/FloatingActionButton/SearchableSelect.tsx";
 import "./AdminConfigPage.scss";
 
 type CronPresetMode = "daily" | "interval_hours" | "weekly" | "monthly" | "custom";
@@ -569,35 +570,41 @@ export default function AdminConfigPage() {
                                         <div className="admin-config-dialog__visual-row">
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-hour">{tr("Hour", "Heure")}</label>
-                                                <select
+                                                <SearchableSelect
                                                     id="cron-hour"
-                                                    value={cronHour}
-                                                    onChange={(e) => {
-                                                        const h = parseInt(e.target.value, 10);
+                                                    value={String(cronHour)}
+                                                    onChange={(val) => {
+                                                        const h = parseInt(val, 10);
                                                         setCronHour(h);
                                                         updateCronFromPreset("daily", h, cronMinute, cronIntervalHours, cronDayOfWeek, cronDayOfMonth);
                                                     }}
-                                                >
-                                                    {Array.from({ length: 24 }, (_, i) => (
-                                                        <option key={i} value={i}>{pad2(i)} h</option>
-                                                    ))}
-                                                </select>
+                                                    options={Array.from({ length: 24 }, (_, i) => ({
+                                                        label: `${pad2(i)} h`,
+                                                        value: String(i)
+                                                    }))}
+                                                    allowEmpty={false}
+                                                    allowCustom={false}
+                                                    searchable={false}
+                                                />
                                             </div>
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-minute">{tr("Minute", "Minute")}</label>
-                                                <select
+                                                <SearchableSelect
                                                     id="cron-minute"
-                                                    value={cronMinute}
-                                                    onChange={(e) => {
-                                                        const m = parseInt(e.target.value, 10);
+                                                    value={String(cronMinute)}
+                                                    onChange={(val) => {
+                                                        const m = parseInt(val, 10);
                                                         setCronMinute(m);
                                                         updateCronFromPreset("daily", cronHour, m, cronIntervalHours, cronDayOfWeek, cronDayOfMonth);
                                                     }}
-                                                >
-                                                    {Array.from({ length: 60 }, (_, i) => (
-                                                        <option key={i} value={i}>{pad2(i)} min</option>
-                                                    ))}
-                                                </select>
+                                                    options={Array.from({ length: 60 }, (_, i) => ({
+                                                        label: `${pad2(i)} min`,
+                                                        value: String(i)
+                                                    }))}
+                                                    allowEmpty={false}
+                                                    allowCustom={false}
+                                                    searchable={false}
+                                                />
                                             </div>
                                         </div>
                                     )}
@@ -606,37 +613,41 @@ export default function AdminConfigPage() {
                                         <div className="admin-config-dialog__visual-row">
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-interval">{tr("Interval", "Intervalle")}</label>
-                                                <select
+                                                <SearchableSelect
                                                     id="cron-interval"
-                                                    value={cronIntervalHours}
-                                                    onChange={(e) => {
-                                                        const iv = parseInt(e.target.value, 10);
+                                                    value={String(cronIntervalHours)}
+                                                    onChange={(val) => {
+                                                        const iv = parseInt(val, 10);
                                                         setCronIntervalHours(iv);
                                                         updateCronFromPreset("interval_hours", cronHour, cronMinute, iv, cronDayOfWeek, cronDayOfMonth);
                                                     }}
-                                                >
-                                                    {[1, 2, 3, 4, 6, 8, 12].map((h) => (
-                                                        <option key={h} value={h}>
-                                                            {tr(`Every ${h} hour(s)`, `Toutes les ${h} heure(s)`)}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                    options={[1, 2, 3, 4, 6, 8, 12].map((h) => ({
+                                                        label: tr(`Every ${h} hour(s)`, `Toutes les ${h} heure(s)`),
+                                                        value: String(h)
+                                                    }))}
+                                                    allowEmpty={false}
+                                                    allowCustom={false}
+                                                    searchable={false}
+                                                />
                                             </div>
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-interval-min">{tr("At minute", "À la minute")}</label>
-                                                <select
+                                                <SearchableSelect
                                                     id="cron-interval-min"
-                                                    value={cronMinute}
-                                                    onChange={(e) => {
-                                                        const m = parseInt(e.target.value, 10);
+                                                    value={String(cronMinute)}
+                                                    onChange={(val) => {
+                                                        const m = parseInt(val, 10);
                                                         setCronMinute(m);
                                                         updateCronFromPreset("interval_hours", cronHour, m, cronIntervalHours, cronDayOfWeek, cronDayOfMonth);
                                                     }}
-                                                >
-                                                    {[0, 15, 30, 45].map((m) => (
-                                                        <option key={m} value={m}>{pad2(m)} min</option>
-                                                    ))}
-                                                </select>
+                                                    options={[0, 15, 30, 45].map((m) => ({
+                                                        label: `${pad2(m)} min`,
+                                                        value: String(m)
+                                                    }))}
+                                                    allowEmpty={false}
+                                                    allowCustom={false}
+                                                    searchable={false}
+                                                />
                                             </div>
                                         </div>
                                     )}
@@ -645,51 +656,59 @@ export default function AdminConfigPage() {
                                         <div className="admin-config-dialog__visual-row admin-config-dialog__visual-row--three">
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-dow">{tr("Day", "Jour")}</label>
-                                                <select
+                                                <SearchableSelect
                                                     id="cron-dow"
                                                     value={cronDayOfWeek}
-                                                    onChange={(e) => {
-                                                        const d = e.target.value;
+                                                    onChange={(d) => {
                                                         setCronDayOfWeek(d);
                                                         updateCronFromPreset("weekly", cronHour, cronMinute, cronIntervalHours, d, cronDayOfMonth);
                                                     }}
-                                                >
-                                                    {DAYS_OF_WEEK.map((d) => (
-                                                        <option key={d.value} value={d.value}>{tr(d.en, d.fr)}</option>
-                                                    ))}
-                                                </select>
+                                                    options={DAYS_OF_WEEK.map((d) => ({
+                                                        label: tr(d.en, d.fr),
+                                                        value: d.value
+                                                    }))}
+                                                    allowEmpty={false}
+                                                    allowCustom={false}
+                                                    searchable={false}
+                                                />
                                             </div>
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-weekly-hour">{tr("Hour", "Heure")}</label>
-                                                <select
+                                                <SearchableSelect
                                                     id="cron-weekly-hour"
-                                                    value={cronHour}
-                                                    onChange={(e) => {
-                                                        const h = parseInt(e.target.value, 10);
+                                                    value={String(cronHour)}
+                                                    onChange={(val) => {
+                                                        const h = parseInt(val, 10);
                                                         setCronHour(h);
                                                         updateCronFromPreset("weekly", h, cronMinute, cronIntervalHours, cronDayOfWeek, cronDayOfMonth);
                                                     }}
-                                                >
-                                                    {Array.from({ length: 24 }, (_, i) => (
-                                                        <option key={i} value={i}>{pad2(i)} h</option>
-                                                    ))}
-                                                </select>
+                                                    options={Array.from({ length: 24 }, (_, i) => ({
+                                                        label: `${pad2(i)} h`,
+                                                        value: String(i)
+                                                    }))}
+                                                    allowEmpty={false}
+                                                    allowCustom={false}
+                                                    searchable={false}
+                                                />
                                             </div>
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-weekly-min">{tr("Minute", "Minute")}</label>
-                                                <select
+                                                <SearchableSelect
                                                     id="cron-weekly-min"
-                                                    value={cronMinute}
-                                                    onChange={(e) => {
-                                                        const m = parseInt(e.target.value, 10);
+                                                    value={String(cronMinute)}
+                                                    onChange={(val) => {
+                                                        const m = parseInt(val, 10);
                                                         setCronMinute(m);
                                                         updateCronFromPreset("weekly", cronHour, m, cronIntervalHours, cronDayOfWeek, cronDayOfMonth);
                                                     }}
-                                                >
-                                                    {Array.from({ length: 60 }, (_, i) => (
-                                                        <option key={i} value={i}>{pad2(i)} min</option>
-                                                    ))}
-                                                </select>
+                                                    options={Array.from({ length: 60 }, (_, i) => ({
+                                                        label: `${pad2(i)} min`,
+                                                        value: String(i)
+                                                    }))}
+                                                    allowEmpty={false}
+                                                    allowCustom={false}
+                                                    searchable={false}
+                                                />
                                             </div>
                                         </div>
                                     )}
@@ -698,51 +717,60 @@ export default function AdminConfigPage() {
                                         <div className="admin-config-dialog__visual-row admin-config-dialog__visual-row--three">
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-dom">{tr("Day of month", "Jour du mois")}</label>
-                                                <select
+                                                <SearchableSelect
                                                     id="cron-dom"
-                                                    value={cronDayOfMonth}
-                                                    onChange={(e) => {
-                                                        const dom = parseInt(e.target.value, 10);
+                                                    value={String(cronDayOfMonth)}
+                                                    onChange={(val) => {
+                                                        const dom = parseInt(val, 10);
                                                         setCronDayOfMonth(dom);
                                                         updateCronFromPreset("monthly", cronHour, cronMinute, cronIntervalHours, cronDayOfWeek, dom);
                                                     }}
-                                                >
-                                                    {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => (
-                                                        <option key={d} value={d}>{d}</option>
-                                                    ))}
-                                                </select>
+                                                    options={Array.from({ length: 28 }, (_, i) => ({
+                                                        label: String(i + 1),
+                                                        value: String(i + 1)
+                                                    }))}
+                                                    allowEmpty={false}
+                                                    allowCustom={false}
+                                                    searchable={false}
+                                                />
                                             </div>
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-monthly-hour">{tr("Hour", "Heure")}</label>
-                                                <select
+                                                <SearchableSelect
                                                     id="cron-monthly-hour"
-                                                    value={cronHour}
-                                                    onChange={(e) => {
-                                                        const h = parseInt(e.target.value, 10);
+                                                    value={String(cronHour)}
+                                                    onChange={(val) => {
+                                                        const h = parseInt(val, 10);
                                                         setCronHour(h);
                                                         updateCronFromPreset("monthly", h, cronMinute, cronIntervalHours, cronDayOfWeek, cronDayOfMonth);
                                                     }}
-                                                >
-                                                    {Array.from({ length: 24 }, (_, i) => (
-                                                        <option key={i} value={i}>{pad2(i)} h</option>
-                                                    ))}
-                                                </select>
+                                                    options={Array.from({ length: 24 }, (_, i) => ({
+                                                        label: `${pad2(i)} h`,
+                                                        value: String(i)
+                                                    }))}
+                                                    allowEmpty={false}
+                                                    allowCustom={false}
+                                                    searchable={false}
+                                                />
                                             </div>
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-monthly-min">{tr("Minute", "Minute")}</label>
-                                                <select
+                                                <SearchableSelect
                                                     id="cron-monthly-min"
-                                                    value={cronMinute}
-                                                    onChange={(e) => {
-                                                        const m = parseInt(e.target.value, 10);
+                                                    value={String(cronMinute)}
+                                                    onChange={(val) => {
+                                                        const m = parseInt(val, 10);
                                                         setCronMinute(m);
                                                         updateCronFromPreset("monthly", cronHour, m, cronIntervalHours, cronDayOfWeek, cronDayOfMonth);
                                                     }}
-                                                >
-                                                    {Array.from({ length: 60 }, (_, i) => (
-                                                        <option key={i} value={i}>{pad2(i)} min</option>
-                                                    ))}
-                                                </select>
+                                                    options={Array.from({ length: 60 }, (_, i) => ({
+                                                        label: `${pad2(i)} min`,
+                                                        value: String(i)
+                                                    }))}
+                                                    allowEmpty={false}
+                                                    allowCustom={false}
+                                                    searchable={false}
+                                                />
                                             </div>
                                         </div>
                                     )}
