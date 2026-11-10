@@ -11,8 +11,7 @@ import {
     faClock,
     faHashtag,
     faToggleOn,
-    faFont,
-    faInfoCircle
+    faFont
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
@@ -125,7 +124,6 @@ export default function AdminConfigPage() {
     const [cronIntervalHours, setCronIntervalHours] = useState<number>(6);
     const [cronDayOfWeek, setCronDayOfWeek] = useState<string>("1");
     const [cronDayOfMonth, setCronDayOfMonth] = useState<number>(1);
-    const [cronFields, setCronFields] = useState<[string, string, string, string, string, string]>(["0", "0", "3", "*", "*", "*"]);
 
     const fetchConfigs = useCallback(async (quiet = false) => {
         if (!quiet) setLoading(true);
@@ -164,8 +162,6 @@ export default function AdminConfigPage() {
                 : rawParts.length === 5
                     ? ["0", rawParts[0], rawParts[1], rawParts[2], rawParts[3], rawParts[4]]
                     : ["0", "0", "3", "*", "*", "*"];
-
-        setCronFields(parts);
 
         const [sec, min, hour, dom, month, dow] = parts;
         const minNum = /^\d+$/.test(min) ? Math.min(59, Math.max(0, parseInt(min, 10))) : 0;
@@ -230,27 +226,6 @@ export default function AdminConfigPage() {
 
         if (mode !== "custom") {
             setEditValue(newCron);
-            const p = newCron.split(" ");
-            if (p.length === 6) {
-                setCronFields([p[0], p[1], p[2], p[3], p[4], p[5]]);
-            }
-        }
-    };
-
-    const handleCronFieldChange = (index: number, val: string) => {
-        const next: [string, string, string, string, string, string] = [...cronFields] as [string, string, string, string, string, string];
-        next[index] = val.trim() || "*";
-        setCronFields(next);
-        setEditValue(next.join(" "));
-    };
-
-    const handleRawCronChange = (raw: string) => {
-        setEditValue(raw);
-        const parts = raw.trim().replace(/\s+/g, " ").split(" ");
-        if (parts.length === 6) {
-            setCronFields([parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]]);
-        } else if (parts.length === 5) {
-            setCronFields(["0", parts[0], parts[1], parts[2], parts[3], parts[4]]);
         }
     };
 
@@ -550,14 +525,8 @@ export default function AdminConfigPage() {
                         <div className="admin-config-dialog__header">
                             <h3 className="admin-config-dialog__title">
                                 <FontAwesomeIcon icon={getTypeIcon(editingConfig.valueType)} />
-                                <span>{tr("Edit Configuration", "Modifier la configuration")}</span>
+                                <span>{editingConfig.key}</span>
                             </h3>
-                            <div className="admin-config-dialog__meta">
-                                <code className="admin-config-dialog__key">{editingConfig.key}</code>
-                                <span className={`admin-config__type-badge admin-config__type-badge--${editingConfig.valueType.toLowerCase()}`}>
-                                    {editingConfig.valueType}
-                                </span>
-                            </div>
                             {editingConfig.description && (
                                 <p className="admin-config-dialog__desc">{editingConfig.description}</p>
                             )}
@@ -569,15 +538,15 @@ export default function AdminConfigPage() {
                                 <div className="admin-config-dialog__cron-editor">
                                     {/* Frequency Mode Tabs */}
                                     <div className="admin-config-dialog__field">
-                                        <label>{tr("Schedule Frequency", "Fréquence de planification")}</label>
+                                        <label>{tr("Frequency", "Fréquence")}</label>
                                         <div className="admin-config-dialog__mode-tabs">
                                             {(
                                                 [
                                                     { id: "daily", fr: "Quotidien", en: "Daily" },
                                                     { id: "interval_hours", fr: "Toutes les X h", en: "Every X hrs" },
-                                                    { id: "weekly", fr: "Hebdomadaire", en: "Weekly" },
+                                                    { id: "weekly", fr: "Hebdo", en: "Weekly" },
                                                     { id: "monthly", fr: "Mensuel", en: "Monthly" },
-                                                    { id: "custom", fr: "Personnalisé", en: "Custom" }
+                                                    { id: "custom", fr: "CRON libre", en: "Custom CRON" }
                                                 ] as { id: CronPresetMode; fr: string; en: string }[]
                                             ).map((tab) => (
                                                 <button
@@ -599,7 +568,7 @@ export default function AdminConfigPage() {
                                     {cronMode === "daily" && (
                                         <div className="admin-config-dialog__visual-row">
                                             <div className="admin-config-dialog__field">
-                                                <label htmlFor="cron-hour">{tr("Hour (0-23)", "Heure (0-23)")}</label>
+                                                <label htmlFor="cron-hour">{tr("Hour", "Heure")}</label>
                                                 <select
                                                     id="cron-hour"
                                                     value={cronHour}
@@ -615,7 +584,7 @@ export default function AdminConfigPage() {
                                                 </select>
                                             </div>
                                             <div className="admin-config-dialog__field">
-                                                <label htmlFor="cron-minute">{tr("Minute (0-59)", "Minute (0-59)")}</label>
+                                                <label htmlFor="cron-minute">{tr("Minute", "Minute")}</label>
                                                 <select
                                                     id="cron-minute"
                                                     value={cronMinute}
@@ -636,7 +605,7 @@ export default function AdminConfigPage() {
                                     {cronMode === "interval_hours" && (
                                         <div className="admin-config-dialog__visual-row">
                                             <div className="admin-config-dialog__field">
-                                                <label htmlFor="cron-interval">{tr("Every N hours", "Toutes les N heures")}</label>
+                                                <label htmlFor="cron-interval">{tr("Interval", "Intervalle")}</label>
                                                 <select
                                                     id="cron-interval"
                                                     value={cronIntervalHours}
@@ -675,7 +644,7 @@ export default function AdminConfigPage() {
                                     {cronMode === "weekly" && (
                                         <div className="admin-config-dialog__visual-row admin-config-dialog__visual-row--three">
                                             <div className="admin-config-dialog__field">
-                                                <label htmlFor="cron-dow">{tr("Day of week", "Jour de la semaine")}</label>
+                                                <label htmlFor="cron-dow">{tr("Day", "Jour")}</label>
                                                 <select
                                                     id="cron-dow"
                                                     value={cronDayOfWeek}
@@ -779,52 +748,28 @@ export default function AdminConfigPage() {
                                     )}
 
                                     {cronMode === "custom" && (
-                                        <div className="admin-config-dialog__cron-segments">
-                                            {[
-                                                { idx: 0, label: tr("Sec", "Sec") },
-                                                { idx: 1, label: tr("Min", "Min") },
-                                                { idx: 2, label: tr("Hour", "Heure") },
-                                                { idx: 3, label: tr("Day", "Jour") },
-                                                { idx: 4, label: tr("Month", "Mois") },
-                                                { idx: 5, label: tr("WeekDay", "JourSem") }
-                                            ].map((seg) => (
-                                                <div key={seg.idx} className="admin-config-dialog__cron-segment">
-                                                    <span>{seg.label}</span>
-                                                    <input
-                                                        type="text"
-                                                        value={cronFields[seg.idx]}
-                                                        onChange={(e) => handleCronFieldChange(seg.idx, e.target.value)}
-                                                    />
-                                                </div>
-                                            ))}
+                                        <div className="admin-config-dialog__field">
+                                            <label htmlFor="cron-raw-input">
+                                                {tr("CRON Expression (sec min hour day month weekday)", "Expression CRON (sec min heure jour mois jour_semaine)")}
+                                            </label>
+                                            <input
+                                                id="cron-raw-input"
+                                                type="text"
+                                                className="admin-config-dialog__mono-input"
+                                                value={editValue}
+                                                onChange={(e) => setEditValue(e.target.value)}
+                                                placeholder="0 0 3 * * *"
+                                                required
+                                            />
                                         </div>
                                     )}
-
-                                    {/* Raw CRON expression input */}
-                                    <div className="admin-config-dialog__field">
-                                        <label htmlFor="cron-raw-input">
-                                            {tr("CRON Expression (sec min hour day month weekday)", "Expression CRON (sec min heure jour mois jour_semaine)")}
-                                        </label>
-                                        <input
-                                            id="cron-raw-input"
-                                            type="text"
-                                            className="admin-config-dialog__mono-input"
-                                            value={editValue}
-                                            onChange={(e) => {
-                                                setCronMode("custom");
-                                                handleRawCronChange(e.target.value);
-                                            }}
-                                            placeholder="0 0 3 * * *"
-                                            required
-                                        />
-                                    </div>
 
                                     {/* Human-readable preview */}
                                     <div className="admin-config-dialog__preview-box">
                                         <FontAwesomeIcon icon={faClock} />
                                         <div>
-                                            <strong>{tr("Preview:", "Aperçu :")}</strong>{" "}
-                                            <span>{describeCron(editValue, tr)}</span>
+                                            <strong>{describeCron(editValue, tr)}</strong>
+                                            <span> ({editValue})</span>
                                         </div>
                                     </div>
                                 </div>
@@ -883,31 +828,6 @@ export default function AdminConfigPage() {
                                         />
                                     </div>
                                 )}
-
-                            {/* Default value info bar */}
-                            <div className="admin-config-dialog__default-bar">
-                                <div className="admin-config-dialog__default-info">
-                                    <FontAwesomeIcon icon={faInfoCircle} />
-                                    <span>
-                                        {tr("Default value:", "Valeur par défaut :")} <code>{editingConfig.defaultValue}</code>
-                                    </span>
-                                </div>
-                                {editValue.trim() !== editingConfig.defaultValue && (
-                                    <button
-                                        type="button"
-                                        className="admin-config-dialog__use-default-btn"
-                                        onClick={() => {
-                                            setEditValue(editingConfig.defaultValue);
-                                            if (editingConfig.valueType === "CRON") {
-                                                parseCronIntoBuilder(editingConfig.defaultValue);
-                                            }
-                                        }}
-                                    >
-                                        <FontAwesomeIcon icon={faRotateLeft} />
-                                        <span>{tr("Use default", "Valeur par défaut")}</span>
-                                    </button>
-                                )}
-                            </div>
 
                             <div className="admin-config-dialog__actions">
                                 <button
