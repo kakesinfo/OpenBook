@@ -25,6 +25,7 @@ import AdminMaintenancePage from "./pages/app/AdminMaintenancePage.tsx";
 import AdminBackupsPage from "./pages/app/AdminBackupsPage.tsx";
 import AdminDeletedBooksPage from "./pages/app/AdminDeletedBooksPage.tsx";
 import AdminUsersPage from "./pages/app/AdminUsersPage.tsx";
+import AdminConfigPage from "./pages/app/AdminConfigPage.tsx";
 import StatisticsPage from "./pages/app/StatisticsPage.tsx";
 
 function ProtectedRoute({ redirectPath = "/login", children }: { redirectPath?: string, children: React.ReactNode }) {
@@ -176,6 +177,8 @@ export default function Routing() {
                 <Route path="admin/backups" element={<AdminOnlyRoute><AdminBackupsPage key={location.pathname}/></AdminOnlyRoute>} />
                 <Route path="admin/deleted-books" element={<AdminOnlyRoute><AdminDeletedBooksPage key={location.pathname}/></AdminOnlyRoute>} />
                 <Route path="admin/users" element={<AdminOnlyRoute><AdminUsersPage key={location.pathname}/></AdminOnlyRoute>} />
+                <Route path="admin/config" element={<AdminOnlyRoute><AdminConfigPage key={location.pathname}/></AdminOnlyRoute>} />
+                <Route path="admin/configuration" element={<AdminOnlyRoute><AdminConfigPage key={location.pathname}/></AdminOnlyRoute>} />
 
                 {/* Routes communes */}
                 <Route path="settings" element={<SettingsPage key={location.pathname}/>} />
