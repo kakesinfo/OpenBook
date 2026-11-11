@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
 import 'book.dart';
+import 'book_note.dart';
 import 'book_transaction.dart';
+import 'glossary_word.dart';
 import 'reading_session.dart';
 
 class BooksRepository {
@@ -241,7 +243,7 @@ class BooksRepository {
 
             if (cleanCoverUrl != null &&
                 cleanCoverUrl.isNotEmpty &&
-                (existing.first.coverUrl == null || existing.first.coverUrl!.isEmpty)) {
+                existing.first.coverUrl.isEmpty) {
               try {
                 await _apiClient.put(
                   '/books/$bookId/cover',
@@ -509,6 +511,206 @@ class BooksRepository {
     final response = await _apiClient.delete('/user/transactions/$transactionId');
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Impossible de supprimer la transaction: ${response.statusCode}');
+    }
+  }
+
+  // ----------------------------------------------------
+  // Catalog Books (for selecting any book in Notes / Glossary)
+  // ----------------------------------------------------
+  Future<List<Book>> getCatalogBooks() async {
+    try {
+      final response = await _apiClient.get('/books');
+      if (response.statusCode == 200) {
+        final list = jsonDecode(response.body) as List<dynamic>;
+        return list.map((item) => _bookFromSummary(item as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
+    return getAllBooks();
+  }
+
+  // ----------------------------------------------------
+  // Notes (/notes)
+  // ----------------------------------------------------
+  DateTime? _parseDateTime(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
+    if (raw is String && raw.isNotEmpty) {
+      return DateTime.tryParse(raw);
+    }
+    return null;
+  }
+
+  BookNote _noteFromMap(Map<String, dynamic> map) {
+    final bookData = map['book'] as Map<String, dynamic>?;
+    final book = bookData != null ? _bookFromSummary(bookData) : null;
+    final bookId = (map['bookId'] as num?)?.toInt() ?? book?.id ?? 0;
+
+    return BookNote(
+      id: (map['id'] as num?)?.toInt() ?? 0,
+      bookId: bookId,
+      content: map['content']?.toString() ?? '',
+      book: book,
+      username: map['username']?.toString(),
+      createdAt: _parseDateTime(map['createdAt']),
+      updatedAt: _parseDateTime(map['updatedAt']),
+    );
+  }
+
+  Future<List<BookNote>> getNotes({String? query}) async {
+    final cleanQuery = query?.trim() ?? '';
+    final path = cleanQuery.isEmpty
+        ? '/notes'
+        : '/notes?query=${Uri.encodeQueryComponent(cleanQuery)}';
+    final response = await _apiClient.get(path);
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors du chargement des notes (${response.statusCode})');
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((item) => _noteFromMap(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<BookNote?> getNoteByBookId(int bookId) async {
+    final response = await _apiClient.get('/notes/book/$bookId');
+    if (response.statusCode == 404) {
+      return null;
+    }
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors du chargement de la note (${response.statusCode})');
+    }
+    return _noteFromMap(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<BookNote> createNote({
+    required int bookId,
+    required String content,
+  }) async {
+    final response = await _apiClient.post(
+      '/notes',
+      body: {
+        'bookId': bookId,
+        'content': content.trim(),
+      },
+    );
+    if (response.statusCode == 409) {
+      throw Exception('Une note existe déjà pour ce livre.');
+    }
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Impossible de créer la note (${response.statusCode})');
+    }
+    return _noteFromMap(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<BookNote> updateNote({
+    required int id,
+    required String content,
+  }) async {
+    final response = await _apiClient.put(
+      '/notes/$id',
+      body: {
+        'content': content.trim(),
+      },
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Impossible de mettre à jour la note (${response.statusCode})');
+    }
+    return _noteFromMap(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<void> deleteNote(int id) async {
+    final response = await _apiClient.delete('/notes/$id');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Impossible de supprimer la note (${response.statusCode})');
+    }
+  }
+
+  // ----------------------------------------------------
+  // Glossary (/words)
+  // ----------------------------------------------------
+  GlossaryWord _wordFromMap(Map<String, dynamic> map) {
+    final rawBooks = map['books'] as List<dynamic>? ?? const [];
+    final books = rawBooks
+        .whereType<Map<String, dynamic>>()
+        .map(_bookFromSummary)
+        .toList();
+
+    return GlossaryWord(
+      id: (map['id'] as num?)?.toInt() ?? 0,
+      word: map['word']?.toString() ?? '',
+      definition: map['definition']?.toString() ?? '',
+      books: books,
+      createdAt: _parseDateTime(map['createdAt']),
+      updatedAt: _parseDateTime(map['updatedAt']),
+    );
+  }
+
+  Future<List<GlossaryWord>> getWords({String? query, int? bookId}) async {
+    final params = <String>[];
+    if (query != null && query.trim().isNotEmpty) {
+      params.add('query=${Uri.encodeQueryComponent(query.trim())}');
+    }
+    if (bookId != null) {
+      params.add('bookId=$bookId');
+    }
+    final path = params.isEmpty ? '/words' : '/words?${params.join('&')}';
+    final response = await _apiClient.get(path);
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors du chargement du glossaire (${response.statusCode})');
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((item) => _wordFromMap(item as Map<String, dynamic>)).toList();
+  }
+
+  Future<GlossaryWord> createWord({
+    required String word,
+    required String definition,
+    List<int> bookIds = const [],
+  }) async {
+    final response = await _apiClient.post(
+      '/words',
+      body: {
+        'word': word.trim(),
+        'definition': definition.trim(),
+        'bookIds': bookIds,
+      },
+    );
+    if (response.statusCode == 409) {
+      throw Exception('Ce mot existe déjà dans le glossaire.');
+    }
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Impossible d\'ajouter le mot (${response.statusCode})');
+    }
+    return _wordFromMap(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<GlossaryWord> updateWord({
+    required int id,
+    required String word,
+    required String definition,
+    List<int> bookIds = const [],
+  }) async {
+    final response = await _apiClient.put(
+      '/words/$id',
+      body: {
+        'word': word.trim(),
+        'definition': definition.trim(),
+        'bookIds': bookIds,
+      },
+    );
+    if (response.statusCode == 409) {
+      throw Exception('Un autre terme porte déjà ce nom dans le glossaire.');
+    }
+    if (response.statusCode != 200) {
+      throw Exception('Impossible de modifier le mot (${response.statusCode})');
+    }
+    return _wordFromMap(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<void> deleteWord(int id) async {
+    final response = await _apiClient.delete('/words/$id');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Impossible de supprimer le mot (${response.statusCode})');
     }
   }
 }

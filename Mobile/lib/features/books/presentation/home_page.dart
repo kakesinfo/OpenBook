@@ -12,11 +12,22 @@ import 'components/app_header.dart';
 import 'components/book_card.dart';
 import 'components/reading_streak_card.dart';
 import 'components/reading_timer_modal.dart';
+import 'glossary_page.dart';
+import 'notes_page.dart';
 import 'paused_books_page.dart';
 import 'reading_calendar_page.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
+
+  Future<void> _refreshAll(WidgetRef ref) async {
+    ref.invalidate(allReadingSessionsProvider);
+    await Future.wait([
+      ref.read(booksControllerProvider.notifier).reload(),
+      ref.read(notesControllerProvider.notifier).reload(),
+      ref.read(wordsControllerProvider.notifier).reload(),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,464 +36,683 @@ class HomePage extends ConsumerWidget {
     final pausedBooks = ref.watch(pausedBooksProvider);
     final abandonedBooks = ref.watch(abandonedBooksProvider);
     final wishlistBooks = ref.watch(wishlistBooksProvider);
+    final notesAsync = ref.watch(notesControllerProvider);
+    final wordsAsync = ref.watch(wordsControllerProvider);
+
+    final notes = notesAsync.value ?? const [];
+    final words = wordsAsync.value ?? const [];
+
     final viewportHeight = MediaQuery.of(context).size.height;
     final carouselHeight = (viewportHeight * 0.28).clamp(200.0, 245.0);
 
     return Scaffold(
       appBar: const AppHeader(
         title: 'Accueil',
-        subtitle: 'Lectures & Progression',
+        subtitle: 'Lectures, Carnet & Progression',
       ),
-      body: CustomScrollView(
-        slivers: [
-          // Stat cards
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: booksAsync.when(
-                loading: () => const _LoadingHero(),
-                error: (error, _) => _EmptyHero(
-                  title: 'Impossible de charger les données',
-                  subtitle: error.toString(),
-                ),
-                data: (books) {
-                  final totalBooks = books.where((book) => book.isOwned).length;
-                  final unreadBooks = books.where((book) => book.isOwned && book.isUnread).length;
+      body: RefreshIndicator(
+        color: AppTheme.accentPrimary,
+        onRefresh: () => _refreshAll(ref),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            // 1. Stat cards strip
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: booksAsync.when(
+                  loading: () => const _LoadingHero(),
+                  error: (error, _) => _EmptyHero(
+                    title: 'Impossible de charger les données',
+                    subtitle: error.toString(),
+                  ),
+                  data: (books) {
+                    final totalBooks = books.where((book) => book.isOwned).length;
+                    final unreadBooks =
+                        books.where((book) => book.isOwned && book.isUnread).length;
 
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          label: 'Collection',
-                          value: totalBooks.toString(),
-                          icon: Icons.collections_bookmark_rounded,
-                          accentColor: AppTheme.accentPrimary,
-                          lightBg: AppTheme.accentPrimaryLight,
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            label: 'Collection',
+                            value: totalBooks.toString(),
+                            icon: Icons.collections_bookmark_rounded,
+                            accentColor: AppTheme.accentPrimary,
+                            lightBg: AppTheme.accentPrimaryLight,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _StatCard(
+                            label: 'PAL',
+                            value: unreadBooks.toString(),
+                            icon: Icons.menu_book_rounded,
+                            accentColor: AppTheme.accentSecondary,
+                            lightBg: AppTheme.accentSecondaryLight,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _StatCard(
+                            label: 'En cours',
+                            value: readingBooks.length.toString(),
+                            icon: Icons.auto_stories_rounded,
+                            accentColor: AppTheme.accentAmber,
+                            lightBg: AppTheme.accentAmberLight,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _StatCard(
+                            label: 'Souhaits',
+                            value: wishlistBooks.length.toString(),
+                            icon: Icons.favorite_rounded,
+                            accentColor: AppTheme.accentRose,
+                            lightBg: AppTheme.accentRoseLight,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            // 2. Lectures en cours Section Header
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 22, 18, 10),
+              sliver: SliverToBoxAdapter(
+                child: _SectionHeader(
+                  title: 'Lectures en cours',
+                  badgeText: readingBooks.isNotEmpty ? '${readingBooks.length}' : null,
+                ),
+              ),
+            ),
+
+            // Lectures en cours Carousel
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: readingBooks.isEmpty
+                    ? const _EmptyHero(
+                        title: 'Aucune lecture en cours',
+                        subtitle:
+                            'Ajoute un livre et passe-le en statut « En cours » pour suivre tes progrès.',
+                      )
+                    : CarouselSlider(
+                        options: CarouselOptions(
+                          height: carouselHeight,
+                          viewportFraction: 1.0,
+                          enlargeCenterPage: true,
+                          padEnds: true,
+                          enableInfiniteScroll: false,
+                          scrollPhysics: const BouncingScrollPhysics(),
+                        ),
+                        items: readingBooks
+                            .map(
+                              (book) => Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: BookCard(
+                                  book: book,
+                                  onEdit: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => BookDetailsPage(book: book),
+                                    ),
+                                  ),
+                                  onRecordSession: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => BookReadingSessionPage(book: book),
+                                    ),
+                                  ),
+                                  onTimer: () => ReadingTimerModal.show(context, book),
+                                  onPause: () async {
+                                    await ref
+                                        .read(booksControllerProvider.notifier)
+                                        .updateBookStatus(book, BookStatus.paused);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('« ${book.title} » mis en pause'),
+                                          backgroundColor: AppTheme.accentPrimary,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+              ),
+            ),
+
+            // 3. Carnet & Références (Notes & Glossaire Bento Grid)
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(18, 20, 18, 10),
+              sliver: SliverToBoxAdapter(
+                child: _SectionHeader(
+                  title: 'Carnet & Lexique',
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _FeatureBentoCard(
+                        title: 'Notes',
+                        subtitle: notes.isEmpty
+                            ? 'Fiches de lecture'
+                            : '${notes.length} fiche${notes.length > 1 ? 's' : ''} de lecture',
+                        caption: notes.isNotEmpty && notes.first.book != null
+                            ? 'Récent : ${notes.first.book!.title}'
+                            : 'Une note par livre',
+                        count: notes.length,
+                        icon: Icons.sticky_note_2_rounded,
+                        accentColor: AppTheme.accentPrimary,
+                        lightBg: AppTheme.accentPrimaryLight,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const NotesPage(),
+                          ),
+                        ),
+                        onQuickAdd: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const NotesPage(initialCreate: true),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          label: 'PAL',
-                          value: unreadBooks.toString(),
-                          icon: Icons.menu_book_rounded,
-                          accentColor: AppTheme.accentSecondary,
-                          lightBg: AppTheme.accentSecondaryLight,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _FeatureBentoCard(
+                        title: 'Glossaire',
+                        subtitle: words.isEmpty
+                            ? 'Mots & définitions'
+                            : '${words.length} terme${words.length > 1 ? 's' : ''} défini${words.length > 1 ? 's' : ''}',
+                        caption: words.isNotEmpty
+                            ? 'Ex : ${words.first.word}'
+                            : 'Lié à vos lectures',
+                        count: words.length,
+                        icon: Icons.spellcheck_rounded,
+                        accentColor: AppTheme.accentSecondary,
+                        lightBg: AppTheme.accentSecondaryLight,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const GlossaryPage(),
+                          ),
+                        ),
+                        onQuickAdd: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const GlossaryPage(initialCreate: true),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          label: 'En cours',
-                          value: readingBooks.length.toString(),
-                          icon: Icons.auto_stories_rounded,
-                          accentColor: AppTheme.accentAmber,
-                          lightBg: AppTheme.accentAmberLight,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // 4. Rythme & Suivi (Série de lecture + Accès rapide Calendrier / Listes)
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(18, 22, 18, 10),
+              sliver: SliverToBoxAdapter(
+                child: _SectionHeader(
+                  title: 'Activité & Suivi',
+                ),
+              ),
+            ),
+            const SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: ReadingStreakCard(),
+              ),
+            ),
+
+            // Calendrier de lectures compact banner
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: _QuickNavRowTile(
+                  title: 'Calendrier de lectures',
+                  subtitle: 'Historique complet et sessions jour par jour',
+                  icon: Icons.calendar_month_rounded,
+                  accentColor: AppTheme.accentPrimary,
+                  lightBg: AppTheme.accentPrimaryLight,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ReadingCalendarPage(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // 5. En pause & Abandonnées (2-column compact Bento row)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _CompactStatusTile(
+                        title: 'En pause',
+                        subtitle: pausedBooks.isEmpty
+                            ? 'Aucun livre'
+                            : '${pausedBooks.length} livre${pausedBooks.length > 1 ? 's' : ''}',
+                        count: pausedBooks.length,
+                        icon: Icons.pause_circle_outline_rounded,
+                        accentColor: AppTheme.textSecondary,
+                        lightBg: AppTheme.bgElevated,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PausedBooksPage(),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          label: 'Souhaits',
-                          value: wishlistBooks.length.toString(),
-                          icon: Icons.favorite_rounded,
-                          accentColor: AppTheme.accentRose,
-                          lightBg: AppTheme.accentRoseLight,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _CompactStatusTile(
+                        title: 'Abandonnées',
+                        subtitle: abandonedBooks.isEmpty
+                            ? 'Aucun livre'
+                            : '${abandonedBooks.length} livre${abandonedBooks.length > 1 ? 's' : ''}',
+                        count: abandonedBooks.length,
+                        icon: Icons.do_not_disturb_on_outlined,
+                        accentColor: AppTheme.accentRed,
+                        lightBg: AppTheme.accentRedLight,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const AbandonedBooksPage(),
+                          ),
                         ),
                       ),
-                    ],
-                  );
-                },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 80)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    this.badgeText,
+  });
+
+  final String title;
+  final String? badgeText;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textPrimary,
+            letterSpacing: -0.01,
+          ),
+        ),
+        if (badgeText != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppTheme.accentPrimaryLight,
+              borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+              border: Border.all(
+                color: AppTheme.accentPrimary.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              badgeText!,
+              style: TextStyle(
+                color: AppTheme.accentPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          // Lectures en cours Section Header
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-            sliver: SliverToBoxAdapter(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Lectures en cours',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                      letterSpacing: -0.01,
-                    ),
-                  ),
-                  if (readingBooks.isNotEmpty)
+      ],
+    );
+  }
+}
+
+class _FeatureBentoCard extends StatelessWidget {
+  const _FeatureBentoCard({
+    required this.title,
+    required this.subtitle,
+    required this.caption,
+    required this.count,
+    required this.icon,
+    required this.accentColor,
+    required this.lightBg,
+    required this.onTap,
+    required this.onQuickAdd,
+  });
+
+  final String title;
+  final String subtitle;
+  final String caption;
+  final int count;
+  final IconData icon;
+  final Color accentColor;
+  final Color lightBg;
+  final VoidCallback onTap;
+  final VoidCallback onQuickAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.bgSurface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.borderSubtle, width: 1),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      width: 38,
+                      height: 38,
                       decoration: BoxDecoration(
-                        color: AppTheme.accentPrimaryLight,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                        color: lightBg,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
                         border: Border.all(
-                          color: AppTheme.accentPrimary.withValues(alpha: 0.3),
+                          color: accentColor.withValues(alpha: 0.28),
                           width: 1,
                         ),
                       ),
-                      child: Text(
-                        '${readingBooks.length}',
-                        style: TextStyle(
-                          color: AppTheme.accentPrimary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                      child: Center(
+                        child: Icon(icon, color: accentColor, size: 20),
+                      ),
+                    ),
+                    Material(
+                      color: AppTheme.bgElevated,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                        onTap: onQuickAdd,
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                            border: Border.all(color: AppTheme.borderSubtle),
+                          ),
+                          child: Icon(
+                            Icons.add_rounded,
+                            size: 17,
+                            color: accentColor,
+                          ),
                         ),
                       ),
                     ),
-                ],
-              ),
-            ),
-          ),
-          // Lectures en cours Carousel
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverToBoxAdapter(
-              child: readingBooks.isEmpty
-                  ? const _EmptyHero(
-                      title: 'Aucune lecture en cours',
-                      subtitle:
-                          'Ajoute un livre et passe-le en statut « En cours » pour suivre tes progrès.',
-                    )
-                  : CarouselSlider(
-                      options: CarouselOptions(
-                        height: carouselHeight,
-                        viewportFraction: 1.0,
-                        enlargeCenterPage: true,
-                        padEnds: true,
-                        enableInfiniteScroll: false,
-                        scrollPhysics: const BouncingScrollPhysics(),
-                      ),
-                      items: readingBooks
-                          .map(
-                            (book) => Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: BookCard(
-                                book: book,
-                                onEdit: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => BookDetailsPage(book: book),
-                                  ),
-                                ),
-                                onRecordSession: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => BookReadingSessionPage(book: book),
-                                  ),
-                                ),
-                                onTimer: () => ReadingTimerModal.show(context, book),
-                                onPause: () async {
-                                  await ref
-                                      .read(booksControllerProvider.notifier)
-                                      .updateBookStatus(book, BookStatus.paused);
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('« ${book.title} » mis en pause'),
-                                        backgroundColor: AppTheme.accentPrimary,
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-            ),
-          ),
-
-          // Bouton horizontal vers le Calendrier de lectures
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.bgSurface,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  border: Border.all(color: AppTheme.borderSubtle, width: 1),
+                  ],
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const ReadingCalendarPage(),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textPrimary,
+                          letterSpacing: -0.01,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: AppTheme.accentPrimaryLight,
-                              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.calendar_month_rounded,
-                                color: AppTheme.accentPrimary,
-                                size: 20,
-                              ),
-                            ),
+                    if (count > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: lightBg,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                        ),
+                        child: Text(
+                          '$count',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: accentColor,
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Calendrier de lectures',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Consulter l\'historique et les sessions par jour',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.textMuted,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: AppTheme.textMuted,
-                            size: 20,
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  caption,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickNavRowTile extends StatelessWidget {
+  const _QuickNavRowTile({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.accentColor,
+    required this.lightBg,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color accentColor;
+  final Color lightBg;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.bgSurface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.borderSubtle, width: 1),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: lightBg,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  ),
+                  child: Center(
+                    child: Icon(icon, color: accentColor, size: 18),
                   ),
                 ),
-              ),
-            ),
-          ),
-
-          // Section Série de lecture (flammes de la semaine courante)
-          const SliverPadding(
-            padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: ReadingStreakCard(),
-            ),
-          ),
-
-          // Bouton horizontal vers la liste des lectures en pause
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.bgSurface,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  border: Border.all(color: AppTheme.borderSubtle, width: 1),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const PausedBooksPage(),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary,
+                        ),
                       ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: AppTheme.bgElevated,
-                              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.pause_circle_outline_rounded,
-                                color: AppTheme.textSecondary,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Lectures en pause',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  pausedBooks.isEmpty
-                                      ? 'Aucune lecture en pause'
-                                      : '${pausedBooks.length} livre${pausedBooks.length > 1 ? 's' : ''} en pause',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.textMuted,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (pausedBooks.isNotEmpty) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: AppTheme.bgElevated,
-                                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                                border: Border.all(
-                                  color: AppTheme.borderSubtle,
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                '${pausedBooks.length}',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: AppTheme.textMuted,
-                            size: 20,
-                          ),
-                        ],
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: AppTheme.textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
+                    ],
                   ),
                 ),
-              ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textMuted,
+                  size: 20,
+                ),
+              ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
 
-          // Bouton horizontal vers les Livres abandonnés
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            sliver: SliverToBoxAdapter(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.bgSurface,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  border: Border.all(color: AppTheme.borderSubtle, width: 1),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const AbandonedBooksPage(),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: AppTheme.accentRedLight,
-                              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.do_not_disturb_on_outlined,
-                                color: AppTheme.accentRed,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Lectures abandonnées',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  abandonedBooks.isEmpty
-                                      ? 'Aucune lecture abandonnée'
-                                      : '${abandonedBooks.length} lecture${abandonedBooks.length > 1 ? 's' : ''} abandonnée${abandonedBooks.length > 1 ? 's' : ''}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppTheme.textMuted,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (abandonedBooks.isNotEmpty) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: AppTheme.accentRedLight,
-                                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                                border: Border.all(
-                                  color: AppTheme.accentRed.withValues(alpha: 0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                '${abandonedBooks.length}',
-                                style: TextStyle(
-                                  color: AppTheme.accentRed,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: AppTheme.textMuted,
-                            size: 20,
-                          ),
-                        ],
-                      ),
-                    ),
+class _CompactStatusTile extends StatelessWidget {
+  const _CompactStatusTile({
+    required this.title,
+    required this.subtitle,
+    required this.count,
+    required this.icon,
+    required this.accentColor,
+    required this.lightBg,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final int count;
+  final IconData icon;
+  final Color accentColor;
+  final Color lightBg;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.bgSurface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.borderSubtle, width: 1),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: lightBg,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                  ),
+                  child: Center(
+                    child: Icon(icon, color: accentColor, size: 18),
                   ),
                 ),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textMuted,
+                  size: 18,
+                ),
+              ],
             ),
           ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 80)),
-        ],
+        ),
       ),
     );
   }

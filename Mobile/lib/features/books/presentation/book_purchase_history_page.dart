@@ -6,6 +6,7 @@ import '../application/books_providers.dart';
 import '../data/book.dart';
 import '../data/book_transaction.dart';
 import 'components/add_book_purchase_sheet.dart';
+import 'components/app_header.dart';
 
 class BookPurchaseHistoryPage extends ConsumerWidget {
   const BookPurchaseHistoryPage({
@@ -92,7 +93,15 @@ class BookPurchaseHistoryPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (book.id == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Historique d\'achat')),
+        appBar: AppHeader(
+          title: 'Historique d\'achat',
+          showLogo: false,
+          leading: IconButton(
+            tooltip: 'Retour',
+            icon: Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
         body: const Center(child: Text('Identifiant d\'album introuvable')),
       );
     }
@@ -100,8 +109,15 @@ class BookPurchaseHistoryPage extends ConsumerWidget {
     final txsAsync = ref.watch(bookTransactionsProvider(book.id!));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Historique d\'achat'),
+      appBar: AppHeader(
+        title: 'Historique d\'achat',
+        subtitle: book.title,
+        showLogo: false,
+        leading: IconButton(
+          tooltip: 'Retour',
+          icon: Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppTheme.accentPrimary,

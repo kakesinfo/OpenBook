@@ -103,13 +103,7 @@ class BookCard extends ConsumerWidget {
               gradient: AppTheme.cardGradient,
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
               border: Border.all(color: AppTheme.borderSubtle, width: 1),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x66000000),
-                  blurRadius: 16,
-                  offset: Offset(0, 6),
-                ),
-              ],
+              boxShadow: AppTheme.cardShadow,
             ),
             child: Material(
               color: Colors.transparent,

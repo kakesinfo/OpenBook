@@ -6,6 +6,7 @@ out/
 
 *.iml
 *.bookmory
+*.zip
 
 .DS_Store
 Cache/
