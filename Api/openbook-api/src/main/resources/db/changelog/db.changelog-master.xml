@@ -1637,4 +1637,128 @@
             <column name="updated_at" valueComputed="NOW()" />
         </insert>
     </changeSet>
+
+    <changeSet id="42" author="Axel">
+        <!-- Table notes (une note par livre) -->
+        <createTable tableName="notes">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+            <column name="book_id" type="integer">
+                <constraints nullable="false" unique="true" />
+            </column>
+            <column name="user_id" type="integer">
+                <constraints nullable="true" />
+            </column>
+            <column name="content" type="text">
+                <constraints nullable="false" />
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="notes" indexName="idx_notes_book_id">
+            <column name="book_id" />
+        </createIndex>
+
+        <addForeignKeyConstraint
+            constraintName="fk_notes_book_id"
+            baseTableName="notes"
+            baseColumnNames="book_id"
+            referencedTableName="book"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="RESTRICT"
+        />
+
+        <addForeignKeyConstraint
+            constraintName="fk_notes_user_id"
+            baseTableName="notes"
+            baseColumnNames="user_id"
+            referencedTableName="user"
+            referencedColumnNames="id"
+            onDelete="SET NULL"
+            onUpdate="RESTRICT"
+        />
+
+        <!-- Table word -->
+        <createTable tableName="word">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+            <column name="word" type="varchar(255)">
+                <constraints nullable="false" unique="true" />
+            </column>
+            <column name="definition" type="text">
+                <constraints nullable="false" />
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="word" indexName="idx_word_word">
+            <column name="word" />
+        </createIndex>
+
+        <!-- Table book_has_word (book_id, word_id) -->
+        <createTable tableName="book_has_word">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+            <column name="book_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="word_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="book_has_word" indexName="idx_book_has_word_book_id">
+            <column name="book_id" />
+        </createIndex>
+
+        <createIndex tableName="book_has_word" indexName="idx_book_has_word_word_id">
+            <column name="word_id" />
+        </createIndex>
+
+        <addForeignKeyConstraint
+            constraintName="fk_book_has_word_book_id"
+            baseTableName="book_has_word"
+            baseColumnNames="book_id"
+            referencedTableName="book"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="RESTRICT"
+        />
+
+        <addForeignKeyConstraint
+            constraintName="fk_book_has_word_word_id"
+            baseTableName="book_has_word"
+            baseColumnNames="word_id"
+            referencedTableName="word"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="RESTRICT"
+        />
+
+        <addUniqueConstraint
+            constraintName="uk_book_has_word_book_id_word_id"
+            tableName="book_has_word"
+            columnNames="book_id, word_id"
+        />
+    </changeSet>
 </databaseChangeLog>
