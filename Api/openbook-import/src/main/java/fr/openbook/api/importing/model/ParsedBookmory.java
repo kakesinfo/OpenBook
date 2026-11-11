@@ -20,6 +20,8 @@ public class ParsedBookmory implements AutoCloseable {
     private Map<String, String> illustrators = new HashMap<>();  // key -> name
     private Map<String, String> tags = new HashMap<>();          // key -> name
     private Map<String, List<String>> bookTags = new HashMap<>();// book key -> list of tag names
+    private List<BookmoryNote> notes = new ArrayList<>();
+    private Map<String, List<BookmoryNote>> bookNotes = new HashMap<>(); // book key (bid) -> list of notes
     private Map<String, ZipEntry> zipImages = new HashMap<>();   // basename -> zip entry
 
     private Path tempDir;

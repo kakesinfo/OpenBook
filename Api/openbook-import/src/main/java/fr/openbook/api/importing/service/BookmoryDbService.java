@@ -3,6 +3,7 @@ package fr.openbook.api.importing.service;
 import fr.openbook.api.entities.AuthorEntity;
 import fr.openbook.api.services.AuthorDeduplicationService;
 import fr.openbook.api.importing.model.BookmoryBook;
+import fr.openbook.api.importing.model.BookmoryNote;
 import fr.openbook.api.importing.model.BookmoryPurchase;
 import fr.openbook.api.importing.model.BookmoryReadTimer;
 import fr.openbook.api.importing.model.ExistingBook;
@@ -543,6 +544,103 @@ public class BookmoryDbService {
             return true;
         } catch (Exception ex) {
             log.warn("Failed to insert reading start session for user {} book {}: {}", userId, bookId, ex.getMessage());
+            return false;
+        }
+    }
+
+    public boolean importBookNote(Long userId, Long bookId, List<BookmoryNote> notesForBook, List<String> readComments) {
+        if (bookId == null) {
+            return false;
+        }
+
+        List<String> segments = new ArrayList<>();
+        Instant earliestCreated = null;
+        Instant latestUpdated = null;
+
+        if (notesForBook != null) {
+            for (BookmoryNote n : notesForBook) {
+                if (n == null) continue;
+                String text = n.getParsedContent() != null ? n.getParsedContent().trim() : "";
+                if (!text.isEmpty() && !segments.contains(text)) {
+                    segments.add(text);
+                }
+                if (n.getCreatedAt() != null && n.getCreatedAt() > 0) {
+                    Instant c = Instant.ofEpochMilli(n.getCreatedAt());
+                    if (earliestCreated == null || c.isBefore(earliestCreated)) {
+                        earliestCreated = c;
+                    }
+                    if (latestUpdated == null || c.isAfter(latestUpdated)) {
+                        latestUpdated = c;
+                    }
+                }
+                if (n.getUpdatedAt() != null && n.getUpdatedAt() > 0) {
+                    Instant u = Instant.ofEpochMilli(n.getUpdatedAt());
+                    if (latestUpdated == null || u.isAfter(latestUpdated)) {
+                        latestUpdated = u;
+                    }
+                }
+            }
+        }
+
+        if (readComments != null) {
+            for (String rc : readComments) {
+                if (rc == null) continue;
+                String trimmed = rc.trim();
+                if (!trimmed.isEmpty() && !segments.contains(trimmed)) {
+                    segments.add(trimmed);
+                }
+            }
+        }
+
+        if (segments.isEmpty()) {
+            return false;
+        }
+
+        String combinedContent = String.join("\n\n---\n\n", segments);
+        Instant createdAt = earliestCreated != null ? earliestCreated : Instant.now();
+        Instant updatedAt = latestUpdated != null ? latestUpdated : createdAt;
+        Long validUserId = (userId != null && userId > 0) ? userId : null;
+
+        try {
+            Map<String, Object> existingRow = jdbcTemplate.queryForMap(
+                    "SELECT id, content FROM notes WHERE book_id = ? LIMIT 1",
+                    bookId
+            );
+            Long noteId = ((Number) existingRow.get("id")).longValue();
+            String existingContent = existingRow.get("content") != null
+                    ? existingRow.get("content").toString().trim()
+                    : "";
+
+            if (existingContent.contains(combinedContent)) {
+                return false;
+            }
+
+            String mergedContent;
+            if (existingContent.isEmpty() || combinedContent.contains(existingContent)) {
+                mergedContent = combinedContent;
+            } else {
+                mergedContent = existingContent + "\n\n---\n\n" + combinedContent;
+            }
+
+            jdbcTemplate.update(
+                    "UPDATE notes SET content = ?, user_id = COALESCE(user_id, ?), updated_at = ? WHERE id = ?",
+                    mergedContent, validUserId, Timestamp.from(updatedAt), noteId
+            );
+            return true;
+        } catch (EmptyResultDataAccessException ignored) {
+            // Note does not exist yet for this book; insert below
+        } catch (Exception ex) {
+            log.warn("Failed to check existing note for book {}: {}", bookId, ex.getMessage());
+        }
+
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO notes (book_id, user_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                    bookId, validUserId, combinedContent, Timestamp.from(createdAt), Timestamp.from(updatedAt)
+            );
+            return true;
+        } catch (Exception ex) {
+            log.warn("Failed to insert note for book {}: {}", bookId, ex.getMessage());
             return false;
         }
     }

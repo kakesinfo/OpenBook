@@ -3,6 +3,7 @@ package fr.openbook.api.importing.parser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.openbook.api.importing.model.BookmoryBook;
+import fr.openbook.api.importing.model.BookmoryNote;
 import fr.openbook.api.importing.model.ParsedBookmory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -17,8 +18,10 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -79,11 +82,12 @@ public class BookmoryZipParser {
             parsed.setIllustrators(readStoreMap(conn, "illustrators"));
 
             readTags(conn, parsed);
+            readNotes(conn, parsed);
             readBooks(conn, parsed);
         }
 
-        log.info("[Bookmory] Parsed {} books, {} series, {} publishers, {} collections, {} tags, {} images from archive",
-                parsed.getBooks().size(), parsed.getSeries().size(), parsed.getPublishers().size(),
+        log.info("[Bookmory] Parsed {} books, {} notes, {} series, {} publishers, {} collections, {} tags, {} images from archive",
+                parsed.getBooks().size(), parsed.getNotes().size(), parsed.getSeries().size(), parsed.getPublishers().size(),
                 parsed.getCollections().size(), parsed.getTags().size(), parsed.getZipImages().size());
 
         return parsed;
@@ -145,6 +149,62 @@ public class BookmoryZipParser {
         } catch (Exception ex) {
             log.warn("Error reading tags: {}", ex.getMessage());
         }
+    }
+
+    private void readNotes(Connection conn, ParsedBookmory parsed) {
+        String sql = "SELECT key, value FROM entry WHERE store = 'notes' AND (deleted IS NULL OR deleted = 0)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                String key = rs.getString("key");
+                String value = rs.getString("value");
+                if (value != null && !value.isBlank()) {
+                    try {
+                        BookmoryNote note = objectMapper.readValue(value, BookmoryNote.class);
+                        note.setKey(key);
+                        String text = extractQuillText(note.getContentQuill(), note.getContent());
+                        if (!text.isBlank() && note.getBid() != null && !note.getBid().isBlank()) {
+                            note.setParsedContent(text);
+                            parsed.getNotes().add(note);
+                            parsed.getBookNotes()
+                                    .computeIfAbsent(note.getBid().trim(), k -> new ArrayList<>())
+                                    .add(note);
+                        }
+                    } catch (Exception ex) {
+                        log.warn("[Bookmory] Failed to unmarshal note {}: {}", key, ex.getMessage());
+                    }
+                }
+            }
+            for (List<BookmoryNote> list : parsed.getBookNotes().values()) {
+                list.sort(Comparator.comparing(n -> n.getCreatedAt() != null ? n.getCreatedAt() : 0L));
+            }
+        } catch (Exception ex) {
+            log.warn("Error reading notes: {}", ex.getMessage());
+        }
+    }
+
+    public String extractQuillText(String contentQuill, String fallbackContent) {
+        if (contentQuill != null && !contentQuill.isBlank()) {
+            try {
+                JsonNode root = objectMapper.readTree(contentQuill);
+                if (root.isArray()) {
+                    StringBuilder sb = new StringBuilder();
+                    for (JsonNode op : root) {
+                        if (op.has("insert") && op.get("insert").isTextual()) {
+                            sb.append(op.get("insert").asText());
+                        }
+                    }
+                    String extracted = sb.toString().trim();
+                    if (!extracted.isBlank()) {
+                        return extracted;
+                    }
+                }
+            } catch (Exception ex) {
+                log.debug("Failed to parse content_quill as JSON array, using raw text: {}", ex.getMessage());
+                return contentQuill.trim();
+            }
+        }
+        return fallbackContent != null ? fallbackContent.trim() : "";
     }
 
     private void readBooks(Connection conn, ParsedBookmory parsed) throws Exception {

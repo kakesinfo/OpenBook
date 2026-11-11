@@ -62,6 +62,18 @@ public class BookmoryImportTest {
                     "\"reads\": [{\"nth\": 1, \"status\": \"DONE\", \"page\": 64, \"read_timer_list\": [{\"elapsed_sec\": 1800}]}]" +
                     "}";
             stmt.execute("INSERT INTO entry VALUES ('books', 'book_1', '" + bookJson.replace("'", "''") + "', 0)");
+
+            // Notes (store = 'notes')
+            String noteJson = "{" +
+                    "\"bid\": \"book_1\"," +
+                    "\"page\": 0.0," +
+                    "\"page_end\": 0.0," +
+                    "\"content_quill\": \"[{\\\"insert\\\":\\\"Une note importante sur The Killing Joke\\\\nDeuxième ligne\\\\n\\\"}]\"," +
+                    "\"type\": \"BOOK_CONTENT\"," +
+                    "\"created_at\": 1774595293188," +
+                    "\"updated_at\": 1774595293188" +
+                    "}";
+            stmt.execute("INSERT INTO entry VALUES ('notes', 'note_1', '" + noteJson.replace("'", "''") + "', 0)");
         }
 
         // 2. Package database and image into a ZIP file (.bookmory)
@@ -104,6 +116,11 @@ public class BookmoryImportTest {
             assertEquals(1, book.getReads().size());
             assertEquals(1, book.getReads().get(0).getReadTimerList().size());
             assertEquals(1800, book.getReads().get(0).getReadTimerList().get(0).getElapsedSec());
+
+            assertEquals(1, parsed.getNotes().size());
+            assertTrue(parsed.getBookNotes().containsKey("book_1"));
+            assertEquals(1, parsed.getBookNotes().get("book_1").size());
+            assertEquals("Une note importante sur The Killing Joke\nDeuxième ligne", parsed.getBookNotes().get("book_1").get(0).getParsedContent());
         }
     }
 }
