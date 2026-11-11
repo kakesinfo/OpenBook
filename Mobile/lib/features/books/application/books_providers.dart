@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../data/bnf_service.dart';
 import '../data/book.dart';
+import '../data/book_note.dart';
 import '../data/book_transaction.dart';
 import '../data/books_repository.dart';
 import '../data/cover_image_service.dart';
+import '../data/glossary_word.dart';
 import '../data/reading_session.dart';
 
 final bnfServiceProvider = Provider<BnfService>((ref) {
@@ -487,6 +489,144 @@ class BooksController extends AsyncNotifier<List<Book>> {
   }) async {
     await _repository.deleteBookTransaction(transactionId);
     ref.invalidate(bookTransactionsProvider(bookId));
+    await reload();
+  }
+}
+
+final selectableBooksProvider = FutureProvider<List<Book>>((ref) async {
+  final client = ref.watch(apiClientProvider);
+  if (!client.isInitialized || !client.isAuthenticated) {
+    return const <Book>[];
+  }
+  final userBooks = ref.watch(booksControllerProvider).value ?? const <Book>[];
+  final repository = ref.watch(booksRepositoryProvider);
+  final catalogBooks = await repository.getCatalogBooks();
+
+  final byId = <int, Book>{};
+  for (final b in catalogBooks) {
+    if (b.id != null) {
+      byId[b.id!] = b;
+    }
+  }
+  for (final b in userBooks) {
+    if (b.id != null) {
+      byId[b.id!] = b;
+    }
+  }
+
+  final merged = byId.values.toList()
+    ..sort((left, right) => left.title.toLowerCase().compareTo(right.title.toLowerCase()));
+  return merged;
+});
+
+final notesControllerProvider =
+    AsyncNotifierProvider<NotesController, List<BookNote>>(NotesController.new);
+
+class NotesController extends AsyncNotifier<List<BookNote>> {
+  BooksRepository get _repository => ref.read(booksRepositoryProvider);
+
+  @override
+  Future<List<BookNote>> build() async {
+    final client = ref.watch(apiClientProvider);
+    if (!client.isInitialized || !client.isAuthenticated) {
+      return const <BookNote>[];
+    }
+    return _repository.getNotes();
+  }
+
+  Future<void> reload() async {
+    try {
+      state = AsyncValue.data(await _repository.getNotes());
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  Future<BookNote> createNote({
+    required int bookId,
+    required String content,
+  }) async {
+    final created = await _repository.createNote(
+      bookId: bookId,
+      content: content,
+    );
+    await reload();
+    return created;
+  }
+
+  Future<BookNote> updateNote({
+    required int id,
+    required String content,
+  }) async {
+    final updated = await _repository.updateNote(
+      id: id,
+      content: content,
+    );
+    await reload();
+    return updated;
+  }
+
+  Future<void> deleteNote(int id) async {
+    await _repository.deleteNote(id);
+    await reload();
+  }
+}
+
+final wordsControllerProvider =
+    AsyncNotifierProvider<WordsController, List<GlossaryWord>>(WordsController.new);
+
+class WordsController extends AsyncNotifier<List<GlossaryWord>> {
+  BooksRepository get _repository => ref.read(booksRepositoryProvider);
+
+  @override
+  Future<List<GlossaryWord>> build() async {
+    final client = ref.watch(apiClientProvider);
+    if (!client.isInitialized || !client.isAuthenticated) {
+      return const <GlossaryWord>[];
+    }
+    return _repository.getWords();
+  }
+
+  Future<void> reload() async {
+    try {
+      state = AsyncValue.data(await _repository.getWords());
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  Future<GlossaryWord> createWord({
+    required String word,
+    required String definition,
+    List<int> bookIds = const [],
+  }) async {
+    final created = await _repository.createWord(
+      word: word,
+      definition: definition,
+      bookIds: bookIds,
+    );
+    await reload();
+    return created;
+  }
+
+  Future<GlossaryWord> updateWord({
+    required int id,
+    required String word,
+    required String definition,
+    List<int> bookIds = const [],
+  }) async {
+    final updated = await _repository.updateWord(
+      id: id,
+      word: word,
+      definition: definition,
+      bookIds: bookIds,
+    );
+    await reload();
+    return updated;
+  }
+
+  Future<void> deleteWord(int id) async {
+    await _repository.deleteWord(id);
     await reload();
   }
 }
