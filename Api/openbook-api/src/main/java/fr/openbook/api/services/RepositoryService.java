@@ -7,6 +7,7 @@ import fr.openbook.api.repositories.BookRepository;
 import fr.openbook.api.repositories.BookStatusRepository;
 import fr.openbook.api.repositories.CategoryRepository;
 import fr.openbook.api.repositories.CollectionRepository;
+import fr.openbook.api.repositories.ConfigurationRepository;
 import fr.openbook.api.repositories.EditorRepository;
 import fr.openbook.api.repositories.ReadingSessionRepository;
 import fr.openbook.api.repositories.SeriesHasThemeRepository;
@@ -50,4 +51,5 @@ public class RepositoryService
     private final UserFollowsAuthorRepository userFollowsAuthorRepository;
     private final UserFollowsEditorRepository userFollowsEditorRepository;
     private final UserFollowsCollectionRepository userFollowsCollectionRepository;
+    private final ConfigurationRepository configurationRepository;
 }

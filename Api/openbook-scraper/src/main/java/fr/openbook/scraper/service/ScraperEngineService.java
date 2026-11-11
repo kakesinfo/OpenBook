@@ -218,13 +218,29 @@ public class ScraperEngineService {
         status.put("available_sources", allIds);
         status.put("disabled_sources", disabledList);
         status.put("enabled_sources", enabledList);
+        String cron = properties.getScheduleCron() != null ? properties.getScheduleCron() : "0 0 3 * * *";
         status.put("schedule", Map.of(
-                "cron", properties.getScheduleCron(),
+                "cron", cron,
+                "daily_at", extractDailyAtFromCron(cron),
                 "scrape_on_startup", properties.isScrapeOnStartup()
         ));
         status.put("recent_history", recentHist);
         status.put("live_scan", new LinkedHashMap<>(liveScan));
         return status;
+    }
+
+    private String extractDailyAtFromCron(String cron) {
+        if (cron == null || cron.isBlank()) return "03:00";
+        String[] parts = cron.trim().split("\\s+");
+        if (parts.length == 6 && "*".equals(parts[3]) && "*".equals(parts[4]) && ("*".equals(parts[5]) || "?".equals(parts[5]))) {
+            try {
+                int min = Integer.parseInt(parts[1]);
+                int hour = Integer.parseInt(parts[2]);
+                return String.format("%02d:%02d", hour, min);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return cron;
     }
 
     public Map<String, Object> stopScan() {

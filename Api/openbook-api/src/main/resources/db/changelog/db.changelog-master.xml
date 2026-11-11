@@ -1585,4 +1585,56 @@
             <column name="blocked" />
         </createIndex>
     </changeSet>
+    <changeSet id="41" author="Antigravity">
+        <createTable tableName="configuration">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+            <column name="key" type="varchar(255)">
+                <constraints nullable="false" unique="true" />
+            </column>
+            <column name="value" type="text">
+                <constraints nullable="false" />
+            </column>
+            <column name="default_value" type="text">
+                <constraints nullable="false" />
+            </column>
+            <column name="value_type" type="varchar(50)">
+                <constraints nullable="false" />
+            </column>
+            <column name="description" type="text">
+                <constraints nullable="true" />
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="configuration" indexName="idx_configuration_key">
+            <column name="key" />
+        </createIndex>
+
+        <insert tableName="configuration">
+            <column name="key" value="SCRAPER_SCHEDULE_CRON" />
+            <column name="value" value="0 0 3 * * *" />
+            <column name="default_value" value="0 0 3 * * *" />
+            <column name="value_type" value="CRON" />
+            <column name="description" value="Planification CRON du scan automatique des catalogues éditeurs (scrapers)" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+
+        <insert tableName="configuration">
+            <column name="key" value="BACKUP_SCHEDULE_CRON" />
+            <column name="value" value="0 0 4 * * *" />
+            <column name="default_value" value="0 0 4 * * *" />
+            <column name="value_type" value="CRON" />
+            <column name="description" value="Planification CRON de la sauvegarde automatique du système (base de données et médias)" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
+    </changeSet>
 </databaseChangeLog>

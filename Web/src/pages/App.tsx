@@ -24,6 +24,7 @@ import {
     faBoxArchive,
     faTrashCanArrowUp,
     faUsers,
+    faSliders,
     faUserPen
 } from '@fortawesome/free-solid-svg-icons';
 import { useState } from "react";
@@ -142,6 +143,7 @@ export default function App() {
                         <WrapperButton to={'/app/admin/backups'} icon={faBoxArchive}>{t("nav.backups")}</WrapperButton>
                         <WrapperButton to={'/app/admin/deleted-books'} icon={faTrashCanArrowUp}>{t("nav.deletedBooks")}</WrapperButton>
                         <WrapperButton to={'/app/admin/users'} icon={faUsers}>{t("nav.users")}</WrapperButton>
+                        <WrapperButton to={'/app/admin/config'} icon={faSliders} activeRoutes={['/app/admin/configuration']}>{t("nav.configuration")}</WrapperButton>
                     </>
                 )}
             </WrapperNavigation>

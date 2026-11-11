@@ -14,7 +14,8 @@ import {
     faWrench,
     faBoxArchive,
     faTrashCanArrowUp,
-    faUsers
+    faUsers,
+    faSliders
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useLocation } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -273,6 +274,13 @@ export function WrapperNavigation({ title = "Yet Another Library", badge, childr
                         >
                             <FontAwesomeIcon icon={faUsers} />
                             <span>{t("nav.usersShort")}</span>
+                        </Link>
+                        <Link
+                            to="/app/admin/config"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/config') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faSliders} />
+                            <span>{t("nav.configShort")}</span>
                         </Link>
                     </>
                 )}
