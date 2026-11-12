@@ -20,6 +20,8 @@ import CategoryMultiSelect, {
 } from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
 import PlanningCalendarModal from "./PlanningCalendarModal.tsx";
 import "./PlanningPage.scss";
+import SearchBar from "../../components/SearchBar/SearchBar.tsx";
+import PageControls from "../../components/PageControls/PageControls.tsx";
 
 type TimeFilter = "upcoming" | "recent";
 
@@ -270,42 +272,24 @@ export default function PlanningPage() {
 
             <div className="planning-page__content">
                 {/* Controls Bar: Category MultiSelect, Search, Synchroniser / Exporter */}
-                <div className="planning-page__controls">
-                    {/* Left: Category MultiSelect */}
-                    <div className="planning-page__left-controls">
+                <PageControls
+                    left={
                         <CategoryMultiSelect
                             options={availableCategories}
                             selected={selectedCategories}
                             onChange={(cats) => setSelectedCategories(cats)}
                             allLabel={tr("All categories", "Toutes les catégories")}
                         />
-                    </div>
-
-                    {/* Center: Search input */}
-                    <div className="planning-page__center-controls">
-                        <div className="planning-page__search">
-                            <FontAwesomeIcon icon={faMagnifyingGlass} />
-                            <input
-                                type="text"
-                                placeholder={tr("Search a book, series, author...", "Rechercher un album, une série, un auteur...")}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            {searchQuery && (
-                                <button
-                                    type="button"
-                                    className="planning-page__search-clear"
-                                    onClick={() => setSearchQuery("")}
-                                    aria-label={tr("Clear search", "Effacer la recherche")}
-                                >
-                                    <FontAwesomeIcon icon={faXmark} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Right: Calendar Sync / Export Button */}
-                    <div className="planning-page__right-controls">
+                    }
+                    center={
+                        <SearchBar
+                            value={searchQuery}
+                            onChange={setSearchQuery}
+                            placeholder={tr("Search a book, series, author...", "Rechercher un album, une série, un auteur...")}
+                            clearLabel={tr("Clear search", "Effacer la recherche")}
+                        />
+                    }
+                    right={
                         <button
                             type="button"
                             onClick={() => setCalendarModalOpen(true)}
@@ -315,8 +299,8 @@ export default function PlanningPage() {
                             <FontAwesomeIcon icon={faCalendarPlus} />
                             <span>{tr("Sync / Export", "Synchroniser / Exporter")}</span>
                         </button>
-                    </div>
-                </div>
+                    }
+                />
 
                 {/* Loading State */}
                 {isCurrentLoading && (

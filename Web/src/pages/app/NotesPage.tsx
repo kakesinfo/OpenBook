@@ -6,6 +6,7 @@ import {
     faNoteSticky,
     faPlus,
     faMagnifyingGlass,
+    faXmark,
     faPen,
     faTrash,
     faClockRotateLeft
@@ -18,6 +19,8 @@ import NoteDTO from "../../dto/Note.dto.ts";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import AsyncCoverImage from "../../components/AsyncCoverImage/AsyncCoverImage.tsx";
 import SearchableSelect from "../../components/FloatingActionButton/SearchableSelect.tsx";
+import SearchBar from "../../components/SearchBar/SearchBar.tsx";
+import PageControls from "../../components/PageControls/PageControls.tsx";
 import "./NotesPage.scss";
 
 export default function NotesPage() {
@@ -257,21 +260,21 @@ export default function NotesPage() {
             </WrapperHeader>
 
             <div className="notes-page__content">
-                {/* Toolbar: Search & count */}
-            <div className="notes-page__toolbar">
-                <div className="notes-page__search">
-                    <FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "var(--text-muted)" }} />
-                    <input
-                        type="text"
-                        placeholder={tr("Search notes by book, series or content...", "Rechercher par livre, série ou contenu...")}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-                <div className="notes-page__count">
-                    {filteredNotes.length} {filteredNotes.length > 1 ? tr("notes found", "notes trouvées") : tr("note found", "note trouvée")}
-                </div>
-            </div>
+                <PageControls
+                    center={
+                        <SearchBar
+                            value={searchQuery}
+                            onChange={setSearchQuery}
+                            placeholder={tr("Search notes by book, series or content...", "Rechercher par livre, série ou contenu...")}
+                            clearLabel={tr("Clear search", "Effacer la recherche")}
+                        />
+                    }
+                    right={
+                        <div className="notes-page__count">
+                            {filteredNotes.length} {filteredNotes.length > 1 ? tr("notes found", "notes trouvées") : tr("note found", "note trouvée")}
+                        </div>
+                    }
+                />
 
             {/* Content: List or Empty State */}
             {loading ? (

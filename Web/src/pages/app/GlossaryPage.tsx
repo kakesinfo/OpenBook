@@ -18,6 +18,8 @@ import useLanguage from "../../hooks/UseLanguage.tsx";
 import WordDTO from "../../dto/Word.dto.ts";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import SearchableSelect from "../../components/FloatingActionButton/SearchableSelect.tsx";
+import SearchBar from "../../components/SearchBar/SearchBar.tsx";
+import PageControls from "../../components/PageControls/PageControls.tsx";
 import "./GlossaryPage.scss";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -314,52 +316,47 @@ export default function GlossaryPage() {
             </WrapperHeader>
 
             <div className="glossary-page__content">
-                {/* Toolbar: Search, Filter by book, Alphabet bar */}
-            <div className="glossary-page__toolbar">
-                <div className="glossary-page__toolbar-row">
-                    <div className="glossary-page__search-group">
-                        <div className="glossary-page__search">
-                            <FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "var(--text-muted)" }} />
-                            <input
-                                type="text"
-                                placeholder={tr("Search term, definition or book...", "Rechercher un terme, une définition...")}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
+                <PageControls
+                    center={
+                        <SearchBar
+                            value={searchQuery}
+                            onChange={setSearchQuery}
+                            placeholder={tr("Search term, definition or book...", "Rechercher un terme, une définition...")}
+                            clearLabel={tr("Clear search", "Effacer la recherche")}
+                        />
+                    }
+                    right={
+                        <div className="glossary-page__count">
+                            {filteredWords.length} {filteredWords.length > 1 ? tr("terms found", "termes trouvés") : tr("term found", "terme trouvé")}
                         </div>
-                    </div>
-
-                    <div className="glossary-page__count">
-                        {filteredWords.length} {filteredWords.length > 1 ? tr("terms found", "termes trouvés") : tr("term found", "terme trouvé")}
-                    </div>
-                </div>
-
-                {/* Alphabet quick jump */}
-                <div className="glossary-page__alphabet-bar">
-                    <button
-                        type="button"
-                        className={`glossary-page__letter-btn ${selectedLetter === "ALL" ? "glossary-page__letter-btn--active" : ""}`}
-                        onClick={() => setSelectedLetter("ALL")}
-                    >
-                        {tr("All", "Tous")}
-                    </button>
-                    {ALPHABET.map((letter) => {
-                        const hasWords = activeLetters.has(letter);
-                        const isActive = selectedLetter === letter;
-                        return (
+                    }
+                    bottom={
+                        <div className="glossary-page__alphabet-bar">
                             <button
-                                key={letter}
                                 type="button"
-                                className={`glossary-page__letter-btn ${isActive ? "glossary-page__letter-btn--active" : ""} ${!hasWords ? "glossary-page__letter-btn--disabled" : ""}`}
-                                onClick={() => setSelectedLetter(letter)}
-                                disabled={!hasWords && selectedLetter !== letter}
+                                className={`glossary-page__letter-btn ${selectedLetter === "ALL" ? "glossary-page__letter-btn--active" : ""}`}
+                                onClick={() => setSelectedLetter("ALL")}
                             >
-                                {letter}
+                                {tr("All", "Tous")}
                             </button>
-                        );
-                    })}
-                </div>
-            </div>
+                            {ALPHABET.map((letter) => {
+                                const hasWords = activeLetters.has(letter);
+                                const isActive = selectedLetter === letter;
+                                return (
+                                    <button
+                                        key={letter}
+                                        type="button"
+                                        className={`glossary-page__letter-btn ${isActive ? "glossary-page__letter-btn--active" : ""} ${!hasWords ? "glossary-page__letter-btn--disabled" : ""}`}
+                                        onClick={() => setSelectedLetter(letter)}
+                                        disabled={!hasWords && selectedLetter !== letter}
+                                    >
+                                        {letter}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    }
+                />
 
             {/* Content: List grouped by letter or empty state */}
             {loading ? (

@@ -33,6 +33,8 @@ import CategoryMultiSelect, {
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { detectEditionBadge } from "../../utils/editionBadge.ts";
 import "./CollectionPage.scss";
+import SearchBar from "../../components/SearchBar/SearchBar.tsx";
+import PageControls from "../../components/PageControls/PageControls.tsx";
 
 type TomeStatusFilter = "all" | "toread" | "read" | "abandoned";
 type DisplayMode = "grid" | "list";
@@ -440,42 +442,24 @@ export default function CollectionPage() {
             <div className="collection-page__content">
                 {/* Controls Bar: Status Tabs, Category Filter, Search, View Mode Toggle */}
                 {(hasAnyOwned || isFiltering) && (
-                    <div className="collection-page__controls">
-                        {/* Left: Category Filter */}
-                        <div className="collection-page__left-controls">
+                    <PageControls
+                        left={
                             <CategoryMultiSelect
                                 options={availableCategories}
                                 selected={selectedCategories}
                                 onChange={handleCategoriesChange}
                                 allLabel={tr("All categories", "Toutes les catégories")}
                             />
-                        </div>
-
-                        {/* Center: Search input */}
-                        <div className="collection-page__center-controls">
-                            <div className="collection-page__search">
-                                <FontAwesomeIcon icon={faMagnifyingGlass} />
-                                <input
-                                    type="text"
-                                    placeholder={tr("Search a book...", "Rechercher un album...")}
-                                    value={searchQuery}
-                                    onChange={(e) => handleSearchChange(e.target.value)}
-                                />
-                                {searchQuery && (
-                                    <button
-                                        type="button"
-                                        className="collection-page__search-clear"
-                                        onClick={() => handleSearchChange("")}
-                                        aria-label={tr("Clear search", "Effacer la recherche")}
-                                    >
-                                        <FontAwesomeIcon icon={faXmark} />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Right: View Mode Toggle */}
-                        <div className="collection-page__right-controls">
+                        }
+                        center={
+                            <SearchBar
+                                value={searchQuery}
+                                onChange={handleSearchChange}
+                                placeholder={tr("Search a book...", "Rechercher un album...")}
+                                clearLabel={tr("Clear search", "Effacer la recherche")}
+                            />
+                        }
+                        right={
                             <div className="collection-page__view-toggle">
                                 <button
                                     type="button"
@@ -496,8 +480,8 @@ export default function CollectionPage() {
                                     <span>{tr("List", "Liste")}</span>
                                 </button>
                             </div>
-                        </div>
-                    </div>
+                        }
+                    />
                 )}
 
                 {/* Body Content */}

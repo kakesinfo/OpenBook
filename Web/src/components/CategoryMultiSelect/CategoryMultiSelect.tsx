@@ -88,6 +88,8 @@ interface CategoryMultiSelectProps {
     onChange: (selected: string[]) => void;
     allLabel?: string;
     placeholder?: string;
+    multiple?: boolean;
+    icon?: IconDefinition;
     className?: string;
 }
 
@@ -97,6 +99,8 @@ export default function CategoryMultiSelect({
     onChange,
     allLabel,
     placeholder,
+    multiple = true,
+    icon = faLayerGroup,
     className = ""
 }: CategoryMultiSelectProps) {
     const { tr, translateCategory } = useLanguage();
@@ -125,9 +129,14 @@ export default function CategoryMultiSelect({
         };
     }, []);
 
-    const isAllSelected = selected.length === 0 || selected.length === options.length;
+    const isAllSelected = multiple && (selected.length === 0 || selected.length === options.length);
 
     const handleToggle = (id: string) => {
+        if (!multiple) {
+            onChange([id]);
+            setIsOpen(false);
+            return;
+        }
         if (isAllSelected) {
             // Isolates the clicked option when previously all were active
             onChange([id]);
@@ -149,6 +158,10 @@ export default function CategoryMultiSelect({
     };
 
     const getTriggerLabel = () => {
+        if (!multiple) {
+            const opt = options.find((o) => o.id === selected[0]);
+            return opt ? translateCategory(opt.label) : resolvedPlaceholder;
+        }
         if (isAllSelected) {
             return resolvedAllLabel;
         }
@@ -172,16 +185,16 @@ export default function CategoryMultiSelect({
         <div className={`category-multiselect ${isOpen ? "category-multiselect--open" : ""} ${className}`} ref={containerRef}>
             <button
                 type="button"
-                className={`category-multiselect__trigger ${!isAllSelected ? "category-multiselect__trigger--filtered" : ""}`}
+                className={`category-multiselect__trigger ${multiple && !isAllSelected ? "category-multiselect__trigger--filtered" : ""}`}
                 onClick={() => setIsOpen((prev) => !prev)}
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
             >
-                <FontAwesomeIcon icon={faLayerGroup} className="category-multiselect__icon-left" />
+                <FontAwesomeIcon icon={icon} className="category-multiselect__icon-left" />
                 <span className="category-multiselect__label" title={getTriggerLabel()}>
                     {getTriggerLabel()}
                 </span>
-                {!isAllSelected && selected.length > 0 && (
+                {multiple && !isAllSelected && selected.length > 0 && (
                     <span className="category-multiselect__badge">
                         {selected.length}
                     </span>
@@ -196,7 +209,7 @@ export default function CategoryMultiSelect({
                 <div className="category-multiselect__dropdown" role="listbox">
                     <div className="category-multiselect__header">
                         <span className="category-multiselect__header-title">{resolvedPlaceholder}</span>
-                        {!isAllSelected && (
+                        {multiple && !isAllSelected && (
                             <button
                                 type="button"
                                 className="category-multiselect__reset-btn"
@@ -209,20 +222,24 @@ export default function CategoryMultiSelect({
                         )}
                     </div>
 
-                    <div
-                        className={`category-multiselect__option category-multiselect__option--all ${isAllSelected ? "is-selected" : ""}`}
-                        onClick={handleSelectAll}
-                        role="option"
-                        aria-selected={isAllSelected}
-                    >
-                        <div className={`category-multiselect__checkbox ${isAllSelected ? "is-checked" : ""}`}>
-                            {isAllSelected && <FontAwesomeIcon icon={faCheck} />}
-                        </div>
-                        <FontAwesomeIcon icon={faLayerGroup} className="category-multiselect__option-icon" />
-                        <span className="category-multiselect__option-label">{resolvedAllLabel}</span>
-                    </div>
+                    {multiple && (
+                        <>
+                            <div
+                                className={`category-multiselect__option category-multiselect__option--all ${isAllSelected ? "is-selected" : ""}`}
+                                onClick={handleSelectAll}
+                                role="option"
+                                aria-selected={isAllSelected}
+                            >
+                                <div className={`category-multiselect__checkbox ${isAllSelected ? "is-checked" : ""}`}>
+                                    {isAllSelected && <FontAwesomeIcon icon={faCheck} />}
+                                </div>
+                                <FontAwesomeIcon icon={icon} className="category-multiselect__option-icon" />
+                                <span className="category-multiselect__option-label">{resolvedAllLabel}</span>
+                            </div>
 
-                    <div className="category-multiselect__divider" />
+                            <div className="category-multiselect__divider" />
+                        </>
+                    )}
 
                     <div className="category-multiselect__list">
                         {options.map((option) => {

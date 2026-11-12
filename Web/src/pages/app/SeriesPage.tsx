@@ -23,6 +23,8 @@ import {
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import CategoryMultiSelect, { CategoryOption as MultiSelectOption, DEFAULT_APP_CATEGORIES } from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
 import "./SeriesPage.scss";
+import SearchBar from "../../components/SearchBar/SearchBar.tsx";
+import PageControls from "../../components/PageControls/PageControls.tsx";
 
 interface CategoryOption {
     id: number;
@@ -517,9 +519,8 @@ export default function SeriesPage() {
         <div className="series-page">
             <div className="series-page__content">
                 {/* Controls: Scope tabs, Search, Categories */}
-                <div className="series-page__controls">
-                    {/* Left: Category Dropdown */}
-                    <div className="series-page__left-controls">
+                <PageControls
+                    left={
                         <CategoryMultiSelect
                             options={seriesCategoryOptions}
                             selected={selectedCategories}
@@ -529,37 +530,19 @@ export default function SeriesPage() {
                             }}
                             allLabel={tr("All categories", "Toutes les catégories")}
                         />
-                    </div>
-
-                    {/* Right: Search input */}
-                    <div className="series-page__right-controls">
-                        <div className="series-page__search">
-                            <FontAwesomeIcon icon={faMagnifyingGlass} />
-                            <input
-                                type="text"
-                                placeholder={tr("Search series...", "Rechercher une série...")}
-                                value={searchQuery}
-                                onChange={(e) => {
-                                    setSearchQuery(e.target.value);
-                                    setCurrentPage(1);
-                                }}
-                            />
-                            {searchQuery && (
-                                <button
-                                    type="button"
-                                    className="series-page__search-clear"
-                                    onClick={() => {
-                                        setSearchQuery("");
-                                        setCurrentPage(1);
-                                    }}
-                                    aria-label={tr("Clear search", "Effacer la recherche")}
-                                >
-                                    <FontAwesomeIcon icon={faXmark} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                    }
+                    center={
+                        <SearchBar
+                            value={searchQuery}
+                            onChange={(val) => {
+                                setSearchQuery(val);
+                                setCurrentPage(1);
+                            }}
+                            placeholder={tr("Search series...", "Rechercher une série...")}
+                            clearLabel={tr("Clear search", "Effacer la recherche")}
+                        />
+                    }
+                />
 
                 {/* Loading state */}
                 {loading && (

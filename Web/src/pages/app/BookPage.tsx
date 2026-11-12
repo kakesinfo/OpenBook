@@ -57,6 +57,7 @@ import {
 import { Dialog } from "@mui/material";
 
 import "./BookPage.scss";
+import CategoryMultiSelect from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import { detectEditionBadge } from "../../utils/editionBadge.ts";
 
@@ -1324,8 +1325,7 @@ export default function BookPage() {
     );
     const showNext = hasNext || canHaveNext;
 
-    const handleReadingStatusChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
-        const newStatus = event.target.value;
+    const handleReadingStatusChange = async (newStatus: string) => {
         if (!id || !session) return;
         try {
             if (!newStatus) {
@@ -1673,20 +1673,22 @@ export default function BookPage() {
                                     </button>
                                 )}
 
-                                <div className={`book-reading-status-selector ${readingStatus && readingStatus.toUpperCase() !== "UNREAD" ? 'book-reading-status-selector--active' : ''}`}>
-                                    <FontAwesomeIcon icon={faBookOpen} />
-                                    <select
-                                        value={readingStatus ? readingStatus.toUpperCase() : "UNREAD"}
-                                        onChange={handleReadingStatusChange}
-                                        aria-label={tr("Reading status", "Statut de lecture")}
-                                    >
-                                        <option value="UNREAD">{tr("Unread", "Non lu")}</option>
-                                        <option value="READING">{tr("Currently reading", "En cours de lecture")}</option>
-                                        <option value="PAUSED">{tr("Paused", "En pause")}</option>
-                                        <option value="READ">{tr("Read", "Lu")}</option>
-                                        <option value="ABANDONED">{tr("Abandoned", "Abandonné")}</option>
-                                    </select>
-                                </div>
+                                <CategoryMultiSelect
+                                    multiple={false}
+                                    icon={faBookOpen}
+                                    placeholder={tr("Reading status", "Statut de lecture")}
+                                    selected={[readingStatus ? readingStatus.toUpperCase() : "UNREAD"]}
+                                    onChange={(vals) => {
+                                        if (vals[0]) handleReadingStatusChange(vals[0]);
+                                    }}
+                                    options={[
+                                        { id: "UNREAD", label: tr("Unread", "Non lu") },
+                                        { id: "READING", label: tr("Currently reading", "En cours de lecture") },
+                                        { id: "PAUSED", label: tr("Paused", "En pause") },
+                                        { id: "READ", label: tr("Read", "Lu") },
+                                        { id: "ABANDONED", label: tr("Abandoned", "Abandonné") }
+                                    ]}
+                                />
                             </div>
 
                             {/* Technical Details Card */}
