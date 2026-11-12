@@ -8,6 +8,20 @@
   width: 100%;
 }
 
+.newbooks-order-select {
+  width: auto !important;
+
+  .yal-select__trigger {
+    width: auto;
+  }
+
+  .yal-select__dropdown {
+    left: auto;
+    right: 0;
+    width: auto;
+  }
+}
+
 .newbooks-order-pill {
   display: inline-flex;
   align-items: center;

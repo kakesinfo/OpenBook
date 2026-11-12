@@ -4,9 +4,9 @@ import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import BookList from "../../components/BookList/BookList.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSliders } from "@fortawesome/free-solid-svg-icons";
 import Pagination from "../../components/Pagination/Pagination.tsx";
+import Select from "../../components/Select/Select.tsx";
 
 import "./HomePage.scss";
 
@@ -46,8 +46,8 @@ export default function HomePage() {
         });
     }, [order, currentPage, pageSize, session]);
 
-    const handleOrderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setOrder(e.target.value as "oldest" | "newest");
+    const handleOrderChange = (newOrder: "oldest" | "newest") => {
+        setOrder(newOrder);
         setCurrentPage(1);
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
@@ -70,14 +70,18 @@ export default function HomePage() {
         <div className="newbooks-wrapper">
             <WrapperHeader>
                 <h2>{tr("New Releases", "Nouveautés")}</h2>
-                <div className="newbooks-order-pill">
-                    <FontAwesomeIcon icon={faSliders} />
-                    <span>{tr("Sort by:", "Trier par :")}</span>
-                    <select value={order} onChange={handleOrderChange} aria-label={tr("Sort by", "Trier par")}>
-                        <option value="newest">{tr("Newest first", "Les plus récentes")}</option>
-                        <option value="oldest">{tr("Oldest first", "Les plus anciennes")}</option>
-                    </select>
-                </div>
+                <Select
+                    multiple={false}
+                    className="newbooks-order-select"
+                    icon={faSliders}
+                    placeholder={tr("Sort by", "Trier par")}
+                    value={order}
+                    onChange={(val) => handleOrderChange(val as "oldest" | "newest")}
+                    options={[
+                        { id: "newest", label: tr("Newest first", "Les plus récentes") },
+                        { id: "oldest", label: tr("Oldest first", "Les plus anciennes") }
+                    ]}
+                />
             </WrapperHeader>
 
             <div className="newbooks-body">
