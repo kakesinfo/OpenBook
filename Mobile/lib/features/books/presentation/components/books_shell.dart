@@ -138,30 +138,39 @@ class _BooksShellState extends ConsumerState<BooksShell> {
           border: Border(
             top: BorderSide(color: AppTheme.borderSubtle, width: 1),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, -2),
+            ),
+          ],
         ),
         child: NavigationBar(
           selectedIndex: _index,
           onDestinationSelected: _goToTab,
           backgroundColor: AppTheme.bgSurface,
           indicatorColor: AppTheme.accentPrimaryLight,
+          height: 64,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           destinations: [
             NavigationDestination(
-              icon: const Icon(Icons.newspaper_outlined),
-              selectedIcon: Icon(Icons.newspaper_rounded, color: AppTheme.accentPrimary),
+              icon: Icon(Icons.explore_outlined, color: AppTheme.textMuted),
+              selectedIcon: Icon(Icons.explore_rounded, color: AppTheme.accentPrimary),
               label: 'Accueil',
             ),
             NavigationDestination(
-              icon: const Icon(Icons.menu_book_outlined),
+              icon: Icon(Icons.menu_book_outlined, color: AppTheme.textMuted),
               selectedIcon: Icon(Icons.menu_book_rounded, color: AppTheme.accentPrimary),
               label: 'Mes Albums',
             ),
             NavigationDestination(
-              icon: const Icon(Icons.favorite_outline_rounded),
+              icon: Icon(Icons.favorite_outline_rounded, color: AppTheme.textMuted),
               selectedIcon: Icon(Icons.favorite_rounded, color: AppTheme.accentRose),
               label: 'Souhaits',
             ),
             NavigationDestination(
-              icon: const Icon(Icons.settings_outlined),
+              icon: Icon(Icons.settings_outlined, color: AppTheme.textMuted),
               selectedIcon: Icon(Icons.settings_rounded, color: AppTheme.accentPrimary),
               label: 'Paramètres',
             ),

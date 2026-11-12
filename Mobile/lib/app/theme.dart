@@ -140,7 +140,49 @@ class AppTheme {
   static const double radiusSm = 8.0;
   static const double radiusMd = 12.0;
   static const double radiusLg = 16.0;
+  static const double radiusXl = 20.0;
   static const double radiusFull = 9999.0;
+
+  // Box Shadows (adapted to dark/beige)
+  static List<BoxShadow> get cardShadow => _currentMode == AppThemeMode.beige
+      ? [
+          BoxShadow(
+            color: const Color(0xFF46321E).withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ]
+      : [
+          const BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ];
+
+  static List<BoxShadow> get modalShadow => _currentMode == AppThemeMode.beige
+      ? [
+          BoxShadow(
+            color: const Color(0xFF46321E).withValues(alpha: 0.16),
+            blurRadius: 28,
+            offset: const Offset(0, 8),
+          ),
+        ]
+      : [
+          const BoxShadow(
+            color: Color(0x80000000),
+            blurRadius: 24,
+            offset: Offset(0, 10),
+          ),
+        ];
+
+  static List<BoxShadow> get glowShadow => [
+        BoxShadow(
+          color: accentPrimaryGlow,
+          blurRadius: 18,
+          offset: const Offset(0, 4),
+        ),
+      ];
 
   // Gradients
   static LinearGradient get primaryGradient => _currentMode == AppThemeMode.beige

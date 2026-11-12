@@ -38,6 +38,9 @@ public class ImportJob {
     @JsonProperty("imported_reading_sessions")
     private int importedReadingSessions = 0;
 
+    @JsonProperty("imported_notes")
+    private int importedNotes = 0;
+
     @JsonProperty("current_step")
     private String currentStep;
 

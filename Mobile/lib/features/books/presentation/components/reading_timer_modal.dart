@@ -119,13 +119,7 @@ class _ReadingTimerModalState extends ConsumerState<ReadingTimerModal> {
           color: AppTheme.borderMedium,
           width: 1.5,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 24,
-            offset: const Offset(0, -6),
-          ),
-        ],
+        boxShadow: AppTheme.modalShadow,
       ),
       child: SafeArea(
         top: false,

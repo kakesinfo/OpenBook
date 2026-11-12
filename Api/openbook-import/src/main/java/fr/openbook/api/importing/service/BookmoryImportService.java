@@ -60,7 +60,7 @@ public class BookmoryImportService {
             runImportSync(job, tempFile);
             return ImportResponse.builder()
                     .success("completed".equals(job.getStatus()))
-                    .message(String.format("Import terminé: %d créés, %d mis à jour", job.getCreatedBooks(), job.getUpdatedBooks()))
+                    .message(String.format("Import terminé: %d créés, %d mis à jour, %d notes", job.getCreatedBooks(), job.getUpdatedBooks(), job.getImportedNotes()))
                     .job(job)
                     .build();
         }
@@ -114,8 +114,8 @@ public class BookmoryImportService {
             job.setCurrentStep("Importation terminée avec succès.");
             job.setFinishedAt(Instant.now());
 
-            log.info("[Importer] Job {} completed: {} created, {} updated, {} purchases, {} reading sessions",
-                    job.getId(), job.getCreatedBooks(), job.getUpdatedBooks(), job.getImportedPurchases(), job.getImportedReadingSessions());
+            log.info("[Importer] Job {} completed: {} created, {} updated, {} purchases, {} reading sessions, {} notes",
+                    job.getId(), job.getCreatedBooks(), job.getUpdatedBooks(), job.getImportedPurchases(), job.getImportedReadingSessions(), job.getImportedNotes());
 
         } catch (Throwable ex) {
             log.error("[Importer] Import failed for job {}: {}", job.getId(), ex.getMessage(), ex);
@@ -304,6 +304,22 @@ public class BookmoryImportService {
                     }
                 }
             }
+        }
+
+        // 13. Book notes (from store 'notes' and optional reading comments)
+        List<BookmoryNote> notesForBook = parsed.getBookNotes() != null
+                ? parsed.getBookNotes().get(b.getKey())
+                : null;
+        List<String> readComments = new ArrayList<>();
+        if (b.getReads() != null) {
+            for (BookmoryRead read : b.getReads()) {
+                if (read.getComment() != null && !read.getComment().isBlank()) {
+                    readComments.add(read.getComment());
+                }
+            }
+        }
+        if (dbService.importBookNote(job.getUserId(), bookId, notesForBook, readComments)) {
+            job.setImportedNotes(job.getImportedNotes() + 1);
         }
     }
 

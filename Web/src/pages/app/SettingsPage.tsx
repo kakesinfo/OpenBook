@@ -20,7 +20,8 @@ import {
     faCircleCheck,
     faInfoCircle,
     faArrowsRotate,
-    faPalette
+    faPalette,
+    faNoteSticky
 } from "@fortawesome/free-solid-svg-icons";
 
 import useSession from "../../hooks/UseSession.tsx";
@@ -43,6 +44,7 @@ interface ImportJobStatus {
     updated_books: number;
     imported_purchases: number;
     imported_reading_sessions: number;
+    imported_notes?: number;
     current_step: string;
     errors: string[];
 }
@@ -298,8 +300,8 @@ export default function SettingsPage() {
                             setImporting(false);
                             enqueueSnackbar(
                                 tr(
-                                    `Bookmory import successful! (${updatedJob.created_books} created, ${updatedJob.updated_books} updated, ${updatedJob.imported_purchases} purchases, ${updatedJob.imported_reading_sessions} reading sessions)`,
-                                    `Importation Bookmory réussie ! (${updatedJob.created_books} créés, ${updatedJob.updated_books} mis à jour, ${updatedJob.imported_purchases} achats, ${updatedJob.imported_reading_sessions} temps de lecture)`
+                                    `Bookmory import successful! (${updatedJob.created_books} created, ${updatedJob.updated_books} updated, ${updatedJob.imported_purchases} purchases, ${updatedJob.imported_reading_sessions} reading sessions, ${updatedJob.imported_notes ?? 0} notes)`,
+                                    `Importation Bookmory réussie ! (${updatedJob.created_books} créés, ${updatedJob.updated_books} mis à jour, ${updatedJob.imported_purchases} achats, ${updatedJob.imported_reading_sessions} temps de lecture, ${updatedJob.imported_notes ?? 0} notes)`
                                 ),
                                 { variant: "success", autoHideDuration: 6000 }
                             );
@@ -583,7 +585,7 @@ export default function SettingsPage() {
                             <div>
                                 <h3>{tr("Bookmory Backup Import", "Import de sauvegarde Bookmory")}</h3>
                                 <p className="settings-card__header-desc">
-                                    {tr("Import your books, covers, purchase data and reading time from a .bookmory file", "Importez vos albums, couvertures, données d'achat et temps de lecture depuis un fichier .bookmory")}
+                                    {tr("Import your books, covers, purchase data, reading time and notes from a .bookmory file", "Importez vos albums, couvertures, données d'achat, temps de lecture et notes depuis un fichier .bookmory")}
                                 </p>
                             </div>
                         </div>
@@ -601,6 +603,7 @@ export default function SettingsPage() {
                                     <li><strong>{tr("New books:", "Nouveaux albums :")}</strong> {tr("automatic creation with metadata and covers from backup.", "création automatique avec métadonnées et couvertures de la sauvegarde.")}</li>
                                     <li><strong>{tr("Purchase data:", "Données d'achat :")}</strong> {tr("price, acquisition date, purchase location and memo imported into your transactions.", "prix, date d'acquisition, lieu d'achat et mémo importés dans vos transactions.")}</li>
                                     <li><strong>{tr("Reading time:", "Temps de lecture :")}</strong> {tr("timed sessions and durations added to your reading history.", "sessions et durées chronométrées intégrées dans votre historique de lecture.")}</li>
+                                    <li><strong>{tr("Reading notes:", "Notes de lecture :")}</strong> {tr("notes associated with books are imported into the Notes page.", "les notes associées aux albums sont importées dans la page Notes.")}</li>
                                 </ul>
                             </div>
                         </div>
@@ -692,6 +695,13 @@ export default function SettingsPage() {
                                         <div className="import-stat-item__content">
                                             <span className="import-stat-item__num">{importJob.imported_reading_sessions}</span>
                                             <span className="import-stat-item__label">{tr("Reading sessions imported", "Temps de lecture importés")}</span>
+                                        </div>
+                                    </div>
+                                    <div className="import-stat-item import-stat-item--green">
+                                        <FontAwesomeIcon icon={faNoteSticky} />
+                                        <div className="import-stat-item__content">
+                                            <span className="import-stat-item__num">{importJob.imported_notes ?? 0}</span>
+                                            <span className="import-stat-item__label">{tr("Notes imported", "Notes importées")}</span>
                                         </div>
                                     </div>
                                 </div>
