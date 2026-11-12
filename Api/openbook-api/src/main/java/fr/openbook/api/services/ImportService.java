@@ -3,6 +3,7 @@ package fr.openbook.api.services;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.openbook.api.importing.job.ImportJob;
+import fr.openbook.api.importing.job.ImportOptions;
 import fr.openbook.api.importing.job.ImportResponse;
 import fr.openbook.api.importing.service.BookmoryImportService;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,10 @@ public class ImportService {
     private final ObjectMapper objectMapper;
 
     public Map<String, Object> importBookmory(MultipartFile file, Long userId, boolean wait) throws IOException {
+        return importBookmory(file, userId, wait, new ImportOptions());
+    }
+
+    public Map<String, Object> importBookmory(MultipartFile file, Long userId, boolean wait, ImportOptions options) throws IOException {
         String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "backup.bookmory";
         String prefix = "upload_";
         String suffix = filename.endsWith(".zip") ? ".zip" : ".bookmory";
@@ -33,7 +38,7 @@ public class ImportService {
         File tempFile = File.createTempFile(prefix, suffix);
         try {
             Files.copy(file.getInputStream(), tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            ImportResponse response = bookmoryImportService.startImport(tempFile, userId, wait);
+            ImportResponse response = bookmoryImportService.startImport(tempFile, userId, wait, options);
             return objectMapper.convertValue(response, new TypeReference<>() {});
         } catch (Exception ex) {
             log.error("Failed to execute Bookmory import: {}", ex.getMessage(), ex);

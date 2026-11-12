@@ -4,6 +4,7 @@ import fr.openbook.api.importing.bnf.BnfBookData;
 import fr.openbook.api.importing.bnf.BnfClient;
 import fr.openbook.api.importing.job.ImportJob;
 import fr.openbook.api.importing.job.ImportJobManager;
+import fr.openbook.api.importing.job.ImportOptions;
 import fr.openbook.api.importing.job.ImportResponse;
 import fr.openbook.api.importing.model.*;
 import fr.openbook.api.importing.parser.BookmoryZipParser;
@@ -54,10 +55,15 @@ public class BookmoryImportService {
     }
 
     public ImportResponse startImport(File tempFile, Long userId, boolean wait) {
+        return startImport(tempFile, userId, wait, new ImportOptions());
+    }
+
+    public ImportResponse startImport(File tempFile, Long userId, boolean wait, ImportOptions options) {
+        ImportOptions effectiveOptions = options != null ? options : new ImportOptions();
         ImportJob job = jobManager.createJob(userId);
 
         if (wait) {
-            runImportSync(job, tempFile);
+            runImportSync(job, tempFile, effectiveOptions);
             return ImportResponse.builder()
                     .success("completed".equals(job.getStatus()))
                     .message(String.format("Import terminé: %d créés, %d mis à jour, %d notes", job.getCreatedBooks(), job.getUpdatedBooks(), job.getImportedNotes()))
@@ -67,7 +73,7 @@ public class BookmoryImportService {
 
         executorService.submit(() -> {
             try {
-                runImportSync(job, tempFile);
+                runImportSync(job, tempFile, effectiveOptions);
             } catch (Throwable t) {
                 log.error("[Importer] Unhandled error during import job {}: {}", job.getId(), t.getMessage(), t);
                 job.setStatus("failed");
@@ -89,6 +95,10 @@ public class BookmoryImportService {
     }
 
     public void runImportSync(ImportJob job, File zipFile) {
+        runImportSync(job, zipFile, new ImportOptions());
+    }
+
+    public void runImportSync(ImportJob job, File zipFile, ImportOptions options) {
         job.setStatus("processing");
         job.setCurrentStep("Décompression et lecture de l'archive...");
 
@@ -102,7 +112,7 @@ public class BookmoryImportService {
             for (int i = 0; i < parsed.getBooks().size(); i++) {
                 BookmoryBook b = parsed.getBooks().get(i);
                 try {
-                    processSingleBook(job, b, parsed);
+                    processSingleBook(job, b, parsed, options);
                 } catch (Throwable ex) {
                     log.error("[Importer] Error processing book '{}': {}", b.getTitle(), ex.getMessage(), ex);
                     job.getErrors().add(String.format("Erreur '%s': %s", b.getTitle(), ex.getMessage()));
@@ -125,11 +135,20 @@ public class BookmoryImportService {
         }
     }
 
-    private void processSingleBook(ImportJob job, BookmoryBook b, ParsedBookmory parsed) {
+    private void processSingleBook(ImportJob job, BookmoryBook b, ParsedBookmory parsed, ImportOptions options) {
         String cleanT = BookmoryDbService.cleanText(b.getTitle());
         if (cleanT.isBlank()) {
             return;
         }
+
+        Long bookId;
+        if (!options.isImportBooks()) {
+            ExistingBook existing = dbService.findBook(b.getIsbn(), cleanT);
+            if (existing == null) {
+                return;
+            }
+            bookId = existing.getId();
+        } else {
 
         // 1. Process cover image with concurrency control
         String coverURL = "";
@@ -196,7 +215,6 @@ public class BookmoryImportService {
 
         // 8. Check if Book already exists in database
         ExistingBook existing = dbService.findBook(b.getIsbn(), cleanT);
-        Long bookId;
 
         if (existing != null) {
             bookId = existing.getId();
@@ -227,32 +245,35 @@ public class BookmoryImportService {
             }
         }
 
-        if (b.getIllustrators() != null) {
-            for (String illName : b.getIllustrators()) {
-                Long aid = dbService.findOrCreateAuthor(illName);
-                if (aid != null) {
-                    dbService.linkBookAuthor(bookId, aid, 2); // 2 = Illustrator
+            if (b.getIllustrators() != null) {
+                for (String illName : b.getIllustrators()) {
+                    Long aid = dbService.findOrCreateAuthor(illName);
+                    if (aid != null) {
+                        dbService.linkBookAuthor(bookId, aid, 2); // 2 = Illustrator
+                    }
                 }
             }
         }
 
         // 10. User ownership & reading status
-        if (job.getUserId() != null && job.getUserId() > 0) {
+        if (options.isImportStatuses() && job.getUserId() != null && job.getUserId() > 0) {
             dbService.upsertUserOwnsBook(job.getUserId(), bookId, b.getWishlist());
 
             String readingStatus = determineReadingStatus(b);
             dbService.upsertBookStatus(job.getUserId(), bookId, readingStatus);
+        }
 
-            // 11. Purchases
-            if (b.getPurchases() != null) {
-                for (BookmoryPurchase purchase : b.getPurchases()) {
-                    if (dbService.importPurchase(job.getUserId(), bookId, purchase)) {
-                        job.setImportedPurchases(job.getImportedPurchases() + 1);
-                    }
+        // 11. Purchases
+        if (options.isImportPurchases() && job.getUserId() != null && job.getUserId() > 0 && b.getPurchases() != null) {
+            for (BookmoryPurchase purchase : b.getPurchases()) {
+                if (dbService.importPurchase(job.getUserId(), bookId, purchase)) {
+                    job.setImportedPurchases(job.getImportedPurchases() + 1);
                 }
             }
+        }
 
-            // 12. Reading sessions
+        // 12. Reading sessions
+        if (options.isImportReadingSessions() && job.getUserId() != null && job.getUserId() > 0) {
             if (b.getReads() != null) {
                 Long earliestSessionMs = null;
                 for (BookmoryRead read : b.getReads()) {
@@ -307,6 +328,9 @@ public class BookmoryImportService {
         }
 
         // 13. Book notes (from store 'notes' and optional reading comments)
+        if (!options.isImportNotes()) {
+            return;
+        }
         List<BookmoryNote> notesForBook = parsed.getBookNotes() != null
                 ? parsed.getBookNotes().get(b.getKey())
                 : null;

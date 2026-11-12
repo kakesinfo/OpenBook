@@ -80,6 +80,12 @@ export default function SettingsPage() {
     const [importing, setImporting] = useState(false);
     const [importJob, setImportJob] = useState<ImportJobStatus | null>(null);
     const importPollingRef = useRef<number | null>(null);
+    const [importBooks, setImportBooks] = useState(true);
+    const [importStatuses, setImportStatuses] = useState(true);
+    const [importReadingSessions, setImportReadingSessions] = useState(true);
+    const [importPurchases, setImportPurchases] = useState(true);
+    const [importNotes, setImportNotes] = useState(true);
+    const hasAnyImportOption = importBooks || importStatuses || importReadingSessions || importPurchases || importNotes;
 
     // Fetch initial profile
     useEffect(() => {
@@ -125,6 +131,11 @@ export default function SettingsPage() {
 
         const formData = new FormData();
         formData.append("file", file);
+        formData.append("importBooks", String(importBooks));
+        formData.append("importStatuses", String(importStatuses));
+        formData.append("importReadingSessions", String(importReadingSessions));
+        formData.append("importPurchases", String(importPurchases));
+        formData.append("importNotes", String(importNotes));
 
         setAvatarUploading(true);
         try {
@@ -252,6 +263,11 @@ export default function SettingsPage() {
 
         const formData = new FormData();
         formData.append("file", file);
+        formData.append("importBooks", String(importBooks));
+        formData.append("importStatuses", String(importStatuses));
+        formData.append("importReadingSessions", String(importReadingSessions));
+        formData.append("importPurchases", String(importPurchases));
+        formData.append("importNotes", String(importNotes));
 
         setImporting(true);
         setImportJob(null);
@@ -592,24 +608,107 @@ export default function SettingsPage() {
                     </header>
 
                     <div className="settings-card__body">
-                        <div className="import-info-box">
-                            <div className="import-info-box__icon">
-                                <FontAwesomeIcon icon={faInfoCircle} />
-                            </div>
-                            <div className="import-info-box__text">
-                                <p><strong>{tr("Import rules:", "Règles d'importation :")}</strong></p>
-                                <ul>
-                                    <li><strong>{tr("Existing books:", "Albums existants :")}</strong> {tr("updates cover and details if different.", "mise à jour de la couverture et des informations si différentes.")}</li>
-                                    <li><strong>{tr("New books:", "Nouveaux albums :")}</strong> {tr("automatic creation with metadata and covers from backup.", "création automatique avec métadonnées et couvertures de la sauvegarde.")}</li>
-                                    <li><strong>{tr("Purchase data:", "Données d'achat :")}</strong> {tr("price, acquisition date, purchase location and memo imported into your transactions.", "prix, date d'acquisition, lieu d'achat et mémo importés dans vos transactions.")}</li>
-                                    <li><strong>{tr("Reading time:", "Temps de lecture :")}</strong> {tr("timed sessions and durations added to your reading history.", "sessions et durées chronométrées intégrées dans votre historique de lecture.")}</li>
-                                    <li><strong>{tr("Reading notes:", "Notes de lecture :")}</strong> {tr("notes associated with books are imported into the Notes page.", "les notes associées aux albums sont importées dans la page Notes.")}</li>
-                                </ul>
+                        <div className="import-layout">
+                        <div className="import-options-box">
+                            <p className="import-options-box__title">
+                                {tr("Data to import:", "Données à importer :")}
+                            </p>
+                            <div className="import-options-grid">
+                                <label className="import-option-item">
+                                    <input
+                                        type="checkbox"
+                                        checked={importBooks}
+                                        disabled={importing}
+                                        onChange={(e) => setImportBooks(e.target.checked)}
+                                    />
+                                    <span>{tr("Books and covers", "Albums et couvertures")}</span>
+                                    <span
+                                        className="import-option-info"
+                                        title={tr(
+                                            "Creates missing books and updates covers, authors, publishers and series.",
+                                            "Crée les albums manquants et met à jour les couvertures, auteurs, éditeurs et séries."
+                                        )}
+                                    >
+                                        <FontAwesomeIcon icon={faInfoCircle} />
+                                    </span>
+                                </label>
+                                <label className="import-option-item">
+                                    <input
+                                        type="checkbox"
+                                        checked={importStatuses}
+                                        disabled={importing}
+                                        onChange={(e) => setImportStatuses(e.target.checked)}
+                                    />
+                                    <span>{tr("Statuses & ownership", "Statuts et possession")}</span>
+                                    <span
+                                        className="import-option-info"
+                                        title={tr(
+                                            "Imports reading status (Read, Reading, To read) and wishlist/ownership.",
+                                            "Importe le statut de lecture (Lu, En cours, À lire) et la possession / wishlist."
+                                        )}
+                                    >
+                                        <FontAwesomeIcon icon={faInfoCircle} />
+                                    </span>
+                                </label>
+                                <label className="import-option-item">
+                                    <input
+                                        type="checkbox"
+                                        checked={importReadingSessions}
+                                        disabled={importing}
+                                        onChange={(e) => setImportReadingSessions(e.target.checked)}
+                                    />
+                                    <span>{tr("Reading sessions", "Sessions de lecture")}</span>
+                                    <span
+                                        className="import-option-info"
+                                        title={tr(
+                                            "Imports timed reading sessions and durations into your reading history.",
+                                            "Importe les sessions et durées chronométrées dans votre historique de lecture."
+                                        )}
+                                    >
+                                        <FontAwesomeIcon icon={faInfoCircle} />
+                                    </span>
+                                </label>
+                                <label className="import-option-item">
+                                    <input
+                                        type="checkbox"
+                                        checked={importPurchases}
+                                        disabled={importing}
+                                        onChange={(e) => setImportPurchases(e.target.checked)}
+                                    />
+                                    <span>{tr("Purchase data", "Données d'achat")}</span>
+                                    <span
+                                        className="import-option-info"
+                                        title={tr(
+                                            "Imports price, acquisition date, purchase location and memo into your transactions.",
+                                            "Importe le prix, la date d'acquisition, le lieu d'achat et le mémo dans vos transactions."
+                                        )}
+                                    >
+                                        <FontAwesomeIcon icon={faInfoCircle} />
+                                    </span>
+                                </label>
+                                <label className="import-option-item">
+                                    <input
+                                        type="checkbox"
+                                        checked={importNotes}
+                                        disabled={importing}
+                                        onChange={(e) => setImportNotes(e.target.checked)}
+                                    />
+                                    <span>{tr("Reading notes", "Notes de lecture")}</span>
+                                    <span
+                                        className="import-option-info"
+                                        title={tr(
+                                            "Imports book notes and reading comments into the Notes page.",
+                                            "Importe les notes et commentaires de lecture dans la page Notes."
+                                        )}
+                                    >
+                                        <FontAwesomeIcon icon={faInfoCircle} />
+                                    </span>
+                                </label>
                             </div>
                         </div>
 
                         <div className="import-action-zone">
-                            <label className={`import-dropzone ${importing ? "import-dropzone--disabled" : ""}`}>
+                            <label className={`import-dropzone ${importing || !hasAnyImportOption ? "import-dropzone--disabled" : ""}`}>
                                 <div className="import-dropzone__icon">
                                     {importing ? (
                                         <FontAwesomeIcon icon={faCircleNotch} spin />
@@ -619,7 +718,11 @@ export default function SettingsPage() {
                                 </div>
                                 <div className="import-dropzone__text">
                                     <span className="import-dropzone__title">
-                                        {importing ? tr("Importing...", "Importation en cours...") : tr("Select a .bookmory backup", "Sélectionner une sauvegarde .bookmory")}
+                                        {importing
+                                            ? tr("Importing...", "Importation en cours...")
+                                            : !hasAnyImportOption
+                                                ? tr("Select at least one option", "Sélectionnez au moins une option")
+                                                : tr("Select a .bookmory backup", "Sélectionner une sauvegarde .bookmory")}
                                     </span>
                                     <span className="import-dropzone__subtitle">
                                         {tr("Accepted files:", "Fichiers acceptés :")} <strong>.bookmory</strong> {tr("(or zip archive)", "(ou archive zip)")}
@@ -628,7 +731,7 @@ export default function SettingsPage() {
                                 <input
                                     type="file"
                                     accept=".bookmory,.zip"
-                                    disabled={importing}
+                                    disabled={importing || !hasAnyImportOption}
                                     onChange={(e) => {
                                         if (e.target.files && e.target.files.length > 0) {
                                             handleBookmoryFileSelected(e.target.files[0]);
@@ -637,6 +740,7 @@ export default function SettingsPage() {
                                     }}
                                 />
                             </label>
+                        </div>
                         </div>
 
                         {/* Live progress during import */}

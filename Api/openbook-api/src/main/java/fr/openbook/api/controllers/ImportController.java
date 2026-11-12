@@ -1,6 +1,7 @@
 package fr.openbook.api.controllers;
 
 import fr.openbook.api.entities.UserEntity;
+import fr.openbook.api.importing.job.ImportOptions;
 import fr.openbook.api.services.ImportService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,11 @@ public class ImportController {
     public ResponseEntity<Map<String, Object>> importBookmory(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "wait", defaultValue = "false") boolean wait,
+            @RequestParam(value = "importBooks", defaultValue = "true") boolean importBooks,
+            @RequestParam(value = "importStatuses", defaultValue = "true") boolean importStatuses,
+            @RequestParam(value = "importReadingSessions", defaultValue = "true") boolean importReadingSessions,
+            @RequestParam(value = "importPurchases", defaultValue = "true") boolean importPurchases,
+            @RequestParam(value = "importNotes", defaultValue = "true") boolean importNotes,
             HttpSession session
     ) {
         UserEntity user = getAuthenticatedUser(session);
@@ -52,8 +58,16 @@ public class ImportController {
             return ResponseEntity.badRequest().body(Map.of("error", "Le fichier envoyé est vide"));
         }
 
+        ImportOptions options = ImportOptions.builder()
+                .importBooks(importBooks)
+                .importStatuses(importStatuses)
+                .importReadingSessions(importReadingSessions)
+                .importPurchases(importPurchases)
+                .importNotes(importNotes)
+                .build();
+
         try {
-            Map<String, Object> result = importService.importBookmory(file, user.getId(), wait);
+            Map<String, Object> result = importService.importBookmory(file, user.getId(), wait, options);
             return ResponseEntity.ok(result);
         } catch (IOException ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
