@@ -55,5 +55,6 @@ services:
       - ./Web:/usr/src/app
     ports:
       - "3000:3000"
+      - "6006:6006"
     working_dir: /usr/src/app
     entrypoint: ["sh", "-c", "npm ci && npm run dev"]
