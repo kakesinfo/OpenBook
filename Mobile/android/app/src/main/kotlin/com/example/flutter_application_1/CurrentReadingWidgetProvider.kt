@@ -261,9 +261,12 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
                 views.setOnClickPendingIntent(R.id.widget_cover, openAppPendingIntent)
 
                 if (!timerActive) {
+                    views.setViewVisibility(R.id.widget_status_label, View.GONE)
+                    views.setViewVisibility(R.id.widget_progress_section, View.VISIBLE)
+                    views.setViewVisibility(R.id.widget_chronometer, View.GONE)
                     views.setViewVisibility(R.id.widget_idle_controls, View.VISIBLE)
                     views.setViewVisibility(R.id.widget_timer_controls, View.GONE)
-                    views.setTextViewText(R.id.widget_btn_play, "▶ Lecture")
+                    views.setTextViewText(R.id.widget_btn_play, "▶")
 
                     val playIntent = Intent(context, CurrentReadingWidgetProvider::class.java).apply {
                         action = ACTION_PLAY
@@ -276,6 +279,17 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
                     )
                     views.setOnClickPendingIntent(R.id.widget_btn_play, playPendingIntent)
                 } else {
+                    views.setViewVisibility(R.id.widget_status_label, View.VISIBLE)
+                    views.setTextViewText(
+                        R.id.widget_status_label,
+                        if (timerRunning) "Lecture en cours..." else "En pause"
+                    )
+                    views.setTextColor(
+                        R.id.widget_status_label,
+                        if (timerRunning) 0xFF10B981.toInt() else 0xFFF59E0B.toInt()
+                    )
+                    views.setViewVisibility(R.id.widget_progress_section, View.GONE)
+                    views.setViewVisibility(R.id.widget_chronometer, View.VISIBLE)
                     views.setViewVisibility(R.id.widget_idle_controls, View.GONE)
                     views.setViewVisibility(R.id.widget_timer_controls, View.VISIBLE)
 
@@ -289,7 +303,7 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
                     views.setChronometer(R.id.widget_chronometer, baseTime, null, timerRunning)
                     views.setTextViewText(
                         R.id.widget_btn_pause_resume,
-                        if (timerRunning) "⏸ Pause" else "▶ Reprise"
+                        if (timerRunning) "⏸" else "▶"
                     )
 
                     val pauseResumeIntent = Intent(context, CurrentReadingWidgetProvider::class.java).apply {

@@ -37,6 +37,21 @@
 
         <!-- Titre du livre -->
         <TextView
+            android:id="@+id/widget_status_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="2dp"
+            android:ellipsize="end"
+            android:gravity="start|center_vertical"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:text="Lecture en cours..."
+            android:textColor="#10B981"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/widget_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -80,13 +95,24 @@
                 android:progressDrawable="@drawable/widget_progress_bar" />
         </LinearLayout>
 
+        <Chronometer
+            android:id="@+id/widget_chronometer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="start|center_vertical"
+            android:textColor="#10B981"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
         <!-- Contrôles au repos : Flèche gauche + Bouton Lecture + Flèche droite -->
         <LinearLayout
             android:id="@+id/widget_idle_controls"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:gravity="center_vertical"
+            android:gravity="center"
             android:orientation="horizontal">
 
             <TextView
@@ -105,16 +131,16 @@
 
             <TextView
                 android:id="@+id/widget_btn_play"
-                android:layout_width="0dp"
+                android:layout_width="38dp"
                 android:layout_height="38dp"
-                android:layout_weight="1"
                 android:background="@drawable/widget_btn_primary"
                 android:gravity="center"
+                android:includeFontPadding="false"
                 android:maxLines="1"
                 android:singleLine="true"
-                android:text="▶ Lecture"
+                android:text="▶"
                 android:textColor="#FFFFFF"
-                android:textSize="13sp"
+                android:textSize="16sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -132,53 +158,44 @@
                 android:visibility="gone" />
         </LinearLayout>
 
-        <!-- Contrôles actifs : Chronomètre + Boutons Pause et Fin alignés -->
+        <!-- Contrôles actifs : Boutons Pause et Fin alignés -->
         <LinearLayout
             android:id="@+id/widget_timer_controls"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:gravity="center_vertical"
+            android:gravity="center"
             android:orientation="horizontal"
             android:visibility="gone">
 
-            <Chronometer
-                android:id="@+id/widget_chronometer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="10dp"
-                android:textColor="#10B981"
+            <TextView
+                android:id="@+id/widget_btn_pause_resume"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/widget_btn_amber"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:text="⏸"
+                android:textColor="#F59E0B"
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/widget_btn_pause_resume"
-                android:layout_width="0dp"
-                android:layout_height="38dp"
-                android:layout_marginEnd="6dp"
-                android:layout_weight="1"
-                android:background="@drawable/widget_btn_amber"
-                android:gravity="center"
-                android:maxLines="1"
-                android:singleLine="true"
-                android:text="⏸ Pause"
-                android:textColor="#F59E0B"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
-            <TextView
                 android:id="@+id/widget_btn_finish"
-                android:layout_width="0dp"
+                android:layout_width="38dp"
                 android:layout_height="38dp"
-                android:layout_marginStart="6dp"
-                android:layout_weight="1"
+                android:layout_marginStart="8dp"
                 android:background="@drawable/widget_btn_finish"
                 android:gravity="center"
+                android:includeFontPadding="false"
                 android:maxLines="1"
                 android:singleLine="true"
-                android:text="✓ Fin"
+                android:text="✓"
                 android:textColor="#10B981"
-                android:textSize="13sp"
+                android:textSize="16sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
