@@ -1,6 +1,26 @@
-.category-multiselect {
+.yal-select {
   position: relative;
   display: inline-block;
+
+  &--block {
+    display: block;
+    width: 100%;
+
+    .yal-select__trigger {
+      width: 100%;
+    }
+
+    .yal-select__label {
+      flex: 1;
+      max-width: none;
+      text-align: left;
+    }
+
+    .yal-select__dropdown {
+      width: 100%;
+      max-width: none;
+    }
+  }
 
   &__trigger {
     display: inline-flex;
@@ -30,7 +50,7 @@
       background: var(--accent-primary-light, rgba(16, 185, 129, 0.12));
       color: var(--text-primary);
 
-      .category-multiselect__icon-left {
+      .yal-select__icon-left {
         color: var(--accent-primary);
       }
     }
@@ -45,6 +65,7 @@
     color: var(--text-muted);
     font-size: 0.8rem;
     transition: color var(--transition-fast, 0.2s ease);
+    flex-shrink: 0;
   }
 
   &__label {
@@ -68,10 +89,29 @@
     line-height: 1;
   }
 
+  &__clear-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    border-radius: 50%;
+    transition: color var(--transition-fast, 0.15s ease);
+
+    &:hover {
+      color: var(--text-primary);
+    }
+  }
+
   &__chevron {
     color: var(--text-muted);
     font-size: 0.72rem;
     transition: transform var(--transition-fast, 0.2s ease);
+    flex-shrink: 0;
 
     &.is-open {
       transform: rotate(180deg);
@@ -84,14 +124,18 @@
     left: 0;
     min-width: 220px;
     max-width: 320px;
-    /* Solid opaque background so nothing underneath bleeds through */
     background: var(--bg-surface-elevated, var(--bg-elevated, #1a2234));
     border: 1px solid var(--border-medium, rgba(255, 255, 255, 0.18));
     border-radius: var(--radius-md, 12px);
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.35);
     z-index: 1000;
     padding: 8px;
-    animation: multiselectFadeIn 0.15s ease-out;
+    animation: yalSelectFadeIn 0.15s ease-out;
+
+    &--up {
+      top: auto;
+      bottom: calc(100% + 6px);
+    }
   }
 
   &__header {
@@ -124,6 +168,41 @@
 
     &:hover {
       text-decoration: underline;
+    }
+  }
+
+  &__search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+
+    svg {
+      position: absolute;
+      left: 10px;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      pointer-events: none;
+    }
+
+    input {
+      width: 100%;
+      height: 32px;
+      padding: 0 10px 0 28px;
+      border-radius: var(--radius-sm, 6px);
+      background: var(--bg-primary, rgba(0, 0, 0, 0.2));
+      border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+      color: var(--text-primary);
+      font-size: 0.82rem;
+      outline: none;
+
+      &:focus {
+        border-color: var(--accent-primary);
+      }
+
+      &::placeholder {
+        color: var(--text-muted);
+      }
     }
   }
 
@@ -165,6 +244,18 @@
     &--all {
       font-weight: 600;
     }
+
+    &--create {
+      color: var(--accent-primary);
+      font-weight: 600;
+    }
+  }
+
+  &__empty {
+    padding: 10px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.82rem;
   }
 
   &__checkbox {
@@ -202,7 +293,7 @@
   }
 }
 
-@keyframes multiselectFadeIn {
+@keyframes yalSelectFadeIn {
   from {
     opacity: 0;
     transform: translateY(-4px);

@@ -18,7 +18,7 @@ import useLanguage from "../../hooks/UseLanguage.tsx";
 import NoteDTO from "../../dto/Note.dto.ts";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import AsyncCoverImage from "../../components/AsyncCoverImage/AsyncCoverImage.tsx";
-import SearchableSelect from "../../components/FloatingActionButton/SearchableSelect.tsx";
+import Select from "../../components/Select/Select.tsx";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
 import "./NotesPage.scss";
@@ -411,7 +411,7 @@ export default function NotesPage() {
                         <div className="note-modal__field">
                             <label>{tr("Select a book", "Sélectionner un livre")}</label>
                             {bookOptions.length > 0 ? (
-                                <SearchableSelect
+                                <Select
                                     value={selectedBookId}
                                     onChange={(val) => setSelectedBookId(val)}
                                     options={bookOptions}

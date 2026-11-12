@@ -13,11 +13,11 @@ import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import BookList from "../../components/BookList/BookList.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
-import CategoryMultiSelect, {
-    CategoryOption,
+import Select, {
+    type CategoryOption,
     DEFAULT_APP_CATEGORIES,
     bookMatchesCategories
-} from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
+} from "../../components/Select/Select.tsx";
 import PlanningCalendarModal from "./PlanningCalendarModal.tsx";
 import "./PlanningPage.scss";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
@@ -274,7 +274,9 @@ export default function PlanningPage() {
                 {/* Controls Bar: Category MultiSelect, Search, Synchroniser / Exporter */}
                 <PageControls
                     left={
-                        <CategoryMultiSelect
+                        <Select
+                            multiple
+                            translateOptions
                             options={availableCategories}
                             selected={selectedCategories}
                             onChange={(cats) => setSelectedCategories(cats)}

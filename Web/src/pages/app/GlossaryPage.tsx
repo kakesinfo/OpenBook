@@ -17,7 +17,7 @@ import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import WordDTO from "../../dto/Word.dto.ts";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
-import SearchableSelect from "../../components/FloatingActionButton/SearchableSelect.tsx";
+import Select from "../../components/Select/Select.tsx";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
 import "./GlossaryPage.scss";
@@ -536,7 +536,7 @@ export default function GlossaryPage() {
 
                             {booksAvailableToAdd.length > 0 && (
                                 <div style={{ marginTop: "6px" }}>
-                                    <SearchableSelect
+                                    <Select
                                         value={bookToAddId}
                                         onChange={(val) => handleAddBookToSelection(val)}
                                         options={booksAvailableToAdd}
@@ -653,7 +653,7 @@ export default function GlossaryPage() {
 
                                 {booksAvailableToAdd.length > 0 && (
                                     <div style={{ marginTop: "6px" }}>
-                                        <SearchableSelect
+                                        <Select
                                             value={bookToAddId}
                                             onChange={(val) => handleAddBookToSelection(val)}
                                             options={booksAvailableToAdd}

@@ -25,11 +25,11 @@ import {
     faNoteSticky
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
-import CategoryMultiSelect, {
-    CategoryOption,
+import Select, {
+    type CategoryOption,
     DEFAULT_APP_CATEGORIES,
     bookMatchesCategories
-} from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
+} from "../../components/Select/Select.tsx";
 import BookCard from "../../components/BookCard/BookCard.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { detectEditionBadge } from "../../utils/editionBadge.ts";
@@ -425,7 +425,9 @@ export default function SalesPage() {
                 {books.length > 0 && (
                     <PageControls
                         left={
-                            <CategoryMultiSelect
+                            <Select
+                                multiple
+                                translateOptions
                                 options={availableCategories}
                                 selected={selectedCategories}
                                 onChange={(cats) => {

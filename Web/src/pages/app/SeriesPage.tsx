@@ -21,7 +21,7 @@ import {
 	faCheck
 } from "@fortawesome/free-solid-svg-icons";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
-import CategoryMultiSelect, { CategoryOption as MultiSelectOption, DEFAULT_APP_CATEGORIES } from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
+import Select, { type CategoryOption as MultiSelectOption, DEFAULT_APP_CATEGORIES } from "../../components/Select/Select.tsx";
 import "./SeriesPage.scss";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
@@ -521,7 +521,9 @@ export default function SeriesPage() {
                 {/* Controls: Scope tabs, Search, Categories */}
                 <PageControls
                     left={
-                        <CategoryMultiSelect
+                        <Select
+                            multiple
+                            translateOptions
                             options={seriesCategoryOptions}
                             selected={selectedCategories}
                             onChange={(cats) => {

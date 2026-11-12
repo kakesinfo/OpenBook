@@ -18,7 +18,7 @@ import { enqueueSnackbar } from "notistack";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { AdminConfigurationDTO } from "../../dto/AdminConfiguration.dto.ts";
-import SearchableSelect from "../../components/FloatingActionButton/SearchableSelect.tsx";
+import Select from "../../components/Select/Select.tsx";
 import "./AdminConfigPage.scss";
 
 type CronPresetMode = "daily" | "interval_hours" | "weekly" | "monthly" | "custom";
@@ -570,7 +570,7 @@ export default function AdminConfigPage() {
                                         <div className="admin-config-dialog__visual-row">
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-hour">{tr("Hour", "Heure")}</label>
-                                                <SearchableSelect
+                                                <Select
                                                     id="cron-hour"
                                                     value={String(cronHour)}
                                                     onChange={(val) => {
@@ -589,7 +589,7 @@ export default function AdminConfigPage() {
                                             </div>
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-minute">{tr("Minute", "Minute")}</label>
-                                                <SearchableSelect
+                                                <Select
                                                     id="cron-minute"
                                                     value={String(cronMinute)}
                                                     onChange={(val) => {
@@ -613,7 +613,7 @@ export default function AdminConfigPage() {
                                         <div className="admin-config-dialog__visual-row">
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-interval">{tr("Interval", "Intervalle")}</label>
-                                                <SearchableSelect
+                                                <Select
                                                     id="cron-interval"
                                                     value={String(cronIntervalHours)}
                                                     onChange={(val) => {
@@ -632,7 +632,7 @@ export default function AdminConfigPage() {
                                             </div>
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-interval-min">{tr("At minute", "À la minute")}</label>
-                                                <SearchableSelect
+                                                <Select
                                                     id="cron-interval-min"
                                                     value={String(cronMinute)}
                                                     onChange={(val) => {
@@ -656,7 +656,7 @@ export default function AdminConfigPage() {
                                         <div className="admin-config-dialog__visual-row admin-config-dialog__visual-row--three">
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-dow">{tr("Day", "Jour")}</label>
-                                                <SearchableSelect
+                                                <Select
                                                     id="cron-dow"
                                                     value={cronDayOfWeek}
                                                     onChange={(d) => {
@@ -674,7 +674,7 @@ export default function AdminConfigPage() {
                                             </div>
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-weekly-hour">{tr("Hour", "Heure")}</label>
-                                                <SearchableSelect
+                                                <Select
                                                     id="cron-weekly-hour"
                                                     value={String(cronHour)}
                                                     onChange={(val) => {
@@ -693,7 +693,7 @@ export default function AdminConfigPage() {
                                             </div>
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-weekly-min">{tr("Minute", "Minute")}</label>
-                                                <SearchableSelect
+                                                <Select
                                                     id="cron-weekly-min"
                                                     value={String(cronMinute)}
                                                     onChange={(val) => {
@@ -717,7 +717,7 @@ export default function AdminConfigPage() {
                                         <div className="admin-config-dialog__visual-row admin-config-dialog__visual-row--three">
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-dom">{tr("Day of month", "Jour du mois")}</label>
-                                                <SearchableSelect
+                                                <Select
                                                     id="cron-dom"
                                                     value={String(cronDayOfMonth)}
                                                     onChange={(val) => {
@@ -736,7 +736,7 @@ export default function AdminConfigPage() {
                                             </div>
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-monthly-hour">{tr("Hour", "Heure")}</label>
-                                                <SearchableSelect
+                                                <Select
                                                     id="cron-monthly-hour"
                                                     value={String(cronHour)}
                                                     onChange={(val) => {
@@ -755,7 +755,7 @@ export default function AdminConfigPage() {
                                             </div>
                                             <div className="admin-config-dialog__field">
                                                 <label htmlFor="cron-monthly-min">{tr("Minute", "Minute")}</label>
-                                                <SearchableSelect
+                                                <Select
                                                     id="cron-monthly-min"
                                                     value={String(cronMinute)}
                                                     onChange={(val) => {

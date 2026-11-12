@@ -25,11 +25,11 @@ import {
     faGem,
     faXmark
 } from "@fortawesome/free-solid-svg-icons";
-import CategoryMultiSelect, {
-    CategoryOption,
+import Select, {
+    type CategoryOption,
     DEFAULT_APP_CATEGORIES,
     bookMatchesCategories
-} from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
+} from "../../components/Select/Select.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { detectEditionBadge } from "../../utils/editionBadge.ts";
 import "./CollectionPage.scss";
@@ -444,7 +444,9 @@ export default function CollectionPage() {
                 {(hasAnyOwned || isFiltering) && (
                     <PageControls
                         left={
-                            <CategoryMultiSelect
+                            <Select
+                                multiple
+                                translateOptions
                                 options={availableCategories}
                                 selected={selectedCategories}
                                 onChange={handleCategoriesChange}
