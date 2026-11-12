@@ -95,23 +95,27 @@ class _BooksShellState extends ConsumerState<BooksShell> {
     final booksAsync = ref.watch(booksControllerProvider);
     final readingBooks = ref.watch(readingBooksProvider);
 
-    final activeReadingBook = readingBooks.isNotEmpty ? readingBooks.first : null;
-    final progressAsync = activeReadingBook != null
-        ? ref.watch(readingProgressByBookProvider(activeReadingBook))
-        : null;
-
-    // Synchronise le widget Android dès que la lecture en cours ou sa progression évolue
-    if (booksAsync.hasValue) {
-      if (activeReadingBook == null) {
-        AndroidReadingWidgetService.instance.syncReadingBook(
-          book: null,
-          progress: null,
-        );
-      } else if (progressAsync != null && progressAsync.hasValue) {
-        AndroidReadingWidgetService.instance.syncReadingBook(
-          book: activeReadingBook,
+    final widgetEntries = <WidgetReadingBookEntry>[];
+    bool allProgressLoaded = true;
+    for (final book in readingBooks) {
+      final progressAsync = ref.watch(readingProgressByBookProvider(book));
+      if (!progressAsync.hasValue && !progressAsync.hasError) {
+        allProgressLoaded = false;
+      }
+      widgetEntries.add(
+        WidgetReadingBookEntry(
+          book: book,
           progress: progressAsync.value,
-        );
+        ),
+      );
+    }
+
+    // Synchronise le widget Android dès que les lectures en cours ou leur progression évoluent
+    if (booksAsync.hasValue) {
+      if (readingBooks.isEmpty) {
+        AndroidReadingWidgetService.instance.syncReadingBooks(const []);
+      } else if (allProgressLoaded) {
+        AndroidReadingWidgetService.instance.syncReadingBooks(widgetEntries);
       }
 
       if (_pendingPayload != null && booksAsync.value != null) {

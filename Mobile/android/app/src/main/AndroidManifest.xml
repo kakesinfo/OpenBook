@@ -47,6 +47,8 @@
                 <action android:name="fr.openbook.yet_another_library.WIDGET_ACTION_PAUSE_RESUME" />
                 <action android:name="fr.openbook.yet_another_library.WIDGET_ACTION_FINISH" />
                 <action android:name="fr.openbook.yet_another_library.WIDGET_ACTION_REFRESH" />
+                <action android:name="fr.openbook.yet_another_library.WIDGET_ACTION_PREV_BOOK" />
+                <action android:name="fr.openbook.yet_another_library.WIDGET_ACTION_NEXT_BOOK" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

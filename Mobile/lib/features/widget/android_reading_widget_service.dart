@@ -20,6 +20,16 @@ class WidgetFinishSessionPayload {
   final int elapsedSeconds;
 }
 
+class WidgetReadingBookEntry {
+  const WidgetReadingBookEntry({
+    required this.book,
+    this.progress,
+  });
+
+  final Book book;
+  final ReadingProgress? progress;
+}
+
 class AndroidReadingWidgetService {
   AndroidReadingWidgetService._();
 
@@ -33,8 +43,8 @@ class AndroidReadingWidgetService {
   Stream<WidgetFinishSessionPayload> get onFinishSession => _finishSessionController.stream;
 
   bool _initialized = false;
-  String? _lastCoverUrl;
-  String? _lastLocalCoverPath;
+  final Map<int, String> _lastCoverUrls = {};
+  final Map<int, String> _lastLocalCoverPaths = {};
 
   void ensureInitialized() {
     if (_initialized) return;
@@ -84,19 +94,18 @@ class AndroidReadingWidgetService {
     return null;
   }
 
-  Future<void> syncReadingBook({
-    required Book? book,
-    required ReadingProgress? progress,
-  }) async {
+  Future<void> syncReadingBooks(List<WidgetReadingBookEntry> entries) async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       return;
     }
     ensureInitialized();
 
     try {
-      if (book == null || book.id == null) {
+      final validEntries = entries.where((e) => e.book.id != null && e.book.id! > 0).toList();
+      if (validEntries.isEmpty) {
         await _channel.invokeMethod('updateWidgetData', {
           'hasBook': false,
+          'books': <Map<String, dynamic>>[],
           'bookId': -1,
           'title': '',
           'currentPage': 0,
@@ -108,29 +117,60 @@ class AndroidReadingWidgetService {
         return;
       }
 
-      final currentPage = progress?.currentPage ?? 0;
-      final totalPages = progress?.totalPages ?? book.totalPages ?? 0;
-      final totalMinutes = progress?.totalMinutesRead ?? 0;
-      final progressPct = totalPages > 0
-          ? ((currentPage / totalPages).clamp(0.0, 1.0) * 100).round()
-          : 0;
+      final serializedBooks = <Map<String, dynamic>>[];
+      for (final entry in validEntries) {
+        final book = entry.book;
+        final bookId = book.id!;
+        final progress = entry.progress;
+        final currentPage = progress?.currentPage ?? 0;
+        final totalPages = progress?.totalPages ?? book.totalPages ?? 0;
+        final totalMinutes = progress?.totalMinutesRead ?? 0;
+        final progressPct = totalPages > 0
+            ? ((currentPage / totalPages).clamp(0.0, 1.0) * 100).round()
+            : 0;
 
-      final coverPath = await _resolveCoverForWidget(book.coverUrl);
+        final coverPath = await _resolveCoverForWidget(bookId, book.coverUrl);
 
+        serializedBooks.add({
+          'bookId': bookId,
+          'title': book.title,
+          'currentPage': currentPage,
+          'totalPages': totalPages,
+          'totalMinutes': totalMinutes,
+          'progressPct': progressPct,
+          'coverPath': coverPath,
+        });
+      }
+
+      final first = serializedBooks.first;
       await _channel.invokeMethod('updateWidgetData', {
         'hasBook': true,
-        'bookId': book.id,
-        'title': book.title,
-        'currentPage': currentPage,
-        'totalPages': totalPages,
-        'totalMinutes': totalMinutes,
-        'progressPct': progressPct,
-        'coverPath': coverPath,
+        'books': serializedBooks,
+        'bookId': first['bookId'],
+        'title': first['title'],
+        'currentPage': first['currentPage'],
+        'totalPages': first['totalPages'],
+        'totalMinutes': first['totalMinutes'],
+        'progressPct': first['progressPct'],
+        'coverPath': first['coverPath'],
       });
     } catch (_) {}
   }
 
-  Future<String> _resolveCoverForWidget(String rawCoverUrl) async {
+  Future<void> syncReadingBook({
+    required Book? book,
+    required ReadingProgress? progress,
+  }) async {
+    if (book == null || book.id == null) {
+      await syncReadingBooks(const []);
+    } else {
+      await syncReadingBooks([
+        WidgetReadingBookEntry(book: book, progress: progress),
+      ]);
+    }
+  }
+
+  Future<String> _resolveCoverForWidget(int bookId, String rawCoverUrl) async {
     final cover = rawCoverUrl.trim();
     if (cover.isEmpty) {
       return '';
@@ -144,8 +184,10 @@ class AndroidReadingWidgetService {
       return '';
     }
 
-    if (_lastCoverUrl == cover && _lastLocalCoverPath != null) {
-      final cachedFile = File(_lastLocalCoverPath!);
+    final cachedUrl = _lastCoverUrls[bookId];
+    final cachedPath = _lastLocalCoverPaths[bookId];
+    if (cachedUrl == cover && cachedPath != null) {
+      final cachedFile = File(cachedPath);
       if (await cachedFile.exists()) {
         return cachedFile.path;
       }
@@ -159,11 +201,11 @@ class AndroidReadingWidgetService {
         if (!await widgetCoversDir.exists()) {
           await widgetCoversDir.create(recursive: true);
         }
-        final targetPath = p.join(widgetCoversDir.path, 'current_reading_cover.jpg');
+        final targetPath = p.join(widgetCoversDir.path, 'current_reading_cover_$bookId.jpg');
         final file = File(targetPath);
         await file.writeAsBytes(response.bodyBytes, flush: true);
-        _lastCoverUrl = cover;
-        _lastLocalCoverPath = file.path;
+        _lastCoverUrls[bookId] = cover;
+        _lastLocalCoverPaths[bookId] = file.path;
         return file.path;
       }
     } catch (_) {}

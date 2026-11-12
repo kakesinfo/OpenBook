@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -14,10 +15,11 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
 import android.graphics.RectF
-import android.os.Build
 import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -35,6 +37,9 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
         const val KEY_PROGRESS_PCT = "progress_pct"
         const val KEY_COVER_PATH = "cover_path"
 
+        const val KEY_BOOKS_JSON = "books_json"
+        const val KEY_SELECTED_BOOK_ID = "selected_book_id"
+
         const val KEY_TIMER_ACTIVE = "timer_active"
         const val KEY_TIMER_RUNNING = "timer_running"
         const val KEY_TIMER_Accumulated_MS = "timer_accumulated_ms"
@@ -44,9 +49,99 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
         const val ACTION_PAUSE_RESUME = "fr.openbook.yet_another_library.WIDGET_ACTION_PAUSE_RESUME"
         const val ACTION_FINISH = "fr.openbook.yet_another_library.WIDGET_ACTION_FINISH"
         const val ACTION_REFRESH = "fr.openbook.yet_another_library.WIDGET_ACTION_REFRESH"
+        const val ACTION_PREV_BOOK = "fr.openbook.yet_another_library.WIDGET_ACTION_PREV_BOOK"
+        const val ACTION_NEXT_BOOK = "fr.openbook.yet_another_library.WIDGET_ACTION_NEXT_BOOK"
 
         const val EXTRA_WIDGET_FINISH_BOOK_ID = "widget_finish_book_id"
         const val EXTRA_WIDGET_FINISH_ELAPSED_SECONDS = "widget_finish_elapsed_seconds"
+
+        data class WidgetBookData(
+            val bookId: Int,
+            val title: String,
+            val currentPage: Int,
+            val totalPages: Int,
+            val totalMinutes: Int,
+            val progressPct: Int,
+            val coverPath: String
+        )
+
+        fun parseBooks(prefs: SharedPreferences): List<WidgetBookData> {
+            val jsonStr = prefs.getString(KEY_BOOKS_JSON, null)
+            if (!jsonStr.isNullOrBlank()) {
+                try {
+                    val array = JSONArray(jsonStr)
+                    val list = mutableListOf<WidgetBookData>()
+                    for (i in 0 until array.length()) {
+                        val obj = array.optJSONObject(i) ?: continue
+                        val id = obj.optInt("bookId", -1)
+                        if (id > 0) {
+                            list.add(
+                                WidgetBookData(
+                                    bookId = id,
+                                    title = obj.optString("title", "Aucune lecture en cours"),
+                                    currentPage = obj.optInt("currentPage", 0),
+                                    totalPages = obj.optInt("totalPages", 0),
+                                    totalMinutes = obj.optInt("totalMinutes", 0),
+                                    progressPct = obj.optInt("progressPct", 0).coerceIn(0, 100),
+                                    coverPath = obj.optString("coverPath", "")
+                                )
+                            )
+                        }
+                    }
+                    return list
+                } catch (_: Exception) {
+                }
+            }
+
+            // Fallback sur les clés unitaires historiques
+            val hasBook = prefs.getBoolean(KEY_HAS_BOOK, false)
+            val bookId = prefs.getInt(KEY_BOOK_ID, -1)
+            if (hasBook && bookId > 0) {
+                return listOf(
+                    WidgetBookData(
+                        bookId = bookId,
+                        title = prefs.getString(KEY_TITLE, "Aucune lecture en cours") ?: "Aucune lecture en cours",
+                        currentPage = prefs.getInt(KEY_CURRENT_PAGE, 0),
+                        totalPages = prefs.getInt(KEY_TOTAL_PAGES, 0),
+                        totalMinutes = prefs.getInt(KEY_TOTAL_MINUTES, 0),
+                        progressPct = prefs.getInt(KEY_PROGRESS_PCT, 0).coerceIn(0, 100),
+                        coverPath = prefs.getString(KEY_COVER_PATH, "") ?: ""
+                    )
+                )
+            }
+            return emptyList()
+        }
+
+        fun resolveCurrentBookIndex(books: List<WidgetBookData>, prefs: SharedPreferences): Int {
+            if (books.isEmpty()) return -1
+            val selectedId = prefs.getInt(KEY_SELECTED_BOOK_ID, prefs.getInt(KEY_BOOK_ID, -1))
+            val idx = books.indexOfFirst { it.bookId == selectedId }
+            return if (idx >= 0) idx else 0
+        }
+
+        fun applySelectedBookToEditor(editor: SharedPreferences.Editor, book: WidgetBookData?) {
+            if (book == null) {
+                editor.putBoolean(KEY_HAS_BOOK, false)
+                    .putInt(KEY_BOOK_ID, -1)
+                    .putInt(KEY_SELECTED_BOOK_ID, -1)
+                    .putString(KEY_TITLE, "")
+                    .putInt(KEY_CURRENT_PAGE, 0)
+                    .putInt(KEY_TOTAL_PAGES, 0)
+                    .putInt(KEY_TOTAL_MINUTES, 0)
+                    .putInt(KEY_PROGRESS_PCT, 0)
+                    .putString(KEY_COVER_PATH, "")
+            } else {
+                editor.putBoolean(KEY_HAS_BOOK, true)
+                    .putInt(KEY_BOOK_ID, book.bookId)
+                    .putInt(KEY_SELECTED_BOOK_ID, book.bookId)
+                    .putString(KEY_TITLE, book.title)
+                    .putInt(KEY_CURRENT_PAGE, book.currentPage)
+                    .putInt(KEY_TOTAL_PAGES, book.totalPages)
+                    .putInt(KEY_TOTAL_MINUTES, book.totalMinutes)
+                    .putInt(KEY_PROGRESS_PCT, book.progressPct)
+                    .putString(KEY_COVER_PATH, book.coverPath)
+            }
+        }
 
         fun updateAllWidgets(context: Context) {
             val appWidgetManager = AppWidgetManager.getInstance(context)
@@ -74,13 +169,10 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
             appWidgetId: Int
         ) {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val hasBook = prefs.getBoolean(KEY_HAS_BOOK, false)
-            val bookId = prefs.getInt(KEY_BOOK_ID, -1)
-            val title = prefs.getString(KEY_TITLE, "Aucune lecture en cours") ?: "Aucune lecture en cours"
-            val currentPage = prefs.getInt(KEY_CURRENT_PAGE, 0)
-            val totalMinutes = prefs.getInt(KEY_TOTAL_MINUTES, 0)
-            val progressPct = prefs.getInt(KEY_PROGRESS_PCT, 0).coerceIn(0, 100)
-            val coverPath = prefs.getString(KEY_COVER_PATH, "") ?: ""
+            val books = parseBooks(prefs)
+            val currentIndex = resolveCurrentBookIndex(books, prefs)
+            val currentBook = if (currentIndex >= 0) books[currentIndex] else null
+            val hasBook = currentBook != null && currentBook.bookId > 0
 
             val timerActive = prefs.getBoolean(KEY_TIMER_ACTIVE, false) && hasBook
             val timerRunning = prefs.getBoolean(KEY_TIMER_RUNNING, false)
@@ -89,13 +181,15 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
 
             val views = RemoteViews(context.packageName, R.layout.widget_current_reading)
 
-            if (!hasBook || bookId <= 0) {
+            if (!hasBook || currentBook == null) {
                 views.setTextViewText(R.id.widget_title, "Aucune lecture en cours")
                 views.setTextViewText(R.id.widget_progress_text, "p 0 / 0m")
                 views.setProgressBar(R.id.widget_progress_bar, 100, 0, false)
                 views.setImageViewResource(R.id.widget_cover, R.mipmap.ic_launcher)
                 views.setViewVisibility(R.id.widget_idle_controls, View.VISIBLE)
                 views.setViewVisibility(R.id.widget_timer_controls, View.GONE)
+                views.setViewVisibility(R.id.widget_btn_prev, View.GONE)
+                views.setViewVisibility(R.id.widget_btn_next, View.GONE)
                 views.setTextViewText(R.id.widget_btn_play, "Ouvrir")
 
                 val openAppIntent = Intent(context, MainActivity::class.java).apply {
@@ -110,11 +204,44 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
                 views.setOnClickPendingIntent(R.id.widget_btn_play, openAppPendingIntent)
                 views.setOnClickPendingIntent(R.id.widget_cover, openAppPendingIntent)
             } else {
-                views.setTextViewText(R.id.widget_title, title)
-                views.setTextViewText(R.id.widget_progress_text, "p $currentPage / ${totalMinutes}m")
-                views.setProgressBar(R.id.widget_progress_bar, 100, progressPct, false)
+                val showNavArrows = books.size > 1 && !timerActive
+                views.setViewVisibility(R.id.widget_btn_prev, if (showNavArrows) View.VISIBLE else View.GONE)
+                views.setViewVisibility(R.id.widget_btn_next, if (showNavArrows) View.VISIBLE else View.GONE)
 
-                val coverBitmap = loadRoundedCoverBitmap(coverPath)
+                if (showNavArrows) {
+                    val prevIntent = Intent(context, CurrentReadingWidgetProvider::class.java).apply {
+                        action = ACTION_PREV_BOOK
+                    }
+                    val prevPendingIntent = PendingIntent.getBroadcast(
+                        context,
+                        204,
+                        prevIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    views.setOnClickPendingIntent(R.id.widget_btn_prev, prevPendingIntent)
+
+                    val nextIntent = Intent(context, CurrentReadingWidgetProvider::class.java).apply {
+                        action = ACTION_NEXT_BOOK
+                    }
+                    val nextPendingIntent = PendingIntent.getBroadcast(
+                        context,
+                        205,
+                        nextIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    views.setOnClickPendingIntent(R.id.widget_btn_next, nextPendingIntent)
+                }
+
+                views.setTextViewText(R.id.widget_title, currentBook.title)
+                val progressText = if (books.size > 1) {
+                    "(${currentIndex + 1}/${books.size}) • p ${currentBook.currentPage} / ${currentBook.totalMinutes}m"
+                } else {
+                    "p ${currentBook.currentPage} / ${currentBook.totalMinutes}m"
+                }
+                views.setTextViewText(R.id.widget_progress_text, progressText)
+                views.setProgressBar(R.id.widget_progress_bar, 100, currentBook.progressPct, false)
+
+                val coverBitmap = loadRoundedCoverBitmap(currentBook.coverPath)
                 if (coverBitmap != null) {
                     views.setImageViewBitmap(R.id.widget_cover, coverBitmap)
                 } else {
@@ -162,7 +289,7 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
                     views.setChronometer(R.id.widget_chronometer, baseTime, null, timerRunning)
                     views.setTextViewText(
                         R.id.widget_btn_pause_resume,
-                        if (timerRunning) "⏸" else "▶"
+                        if (timerRunning) "⏸ Pause" else "▶ Reprise"
                     )
 
                     val pauseResumeIntent = Intent(context, CurrentReadingWidgetProvider::class.java).apply {
@@ -201,8 +328,8 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
                     inJustDecodeBounds = true
                 }
                 BitmapFactory.decodeFile(file.absolutePath, options)
-                val targetWidth = 180
-                val targetHeight = 260
+                val targetWidth = 240
+                val targetHeight = 360
                 var sampleSize = 1
                 while (options.outWidth / sampleSize > targetWidth * 2 ||
                     options.outHeight / sampleSize > targetHeight * 2
@@ -213,7 +340,8 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
                     inSampleSize = sampleSize
                 }
                 val raw = BitmapFactory.decodeFile(file.absolutePath, decodeOptions) ?: return null
-                getRoundedCornerBitmap(raw, 18f)
+                val cornerRadius = (minOf(raw.width, raw.height) * 0.08f).coerceAtLeast(12f)
+                getRoundedCornerBitmap(raw, cornerRadius)
             } catch (_: Exception) {
                 null
             }
@@ -252,12 +380,34 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
         val now = SystemClock.elapsedRealtime()
 
         when (intent.action) {
-            ACTION_PLAY -> {
-                val hasBook = prefs.getBoolean(KEY_HAS_BOOK, false)
-                if (!hasBook) return
+            ACTION_PREV_BOOK, ACTION_NEXT_BOOK -> {
+                val isActive = prefs.getBoolean(KEY_TIMER_ACTIVE, false)
+                if (isActive) return
 
-                prefs.edit()
-                    .putBoolean(KEY_TIMER_ACTIVE, true)
+                val books = parseBooks(prefs)
+                if (books.size <= 1) return
+
+                val currentIndex = resolveCurrentBookIndex(books, prefs)
+                val delta = if (intent.action == ACTION_NEXT_BOOK) 1 else -1
+                val nextIndex = (currentIndex + delta + books.size) % books.size
+                val nextBook = books[nextIndex]
+
+                val editor = prefs.edit()
+                applySelectedBookToEditor(editor, nextBook)
+                editor.apply()
+
+                updateAllWidgets(context)
+            }
+
+            ACTION_PLAY -> {
+                val books = parseBooks(prefs)
+                val currentIndex = resolveCurrentBookIndex(books, prefs)
+                if (currentIndex < 0) return
+
+                val currentBook = books[currentIndex]
+                val editor = prefs.edit()
+                applySelectedBookToEditor(editor, currentBook)
+                editor.putBoolean(KEY_TIMER_ACTIVE, true)
                     .putBoolean(KEY_TIMER_RUNNING, true)
                     .putLong(KEY_TIMER_Accumulated_MS, 0L)
                     .putLong(KEY_TIMER_LAST_START_ELAPSED, now)
@@ -290,7 +440,14 @@ class CurrentReadingWidgetProvider : AppWidgetProvider() {
             }
 
             ACTION_FINISH -> {
-                val bookId = prefs.getInt(KEY_BOOK_ID, -1)
+                val books = parseBooks(prefs)
+                val currentIndex = resolveCurrentBookIndex(books, prefs)
+                val bookId = if (currentIndex >= 0) {
+                    books[currentIndex].bookId
+                } else {
+                    prefs.getInt(KEY_BOOK_ID, -1)
+                }
+
                 val isRunning = prefs.getBoolean(KEY_TIMER_RUNNING, false)
                 val accumulated = prefs.getLong(KEY_TIMER_Accumulated_MS, 0L)
                 val lastStart = prefs.getLong(KEY_TIMER_LAST_START_ELAPSED, 0L)

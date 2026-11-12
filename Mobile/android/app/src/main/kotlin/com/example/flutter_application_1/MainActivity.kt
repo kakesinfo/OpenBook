@@ -5,6 +5,8 @@ import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : FlutterActivity() {
 
@@ -26,33 +28,77 @@ class MainActivity : FlutterActivity() {
         channel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "updateWidgetData" -> {
-                    val hasBook = call.argument<Boolean>("hasBook") ?: false
-                    val bookId = call.argument<Int>("bookId") ?: -1
-                    val title = call.argument<String>("title") ?: ""
-                    val currentPage = call.argument<Int>("currentPage") ?: 0
-                    val totalPages = call.argument<Int>("totalPages") ?: 0
-                    val totalMinutes = call.argument<Int>("totalMinutes") ?: 0
-                    val progressPct = call.argument<Int>("progressPct") ?: 0
-                    val coverPath = call.argument<String>("coverPath") ?: ""
-
                     val prefs = applicationContext.getSharedPreferences(
                         CurrentReadingWidgetProvider.PREFS_NAME,
                         Context.MODE_PRIVATE
                     )
-                    val previousBookId = prefs.getInt(CurrentReadingWidgetProvider.KEY_BOOK_ID, -1)
+                    val previousSelectedId = prefs.getInt(
+                        CurrentReadingWidgetProvider.KEY_SELECTED_BOOK_ID,
+                        prefs.getInt(CurrentReadingWidgetProvider.KEY_BOOK_ID, -1)
+                    )
+
+                    val rawBooks = call.argument<List<Map<String, Any?>>>("books")
+                    val parsedBooks = mutableListOf<CurrentReadingWidgetProvider.Companion.WidgetBookData>()
+
+                    if (rawBooks != null) {
+                        for (item in rawBooks) {
+                            val id = (item["bookId"] as? Number)?.toInt() ?: -1
+                            if (id > 0) {
+                                parsedBooks.add(
+                                    CurrentReadingWidgetProvider.Companion.WidgetBookData(
+                                        bookId = id,
+                                        title = (item["title"] as? String) ?: "",
+                                        currentPage = (item["currentPage"] as? Number)?.toInt() ?: 0,
+                                        totalPages = (item["totalPages"] as? Number)?.toInt() ?: 0,
+                                        totalMinutes = (item["totalMinutes"] as? Number)?.toInt() ?: 0,
+                                        progressPct = ((item["progressPct"] as? Number)?.toInt() ?: 0).coerceIn(0, 100),
+                                        coverPath = (item["coverPath"] as? String) ?: ""
+                                    )
+                                )
+                            }
+                        }
+                    } else {
+                        val hasBook = call.argument<Boolean>("hasBook") ?: false
+                        val bookId = call.argument<Int>("bookId") ?: -1
+                        if (hasBook && bookId > 0) {
+                            parsedBooks.add(
+                                CurrentReadingWidgetProvider.Companion.WidgetBookData(
+                                    bookId = bookId,
+                                    title = call.argument<String>("title") ?: "",
+                                    currentPage = call.argument<Int>("currentPage") ?: 0,
+                                    totalPages = call.argument<Int>("totalPages") ?: 0,
+                                    totalMinutes = call.argument<Int>("totalMinutes") ?: 0,
+                                    progressPct = (call.argument<Int>("progressPct") ?: 0).coerceIn(0, 100),
+                                    coverPath = call.argument<String>("coverPath") ?: ""
+                                )
+                            )
+                        }
+                    }
+
+                    val jsonArray = JSONArray()
+                    for (book in parsedBooks) {
+                        val obj = JSONObject().apply {
+                            put("bookId", book.bookId)
+                            put("title", book.title)
+                            put("currentPage", book.currentPage)
+                            put("totalPages", book.totalPages)
+                            put("totalMinutes", book.totalMinutes)
+                            put("progressPct", book.progressPct)
+                            put("coverPath", book.coverPath)
+                        }
+                        jsonArray.put(obj)
+                    }
+
+                    val selectedBook = parsedBooks.firstOrNull { it.bookId == previousSelectedId }
+                        ?: parsedBooks.firstOrNull()
 
                     val editor = prefs.edit()
-                        .putBoolean(CurrentReadingWidgetProvider.KEY_HAS_BOOK, hasBook)
-                        .putInt(CurrentReadingWidgetProvider.KEY_BOOK_ID, bookId)
-                        .putString(CurrentReadingWidgetProvider.KEY_TITLE, title)
-                        .putInt(CurrentReadingWidgetProvider.KEY_CURRENT_PAGE, currentPage)
-                        .putInt(CurrentReadingWidgetProvider.KEY_TOTAL_PAGES, totalPages)
-                        .putInt(CurrentReadingWidgetProvider.KEY_TOTAL_MINUTES, totalMinutes)
-                        .putInt(CurrentReadingWidgetProvider.KEY_PROGRESS_PCT, progressPct)
-                        .putString(CurrentReadingWidgetProvider.KEY_COVER_PATH, coverPath)
+                        .putString(CurrentReadingWidgetProvider.KEY_BOOKS_JSON, jsonArray.toString())
 
-                    // Si le livre en cours a changé ou qu'il n'y en a plus, réinitialise le chrono
-                    if (!hasBook || (previousBookId != -1 && previousBookId != bookId)) {
+                    CurrentReadingWidgetProvider.applySelectedBookToEditor(editor, selectedBook)
+
+                    // Si le livre sélectionné a disparu ou changé, réinitialise le chrono
+                    if (selectedBook == null || (previousSelectedId != -1 && previousSelectedId != selectedBook.bookId)) {
                         editor.putBoolean(CurrentReadingWidgetProvider.KEY_TIMER_ACTIVE, false)
                             .putBoolean(CurrentReadingWidgetProvider.KEY_TIMER_RUNNING, false)
                             .putLong(CurrentReadingWidgetProvider.KEY_TIMER_Accumulated_MS, 0L)
