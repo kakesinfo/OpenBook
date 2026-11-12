@@ -120,8 +120,6 @@
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
-        padding-top: 10px;
-        border-top: 1px solid var(--border-color, rgba(0, 0, 0, 0.06));
     }
 
     &__letter-btn {
@@ -129,8 +127,8 @@
         height: 30px;
         padding: 0 6px;
         border-radius: 6px;
-        border: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
-        background-color: var(--card-bg, #ffffff);
+        border: 1px solid var(--border-subtle);
+        background-color: var(--bg-primary);
         color: var(--text-secondary, #475569);
         font-size: 0.8rem;
         font-weight: 600;

@@ -25,15 +25,17 @@ import {
     faNoteSticky
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
-import CategoryMultiSelect, {
-    CategoryOption,
+import Select, {
+    type CategoryOption,
     DEFAULT_APP_CATEGORIES,
     bookMatchesCategories
-} from "../../components/CategoryMultiSelect/CategoryMultiSelect.tsx";
+} from "../../components/Select/Select.tsx";
 import BookCard from "../../components/BookCard/BookCard.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { detectEditionBadge } from "../../utils/editionBadge.ts";
 import "./SalesPage.scss";
+import SearchBar from "../../components/SearchBar/SearchBar.tsx";
+import PageControls from "../../components/PageControls/PageControls.tsx";
 
 type SalesStatusFilter = "all" | "FOR_SALE" | "SOLD";
 type DisplayMode = "grid" | "list";
@@ -421,10 +423,11 @@ export default function SalesPage() {
             <div className="sales-page__content">
                 {/* Controls Bar: Status Tabs, Category Filter, Search, View Mode Toggle */}
                 {books.length > 0 && (
-                    <div className="sales-page__controls">
-                        {/* Left: Category Dropdown */}
-                        <div className="sales-page__left-controls">
-                            <CategoryMultiSelect
+                    <PageControls
+                        left={
+                            <Select
+                                multiple
+                                translateOptions
                                 options={availableCategories}
                                 selected={selectedCategories}
                                 onChange={(cats) => {
@@ -433,33 +436,16 @@ export default function SalesPage() {
                                 }}
                                 allLabel={tr("All categories", "Toutes les catégories")}
                             />
-                        </div>
-
-                        {/* Center: Search input */}
-                        <div className="sales-page__center-controls">
-                            <div className="sales-page__search">
-                                <FontAwesomeIcon icon={faMagnifyingGlass} />
-                                <input
-                                    type="text"
-                                    placeholder={tr("Search a sale...", "Rechercher une vente...")}
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                                {searchQuery && (
-                                    <button
-                                        type="button"
-                                        className="sales-page__search-clear"
-                                        onClick={() => setSearchQuery("")}
-                                        aria-label={tr("Clear search", "Effacer la recherche")}
-                                    >
-                                        <FontAwesomeIcon icon={faXmark} />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Right: View Mode (Galerie vs Liste) */}
-                        <div className="sales-page__right-controls">
+                        }
+                        center={
+                            <SearchBar
+                                value={searchQuery}
+                                onChange={setSearchQuery}
+                                placeholder={tr("Search a sale...", "Rechercher une vente...")}
+                                clearLabel={tr("Clear search", "Effacer la recherche")}
+                            />
+                        }
+                        right={
                             <div className="sales-page__view-toggle">
                                 <button
                                     type="button"
@@ -480,8 +466,8 @@ export default function SalesPage() {
                                     <span>{tr("List", "Liste")}</span>
                                 </button>
                             </div>
-                        </div>
-                    </div>
+                        }
+                    />
                 )}
 
                 {/* Body Content */}

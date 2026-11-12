@@ -23,7 +23,7 @@ import { enqueueSnackbar } from "notistack";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { AdminUserDTO } from "../../dto/AdminUser.dto.ts";
-import SearchableSelect from "../../components/FloatingActionButton/SearchableSelect.tsx";
+import Select from "../../components/Select/Select.tsx";
 import "./AdminUsersPage.scss";
 
 export default function AdminUsersPage() {
@@ -514,7 +514,7 @@ export default function AdminUsersPage() {
 
                         <div className="admin-users-dialog__field">
                             <label htmlFor="modal-role">{tr("Role", "Rôle")}</label>
-                            <SearchableSelect
+                            <Select
                                 id="modal-role"
                                 value={newRole}
                                 onChange={(val) => setNewRole(val)}

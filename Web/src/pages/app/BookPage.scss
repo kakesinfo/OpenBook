@@ -718,6 +718,40 @@
   }
 }
 
+.book-dialog-select {
+  width: 100%;
+
+  .yal-select__trigger {
+    width: 100%;
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 8px;
+    background: var(--input-bg, #ffffff);
+  }
+}
+
+.book-reading-status-select {
+  width: auto !important;
+
+  .yal-select__trigger {
+    width: auto;
+    height: 44px;
+    padding: 0 20px;
+    border-radius: var(--radius-full);
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  @media (max-width: 600px) {
+    width: 100% !important;
+
+    .yal-select__trigger {
+      width: 100%;
+      height: 48px;
+    }
+  }
+}
+
 /* Reading status selector */
 .book-reading-status-selector {
   display: inline-flex;

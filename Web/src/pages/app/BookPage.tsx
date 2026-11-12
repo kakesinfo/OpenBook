@@ -57,6 +57,7 @@ import {
 import { Dialog } from "@mui/material";
 
 import "./BookPage.scss";
+import Select from "../../components/Select/Select.tsx";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import { detectEditionBadge } from "../../utils/editionBadge.ts";
 
@@ -1324,8 +1325,7 @@ export default function BookPage() {
     );
     const showNext = hasNext || canHaveNext;
 
-    const handleReadingStatusChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
-        const newStatus = event.target.value;
+    const handleReadingStatusChange = async (newStatus: string) => {
         if (!id || !session) return;
         try {
             if (!newStatus) {
@@ -1673,20 +1673,23 @@ export default function BookPage() {
                                     </button>
                                 )}
 
-                                <div className={`book-reading-status-selector ${readingStatus && readingStatus.toUpperCase() !== "UNREAD" ? 'book-reading-status-selector--active' : ''}`}>
-                                    <FontAwesomeIcon icon={faBookOpen} />
-                                    <select
-                                        value={readingStatus ? readingStatus.toUpperCase() : "UNREAD"}
-                                        onChange={handleReadingStatusChange}
-                                        aria-label={tr("Reading status", "Statut de lecture")}
-                                    >
-                                        <option value="UNREAD">{tr("Unread", "Non lu")}</option>
-                                        <option value="READING">{tr("Currently reading", "En cours de lecture")}</option>
-                                        <option value="PAUSED">{tr("Paused", "En pause")}</option>
-                                        <option value="READ">{tr("Read", "Lu")}</option>
-                                        <option value="ABANDONED">{tr("Abandoned", "Abandonné")}</option>
-                                    </select>
-                                </div>
+                                <Select
+                                    multiple={false}
+                                    className="book-reading-status-select"
+                                    icon={faBookOpen}
+                                    placeholder={tr("Reading status", "Statut de lecture")}
+                                    value={readingStatus ? readingStatus.toUpperCase() : "UNREAD"}
+                                    onChange={(val) => {
+                                        if (val) handleReadingStatusChange(val);
+                                    }}
+                                    options={[
+                                        { id: "UNREAD", label: tr("Unread", "Non lu") },
+                                        { id: "READING", label: tr("Currently reading", "En cours de lecture") },
+                                        { id: "PAUSED", label: tr("Paused", "En pause") },
+                                        { id: "READ", label: tr("Read", "Lu") },
+                                        { id: "ABANDONED", label: tr("Abandoned", "Abandonné") }
+                                    ]}
+                                />
                             </div>
 
                             {/* Technical Details Card */}
@@ -2380,7 +2383,8 @@ export default function BookPage() {
                         maxWidth: "500px",
                         width: "100%",
                         padding: "24px",
-                        color: "var(--text-primary)"
+                        color: "var(--text-primary)",
+                        overflow: "visible"
                     }
                 }}
             >
@@ -2467,7 +2471,9 @@ export default function BookPage() {
                                     onChange={(e) => setSelectedVolume(Math.max(1, parseInt(e.target.value, 10) || 1))}
                                     style={{
                                         width: "100%",
-                                        padding: "10px 14px",
+                                        height: "40px",
+                                        boxSizing: "border-box",
+                                        padding: "0 14px",
                                         background: "var(--input-bg, #ffffff)",
                                         border: "1px solid var(--border-subtle)",
                                         borderRadius: "8px",
@@ -2510,25 +2516,23 @@ export default function BookPage() {
                                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
                                     {tr("Category", "Catégorie")}
                                 </label>
-                                <select
-                                    value={newSeriesCategory}
-                                    onChange={(e) => setNewSeriesCategory(Number(e.target.value))}
-                                    style={{
-                                        width: "100%",
-                                        padding: "10px 14px",
-                                        background: "var(--input-bg, #ffffff)",
-                                        border: "1px solid var(--border-subtle)",
-                                        borderRadius: "8px",
-                                        color: "var(--text-primary)",
-                                        outline: "none"
+                                <Select
+                                    multiple={false}
+                                    translateOptions
+                                    className="book-dialog-select"
+                                    placeholder={tr("Category", "Catégorie")}
+                                    value={String(newSeriesCategory)}
+                                    onChange={(val) => {
+                                        if (val) setNewSeriesCategory(Number(val));
                                     }}
-                                >
-                                    <option value={3} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{translateCategory("Comics")}</option>
-                                    <option value={2} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{translateCategory("Bande dessinée")}</option>
-                                    <option value={4} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{translateCategory("Manga")}</option>
-                                    <option value={5} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{translateCategory("Roman Graphique")}</option>
-                                    <option value={1} style={{ background: "var(--bg-surface)", color: "var(--text-primary)" }}>{translateCategory("Roman")}</option>
-                                </select>
+                                    options={[
+                                        { id: "3", label: "Comics" },
+                                        { id: "2", label: "Bande dessinée" },
+                                        { id: "4", label: "Manga" },
+                                        { id: "5", label: "Roman Graphique" },
+                                        { id: "1", label: "Roman" }
+                                    ]}
+                                />
                             </div>
 
                             <div>
@@ -2542,7 +2546,9 @@ export default function BookPage() {
                                     onChange={(e) => setSelectedVolume(Math.max(1, parseInt(e.target.value, 10) || 1))}
                                     style={{
                                         width: "100%",
-                                        padding: "10px 14px",
+                                        height: "40px",
+                                        boxSizing: "border-box",
+                                        padding: "0 14px",
                                         background: "var(--input-bg, #ffffff)",
                                         border: "1px solid var(--border-subtle)",
                                         borderRadius: "8px",
@@ -2876,7 +2882,8 @@ export default function BookPage() {
                         maxWidth: "460px",
                         width: "100%",
                         padding: "24px",
-                        color: "var(--text-primary)"
+                        color: "var(--text-primary)",
+                        overflow: "visible"
                     }
                 }}
             >
@@ -3045,7 +3052,8 @@ export default function BookPage() {
                         maxWidth: "460px",
                         width: "100%",
                         padding: "24px",
-                        color: "var(--text-primary)"
+                        color: "var(--text-primary)",
+                        overflow: "visible"
                     }
                 }}
             >
@@ -3135,7 +3143,8 @@ export default function BookPage() {
                         maxWidth: "460px",
                         width: "100%",
                         padding: "24px",
-                        color: "var(--text-primary)"
+                        color: "var(--text-primary)",
+                        overflow: "visible"
                     }
                 }}
             >
