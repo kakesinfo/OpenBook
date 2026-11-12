@@ -327,19 +327,6 @@ export default function GlossaryPage() {
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
-
-                        <div className="glossary-page__book-filter">
-                            <SearchableSelect
-                                value={bookFilterId}
-                                onChange={(val) => setBookFilterId(val)}
-                                options={bookFilterOptions}
-                                placeholder={tr("Filter by book...", "Filtrer par livre...")}
-                                allowEmpty={true}
-                                emptyLabel={tr("All books", "Tous les livres")}
-                                allowCustom={false}
-                                searchable={true}
-                            />
-                        </div>
                     </div>
 
                     <div className="glossary-page__count">
