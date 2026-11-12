@@ -33,4 +33,8 @@ fclean:
 
 re: down init-cache up
 
-.PHONY: init-cache up up-web up-frontend up-api up-backend up-import up-media up-postgres down restart fclean re
+apk-pixel:
+	cd Mobile && flutter build apk --release
+	"C:/Users/Axel/AppData/Local/Android/sdk/platform-tools/adb.exe" install -r Mobile/build/app/outputs/flutter-apk/app-release.apk
+
+.PHONY: init-cache up up-web up-frontend up-api up-backend up-import up-media up-postgres down restart fclean re apk-pixel

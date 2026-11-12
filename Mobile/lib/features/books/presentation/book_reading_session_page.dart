@@ -34,6 +34,16 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
     _sessionDateTime = DateTime.now();
     _duration = widget.initialDuration ?? Duration.zero;
     _currentPage = progress?.currentPage ?? 0;
+
+    if (progress == null) {
+      ref.read(readingProgressByBookProvider(widget.book).future).then((loadedProgress) {
+        if (mounted && _currentPage == 0 && loadedProgress.currentPage > 0) {
+          setState(() {
+            _currentPage = loadedProgress.currentPage;
+          });
+        }
+      }).catchError((_) {});
+    }
   }
 
   String _formatDateTime(DateTime value) {

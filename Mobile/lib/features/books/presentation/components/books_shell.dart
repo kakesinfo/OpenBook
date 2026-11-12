@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_application_1/app/theme_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../widget/android_reading_widget_service.dart';
+import '../../application/books_providers.dart';
+import '../../data/book.dart';
+import '../book_reading_session_page.dart';
 import '../home_page.dart';
 import '../library_page.dart';
 import '../settings_page.dart';
@@ -17,6 +23,67 @@ class BooksShell extends ConsumerStatefulWidget {
 
 class _BooksShellState extends ConsumerState<BooksShell> {
   int _index = 0;
+  StreamSubscription<WidgetFinishSessionPayload>? _widgetFinishSubscription;
+  WidgetFinishSessionPayload? _pendingPayload;
+
+  @override
+  void initState() {
+    super.initState();
+    AndroidReadingWidgetService.instance.ensureInitialized();
+    _widgetFinishSubscription = AndroidReadingWidgetService.instance.onFinishSession.listen(
+      _handleWidgetFinishPayload,
+    );
+    _checkInitialWidgetSession();
+  }
+
+  Future<void> _checkInitialWidgetSession() async {
+    final payload = await AndroidReadingWidgetService.instance.consumePendingWidgetSession();
+    if (payload != null && mounted) {
+      _handleWidgetFinishPayload(payload);
+    }
+  }
+
+  void _handleWidgetFinishPayload(WidgetFinishSessionPayload payload) {
+    if (!mounted) return;
+    final books = ref.read(booksControllerProvider).value;
+    if (books != null && books.isNotEmpty) {
+      _openSessionForPayload(payload, books);
+    } else {
+      _pendingPayload = payload;
+    }
+  }
+
+  void _openSessionForPayload(WidgetFinishSessionPayload payload, List<Book> books) {
+    Book? targetBook;
+    for (final book in books) {
+      if (book.id == payload.bookId) {
+        targetBook = book;
+        break;
+      }
+    }
+    if (targetBook == null) return;
+
+    _pendingPayload = null;
+    setState(() => _index = 0);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => BookReadingSessionPage(
+            book: targetBook!,
+            initialDuration: Duration(seconds: payload.elapsedSeconds),
+          ),
+        ),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _widgetFinishSubscription?.cancel();
+    super.dispose();
+  }
 
   void _goToTab(int index) {
     setState(() => _index = index);
@@ -25,6 +92,37 @@ class _BooksShellState extends ConsumerState<BooksShell> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(appThemeModeProvider);
+    final booksAsync = ref.watch(booksControllerProvider);
+    final readingBooks = ref.watch(readingBooksProvider);
+
+    final widgetEntries = <WidgetReadingBookEntry>[];
+    bool allProgressLoaded = true;
+    for (final book in readingBooks) {
+      final progressAsync = ref.watch(readingProgressByBookProvider(book));
+      if (!progressAsync.hasValue && !progressAsync.hasError) {
+        allProgressLoaded = false;
+      }
+      widgetEntries.add(
+        WidgetReadingBookEntry(
+          book: book,
+          progress: progressAsync.value,
+        ),
+      );
+    }
+
+    // Synchronise le widget Android dès que les lectures en cours ou leur progression évoluent
+    if (booksAsync.hasValue) {
+      if (readingBooks.isEmpty) {
+        AndroidReadingWidgetService.instance.syncReadingBooks(const []);
+      } else if (allProgressLoaded) {
+        AndroidReadingWidgetService.instance.syncReadingBooks(widgetEntries);
+      }
+
+      if (_pendingPayload != null && booksAsync.value != null) {
+        final payload = _pendingPayload!;
+        _openSessionForPayload(payload, booksAsync.value!);
+      }
+    }
 
     final pages = [
       HomePage(key: ValueKey('home_${themeMode.name}')),

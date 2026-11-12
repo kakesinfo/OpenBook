@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_current_reading_label">Lecture en cours</string>
+    <string name="widget_current_reading_description">Suivez votre lecture en cours et lancez le chronomètre depuis l\'écran d\'accueil.</string>
+</resources>
