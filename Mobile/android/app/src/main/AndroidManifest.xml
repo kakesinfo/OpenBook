@@ -36,6 +36,22 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <receiver
+            android:name=".CurrentReadingWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_current_reading_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="fr.openbook.yet_another_library.WIDGET_ACTION_PLAY" />
+                <action android:name="fr.openbook.yet_another_library.WIDGET_ACTION_PAUSE_RESUME" />
+                <action android:name="fr.openbook.yet_another_library.WIDGET_ACTION_FINISH" />
+                <action android:name="fr.openbook.yet_another_library.WIDGET_ACTION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/current_reading_widget_info" />
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
