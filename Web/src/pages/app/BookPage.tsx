@@ -1675,6 +1675,7 @@ export default function BookPage() {
 
                                 <CategoryMultiSelect
                                     multiple={false}
+                                    className="book-reading-status-select"
                                     icon={faBookOpen}
                                     placeholder={tr("Reading status", "Statut de lecture")}
                                     selected={[readingStatus ? readingStatus.toUpperCase() : "UNREAD"]}

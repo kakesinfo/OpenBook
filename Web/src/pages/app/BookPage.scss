@@ -718,6 +718,25 @@
   }
 }
 
+.book-reading-status-select {
+  .category-multiselect__trigger {
+    height: 44px;
+    padding: 0 20px;
+    border-radius: var(--radius-full);
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  @media (max-width: 600px) {
+    width: 100%;
+
+    .category-multiselect__trigger {
+      width: 100%;
+      height: 48px;
+    }
+  }
+}
+
 /* Reading status selector */
 .book-reading-status-selector {
   display: inline-flex;
