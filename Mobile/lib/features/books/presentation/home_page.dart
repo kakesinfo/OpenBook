@@ -17,8 +17,15 @@ import 'notes_page.dart';
 import 'paused_books_page.dart';
 import 'reading_calendar_page.dart';
 
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
+
+  @override
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  int _currentCarouselIndex = 0;
 
   Future<void> _refreshAll(WidgetRef ref) async {
     ref.invalidate(allReadingSessionsProvider);
@@ -30,7 +37,7 @@ class HomePage extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final booksAsync = ref.watch(booksControllerProvider);
     final readingBooks = ref.watch(readingBooksProvider);
     final pausedBooks = ref.watch(pausedBooksProvider);
@@ -43,7 +50,10 @@ class HomePage extends ConsumerWidget {
     final words = wordsAsync.value ?? const [];
 
     final viewportHeight = MediaQuery.of(context).size.height;
-    final carouselHeight = (viewportHeight * 0.28).clamp(200.0, 245.0);
+    final carouselHeight = (viewportHeight * 0.32).clamp(240.0, 280.0);
+    final activeCarouselIndex = readingBooks.isEmpty
+        ? 0
+        : _currentCarouselIndex.clamp(0, readingBooks.length - 1);
 
     return Scaffold(
       appBar: const AppHeader(
@@ -148,42 +158,52 @@ class HomePage extends ConsumerWidget {
                           padEnds: true,
                           enableInfiniteScroll: false,
                           scrollPhysics: const BouncingScrollPhysics(),
+                          onPageChanged: (index, reason) {
+                            if (_currentCarouselIndex != index) {
+                              setState(() {
+                                _currentCarouselIndex = index;
+                              });
+                            }
+                          },
                         ),
-                        items: readingBooks
-                            .map(
-                              (book) => Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4),
-                                child: BookCard(
-                                  book: book,
-                                  onEdit: () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => BookDetailsPage(book: book),
-                                    ),
-                                  ),
-                                  onRecordSession: () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => BookReadingSessionPage(book: book),
-                                    ),
-                                  ),
-                                  onTimer: () => ReadingTimerModal.show(context, book),
-                                  onPause: () async {
-                                    await ref
-                                        .read(booksControllerProvider.notifier)
-                                        .updateBookStatus(book, BookStatus.paused);
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('« ${book.title} » mis en pause'),
-                                          backgroundColor: AppTheme.accentPrimary,
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
-                                    }
-                                  },
+                        items: readingBooks.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final book = entry.value;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: BookCard(
+                              key: ValueKey(book.id ?? book.title),
+                              book: book,
+                              isActive: index == activeCarouselIndex,
+                              onEdit: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => BookDetailsPage(book: book),
                                 ),
                               ),
-                            )
-                            .toList(),
+                              onRecordSession: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      BookReadingSessionPage(book: book),
+                                ),
+                              ),
+                              onTimer: () => ReadingTimerModal.show(context, book),
+                              onPause: () async {
+                                await ref
+                                    .read(booksControllerProvider.notifier)
+                                    .updateBookStatus(book, BookStatus.paused);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('« ${book.title} » mis en pause'),
+                                      backgroundColor: AppTheme.accentPrimary,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          );
+                        }).toList(),
                       ),
               ),
             ),
