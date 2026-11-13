@@ -30,9 +30,12 @@ import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import UserAvatar from "../../components/UserAvatar/UserAvatar.tsx";
 import ThemeSelector from "../../components/ThemeSelector/ThemeSelector.tsx";
 import LanguageSelector from "../../components/LanguageSelector/LanguageSelector.tsx";
+import HeaderFilterTabs, { type HeaderFilterTab } from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
 import "./SettingsPage.scss";
 
 const BACKEND_DELETE_PHRASE = "Je veux supprimer mon compte";
+
+type SettingsTab = "profile" | "appearance" | "import" | "danger";
 
 interface ImportJobStatus {
     id: string;
@@ -54,6 +57,16 @@ export default function SettingsPage() {
     const { tr } = useLanguage();
     const navigate = useNavigate();
     const requiredDeletePhrase = tr("I want to delete my account", "Je veux supprimer mon compte");
+
+    const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+    const settingsTabs: HeaderFilterTab<SettingsTab>[] = [
+        { id: "profile", label: tr("Profile", "Profil"), icon: faUser },
+        { id: "appearance", label: tr("Appearance", "Apparence"), icon: faPalette },
+        ...(!session.isAdmin
+            ? [{ id: "import" as const, label: tr("Import", "Import Bookmory"), icon: faFileImport }]
+            : []),
+        { id: "danger", label: tr("Danger Zone", "Zone Danger"), icon: faTriangleExclamation }
+    ];
 
     // Profile state
     const [username, setUsername] = useState("");
@@ -446,31 +459,16 @@ export default function SettingsPage() {
     return (
         <div className="settings-page">
             <WrapperHeader>
-                <h2>{tr("Account Settings", "Paramètres du compte")}</h2>
+                <HeaderFilterTabs
+                    tabs={settingsTabs}
+                    selectedId={activeTab}
+                    onChange={setActiveTab}
+                />
             </WrapperHeader>
 
             <div className="settings-container">
-                {/* Hero profile banner */}
-                <div className="settings-hero">
-                    <UserAvatar
-                        avatar={session.user?.avatar || avatar}
-                        name={session.user?.username || username}
-                        size="xl"
-                    />
-                    <div className="settings-hero__info">
-                        <span className="settings-hero__name">
-                            {session.user?.username || username || tr("Reader", "Lecteur")}
-                        </span>
-                        <span className="settings-hero__role">
-                            {session.isAdmin ? tr("Administrator Account", "Compte Administrateur") : tr("Reader", "Lecteur")}
-                        </span>
-                        <span className="settings-hero__badge">
-                            <FontAwesomeIcon icon={faShieldHalved} /> {tr("Active account", "Compte actif")}
-                        </span>
-                    </div>
-                </div>
-
                 {/* Section 1: Réglages rapides (Pseudo, Avatar & Langue) */}
+                {activeTab === "profile" && (
                 <section className="settings-card">
                     <header className="settings-card__header">
                         <div className="settings-card__header-title">
@@ -568,8 +566,10 @@ export default function SettingsPage() {
                         <LanguageSelector />
                     </div>
                 </section>
+                )}
 
                 {/* Section: Thème & Apparence */}
+                {activeTab === "appearance" && (
                 <section className="settings-card">
                     <header className="settings-card__header">
                         <div className="settings-card__header-title">
@@ -589,9 +589,10 @@ export default function SettingsPage() {
                         <ThemeSelector />
                     </div>
                 </section>
+                )}
 
                 {/* Section 2: Import Bookmory */}
-                {!session.isAdmin && (
+                {activeTab === "import" && !session.isAdmin && (
                 <section className="settings-card settings-import-card">
                     <header className="settings-card__header">
                         <div className="settings-card__header-title">
@@ -834,6 +835,7 @@ export default function SettingsPage() {
                 )}
 
                 {/* Section 3: Zone Danger */}
+                {activeTab === "danger" && (
                 <section className="settings-danger-card">
                     <header className="settings-card__header">
                         <div className="settings-card__header-title">
@@ -902,6 +904,7 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </section>
+                )}
             </div>
 
             {/* Popup / Modal 2: Changer de mot de passe */}
