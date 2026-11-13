@@ -112,7 +112,7 @@ export default function ChangePassword() {
         <div className="auth-page">
             <div className="auth-page__container">
                 <div className="auth-page__header">
-                    <div className="auth-page__logo" style={{ background: "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)" }}>
+                    <div className="auth-page__logo" style={{ background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%)" }}>
                         <FontAwesomeIcon icon={faKey} />
                     </div>
                     <h1 className="auth-page__title">

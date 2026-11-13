@@ -384,8 +384,8 @@ export default function AdminIndexationPage() {
                             width: "48px",
                             height: "48px",
                             borderRadius: "12px",
-                            background: isScanRunning ? "rgba(245, 158, 11, 0.15)" : "var(--accent-primary-light)",
-                            color: isScanRunning ? "var(--accent-amber)" : "var(--accent-primary)",
+                            background: isScanRunning ? "var(--accent-primary-light)" : "var(--accent-primary-light)",
+                            color: "var(--accent-primary)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -399,10 +399,10 @@ export default function AdminIndexationPage() {
                             </div>
                             {isScanRunning ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: "2px" }}>
-                                    <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--accent-amber)", display: "flex", alignItems: "center", gap: "6px" }}>
+                                    <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--accent-primary)", display: "flex", alignItems: "center", gap: "6px" }}>
                                         <span>{tr("Scan:", "Scan :")}</span>
                                         <span style={{
-                                            color: liveScan?.current_source_color || "var(--accent-amber)",
+                                            color: liveScan?.current_source_color || "var(--accent-primary)",
                                             fontWeight: 800
                                         }}>
                                             {liveScan?.current_source_name || liveScan?.current_source || tr("In progress", "En cours")}
@@ -414,7 +414,7 @@ export default function AdminIndexationPage() {
                                                 display: "inline-flex",
                                                 alignItems: "center",
                                                 gap: "6px",
-                                                color: "var(--accent-amber)",
+                                                color: "var(--accent-primary)",
                                                 fontWeight: 600
                                             }}>
                                                 <span className="admin-status-pulse" />
@@ -429,8 +429,8 @@ export default function AdminIndexationPage() {
                                                 {liveScan?.current_step && (
                                                     <span style={{
                                                         fontSize: "0.75rem",
-                                                        color: "var(--accent-amber)",
-                                                        background: "rgba(245, 158, 11, 0.12)",
+                                                        color: "var(--accent-primary)",
+                                                        background: "var(--accent-primary-light)",
                                                         padding: "1px 7px",
                                                         borderRadius: "10px",
                                                         fontWeight: 600
@@ -531,7 +531,7 @@ export default function AdminIndexationPage() {
                     <div style={{
                         background: "var(--bg-surface)",
                         border: "1px solid var(--border-subtle)",
-                        borderLeft: `4px solid ${liveScan?.current_source_color || "var(--accent-amber)"}`,
+                        borderLeft: `4px solid ${liveScan?.current_source_color || "var(--accent-primary)"}`,
                         borderRadius: "14px",
                         padding: "16px 20px",
                         display: "flex",
@@ -546,8 +546,8 @@ export default function AdminIndexationPage() {
                                 width: "40px",
                                 height: "40px",
                                 borderRadius: "10px",
-                                background: "rgba(245, 158, 11, 0.15)",
-                                color: "var(--accent-amber)",
+                                background: "var(--accent-primary-light)",
+                                color: "var(--accent-primary)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -563,7 +563,7 @@ export default function AdminIndexationPage() {
                                     <span style={{
                                         fontWeight: 800,
                                         fontSize: "0.95rem",
-                                        color: liveScan?.current_source_color || "var(--accent-amber)"
+                                        color: liveScan?.current_source_color || "var(--accent-primary)"
                                     }}>
                                         {liveScan?.current_source_name || liveScan?.current_source || tr("In progress", "En cours")}
                                     </span>
@@ -581,7 +581,7 @@ export default function AdminIndexationPage() {
                                         display: "inline-flex",
                                         alignItems: "center",
                                         gap: "6px",
-                                        color: "var(--accent-amber)",
+                                        color: "var(--accent-primary)",
                                         fontWeight: 600
                                     }}>
                                         <span className="admin-status-pulse" />
@@ -808,8 +808,8 @@ export default function AdminIndexationPage() {
                                                                 gap: "6px",
                                                                 padding: "6px 12px",
                                                                 borderRadius: "8px",
-                                                                background: "rgba(245, 158, 11, 0.12)",
-                                                                color: "var(--accent-amber)",
+                                                                background: "var(--accent-primary-light)",
+                                                                color: "var(--accent-primary)",
                                                                 fontSize: "0.8rem",
                                                                 fontWeight: 600
                                                             }}

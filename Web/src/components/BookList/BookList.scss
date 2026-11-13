@@ -114,7 +114,7 @@
     z-index: 2;
 
     &.is-for-sale {
-      background: rgba(245, 158, 11, 0.9);
+      background: var(--accent-primary);
       color: #fff;
       border: 1px solid rgba(255, 255, 255, 0.3);
     }

@@ -2,11 +2,6 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  --accent-primary: #f59e0b;
-  --accent-primary-hover: #d97706;
-  --accent-primary-light: rgba(245, 158, 11, 0.14);
-  --accent-primary-glow: rgba(245, 158, 11, 0.35);
-  --border-focus: rgba(245, 158, 11, 0.45);
 
   &__content {
     width: 100%;
@@ -128,12 +123,12 @@
     }
 
     &.is-active {
-      background: rgba(245, 158, 11, 0.18);
-      color: var(--accent-amber);
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
       font-weight: 700;
 
       .sales-page__filter-count {
-        background: var(--accent-amber);
+        background: var(--accent-primary);
         color: #fff;
       }
     }
@@ -176,8 +171,8 @@
       transition: all var(--transition-fast);
 
       &:focus {
-        border-color: var(--accent-amber);
-        box-shadow: 0 0 0 2px var(--accent-amber-light);
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 2px var(--accent-primary-light);
       }
 
       &::placeholder {
@@ -254,9 +249,9 @@
   letter-spacing: 0.3px;
 
   &--forsale {
-    background: var(--accent-amber-light);
-    color: var(--accent-amber);
-    border: 1px solid var(--accent-amber);
+    background: var(--accent-primary-light);
+    color: var(--accent-primary);
+    border: 1px solid var(--border-focus);
   }
 
   &--sold {
@@ -383,7 +378,7 @@
       cursor: pointer;
 
       &:hover .sales-row__title {
-        color: var(--accent-amber);
+        color: var(--accent-primary);
         text-decoration: underline;
       }
     }
@@ -413,9 +408,9 @@
     gap: 3px;
     padding: 1px 5px;
     border-radius: 4px;
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
-    border: 1px solid rgba(245, 158, 11, 0.35);
+    background: var(--accent-primary-light);
+    color: var(--accent-primary);
+    border: 1px solid var(--border-focus);
     font-size: 0.65rem;
     font-weight: 600;
     flex-shrink: 0;
@@ -433,9 +428,9 @@
     }
 
     &--collector {
-      background: rgba(245, 158, 11, 0.15);
-      color: #fbbf24;
-      border-color: rgba(245, 158, 11, 0.35);
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
+      border-color: var(--border-focus);
 
       [data-theme="beige"] & {
         color: #b45309;
@@ -535,12 +530,12 @@
     }
 
     &--relist {
-      color: var(--accent-amber);
-      border-color: var(--accent-amber);
+      color: var(--accent-primary);
+      border-color: var(--border-focus);
 
       &:hover {
-        background: rgba(245, 158, 11, 0.18);
-        border-color: #f59e0b;
+        background: var(--accent-primary-light);
+        border-color: var(--accent-primary);
       }
     }
 
@@ -745,11 +740,12 @@
     }
 
     &--sold {
-      background: linear-gradient(135deg, var(--accent-amber) 0%, #78350f 100%);
-      box-shadow: 0 4px 14px var(--accent-amber-light);
+      background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%);
+      box-shadow: 0 4px 14px var(--accent-primary-light);
 
       &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #b45309 0%, var(--accent-amber) 100%);
+        background: linear-gradient(135deg, var(--accent-primary-hover) 0%, var(--accent-primary) 100%);
+        box-shadow: 0 4px 12px var(--accent-primary-glow);
         transform: translateY(-1px);
       }
     }

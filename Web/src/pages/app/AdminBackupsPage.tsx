@@ -404,7 +404,7 @@ export default function AdminBackupsPage() {
                 }}
             >
                 <div className="admin-backups__dialog-content">
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "#d97706" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "var(--accent-primary)" }}>
                         <FontAwesomeIcon icon={faTriangleExclamation} style={{ fontSize: "1.4rem" }} />
                         <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "var(--text-primary)" }}>
                             {tr("Restore Backup?", "Restaurer la sauvegarde ?")}
