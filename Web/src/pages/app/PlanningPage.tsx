@@ -22,6 +22,7 @@ import PlanningCalendarModal from "./PlanningCalendarModal.tsx";
 import "./PlanningPage.scss";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
+import HeaderFilterTabs from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
 
 type TimeFilter = "upcoming" | "recent";
 
@@ -244,30 +245,20 @@ export default function PlanningPage() {
     return (
         <div className="planning-page">
             <WrapperHeader>
-                <div className="planning-page__header-center">
-                    <div className="planning-page__filters">
-                        {timeTabs.map((tab) => {
-                            const isSelected = timeFilter === tab.id;
-                            const count = tab.id === "upcoming" ? totalUpcomingCount : totalRecentCount;
-                            const isLoading = tab.id === "upcoming" ? loadingUpcoming : loadingRecent;
-
-                            return (
-                                <button
-                                    key={tab.id}
-                                    type="button"
-                                    onClick={() => setTimeFilter(tab.id)}
-                                    className={`planning-page__filter-btn ${isSelected ? "is-active" : ""}`}
-                                >
-                                    {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
-                                    <span>{tab.label}</span>
-                                    <span className="planning-page__filter-count">
-                                        {isLoading ? "..." : count}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+                <HeaderFilterTabs
+                    tabs={timeTabs.map((tab) => {
+                        const count = tab.id === "upcoming" ? totalUpcomingCount : totalRecentCount;
+                        const isLoading = tab.id === "upcoming" ? loadingUpcoming : loadingRecent;
+                        return {
+                            id: tab.id,
+                            label: tab.label,
+                            icon: tab.icon,
+                            count: isLoading ? "..." : count
+                        };
+                    })}
+                    selectedId={timeFilter}
+                    onChange={setTimeFilter}
+                />
             </WrapperHeader>
 
             <div className="planning-page__content">

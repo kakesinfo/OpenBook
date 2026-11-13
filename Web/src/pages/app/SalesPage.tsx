@@ -36,6 +36,7 @@ import { detectEditionBadge } from "../../utils/editionBadge.ts";
 import "./SalesPage.scss";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
+import HeaderFilterTabs from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
 
 type SalesStatusFilter = "all" | "FOR_SALE" | "SOLD";
 type DisplayMode = "grid" | "list";
@@ -395,29 +396,16 @@ export default function SalesPage() {
     return (
         <div className="sales-page">
             <WrapperHeader>
-                <div className="sales-page__header-center">
-                    <div className="sales-page__filters">
-                        {STATUS_TABS.map((tab) => {
-                            const isSelected = selectedStatus === tab.id;
-                            const count = statusCounts[tab.id];
-
-                            return (
-                                <button
-                                    key={tab.id}
-                                    type="button"
-                                    onClick={() => setSelectedStatus(tab.id)}
-                                    className={`sales-page__filter-btn ${isSelected ? "is-active" : ""}`}
-                                >
-                                    {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
-                                    <span>{tr(tab.labelEn, tab.labelFr)}</span>
-                                    <span className="sales-page__filter-count">
-                                        {count}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+                <HeaderFilterTabs
+                    tabs={STATUS_TABS.map((tab) => ({
+                        id: tab.id,
+                        label: tr(tab.labelEn, tab.labelFr),
+                        icon: tab.icon,
+                        count: statusCounts[tab.id]
+                    }))}
+                    selectedId={selectedStatus}
+                    onChange={setSelectedStatus}
+                />
             </WrapperHeader>
 
             <div className="sales-page__content">

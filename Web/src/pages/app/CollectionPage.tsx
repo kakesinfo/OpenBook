@@ -35,6 +35,7 @@ import { detectEditionBadge } from "../../utils/editionBadge.ts";
 import "./CollectionPage.scss";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
+import HeaderFilterTabs from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
 
 type TomeStatusFilter = "all" | "toread" | "read" | "abandoned";
 type DisplayMode = "grid" | "list";
@@ -414,29 +415,16 @@ export default function CollectionPage() {
     return (
         <div className="collection-page">
             <WrapperHeader>
-                <div className="collection-page__header-center">
-                    <div className="collection-page__filters">
-                        {STATUS_TABS.map((tab) => {
-                            const isSelected = selectedStatus === tab.id;
-                            const count = statusCounts[tab.id] ?? 0;
-
-                            return (
-                                <button
-                                    key={tab.id}
-                                    type="button"
-                                    onClick={() => handleStatusChange(tab.id)}
-                                    className={`collection-page__filter-btn ${isSelected ? "is-active" : ""}`}
-                                >
-                                    {tab.icon && <FontAwesomeIcon icon={tab.icon} />}
-                                    <span>{tr(tab.labelEn, tab.labelFr)}</span>
-                                    <span className="collection-page__filter-count">
-                                        {count}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+                <HeaderFilterTabs
+                    tabs={STATUS_TABS.map((tab) => ({
+                        id: tab.id,
+                        label: tr(tab.labelEn, tab.labelFr),
+                        icon: tab.icon,
+                        count: statusCounts[tab.id] ?? 0
+                    }))}
+                    selectedId={selectedStatus}
+                    onChange={handleStatusChange}
+                />
             </WrapperHeader>
 
             <div className="collection-page__content">
