@@ -179,10 +179,21 @@ public class BookmoryDbService {
         String cleanISBN = isbn != null ? isbn.trim() : "";
         String cleanT = cleanText(title);
 
-        // 1. Match by normalized ISBN
+        // 1. Match by exact ISBN first (uses index), then normalized ISBN
         if (!cleanISBN.isBlank()) {
+            String exactSql = SELECT_BOOK_COLS + "WHERE COALESCE(deleted, FALSE) = FALSE AND isbn = ? LIMIT 1";
+            try {
+                return jdbcTemplate.queryForObject(exactSql, this::mapExistingBook, cleanISBN);
+            } catch (EmptyResultDataAccessException ignored) {}
+
             String digitsOnly = RE_NON_ISBN.matcher(cleanISBN).replaceAll("");
             if (!digitsOnly.isBlank()) {
+                if (!digitsOnly.equals(cleanISBN)) {
+                    try {
+                        return jdbcTemplate.queryForObject(exactSql, this::mapExistingBook, digitsOnly);
+                    } catch (EmptyResultDataAccessException ignored) {}
+                }
+
                 String sql = SELECT_BOOK_COLS + "WHERE COALESCE(deleted, FALSE) = FALSE AND regexp_replace(isbn, '[^0-9Xx]', '', 'g') = ? AND isbn IS NOT NULL AND isbn != '' LIMIT 1";
                 try {
                     return jdbcTemplate.queryForObject(sql, this::mapExistingBook, digitsOnly);

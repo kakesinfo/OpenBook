@@ -103,14 +103,22 @@ public class BookmoryImportService {
         job.setCurrentStep("Décompression et lecture de l'archive...");
 
         try (ParsedBookmory parsed = zipParser.parse(zipFile)) {
-            int total = parsed.getBooks().size();
+            List<BookmoryBook> booksToProcess = new ArrayList<>();
+            for (BookmoryBook b : parsed.getBooks()) {
+                if (shouldProcessBook(b, parsed, options)) {
+                    booksToProcess.add(b);
+                }
+            }
+
+            int total = booksToProcess.size();
             job.setTotalBooks(total);
-            job.setCurrentStep(String.format("Importation des %d albums...", total));
+            job.setCurrentStep(buildStepLabel(total, options));
 
-            log.info("[Importer] Starting import of {} books for user {} (job {})", total, job.getUserId(), job.getId());
+            log.info("[Importer] Starting import of {} books (out of {} in backup) for user {} (job {})",
+                    total, parsed.getBooks().size(), job.getUserId(), job.getId());
 
-            for (int i = 0; i < parsed.getBooks().size(); i++) {
-                BookmoryBook b = parsed.getBooks().get(i);
+            for (int i = 0; i < total; i++) {
+                BookmoryBook b = booksToProcess.get(i);
                 try {
                     processSingleBook(job, b, parsed, options);
                 } catch (Throwable ex) {
@@ -264,7 +272,7 @@ public class BookmoryImportService {
         }
 
         // 11. Purchases
-        if (options.isImportPurchases() && job.getUserId() != null && job.getUserId() > 0 && b.getPurchases() != null) {
+        if (options.isImportPurchases() && hasPurchaseData(b) && job.getUserId() != null && job.getUserId() > 0) {
             for (BookmoryPurchase purchase : b.getPurchases()) {
                 if (dbService.importPurchase(job.getUserId(), bookId, purchase)) {
                     job.setImportedPurchases(job.getImportedPurchases() + 1);
@@ -273,54 +281,52 @@ public class BookmoryImportService {
         }
 
         // 12. Reading sessions
-        if (options.isImportReadingSessions() && job.getUserId() != null && job.getUserId() > 0) {
-            if (b.getReads() != null) {
-                Long earliestSessionMs = null;
-                for (BookmoryRead read : b.getReads()) {
-                    if (read.getReadTimerList() != null) {
-                        for (BookmoryReadTimer timer : read.getReadTimerList()) {
-                            if (timer.getElapsedSec() != null && timer.getElapsedSec() > 0) {
-                                Long timerTime = timer.getReadStartedAt() != null && timer.getReadStartedAt() > 0
-                                        ? timer.getReadStartedAt()
-                                        : timer.getCreatedAt();
-                                if (timerTime != null && timerTime > 0) {
-                                    if (earliestSessionMs == null || timerTime < earliestSessionMs) {
-                                        earliestSessionMs = timerTime;
-                                    }
+        if (options.isImportReadingSessions() && hasReadingSessionData(b) && job.getUserId() != null && job.getUserId() > 0) {
+            Long earliestSessionMs = null;
+            for (BookmoryRead read : b.getReads()) {
+                if (read.getReadTimerList() != null) {
+                    for (BookmoryReadTimer timer : read.getReadTimerList()) {
+                        if (timer.getElapsedSec() != null && timer.getElapsedSec() > 0) {
+                            Long timerTime = timer.getReadStartedAt() != null && timer.getReadStartedAt() > 0
+                                    ? timer.getReadStartedAt()
+                                    : timer.getCreatedAt();
+                            if (timerTime != null && timerTime > 0) {
+                                if (earliestSessionMs == null || timerTime < earliestSessionMs) {
+                                    earliestSessionMs = timerTime;
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                if (earliestSessionMs != null) {
-                    dbService.ensureReadingStartSession(job.getUserId(), bookId, Instant.ofEpochMilli(earliestSessionMs).minusMillis(1));
-                }
+            if (earliestSessionMs != null) {
+                dbService.ensureReadingStartSession(job.getUserId(), bookId, Instant.ofEpochMilli(earliestSessionMs).minusMillis(1));
+            }
 
-                for (BookmoryRead read : b.getReads()) {
-                    Map<Long, Integer> pageByTime = new HashMap<>();
-                    if (read.getPageLogList() != null) {
-                        for (BookmoryPageLog pl : read.getPageLogList()) {
-                            if (pl.getCreatedAt() != null && pl.getPage() != null) {
-                                pageByTime.put(pl.getCreatedAt(), pl.getPage().intValue());
-                            }
+            for (BookmoryRead read : b.getReads()) {
+                Map<Long, Integer> pageByTime = new HashMap<>();
+                if (read.getPageLogList() != null) {
+                    for (BookmoryPageLog pl : read.getPageLogList()) {
+                        if (pl.getCreatedAt() != null && pl.getPage() != null) {
+                            pageByTime.put(pl.getCreatedAt(), pl.getPage().intValue());
                         }
                     }
+                }
 
-                    if (read.getReadTimerList() != null) {
-                        for (BookmoryReadTimer timer : read.getReadTimerList()) {
-                            int page = b.getCurPage() != null ? b.getCurPage().intValue() : 0;
-                            if (timer.getCreatedAt() != null && pageByTime.containsKey(timer.getCreatedAt()) && pageByTime.get(timer.getCreatedAt()) > 0) {
-                                page = pageByTime.get(timer.getCreatedAt());
-                            } else if (read.getPage() != null && read.getPage() > 0) {
-                                page = read.getPage().intValue();
-                            } else if (b.getRealTotalPage() != null && b.getRealTotalPage() > 0) {
-                                page = b.getRealTotalPage().intValue();
-                            }
+                if (read.getReadTimerList() != null) {
+                    for (BookmoryReadTimer timer : read.getReadTimerList()) {
+                        int page = b.getCurPage() != null ? b.getCurPage().intValue() : 0;
+                        if (timer.getCreatedAt() != null && pageByTime.containsKey(timer.getCreatedAt()) && pageByTime.get(timer.getCreatedAt()) > 0) {
+                            page = pageByTime.get(timer.getCreatedAt());
+                        } else if (read.getPage() != null && read.getPage() > 0) {
+                            page = read.getPage().intValue();
+                        } else if (b.getRealTotalPage() != null && b.getRealTotalPage() > 0) {
+                            page = b.getRealTotalPage().intValue();
+                        }
 
-                            if (dbService.importReadingSession(job.getUserId(), bookId, timer, page)) {
-                                job.setImportedReadingSessions(job.getImportedReadingSessions() + 1);
-                            }
+                        if (dbService.importReadingSession(job.getUserId(), bookId, timer, page)) {
+                            job.setImportedReadingSessions(job.getImportedReadingSessions() + 1);
                         }
                     }
                 }
@@ -328,7 +334,7 @@ public class BookmoryImportService {
         }
 
         // 13. Book notes (from store 'notes' and optional reading comments)
-        if (!options.isImportNotes()) {
+        if (!options.isImportNotes() || !hasNoteData(b, parsed)) {
             return;
         }
         List<BookmoryNote> notesForBook = parsed.getBookNotes() != null
@@ -345,6 +351,84 @@ public class BookmoryImportService {
         if (dbService.importBookNote(job.getUserId(), bookId, notesForBook, readComments)) {
             job.setImportedNotes(job.getImportedNotes() + 1);
         }
+    }
+
+    private static boolean hasPurchaseData(BookmoryBook b) {
+        return b.getPurchases() != null && !b.getPurchases().isEmpty();
+    }
+
+    private static boolean hasReadingSessionData(BookmoryBook b) {
+        if (b.getReads() == null) {
+            return false;
+        }
+        for (BookmoryRead read : b.getReads()) {
+            if (read != null && read.getReadTimerList() != null) {
+                for (BookmoryReadTimer timer : read.getReadTimerList()) {
+                    if (timer != null && timer.getElapsedSec() != null && timer.getElapsedSec() > 0) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasNoteData(BookmoryBook b, ParsedBookmory parsed) {
+        if (parsed.getBookNotes() != null && b.getKey() != null) {
+            List<BookmoryNote> notesForBook = parsed.getBookNotes().get(b.getKey());
+            if (notesForBook != null) {
+                for (BookmoryNote n : notesForBook) {
+                    if (n != null && n.getParsedContent() != null && !n.getParsedContent().isBlank()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        if (b.getReads() != null) {
+            for (BookmoryRead read : b.getReads()) {
+                if (read != null && read.getComment() != null && !read.getComment().isBlank()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean shouldProcessBook(BookmoryBook b, ParsedBookmory parsed, ImportOptions options) {
+        if (BookmoryDbService.cleanText(b.getTitle()).isBlank()) {
+            return false;
+        }
+        if (options.isImportBooks() || options.isImportStatuses()) {
+            return true;
+        }
+        return (options.isImportPurchases() && hasPurchaseData(b))
+                || (options.isImportReadingSessions() && hasReadingSessionData(b))
+                || (options.isImportNotes() && hasNoteData(b, parsed));
+    }
+
+    private static String buildStepLabel(int total, ImportOptions options) {
+        if (!options.isImportBooks() && !options.isImportStatuses()) {
+            String plural = total > 1 ? "s" : "";
+            int enabledCount = (options.isImportNotes() ? 1 : 0)
+                    + (options.isImportPurchases() ? 1 : 0)
+                    + (options.isImportReadingSessions() ? 1 : 0);
+            if (enabledCount == 1) {
+                if (options.isImportNotes()) {
+                    return String.format("Importation des notes (%d album%s concerné%s)...", total, plural, plural);
+                }
+                if (options.isImportPurchases()) {
+                    return String.format("Importation des achats (%d album%s concerné%s)...", total, plural, plural);
+                }
+                if (options.isImportReadingSessions()) {
+                    return String.format("Importation des sessions de lecture (%d album%s concerné%s)...", total, plural, plural);
+                }
+            }
+            return String.format("Importation des données sélectionnées (%d album%s concerné%s)...", total, plural, plural);
+        }
+        if (!options.isImportBooks() && options.isImportStatuses()) {
+            return String.format("Mise à jour des statuts et données (%d albums)...", total);
+        }
+        return String.format("Importation des %d albums...", total);
     }
 
     private static String normalizeText(String s) {
