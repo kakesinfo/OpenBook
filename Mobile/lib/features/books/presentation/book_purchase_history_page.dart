@@ -120,6 +120,7 @@ class BookPurchaseHistoryPage extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         backgroundColor: AppTheme.accentPrimary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_shopping_cart_rounded),

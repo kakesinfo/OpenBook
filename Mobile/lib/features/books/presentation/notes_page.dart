@@ -391,6 +391,7 @@ class _NotesPageState extends ConsumerState<NotesPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => _openNoteEditorSheet(context),
         icon: const Icon(Icons.edit_note_rounded),
         label: const Text('Nouvelle note'),

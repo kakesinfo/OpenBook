@@ -43,6 +43,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
         subtitle: 'Bibliothèque & Filtres',
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () {
           showAddBookSheet(context);
         },

@@ -28,6 +28,7 @@ class WishlistPage extends ConsumerWidget {
         title: titleWithCount,
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () {
           showAddBookSheet(context, initialStatus: BookStatus.wishlist);
         },
