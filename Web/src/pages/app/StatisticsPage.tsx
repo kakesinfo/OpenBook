@@ -351,7 +351,7 @@ export default function StatisticsPage() {
 
                             {/* Estimated Value */}
                             <div className="stats-page__metric-card stats-page__metric-card--amber">
-                                <div className="stats-page__metric-icon" style={{ background: "rgba(245, 158, 11, 0.15)", color: "#fbbf24" }}>
+                                <div className="stats-page__metric-icon" style={{ background: "var(--accent-primary-light)", color: "var(--accent-primary)" }}>
                                     <FontAwesomeIcon icon={faCoins} />
                                 </div>
                                 <div className="stats-page__metric-body">
@@ -473,7 +473,7 @@ export default function StatisticsPage() {
                                                                   stats.totalOwnedBooks
                                                           ) / 10
                                                         : 0,
-                                                color: "#f59e0b"
+                                                color: "#6366f1"
                                             },
                                             ...(stats.booksAbandonedCount > 0
                                                 ? [
@@ -742,7 +742,7 @@ export default function StatisticsPage() {
                                 <div className="stats-page__section-header">
                                     <div>
                                         <h3>
-                                            <FontAwesomeIcon icon={faBuilding} style={{ color: "#fbbf24" }} />
+                                            <FontAwesomeIcon icon={faBuilding} style={{ color: "var(--accent-primary)" }} />
                                             <span>{tr("Favorite publishers", "Éditeurs favoris")}</span>
                                         </h3>
                                         <p>{tr("Dominant publishing houses in your library", "Maisons d'édition dominantes de votre bibliothèque")}</p>
@@ -762,9 +762,9 @@ export default function StatisticsPage() {
                                                     </span>
                                                 </div>
                                                 <span className="stats-page__leaderboard-item-badge" style={{
-                                                    background: "rgba(245, 158, 11, 0.12)",
-                                                    color: "#fbbf24",
-                                                    borderColor: "rgba(245, 158, 11, 0.25)"
+                                                    background: "var(--accent-primary-light)",
+                                                    color: "var(--accent-primary)",
+                                                    borderColor: "var(--border-focus)"
                                                 }}>
                                                     {pub.count} {pub.count > 1 ? tr("books", "albums") : tr("book", "album")} ({pub.percentage}%)
                                                 </span>
@@ -786,7 +786,7 @@ export default function StatisticsPage() {
                                 <div className="stats-page__section-header">
                                     <div>
                                         <h3>
-                                            <FontAwesomeIcon icon={faCoins} style={{ color: "#fbbf24" }} />
+                                            <FontAwesomeIcon icon={faCoins} style={{ color: "var(--accent-primary)" }} />
                                             <span>{tr("Purchases, Gifts & Sales", "Achats, Cadeaux & Ventes")}</span>
                                         </h3>
                                         <p>
@@ -872,8 +872,8 @@ export default function StatisticsPage() {
                                                 width: "36px",
                                                 height: "36px",
                                                 borderRadius: "10px",
-                                                background: "rgba(245, 158, 11, 0.15)",
-                                                color: "#fbbf24",
+                                                background: "var(--accent-primary-light)",
+                                                color: "var(--accent-primary)",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "center",
@@ -892,7 +892,7 @@ export default function StatisticsPage() {
                                             </div>
                                         </div>
                                         <div style={{ textAlign: "right", flexShrink: 0 }}>
-                                            <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#fbbf24", lineHeight: 1.15 }}>
+                                            <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "var(--accent-primary)", lineHeight: 1.15 }}>
                                                 {stats.totalSoldCount ?? 0}
                                             </div>
                                             <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary, #cbd5e1)" }}>
@@ -939,7 +939,7 @@ export default function StatisticsPage() {
                             <div className="stats-page__section-header">
                                 <div>
                                     <h3>
-                                        <FontAwesomeIcon icon={faCrown} style={{ color: "#fbbf24" }} />
+                                        <FontAwesomeIcon icon={faCrown} style={{ color: "var(--accent-primary)" }} />
                                         <span>{tr("Hall of Fame & Collection Records", "Le Panthéon & Records de la collection")}</span>
                                     </h3>
                                     <p>{tr("The centerpieces and notable records of your library", "Les pièces maîtresses et records remarquables de votre bibliothèque")}</p>
@@ -992,7 +992,7 @@ export default function StatisticsPage() {
                                 {/* Oldest Book */}
                                 {stats.oldestBook && (
                                     <div className="stats-page__record-card">
-                                        <div className="stats-page__record-header" style={{ color: "#f59e0b" }}>
+                                        <div className="stats-page__record-header" style={{ color: "var(--accent-primary)" }}>
                                             <FontAwesomeIcon icon={faCalendarDays} />
                                             <span>{tr("The oldest", "Le doyen")}</span>
                                         </div>
@@ -1027,7 +1027,7 @@ export default function StatisticsPage() {
                                         <Link
                                             to={`/app/book/${stats.oldestBook.id}`}
                                             className="stats-page__record-link"
-                                            style={{ color: "#f59e0b" }}
+                                            style={{ color: "var(--accent-primary)" }}
                                         >
                                             <span>{tr("View details", "Consulter la fiche")}</span>
                                             <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.75rem" }} />
@@ -1128,7 +1128,7 @@ export default function StatisticsPage() {
                                 {/* Most Valuable Book */}
                                 {stats.mostValuableBook && stats.mostValuableBook.price && stats.mostValuableBook.price > 0 && (
                                     <div className="stats-page__record-card">
-                                        <div className="stats-page__record-header" style={{ color: "#fbbf24" }}>
+                                        <div className="stats-page__record-header" style={{ color: "var(--accent-primary)" }}>
                                             <FontAwesomeIcon icon={faGem} />
                                             <span>{tr("Crown jewel", "La plus belle pièce")}</span>
                                         </div>
@@ -1153,7 +1153,7 @@ export default function StatisticsPage() {
                                                 <div className="stats-page__record-meta">
                                                     {tr("Highest price", "Prix le plus élevé")}
                                                 </div>
-                                                <span className="stats-page__record-tag" style={{ color: "#fbbf24" }}>
+                                                <span className="stats-page__record-tag" style={{ color: "var(--accent-primary)" }}>
                                                     {stats.mostValuableBook.highlightValue || `${stats.mostValuableBook.price} €`}
                                                 </span>
                                             </div>
@@ -1161,7 +1161,7 @@ export default function StatisticsPage() {
                                         <Link
                                             to={`/app/book/${stats.mostValuableBook.id}`}
                                             className="stats-page__record-link"
-                                            style={{ color: "#fbbf24" }}
+                                            style={{ color: "var(--accent-primary)" }}
                                         >
                                             <span>{tr("View details", "Consulter la fiche")}</span>
                                             <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.75rem" }} />

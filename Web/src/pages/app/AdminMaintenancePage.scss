@@ -74,8 +74,8 @@
     }
 
     &--authors {
-      background: rgba(245, 158, 11, 0.15);
-      color: #fbbf24;
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
     }
   }
 
@@ -393,9 +393,9 @@
     }
 
     &--running {
-      background: rgba(245, 158, 11, 0.15);
-      color: #fbbf24;
-      border: 1px solid rgba(245, 158, 11, 0.3);
+      background: var(--accent-primary-light);
+      color: var(--accent-primary);
+      border: 1px solid var(--border-focus);
     }
 
     &--success {
@@ -460,14 +460,14 @@
 
 /* Split task icon & conflict styles */
 .admin-maintenance__task-icon--split {
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+  background: var(--accent-primary-light);
+  color: var(--accent-primary);
 }
 
 .admin-maintenance__badge--warning {
-  background: rgba(245, 158, 11, 0.18);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: var(--accent-primary-light);
+  color: var(--accent-primary);
+  border: 1px solid var(--border-focus);
 }
 
 .admin-maintenance__badge--clean {

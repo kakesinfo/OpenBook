@@ -40,8 +40,8 @@ class AppTheme {
   static const Color darkAccentSecondary = Color(0xFF6366F1); // --accent-secondary (indigo)
   static const Color darkAccentSecondaryLight = Color(0x1F6366F1);
 
-  static const Color darkAccentAmber = Color(0xFFF59E0B);
-  static const Color darkAccentAmberLight = Color(0x1FF59E0B);
+  static const Color darkAccentAmber = Color(0xFF10B981);
+  static const Color darkAccentAmberLight = Color(0x1F10B981);
 
   static const Color darkAccentRose = Color(0xFFF43F5E);
   static const Color darkAccentRoseLight = Color(0x1AF43F5E);

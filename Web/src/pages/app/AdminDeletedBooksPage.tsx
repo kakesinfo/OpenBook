@@ -310,7 +310,7 @@ export default function AdminDeletedBooksPage() {
                 {/* No Search Results */}
                 {!loading && books.length > 0 && filteredBooks.length === 0 && (
                     <div className="admin-deleted-books__empty">
-                        <div className="admin-deleted-books__empty-icon" style={{ background: "rgba(234, 179, 8, 0.12)", color: "#eab308", borderColor: "rgba(234, 179, 8, 0.3)" }}>
+                        <div className="admin-deleted-books__empty-icon" style={{ background: "var(--accent-primary-light)", color: "var(--accent-primary)", borderColor: "var(--border-focus)" }}>
                             <FontAwesomeIcon icon={faTriangleExclamation} />
                         </div>
                         <h3>{tr("No results found", "Aucun résultat trouvé")}</h3>

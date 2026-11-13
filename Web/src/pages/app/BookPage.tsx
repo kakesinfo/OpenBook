@@ -3151,7 +3151,7 @@ export default function BookPage() {
                 <div className="tx-dialog">
                     <div className="tx-dialog__header">
                         <div className="tx-dialog__header-title">
-                            <FontAwesomeIcon icon={faCoins} style={{ color: "#f59e0b" }} />
+                            <FontAwesomeIcon icon={faCoins} style={{ color: "var(--accent-primary)" }} />
                             <h3>{tr("Record sale", "Renseigner la vente")}</h3>
                         </div>
                         <button

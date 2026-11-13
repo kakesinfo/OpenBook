@@ -116,7 +116,7 @@
 
     &--purple:hover { border-color: rgba(168, 85, 247, 0.4); }
     &--emerald:hover { border-color: var(--border-focus); }
-    &--amber:hover { border-color: rgba(245, 158, 11, 0.4); }
+    &--amber:hover { border-color: var(--border-focus); }
     &--rose:hover { border-color: rgba(244, 63, 94, 0.4); }
     &--blue:hover { border-color: rgba(59, 130, 246, 0.4); }
   }
@@ -214,7 +214,7 @@
 
     &--read { background: var(--accent-primary); }
     &--reading { background: #3b82f6; }
-    &--toread { background: #f59e0b; }
+    &--toread { background: var(--accent-secondary, #6366f1); }
     &--unread { background: rgba(255, 255, 255, 0.12); }
     &--abandoned { background: #ef4444; }
   }
@@ -337,16 +337,17 @@
       flex-shrink: 0;
 
       &--1 {
-        background: rgba(245, 158, 11, 0.2);
-        color: #fbbf24;
+        background: var(--accent-primary-light);
+        color: var(--accent-primary);
+        box-shadow: 0 0 10px var(--accent-primary-glow);
       }
       &--2 {
         background: rgba(148, 163, 184, 0.2);
         color: #e2e8f0;
       }
       &--3 {
-        background: rgba(180, 83, 9, 0.2);
-        color: #f97316;
+        background: rgba(99, 102, 241, 0.15);
+        color: var(--accent-secondary, #6366f1);
       }
     }
 

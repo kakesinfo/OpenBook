@@ -201,7 +201,7 @@ class _BookCompletionDialogState extends State<BookCompletionDialog> {
             colors: const [
               Color(0xFF10B981), // Emerald
               Color(0xFF6366F1), // Indigo
-              Color(0xFFF59E0B), // Amber
+              Color(0xFF34D399), // Light Emerald
               Color(0xFFEC4899), // Pink
               Color(0xFF3B82F6), // Blue
               Color(0xFFF43F5E), // Rose

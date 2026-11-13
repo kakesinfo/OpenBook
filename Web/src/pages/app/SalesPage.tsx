@@ -490,11 +490,11 @@ export default function SalesPage() {
                             width: "72px",
                             height: "72px",
                             borderRadius: "50%",
-                            background: "rgba(245, 158, 11, 0.1)",
+                            background: "var(--accent-primary-light)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            color: "#f59e0b",
+                            color: "var(--accent-primary)",
                             fontSize: "2rem"
                         }}>
                             <FontAwesomeIcon icon={faTag} />
@@ -517,11 +517,11 @@ export default function SalesPage() {
                                 height: "40px",
                                 padding: "0 22px",
                                 borderRadius: "var(--radius-full)",
-                                background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                                background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-primary-hover) 100%)",
                                 color: "#fff",
                                 fontWeight: 600,
                                 fontSize: "0.875rem",
-                                boxShadow: "0 4px 14px 0 rgba(245, 158, 11, 0.35)",
+                                boxShadow: "0 4px 14px 0 var(--accent-primary-glow)",
                                 textDecoration: "none"
                             }}
                         >
@@ -791,7 +791,7 @@ export default function SalesPage() {
                 <div className="tx-dialog">
                     <div className="tx-dialog__header">
                         <div className="tx-dialog__header-title">
-                            <FontAwesomeIcon icon={faCoins} style={{ color: "#f59e0b" }} />
+                            <FontAwesomeIcon icon={faCoins} style={{ color: "var(--accent-primary)" }} />
                             <h3>{tr("Mark as sold", "Marquer comme vendu")}</h3>
                         </div>
                         <button

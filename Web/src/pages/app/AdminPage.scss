@@ -459,7 +459,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--accent-amber, #f59e0b);
+  background: var(--accent-primary);
   animation: adminPulse 1.4s infinite ease-in-out;
   flex-shrink: 0;
 }
@@ -472,7 +472,7 @@
   50% {
     transform: scale(1.25);
     opacity: 1;
-    box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+    box-shadow: 0 0 8px var(--accent-primary-glow);
   }
   100% {
     transform: scale(0.85);
