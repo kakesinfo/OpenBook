@@ -34,7 +34,8 @@ public class ScraperEngineService {
             "label619",
             "monsieur_toussaint_louverture",
             "komics_initiative",
-            "bubble_editions"
+            "bubble_editions",
+            "astrolabe"
     );
 
     private final ScraperProperties properties;
