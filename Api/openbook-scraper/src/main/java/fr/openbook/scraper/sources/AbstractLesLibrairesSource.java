@@ -71,6 +71,10 @@ public abstract class AbstractLesLibrairesSource extends AbstractHttpSource {
         return null;
     }
 
+    public boolean isAuthorSource() {
+        return getPersonId() != null;
+    }
+
     /**
      * Default editor name when scraping a single publisher (e.g. "Astrolabe", "Hauteville"),
      * or null when scraping an author across multiple publishers.

@@ -984,6 +984,33 @@ public class ScraperDbService {
     }
 
     /**
+     * Returns a map of lowercase full author name ("firstname lastname") -> count of non-deleted books.
+     */
+    public Map<String, Integer> getBookCountsByAuthor() {
+        Map<String, Integer> counts = new HashMap<>();
+        try {
+            List<Map<String, Object>> rows = jdbcTemplate.queryForList("""
+                SELECT LOWER(TRIM(CONCAT(COALESCE(a.firstname, ''), ' ', COALESCE(a.lastname, '')))) as author_name,
+                       COUNT(DISTINCT b.id) as book_count
+                FROM author a
+                JOIN book_has_author bha ON bha.author_id = a.id
+                JOIN book b ON b.id = bha.book_id AND COALESCE(b.deleted, FALSE) = FALSE
+                GROUP BY LOWER(TRIM(CONCAT(COALESCE(a.firstname, ''), ' ', COALESCE(a.lastname, ''))));
+            """);
+            for (Map<String, Object> r : rows) {
+                String authorName = (String) r.get("author_name");
+                Number cnt = (Number) r.get("book_count");
+                if (authorName != null && !authorName.isBlank() && cnt != null) {
+                    counts.put(authorName.trim().toLowerCase(), cnt.intValue());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch book counts by author: {}", e.getMessage());
+        }
+        return counts;
+    }
+
+    /**
      * Returns maintenance statistics.
      */
     public Map<String, Object> getMaintenanceStats() {

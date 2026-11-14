@@ -174,8 +174,15 @@ public class ScraperEngineService {
         return ids;
     }
 
+    private static final Map<String, List<String>> SOURCE_EDITOR_ALIASES = Map.of(
+            "delcourt_comics", List.of("delcourt", "delcourt comics"),
+            "huginn_muninn_comics", List.of("huginn & muninn", "huginn muninn", "huginn et muninn", "huginn & muninn comics"),
+            "404_graphic", List.of("404 graphic", "404 editions", "404 éditions")
+    );
+
     public List<Map<String, Object>> getSources() {
         Map<String, Integer> editorCounts = scraperDbService.getBookCountsByEditor();
+        Map<String, Integer> authorCounts = scraperDbService.getBookCountsByAuthor();
         List<Map<String, Object>> list = new ArrayList<>();
         for (String id : getAllSourceIds()) {
             ScraperSource src = sourceMap.get(id);
@@ -187,15 +194,40 @@ public class ScraperEngineService {
             item.put("color", src.getColor());
             item.put("enabled", !disabledSources.contains(src.getId()));
 
-            int bookCount = 0;
-            if (src.getName() != null) {
-                String key = src.getName().trim().toLowerCase();
-                bookCount = editorCounts.getOrDefault(key, 0);
-            }
+            int bookCount = resolveBookCount(src, editorCounts, authorCounts);
             item.put("book_count", bookCount);
             list.add(item);
         }
         return list;
+    }
+
+    private int resolveBookCount(
+            ScraperSource src,
+            Map<String, Integer> editorCounts,
+            Map<String, Integer> authorCounts
+    ) {
+        if (src instanceof fr.openbook.scraper.sources.AbstractLesLibrairesSource lesSrc
+                && lesSrc.isAuthorSource()
+                && src.getName() != null) {
+            String key = src.getName().trim().toLowerCase();
+            int count = authorCounts.getOrDefault(key, 0);
+            if (count > 0) {
+                return count;
+            }
+        }
+        List<String> aliases = SOURCE_EDITOR_ALIASES.get(src.getId());
+        if (aliases != null) {
+            int total = 0;
+            for (String alias : aliases) {
+                total += editorCounts.getOrDefault(alias, 0);
+            }
+            return total;
+        }
+        if (src.getName() != null) {
+            String key = src.getName().trim().toLowerCase();
+            return editorCounts.getOrDefault(key, 0);
+        }
+        return 0;
     }
 
     public Map<String, Object> toggleSource(String source, boolean enabled) {
