@@ -191,24 +191,34 @@ public class BookmoryImportService {
 
         // 4. Personal collections from Bookmory are NOT imported as publisher collections
 
-        // 5. Query BNF if ISBN is missing
+        // 5. Query BNF whenever any key field is missing (ISBN, pages, release date, author, or publisher/type hint)
         BnfBookData bnfData = null;
         String isbn = b.getIsbn() != null ? b.getIsbn().trim() : "";
-        if (isbn.isBlank()) {
-            int vol = BookmoryDbService.parseVolume(b.getSeriesNumber(), b.getSeriesNumberDecimal(), cleanT);
-            Integer volPtr = vol > 0 ? vol : null;
-            bnfData = bnfClient.searchBook(cleanT, b.getAuthor(), b.getPublisher(), volPtr, 6);
+        boolean missingPages = (b.getRealTotalPage() == null || b.getRealTotalPage() == 0) &&
+                (b.getTotalPage() == null || b.getTotalPage() == 0);
+        boolean missingPubDate = b.getPublicationDate() == null || b.getPublicationDate().isBlank();
+        boolean missingAuthor = (b.getAuthor() == null || b.getAuthor().isBlank()) &&
+                (b.getAuthors() == null || b.getAuthors().isEmpty());
+        boolean missingPublisher = b.getPublisher() == null || b.getPublisher().isBlank();
+
+        if (isbn.isBlank() || missingPages || missingPubDate || missingAuthor || missingPublisher) {
+            if (!isbn.isBlank()) {
+                bnfData = bnfClient.lookupByIsbn(isbn);
+            }
+            if (bnfData == null) {
+                int vol = BookmoryDbService.parseVolume(b.getSeriesNumber(), b.getSeriesNumberDecimal(), cleanT);
+                Integer volPtr = vol > 0 ? vol : null;
+                bnfData = bnfClient.searchBook(cleanT, b.getAuthor(), b.getPublisher(), volPtr, 6);
+            }
             if (bnfData != null) {
-                if (bnfData.getIsbn() != null && !bnfData.getIsbn().isBlank()) {
+                if (isbn.isBlank() && bnfData.getIsbn() != null && !bnfData.getIsbn().isBlank()) {
                     log.info("[Importer] Enriched '{}' with BNF ISBN: {}", cleanT, bnfData.getIsbn());
                     b.setIsbn(bnfData.getIsbn());
                 }
-                if ((b.getRealTotalPage() == null || b.getRealTotalPage() == 0) &&
-                    (b.getTotalPage() == null || b.getTotalPage() == 0) &&
-                    bnfData.getPageCount() != null) {
+                if (missingPages && bnfData.getPageCount() != null) {
                     b.setRealTotalPage(bnfData.getPageCount().doubleValue());
                 }
-                if ((b.getPublicationDate() == null || b.getPublicationDate().isBlank()) && bnfData.getReleaseDate() != null) {
+                if (missingPubDate && bnfData.getReleaseDate() != null) {
                     b.setPublicationDate(DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC).format(bnfData.getReleaseDate()));
                 }
             }
@@ -467,7 +477,7 @@ public class BookmoryImportService {
                 "penguin", "pocket jeunesse", "pkj", "hachette", "grasset",
                 "rivages", "plon", "calmann levy", "l'atalante",
                 "atalante", "mnemos", "belial", "critic",
-                "odile jacob", "puf", "les belles lettres", "payot"
+                "odile jacob", "puf", "les belles lettres", "payot", "la dispute"
         };
         for (String p : romanPubs) {
             if (norm.contains(p)) return "Roman";
@@ -505,36 +515,75 @@ public class BookmoryImportService {
         if (bookTags != null) {
             allTagParts.addAll(bookTags);
         }
-        String allTags = normalizeText(String.join(" ", allTagParts));
-
-        if (allTags.contains("manga")) {
-            return "Manga";
+        String allTags = normalizeText(String.join(" ", allTagParts)).replace("#", " ").replace("&", " ");
+        Set<String> tagTokens = new HashSet<>();
+        for (String tok : allTags.split("\\s+")) {
+            if (!tok.isBlank()) {
+                tagTokens.add(tok);
+            }
         }
-        if (allTags.contains("superheros") || allTags.contains("super heroes") || allTags.contains("comics") ||
-            allTags.contains("marvel") || allTags.contains("xmen") || allTags.contains("wonderwoman") ||
-            allTags.contains("batman") || allTags.contains("dccomics")) {
+
+        // 1. Specific publisher check first (most reliable, avoids noisy Goodreads tags like #ComicsManga)
+        String pubNorm = normalizeText(editorName);
+        boolean isAmbiguousPublisher = pubNorm.equals("panini") || pubNorm.equals("glenat") || pubNorm.equals("le tripode") || pubNorm.equals("tripode");
+        String pubType = determineTypeFromPublisher(editorName);
+        if (!pubType.isBlank() && !isAmbiguousPublisher) {
+            return pubType;
+        }
+
+        // 2. Tag-based detection using whole tokens and clear precedence
+        boolean hasSuperheroTag = tagTokens.contains("superheros") || tagTokens.contains("superheroes") ||
+                allTags.contains("super heroes") || tagTokens.contains("marvel") ||
+                tagTokens.contains("xmen") || tagTokens.contains("wonderwoman") ||
+                tagTokens.contains("batman") || tagTokens.contains("superman") ||
+                tagTokens.contains("dccomics");
+        if (hasSuperheroTag) {
             return "Comics";
         }
-        if (allTags.contains("bandedessinee") || allTags.contains("bandesdessinees") ||
-            allTags.contains("bande dessinee") || allTags.contains("bandes dessinees") || allTags.contains("#bd")) {
+
+        boolean hasMangaTag = tagTokens.contains("manga") || tagTokens.contains("mangas") ||
+                tagTokens.contains("shonen") || tagTokens.contains("seinen") ||
+                tagTokens.contains("shojo") || tagTokens.contains("josei");
+        if (hasMangaTag) {
+            return "Manga";
+        }
+
+        if (tagTokens.contains("bandedessinee") || tagTokens.contains("bandesdessinees") ||
+                allTags.contains("bande dessinee") || allTags.contains("bandes dessinees") ||
+                tagTokens.contains("bd")) {
             return "Bande dessinée";
         }
-        if (allTags.contains("novel") || allTags.contains("classic") || allTags.contains("frenchliterature") ||
-            allTags.contains("philosophy") || allTags.contains("anthropology") || allTags.contains("sociology") ||
-            allTags.contains("history") || allTags.contains("science") || allTags.contains("audiobook")) {
+
+        if (tagTokens.contains("novel") || tagTokens.contains("novels") || tagTokens.contains("roman") ||
+                tagTokens.contains("romans") || tagTokens.contains("nonfiction") || tagTokens.contains("biography") ||
+                tagTokens.contains("biographymemoir") || tagTokens.contains("memoir") ||
+                tagTokens.contains("classic") || tagTokens.contains("classics") ||
+                tagTokens.contains("frenchliterature") || tagTokens.contains("philosophy") ||
+                tagTokens.contains("anthropology") || tagTokens.contains("sociology") ||
+                tagTokens.contains("psychology") || tagTokens.contains("history") ||
+                tagTokens.contains("science") || tagTokens.contains("scienceshumaines") ||
+                tagTokens.contains("sciencespolitiques") || tagTokens.contains("business") ||
+                tagTokens.contains("audiobook") || tagTokens.contains("bookclub") ||
+                tagTokens.contains("highfantasy") || tagTokens.contains("spaceopera")) {
             return "Roman";
         }
 
-        String pubType = determineTypeFromPublisher(editorName);
+        if (tagTokens.contains("comics") || tagTokens.contains("comicbook") || tagTokens.contains("graphicnovels")) {
+            return "Comics";
+        }
+
+        // 3. Fallback to ambiguous publisher (e.g. Panini, Glénat, Le Tripode)
         if (!pubType.isBlank()) {
             return pubType;
         }
 
+        // 4. BNF document type if available
         if (bnfData != null && bnfData.getDocType() != null && !bnfData.getDocType().isBlank()) {
             return bnfData.getDocType();
         }
 
-        return "Comics";
+        // 5. Default fallback for unclassified books
+        return "Roman";
     }
 
     private static Instant parseReleaseDate(String pubDate, Long createdAtMs) {
@@ -563,7 +612,13 @@ public class BookmoryImportService {
                 if (s == null) continue;
                 switch (s.trim().toUpperCase()) {
                     case "DONE": return "READ";
-                    case "PAUSE": return "PAUSED";
+                    case "READING": return "READING";
+                    case "PAUSE":
+                    case "PAUSED": return "PAUSED";
+                    case "ABANDONED":
+                    case "GIVE_UP":
+                    case "STOP":
+                    case "DROPPED": return "ABANDONED";
                     case "NOT_STARTED": return "UNREAD";
                 }
             }
@@ -571,8 +626,17 @@ public class BookmoryImportService {
 
         if (b.getReads() != null) {
             for (BookmoryRead rd : b.getReads()) {
-                if ("DONE".equalsIgnoreCase(rd.getStatus())) return "READ";
-                if ("PAUSE".equalsIgnoreCase(rd.getStatus())) return "PAUSED";
+                if (rd.getStatus() == null) continue;
+                switch (rd.getStatus().trim().toUpperCase()) {
+                    case "DONE": return "READ";
+                    case "READING": return "READING";
+                    case "PAUSE":
+                    case "PAUSED": return "PAUSED";
+                    case "ABANDONED":
+                    case "GIVE_UP":
+                    case "STOP":
+                    case "DROPPED": return "ABANDONED";
+                }
             }
         }
 
