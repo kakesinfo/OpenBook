@@ -181,4 +181,108 @@ class LesLibrairesSourcesTest {
         assertFalse(sarahBooks.isEmpty(), "Sarah J. Maas should return books");
         assertFalse(sarahBooks.get(0).getTitle().isBlank());
     }
+
+    @Test
+    void testComicsAndPublisherSourcesMetadataAndTriNouveautes() {
+        AstrolabeSource astrolabe = new AstrolabeSource(properties);
+        assertTrue(astrolabe.getSourceUrl().contains("tri=nouveautes"));
+
+        HautevilleSource hauteville = new HautevilleSource(properties);
+        assertTrue(hauteville.getSourceUrl().contains("tri=nouveautes"));
+
+        assertTrue(Label619Source.LESLIBRAIRES_URL.contains("tri=nouveautes"));
+        assertTrue(MorgenBdSource.LESLIBRAIRES_URL.contains("tri=nouveautes"));
+
+        HiComicsSource hicomics = new HiComicsSource(properties);
+        assertEquals("hicomics", hicomics.getId());
+        assertEquals("HiComics", hicomics.getName());
+        assertEquals("HiComics", hicomics.getDefaultEditorName());
+        assertEquals("Comics", hicomics.getDefaultCategoryName());
+        assertTrue(hicomics.isForceDefaultCategory());
+        assertTrue(hicomics.getSourceUrl().contains("tri=nouveautes"));
+
+        Editions404GraphicSource ed404 = new Editions404GraphicSource(properties);
+        assertEquals("404_graphic", ed404.getId());
+        assertEquals("404 Graphic", ed404.getName());
+        assertEquals("404 Graphic", ed404.getDefaultEditorName());
+        assertEquals("Comics", ed404.getDefaultCategoryName());
+        assertTrue(ed404.isForceDefaultCategory());
+        assertTrue(ed404.getSourceUrl().contains("tri=nouveautes"));
+
+        DelcourtComicsSource delcourt = new DelcourtComicsSource(properties);
+        assertEquals("delcourt_comics", delcourt.getId());
+        assertEquals("Delcourt Comics", delcourt.getName());
+        assertEquals("Delcourt", delcourt.getDefaultEditorName());
+        assertEquals("Comics", delcourt.getDefaultCategoryName());
+        assertTrue(delcourt.isForceDefaultCategory());
+        assertTrue(delcourt.getSourceUrl().contains("tri=nouveautes"));
+
+        VestronSource vestron = new VestronSource(properties);
+        assertEquals("vestron", vestron.getId());
+        assertEquals("Vestron", vestron.getName());
+        assertEquals("Vestron", vestron.getDefaultEditorName());
+        assertEquals("Comics", vestron.getDefaultCategoryName());
+        assertTrue(vestron.isForceDefaultCategory());
+        assertTrue(vestron.getSourceUrl().contains("tri=nouveautes"));
+
+        BlissSource bliss = new BlissSource(properties);
+        assertEquals("bliss", bliss.getId());
+        assertEquals("Bliss", bliss.getName());
+        assertEquals("Bliss", bliss.getDefaultEditorName());
+        assertEquals("Comics", bliss.getDefaultCategoryName());
+        assertTrue(bliss.isForceDefaultCategory());
+        assertTrue(bliss.getSourceUrl().contains("tri=nouveautes"));
+
+        SolodoloSource solodolo = new SolodoloSource(properties);
+        assertEquals("solodolo", solodolo.getId());
+        assertEquals("Solodolo", solodolo.getName());
+        assertEquals("Solodolo", solodolo.getDefaultEditorName());
+        assertEquals("Comics", solodolo.getDefaultCategoryName());
+        assertTrue(solodolo.isForceDefaultCategory());
+        assertTrue(solodolo.getSourceUrl().contains("tri=nouveautes"));
+
+        HuginnMuninnComicsSource huginn = new HuginnMuninnComicsSource(properties);
+        assertEquals("huginn_muninn_comics", huginn.getId());
+        assertEquals("Huginn & Muninn Comics", huginn.getName());
+        assertNull(huginn.getDefaultEditorName());
+        assertEquals("Comics", huginn.getDefaultCategoryName());
+        assertTrue(huginn.isForceDefaultCategory());
+        assertTrue(huginn.getSourceUrl().contains("tri=nouveautes"));
+
+        String bdHtml = """
+            <nav aria-label="breadcrumb">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/rayon/bandes-dessinees/">Bandes dessinées</a></li>
+              </ol>
+            </nav>
+            <section>
+              <meta itemprop="gtin13" content="9782413000001">
+              <div class="product-details">
+                <h1 class="product-details__title" itemprop="name">Test Comics</h1>
+              </div>
+            </section>
+        """;
+        String bdUrl = "https://www.leslibraires.fr/livre/123456-test-comics";
+        ScrapedBookDTO bdBook = delcourt.parseBookDocument(Jsoup.parse(bdHtml, bdUrl), bdUrl, null);
+        assertNotNull(bdBook);
+        assertEquals("Comics", bdBook.getCategoryName());
+    }
+
+    @Test
+    void testLiveScrapeNewComicsSources() {
+        DelcourtComicsSource delcourt = new DelcourtComicsSource(properties);
+        List<ScrapedBookDTO> delcourtBooks = delcourt.scrape(new ScanOptions(false, 2), null, () -> false);
+        assertFalse(delcourtBooks.isEmpty(), "Delcourt Comics should return books");
+        assertEquals("Comics", delcourtBooks.get(0).getCategoryName());
+
+        HiComicsSource hicomics = new HiComicsSource(properties);
+        List<ScrapedBookDTO> hiBooks = hicomics.scrape(new ScanOptions(false, 2), null, () -> false);
+        assertFalse(hiBooks.isEmpty(), "HiComics should return books");
+        assertEquals("Comics", hiBooks.get(0).getCategoryName());
+
+        Editions404GraphicSource ed404 = new Editions404GraphicSource(properties);
+        List<ScrapedBookDTO> ed404Books = ed404.scrape(new ScanOptions(false, 2), null, () -> false);
+        assertFalse(ed404Books.isEmpty(), "404 Graphic should return books");
+        assertEquals("Comics", ed404Books.get(0).getCategoryName());
+    }
 }

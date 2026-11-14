@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
 public class MorgenBdSource extends AbstractHttpSource {
 
     private static final String BASE_URL = "https://www.morgen-bd.com";
+    public static final String LESLIBRAIRES_URL = "https://www.leslibraires.fr/editeur/morgen/?tri=nouveautes";
     private static final Pattern RE_ALBUM_HREF = Pattern.compile("href=[\"'](/livres/[^\"']+)[\"']");
     private static final Pattern RE_ISBN = Pattern.compile("(97[89][-\\s0-9]{10,15})");
     private static final Pattern RE_PRICE = Pattern.compile("(?i)prix\\s*:\\s*([0-9]+)[,\\.]([0-9]+)\\s*€");
@@ -37,8 +38,21 @@ public class MorgenBdSource extends AbstractHttpSource {
     private static final Pattern RE_VOL = Pattern.compile("(?i)tome\\s*(\\d+)");
     private static final Pattern RE_VOL_STRIP = Pattern.compile("(?i)tome\\s*\\d+.*");
 
+    private final LesLibrairesClient lesLibrairesClient;
+
     public MorgenBdSource(ScraperProperties properties) {
         super(properties);
+        this.lesLibrairesClient = new LesLibrairesClient(
+                properties,
+                getId(),
+                getName(),
+                getDescription(),
+                getColor(),
+                LESLIBRAIRES_URL,
+                "Morgen BD",
+                "Bande dessinée",
+                false
+        );
     }
 
     @Override
@@ -70,6 +84,32 @@ public class MorgenBdSource extends AbstractHttpSource {
         int maxItems = options.getMaxItems() > 0 ? options.getMaxItems() : properties.getMaxBooksPerSource();
         boolean fullScan = options.isFullScan();
         List<ScrapedBookDTO> results = new ArrayList<>();
+        Set<String> seenTitles = new HashSet<>();
+        Set<String> seenIsbns = new HashSet<>();
+
+        lesLibrairesClient.scrape(options, book -> {
+            if (isStopped != null && isStopped.getAsBoolean()) {
+                return;
+            }
+            if (!fullScan && results.size() >= maxItems) {
+                return;
+            }
+            if (book.getTitle() != null) {
+                seenTitles.add(book.getTitle().trim().toLowerCase());
+            }
+            if (book.getIsbn() != null && !book.getIsbn().isBlank()) {
+                seenIsbns.add(book.getIsbn().trim());
+            }
+            results.add(book);
+            if (onBookFound != null) {
+                onBookFound.accept(book);
+            }
+        }, isStopped);
+
+        if (!fullScan && results.size() >= maxItems) {
+            log.info("[MorgenBD] Scrape completed (from Leslibraires.fr): {} books", results.size());
+            return results;
+        }
 
         String listingUrl = BASE_URL + "/nos-albums";
         log.info("[MorgenBD] Fetching listing {}", listingUrl);
@@ -101,6 +141,12 @@ public class MorgenBdSource extends AbstractHttpSource {
             String bookUrl = BASE_URL + relPath;
             ScrapedBookDTO book = scrapeBookPage(bookUrl);
             if (book != null) {
+                String normTitle = book.getTitle() != null ? book.getTitle().trim().toLowerCase() : "";
+                String normIsbn = book.getIsbn() != null ? book.getIsbn().trim() : "";
+                if ((!normIsbn.isEmpty() && !seenIsbns.add(normIsbn))
+                        || (!normTitle.isEmpty() && !seenTitles.add(normTitle))) {
+                    continue;
+                }
                 results.add(book);
                 if (onBookFound != null) {
                     onBookFound.accept(book);

@@ -86,6 +86,14 @@ public abstract class AbstractLesLibrairesSource extends AbstractHttpSource {
         return "Roman";
     }
 
+    /**
+     * When true, always use {@link #getDefaultCategoryName()} instead of inferring from breadcrumbs
+     * (useful for search URLs already filtered by a specific category like Comics).
+     */
+    protected boolean isForceDefaultCategory() {
+        return false;
+    }
+
     protected String getInitialListingUrl() {
         String personId = getPersonId();
         if (personId != null && !personId.isBlank()) {
@@ -546,6 +554,9 @@ public abstract class AbstractLesLibrairesSource extends AbstractHttpSource {
 
     private String detectCategory(Document doc) {
         String categoryName = getDefaultCategoryName();
+        if (isForceDefaultCategory()) {
+            return categoryName;
+        }
         for (Element crumb : doc.select("nav[aria-label='breadcrumb'] li a")) {
             String href = crumb.attr("href").toLowerCase(Locale.ROOT);
             String text = crumb.text().trim().toLowerCase(Locale.ROOT);

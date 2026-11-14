@@ -25,6 +25,9 @@ import java.util.regex.Pattern;
 public class Label619Source extends AbstractHttpSource {
 
     private static final String API_BASE = "https://label619.com/sk/api/editions";
+    public static final String LESLIBRAIRES_URL = "https://www.leslibraires.fr/recherche/?q=label+619&f_dpt=25&tri=nouveautes";
+
+    private final LesLibrairesClient lesLibrairesClient;
     private static final Pattern RE_VOL = Pattern.compile("(?i)T(?:ome)?\\s*0?(\\d+)");
     private static final Pattern RE_VOL_STRIP = Pattern.compile("(?i)T(?:ome)?\\s*0?\\d+.*");
     private static final Pattern RE_PRICE = Pattern.compile("(\\d+)(?:[,\\.]\\d+)?");
@@ -35,6 +38,17 @@ public class Label619Source extends AbstractHttpSource {
     public Label619Source(ScraperProperties properties, ObjectMapper objectMapper) {
         super(properties);
         this.objectMapper = objectMapper;
+        this.lesLibrairesClient = new LesLibrairesClient(
+                properties,
+                getId(),
+                getName(),
+                getDescription(),
+                getColor(),
+                LESLIBRAIRES_URL,
+                "Label 619",
+                "Comics",
+                true
+        );
     }
 
     @Override
@@ -67,11 +81,36 @@ public class Label619Source extends AbstractHttpSource {
         boolean fullScan = options.isFullScan();
         List<ScrapedBookDTO> books = new ArrayList<>();
         Set<String> seenTitles = new HashSet<>();
+        Set<String> seenIsbns = new HashSet<>();
 
         int page = 1;
         int pageSize = 40;
 
         log.info("[Label619] Scraping catalogue (fullScan={}, maxItems={})", fullScan, maxItems);
+
+        lesLibrairesClient.scrape(options, book -> {
+            if (isStopped != null && isStopped.getAsBoolean()) {
+                return;
+            }
+            if (!fullScan && books.size() >= maxItems) {
+                return;
+            }
+            if (book.getTitle() != null) {
+                seenTitles.add(book.getTitle().trim().toLowerCase());
+            }
+            if (book.getIsbn() != null && !book.getIsbn().isBlank()) {
+                seenIsbns.add(book.getIsbn().trim());
+            }
+            books.add(book);
+            if (onBookFound != null) {
+                onBookFound.accept(book);
+            }
+        }, isStopped);
+
+        if (!fullScan && books.size() >= maxItems) {
+            log.info("[Label619] Finished catalogue scrape (from Leslibraires.fr): {} books", books.size());
+            return books;
+        }
 
         while (true) {
             if (isStopped != null && isStopped.getAsBoolean()) {
@@ -235,6 +274,10 @@ public class Label619Source extends AbstractHttpSource {
                             .authors(authors)
                             .sourceUrl(sourceUrl)
                             .build();
+
+                    if (book.getIsbn() != null && !book.getIsbn().isBlank() && !seenIsbns.add(book.getIsbn().trim())) {
+                        continue;
+                    }
 
                     books.add(book);
                     if (onBookFound != null) {

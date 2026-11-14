@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class AstrolabeSource extends AbstractLesLibrairesSource {
 
-    public static final String CATALOG_URL = BASE_URL + "/editeur/astrolabe/";
+    public static final String CATALOG_URL = BASE_URL + "/editeur/astrolabe/?tri=nouveautes";
 
     public AstrolabeSource(ScraperProperties properties) {
         super(properties);

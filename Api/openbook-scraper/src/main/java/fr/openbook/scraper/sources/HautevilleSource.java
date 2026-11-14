@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class HautevilleSource extends AbstractLesLibrairesSource {
 
-    public static final String CATALOG_URL = BASE_URL + "/editeur/hauteville/";
+    public static final String CATALOG_URL = BASE_URL + "/editeur/hauteville/?tri=nouveautes";
 
     public HautevilleSource(ScraperProperties properties) {
         super(properties);
