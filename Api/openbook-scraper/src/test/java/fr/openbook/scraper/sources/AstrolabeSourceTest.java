@@ -178,7 +178,7 @@ class AstrolabeSourceTest {
             </div>
         """;
         Document doc = Jsoup.parse(html);
-        AstrolabeSource.CardHint hint = new AstrolabeSource.CardHint("https://example.com", "Le Quatrième Père tome 1", 1, "Matteo Scalera", 23, null);
+        AstrolabeSource.CardHint hint = new AstrolabeSource.CardHint("https://example.com", "Le Quatrième Père tome 1", 1, "Matteo Scalera", "Astrolabe", 23, null);
         List<ScrapedAuthorDTO> authors = AstrolabeSource.parseAuthors(doc, hint);
 
         assertEquals(1, authors.size());

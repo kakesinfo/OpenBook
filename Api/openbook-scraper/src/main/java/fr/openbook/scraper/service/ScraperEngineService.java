@@ -35,7 +35,14 @@ public class ScraperEngineService {
             "monsieur_toussaint_louverture",
             "komics_initiative",
             "bubble_editions",
-            "astrolabe"
+            "astrolabe",
+            "hauteville",
+            "agatha_christie",
+            "ali_hazelwood",
+            "sarah_j_maas",
+            "jane_austen",
+            "carlos_ruiz_zafon",
+            "michael_mcdowell"
     );
 
     private final ScraperProperties properties;
@@ -384,7 +391,12 @@ public class ScraperEngineService {
                 java.util.function.Consumer<ScrapedBookDTO> onBookFound = book -> {
                     if (stopRequested.get()) return;
 
-                    Integer bookId = scraperDbService.upsertBook(book);
+                    Integer bookId = null;
+                    try {
+                        bookId = scraperDbService.upsertBook(book);
+                    } catch (Exception e) {
+                        log.warn("Failed to upsert book '{}' from {}: {}", book.getTitle(), sName, e.getMessage());
+                    }
                     boolean isSaved = bookId != null;
 
                     String ident = (book.getIsbn() != null && !book.getIsbn().isBlank())

@@ -301,6 +301,17 @@ public class ScraperDbService {
             } catch (EmptyResultDataAccessException ignored) {}
         }
 
+        // Criterion D: Exact title match across editors (enforced by book_title_key unique constraint)
+        if (bookId == null && !cleanTitle.isEmpty()) {
+            try {
+                bookId = jdbcTemplate.queryForObject(
+                        "SELECT id FROM book WHERE title = ? LIMIT 1;",
+                        Integer.class,
+                        cleanTitle
+                );
+            } catch (EmptyResultDataAccessException ignored) {}
+        }
+
         if (bookId != null) {
             Boolean isDeleted = Boolean.FALSE;
             try {
