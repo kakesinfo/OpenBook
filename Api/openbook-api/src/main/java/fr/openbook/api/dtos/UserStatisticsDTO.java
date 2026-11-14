@@ -40,6 +40,7 @@ public class UserStatisticsDTO {
     private int booksToReadCount; // Pile à lire (PAL)
     private int booksUnreadCount;
     private int booksAbandonedCount;
+    private int booksOnHoldCount;
     private double readingProgressPercentage;
     private int totalLoggedReadingMinutes;
     private int totalReadingSessionsCount;

@@ -66,6 +66,7 @@ export default interface UserStatisticsDTO {
     booksToReadCount: number;
     booksUnreadCount: number;
     booksAbandonedCount: number;
+    booksOnHoldCount?: number;
     readingProgressPercentage: number;
     totalLoggedReadingMinutes: number;
     totalReadingSessionsCount: number;

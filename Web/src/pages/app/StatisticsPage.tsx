@@ -160,7 +160,7 @@ export default function StatisticsPage() {
                             aria-expanded={yearMenuOpen}
                         >
                             <FontAwesomeIcon icon={faCalendarDays} className="stats-page__year-icon" />
-                            <span>{selectedYear === null ? "All time" : selectedYear}</span>
+                            <span>{selectedYear === null ? tr("All time", "Depuis toujours") : selectedYear}</span>
                             <FontAwesomeIcon
                                 icon={faChevronDown}
                                 className={`stats-page__year-chevron ${yearMenuOpen ? "is-open" : ""}`}
@@ -179,7 +179,7 @@ export default function StatisticsPage() {
                                         setYearMenuOpen(false);
                                     }}
                                 >
-                                    <span>All time</span>
+                                    <span>{tr("All time", "Depuis toujours")}</span>
                                     {selectedYear === null && (
                                         <FontAwesomeIcon icon={faCheck} className="stats-page__year-check" />
                                     )}
@@ -475,19 +475,24 @@ export default function StatisticsPage() {
                                                         : 0,
                                                 color: "#6366f1"
                                             },
-                                            ...(stats.booksAbandonedCount > 0
-                                                ? [
-                                                      {
-                                                          name: tr("Dropped", "Abandonnés"),
-                                                          count: stats.booksAbandonedCount,
-                                                          percentage:
-                                                              stats.totalOwnedBooks > 0
-                                                                  ? Math.round((stats.booksAbandonedCount * 1000) / stats.totalOwnedBooks) / 10
-                                                                  : 0,
-                                                          color: "#ef4444"
-                                                      }
-                                                  ]
-                                                : [])
+                                            {
+                                                name: tr("On hold", "En pause"),
+                                                count: stats.booksOnHoldCount || 0,
+                                                percentage:
+                                                    stats.totalOwnedBooks > 0
+                                                        ? Math.round(((stats.booksOnHoldCount || 0) * 1000) / stats.totalOwnedBooks) / 10
+                                                        : 0,
+                                                color: "#f59e0b"
+                                            },
+                                            {
+                                                name: tr("Dropped", "Abandonnés"),
+                                                count: stats.booksAbandonedCount,
+                                                percentage:
+                                                    stats.totalOwnedBooks > 0
+                                                        ? Math.round((stats.booksAbandonedCount * 1000) / stats.totalOwnedBooks) / 10
+                                                        : 0,
+                                                color: "#ef4444"
+                                            }
                                         ]}
                                         totalCount={stats.totalOwnedBooks}
                                         title=""

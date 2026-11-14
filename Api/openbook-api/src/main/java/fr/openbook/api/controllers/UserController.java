@@ -1406,6 +1406,7 @@ public class UserController {
             stats.setBooksToReadCount(0);
             stats.setBooksUnreadCount(0);
             stats.setBooksAbandonedCount(0);
+            stats.setBooksOnHoldCount(0);
             stats.setReadingProgressPercentage(0.0);
             stats.setTotalLoggedReadingMinutes(0);
             stats.setTotalReadingSessionsCount(0);
@@ -1567,6 +1568,7 @@ public class UserController {
         int toReadCount = 0;
         int unreadCount = 0;
         int abandonedCount = 0;
+        int onHoldCount = 0;
 
         for (BookEntity book : targetBooks) {
             if (book == null) continue;
@@ -1577,6 +1579,7 @@ public class UserController {
                 switch (st.toUpperCase()) {
                     case "READ", "LU" -> readCount++;
                     case "READING", "EN_COURS" -> readingCount++;
+                    case "ON_HOLD", "PAUSED", "EN_PAUSE" -> onHoldCount++;
                     case "ABANDONED", "ABANDONNE" -> abandonedCount++;
                     default -> toReadCount++;
                 }
@@ -1587,6 +1590,7 @@ public class UserController {
         stats.setBooksToReadCount(toReadCount);
         stats.setBooksUnreadCount(unreadCount);
         stats.setBooksAbandonedCount(abandonedCount);
+        stats.setBooksOnHoldCount(onHoldCount);
         double progressPct = totalOwned > 0 ? Math.round((readCount * 100.0 / totalOwned) * 10.0) / 10.0 : 0.0;
         stats.setReadingProgressPercentage(progressPct);
 
