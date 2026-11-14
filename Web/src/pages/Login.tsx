@@ -60,7 +60,7 @@ export default function Login() {
                     <div className="auth-page__logo">
                         <FontAwesomeIcon icon={faBookOpen} />
                     </div>
-                    <h1 className="auth-page__title">Yet Another Library</h1>
+                    <h1 className="auth-page__title">OpenBook</h1>
                     <p className="auth-page__subtitle">{tr("Sign in to your personal library", "Connectez-vous à votre bibliothèque personnelle")}</p>
                 </div>
 

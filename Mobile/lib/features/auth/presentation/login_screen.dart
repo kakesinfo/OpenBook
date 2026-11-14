@@ -116,7 +116,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'Yet Another Library',
+                        'OpenBook',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 22,

@@ -98,7 +98,7 @@ export function WrapperSubButton({ children, to, icon }: {
     );
 }
 
-export function WrapperNavigation({ title = "Yet Another Library", badge, children, onSearchClick }: {
+export function WrapperNavigation({ title = "OpenBook", badge, children, onSearchClick }: {
     title?: string;
     badge?: React.ReactNode;
     children: React.ReactNode;

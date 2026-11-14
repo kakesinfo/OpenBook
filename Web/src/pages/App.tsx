@@ -123,7 +123,7 @@ export default function App() {
 
     return (
         <Wrapper>
-            <WrapperNavigation title="Yet Another Library" onSearchClick={!session.isAdmin ? handleOpen : undefined}>
+            <WrapperNavigation title="OpenBook" badge="Beta" onSearchClick={!session.isAdmin ? handleOpen : undefined}>
                 {!session.isAdmin ? (
                     <>
                         <WrapperAction icon={faMagnifyingGlass} callback={handleOpen}>{t("nav.search")}</WrapperAction>

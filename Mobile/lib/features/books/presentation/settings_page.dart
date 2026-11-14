@@ -20,7 +20,7 @@ class SettingsPage extends ConsumerWidget {
         : 'Lecteur';
     final displaySubtitle = (client.userName != null && client.userName!.isNotEmpty)
         ? '@${client.userName!}'
-        : 'Yet Another Library • Mobile';
+        : 'OpenBook • Mobile';
 
     return Scaffold(
       appBar: const AppHeader(
@@ -391,7 +391,7 @@ class SettingsPage extends ConsumerWidget {
                     ),
                   ),
                   subtitle: Text(
-                    'Yet Another Library Mobile v0.2.0 (Backend API)',
+                    'OpenBook Mobile v0.2.0 (Backend API)',
                     style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
                 ),

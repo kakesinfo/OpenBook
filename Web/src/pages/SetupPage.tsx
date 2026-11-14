@@ -88,7 +88,7 @@ export default function SetupPage() {
                         <FontAwesomeIcon icon={faServer} />
                         <span>{tr("First Launch", "Premier Lancement")}</span>
                     </div>
-                    <h1 className="setup-page__title">Yet Another Library</h1>
+                    <h1 className="setup-page__title">OpenBook</h1>
                     <p className="setup-page__subtitle">
                         {tr("Complete server configuration.", "Finalisez la configuration du serveur.")}
                     </p>

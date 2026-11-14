@@ -4,7 +4,7 @@ import 'package:flutter_application_1/app/theme.dart';
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   const AppHeader({
     super.key,
-    this.title = 'Yet Another Library',
+    this.title = 'OpenBook',
     this.subtitle,
     this.showLogo = true,
     this.leading,

@@ -627,7 +627,7 @@ export default function AdminUsersPage() {
                             onClick={() => {
                                 if (createdCredentials) {
                                     copyToClipboard(
-                                        `Identifiants Yet Another Library:\nUtilisateur: ${createdCredentials.username}\nMot de passe provisoire: ${createdCredentials.tempPassword}`
+                                        `Identifiants OpenBook:\nUtilisateur: ${createdCredentials.username}\nMot de passe provisoire: ${createdCredentials.tempPassword}`
                                     );
                                 }
                             }}
