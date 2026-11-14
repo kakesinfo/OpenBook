@@ -32,6 +32,7 @@ public class BookmoryImportService {
 
     private final ExecutorService executorService;
     private final Semaphore mediaSemaphore;
+    private final int maxMediaConcurrency;
 
     public BookmoryImportService(
             BookmoryZipParser zipParser,
@@ -39,7 +40,7 @@ public class BookmoryImportService {
             ImportMediaService mediaService,
             BookmoryDbService dbService,
             ImportJobManager jobManager,
-            @Value("${import.media.concurrency:8}") int maxMediaConcurrency
+            @Value("${import.media.concurrency:5}") int maxMediaConcurrency
     ) {
         this.zipParser = zipParser;
         this.bnfClient = bnfClient;
@@ -47,7 +48,8 @@ public class BookmoryImportService {
         this.dbService = dbService;
         this.jobManager = jobManager;
         this.executorService = Executors.newCachedThreadPool();
-        this.mediaSemaphore = new Semaphore(Math.max(1, maxMediaConcurrency));
+        this.maxMediaConcurrency = Math.max(1, maxMediaConcurrency);
+        this.mediaSemaphore = new Semaphore(this.maxMediaConcurrency);
     }
 
     public ImportJob getJob(String jobId) {
@@ -114,18 +116,34 @@ public class BookmoryImportService {
             job.setTotalBooks(total);
             job.setCurrentStep(buildStepLabel(total, options));
 
-            log.info("[Importer] Starting import of {} books (out of {} in backup) for user {} (job {})",
-                    total, parsed.getBooks().size(), job.getUserId(), job.getId());
+            log.info("[Importer] Starting parallel import ({} threads) of {} books (out of {} in backup) for user {} (job {})",
+                    maxMediaConcurrency, total, parsed.getBooks().size(), job.getUserId(), job.getId());
 
-            for (int i = 0; i < total; i++) {
-                BookmoryBook b = booksToProcess.get(i);
-                try {
-                    processSingleBook(job, b, parsed, options);
-                } catch (Throwable ex) {
-                    log.error("[Importer] Error processing book '{}': {}", b.getTitle(), ex.getMessage(), ex);
-                    job.getErrors().add(String.format("Erreur '%s': %s", b.getTitle(), ex.getMessage()));
+            ExecutorService bookPool = Executors.newFixedThreadPool(maxMediaConcurrency);
+            try {
+                List<Future<?>> futures = new ArrayList<>(total);
+                for (BookmoryBook b : booksToProcess) {
+                    futures.add(bookPool.submit(() -> {
+                        try {
+                            processSingleBook(job, b, parsed, options);
+                        } catch (Throwable ex) {
+                            log.error("[Importer] Error processing book '{}': {}", b.getTitle(), ex.getMessage(), ex);
+                            synchronized (job) {
+                                job.getErrors().add(String.format("Erreur '%s': %s", b.getTitle(), ex.getMessage()));
+                            }
+                        } finally {
+                            synchronized (job) {
+                                job.setProcessedBooks(job.getProcessedBooks() + 1);
+                            }
+                        }
+                    }));
                 }
-                job.setProcessedBooks(i + 1);
+
+                for (Future<?> f : futures) {
+                    f.get();
+                }
+            } finally {
+                bookPool.shutdownNow();
             }
 
             job.setStatus("completed");
@@ -238,11 +256,11 @@ public class BookmoryImportService {
             bookId = existing.getId();
             boolean updated = dbService.updateExistingBook(existing, b, coverURL, editorId, seriesId, relDate, bookType);
             if (updated) {
-                job.setUpdatedBooks(job.getUpdatedBooks() + 1);
+                synchronized (job) { job.setUpdatedBooks(job.getUpdatedBooks() + 1); }
             }
         } else {
             bookId = dbService.createNewBook(b, coverURL, editorId, seriesId, relDate, bookType);
-            job.setCreatedBooks(job.getCreatedBooks() + 1);
+            synchronized (job) { job.setCreatedBooks(job.getCreatedBooks() + 1); }
         }
 
         // 9. Authors & Illustrators
@@ -285,7 +303,7 @@ public class BookmoryImportService {
         if (options.isImportPurchases() && hasPurchaseData(b) && job.getUserId() != null && job.getUserId() > 0) {
             for (BookmoryPurchase purchase : b.getPurchases()) {
                 if (dbService.importPurchase(job.getUserId(), bookId, purchase)) {
-                    job.setImportedPurchases(job.getImportedPurchases() + 1);
+                    synchronized (job) { job.setImportedPurchases(job.getImportedPurchases() + 1); }
                 }
             }
         }
@@ -336,7 +354,7 @@ public class BookmoryImportService {
                         }
 
                         if (dbService.importReadingSession(job.getUserId(), bookId, timer, page)) {
-                            job.setImportedReadingSessions(job.getImportedReadingSessions() + 1);
+                            synchronized (job) { job.setImportedReadingSessions(job.getImportedReadingSessions() + 1); }
                         }
                     }
                 }
@@ -359,7 +377,7 @@ public class BookmoryImportService {
             }
         }
         if (dbService.importBookNote(job.getUserId(), bookId, notesForBook, readComments)) {
-            job.setImportedNotes(job.getImportedNotes() + 1);
+            synchronized (job) { job.setImportedNotes(job.getImportedNotes() + 1); }
         }
     }
 

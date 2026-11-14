@@ -68,7 +68,7 @@ public class BookmoryDbService {
         return 0;
     }
 
-    public Long findOrCreateEditor(String name) {
+    public synchronized Long findOrCreateEditor(String name) {
         String clean = cleanText(name);
         if (clean.isBlank()) return null;
 
@@ -98,7 +98,7 @@ public class BookmoryDbService {
         }
     }
 
-    public Long findOrCreateSeries(String name) {
+    public synchronized Long findOrCreateSeries(String name) {
         String clean = cleanText(name);
         if (clean.isBlank()) return null;
 
@@ -129,7 +129,7 @@ public class BookmoryDbService {
         }
     }
 
-        public Long findOrCreateAuthor(String fullName) {
+    public synchronized Long findOrCreateAuthor(String fullName) {
         String cleaned = cleanText(fullName);
         if (cleaned.isBlank()) return null;
 
