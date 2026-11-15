@@ -547,19 +547,12 @@ public class ScraperDbService {
         """);
         jdbcTemplate.update("DELETE FROM author WHERE LOWER(lastname) IN ('interviews', 'portfolio', 'auteurs');");
 
-        // 4. Repair authors
-        repairAuthors();
-
-        // 5. Deduplicate books
-        int mergedDuplicates = deduplicateBooks();
-
-        log.info("Mojibake repair complete: {} books repaired, {} series repaired, {} duplicates merged",
-                repairedBooks, repairedSeries, mergedDuplicates);
+        log.info("Mojibake repair complete: {} books repaired, {} series repaired",
+                repairedBooks, repairedSeries);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("repaired_books", repairedBooks);
         result.put("repaired_series", repairedSeries);
-        result.put("merged_duplicates", mergedDuplicates);
         return result;
     }
 

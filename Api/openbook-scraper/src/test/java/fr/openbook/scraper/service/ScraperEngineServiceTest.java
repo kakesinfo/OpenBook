@@ -1,6 +1,7 @@
 package fr.openbook.scraper.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.openbook.api.services.AuditLogService;
 import fr.openbook.scraper.config.ScraperProperties;
 import fr.openbook.scraper.sources.ScraperSource;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +51,8 @@ class ScraperEngineServiceTest {
                 properties,
                 scraperDbService,
                 List.of(mockSource),
-                new ObjectMapper()
+                new ObjectMapper(),
+                mock(AuditLogService.class)
         );
         engineService.init();
     }

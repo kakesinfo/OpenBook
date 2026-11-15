@@ -156,22 +156,22 @@ export default function AdminMaintenancePage() {
     };
 
     const runSingleTask = async (taskId: TaskId): Promise<{ ok: boolean; message: string }> => {
-        let endpoint = "/admin/scrapers/repair";
+        let endpoint = "/admin/maintenance/repair";
         let taskName = tr("UTF-8 repair", "Réparation UTF-8");
         if (taskId === "dedup") {
-            endpoint = "/admin/scrapers/deduplicate";
+            endpoint = "/admin/maintenance/deduplicate";
             taskName = tr("Book deduplication", "Déduplication des albums");
         } else if (taskId === "dedup_authors") {
-            endpoint = "/admin/scrapers/maintenance/deduplicate-authors";
+            endpoint = "/admin/maintenance/deduplicate-authors";
             taskName = tr("Author merging", "Fusion des auteurs");
         } else if (taskId === "bnf") {
-            endpoint = "/admin/scrapers/enrich-bnf";
+            endpoint = "/admin/maintenance/enrich-bnf";
             taskName = tr("BnF enrichment", "Enrichissement BnF");
         } else if (taskId === "verify_isbn") {
-            endpoint = "/admin/scrapers/verify-isbn";
+            endpoint = "/admin/maintenance/verify-isbn";
             taskName = tr("BnF verification", "Vérification BnF");
         } else if (taskId === "migrate_covers") {
-            endpoint = "/admin/scrapers/maintenance/migrate-covers";
+            endpoint = "/admin/maintenance/migrate-covers";
             taskName = tr("Cover migration", "Migration des couvertures");
         }
 

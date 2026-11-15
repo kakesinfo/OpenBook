@@ -25,6 +25,7 @@ import {
     faTrashCanArrowUp,
     faUsers,
     faSliders,
+    faClipboardList,
     faUserPen,
     faNoteSticky,
     faSpellCheck
@@ -148,6 +149,7 @@ export default function App() {
                         <WrapperButton to={'/app/admin/deleted-books'} icon={faTrashCanArrowUp}>{t("nav.deletedBooks")}</WrapperButton>
                         <WrapperButton to={'/app/admin/users'} icon={faUsers}>{t("nav.users")}</WrapperButton>
                         <WrapperButton to={'/app/admin/config'} icon={faSliders} activeRoutes={['/app/admin/configuration']}>{t("nav.configuration")}</WrapperButton>
+                        <WrapperButton to={'/app/admin/logs'} icon={faClipboardList}>{t("nav.logs")}</WrapperButton>
                     </>
                 )}
             </WrapperNavigation>

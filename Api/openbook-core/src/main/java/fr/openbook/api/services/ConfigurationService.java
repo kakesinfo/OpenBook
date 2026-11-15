@@ -27,6 +27,7 @@ public class ConfigurationService {
 
     private final ConfigurationRepository configurationRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuditLogService auditLogService;
 
     @PostConstruct
     public void initDefaultConfigurations() {
@@ -90,36 +91,43 @@ public class ConfigurationService {
     public ConfigurationEntity updateConfiguration(Long id, String rawValue) {
         ConfigurationEntity entity = configurationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Configuration introuvable (id=" + id + ")"));
-        return applyAndSaveValue(entity, rawValue);
+        return applyAndSaveValue(entity, rawValue, false);
     }
 
     @Transactional
     public ConfigurationEntity updateConfigurationByKey(String key, String rawValue) {
         ConfigurationEntity entity = getByKey(key)
                 .orElseThrow(() -> new IllegalArgumentException("Configuration introuvable (key=" + key + ")"));
-        return applyAndSaveValue(entity, rawValue);
+        return applyAndSaveValue(entity, rawValue, false);
     }
 
     @Transactional
     public ConfigurationEntity resetToDefault(Long id) {
         ConfigurationEntity entity = configurationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Configuration introuvable (id=" + id + ")"));
-        return applyAndSaveValue(entity, entity.getDefaultValue());
+        return applyAndSaveValue(entity, entity.getDefaultValue(), true);
     }
 
     @Transactional
     public ConfigurationEntity resetToDefaultByKey(String key) {
         ConfigurationEntity entity = getByKey(key)
                 .orElseThrow(() -> new IllegalArgumentException("Configuration introuvable (key=" + key + ")"));
-        return applyAndSaveValue(entity, entity.getDefaultValue());
+        return applyAndSaveValue(entity, entity.getDefaultValue(), true);
     }
 
-    private ConfigurationEntity applyAndSaveValue(ConfigurationEntity entity, String rawValue) {
+    private ConfigurationEntity applyAndSaveValue(ConfigurationEntity entity, String rawValue, boolean isReset) {
+        String previousValue = entity.getValue();
         String validated = validateAndNormalize(rawValue, entity.getValueType());
         entity.setValue(validated);
         ConfigurationEntity saved = configurationRepository.save(entity);
         log.info("[ConfigurationService] Configuration '{}' updated to '{}' (type={})",
                 saved.getKey(), saved.getValue(), saved.getValueType());
+
+        String action = isReset ? "Réinitialisation de configuration" : "Modification de configuration";
+        String comment = isReset
+                ? "Clé '" + saved.getKey() + "' réinitialisée à '" + saved.getValue() + "'"
+                : "Clé '" + saved.getKey() + "' : '" + previousValue + "' → '" + saved.getValue() + "'";
+        auditLogService.logAdmin("CONFIG", action, AuditLogService.STATUS_SUCCESS, comment);
 
         eventPublisher.publishEvent(new ConfigurationUpdatedEvent(
                 this,

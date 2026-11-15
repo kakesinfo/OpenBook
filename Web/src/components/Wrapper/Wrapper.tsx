@@ -15,7 +15,8 @@ import {
     faBoxArchive,
     faTrashCanArrowUp,
     faUsers,
-    faSliders
+    faSliders,
+    faClipboardList
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useLocation } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -279,6 +280,13 @@ export function WrapperNavigation({ title = "OpenBook", badge, children, onSearc
                         >
                             <FontAwesomeIcon icon={faSliders} />
                             <span>{t("nav.configShort")}</span>
+                        </Link>
+                        <Link
+                            to="/app/admin/logs"
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/admin/logs') ? 'active' : ''}`}
+                        >
+                            <FontAwesomeIcon icon={faClipboardList} />
+                            <span>{t("nav.logsShort")}</span>
                         </Link>
                     </>
                 )}

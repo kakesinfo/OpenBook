@@ -1,8 +1,10 @@
 package fr.openbook.backup.service;
 
+import fr.openbook.api.services.AuditLogService;
 import fr.openbook.api.services.ConfigurationService;
 import fr.openbook.api.services.ConfigurationUpdatedEvent;
 import fr.openbook.backup.config.BackupProperties;
+import fr.openbook.backup.model.BackupMetadata;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class BackupScheduler {
     private final BackupService backupService;
     private final BackupProperties backupProperties;
     private final ConfigurationService configurationService;
+    private final AuditLogService auditLogService;
 
     private ThreadPoolTaskScheduler taskScheduler;
     private ScheduledFuture<?> scheduledFuture;
@@ -83,10 +86,16 @@ public class BackupScheduler {
 
     public void executeScheduledBackup() {
         log.info("[Backup] Running scheduled backup (cron: {})...", backupProperties.getScheduleCron());
+        auditLogService.logCron("BACKUP", "Sauvegarde automatique", AuditLogService.STATUS_STARTED,
+                "CRON: " + backupProperties.getScheduleCron());
         try {
-            backupService.createBackup();
+            BackupMetadata meta = backupService.createBackup();
+            auditLogService.logCron("BACKUP", "Sauvegarde automatique", AuditLogService.STATUS_SUCCESS,
+                    "Archive '" + meta.getFilename() + "' créée");
         } catch (Exception ex) {
             log.error("[Backup] Scheduled backup failed: {}", ex.getMessage(), ex);
+            auditLogService.logCron("BACKUP", "Sauvegarde automatique", AuditLogService.STATUS_FAILURE,
+                    ex.getMessage());
         }
     }
 }

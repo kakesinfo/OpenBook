@@ -1,5 +1,6 @@
 package fr.openbook.api.controllers;
 
+import fr.openbook.api.services.AuditLogService;
 import fr.openbook.api.utils.MediaUrlUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import java.util.*;
 public class AdminBookController {
 
     private final JdbcTemplate jdbcTemplate;
+    private final AuditLogService auditLogService;
 
     @GetMapping("/deleted")
     public ResponseEntity<Map<String, Object>> getDeletedBooks(
@@ -114,6 +116,9 @@ public class AdminBookController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Livre supprimé introuvable.");
         }
 
+        auditLogService.logAdmin("BOOK", "Restauration de livre", AuditLogService.STATUS_SUCCESS,
+                "Livre #" + id + " restauré");
+
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "L'album a été restauré avec succès."
@@ -136,6 +141,9 @@ public class AdminBookController {
                 ids.toArray()
         );
 
+        auditLogService.logAdmin("BOOK", "Restauration de livres", AuditLogService.STATUS_SUCCESS,
+                updated + " livre(s) restauré(s)");
+
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "restoredCount", updated,
@@ -148,6 +156,9 @@ public class AdminBookController {
         int updated = jdbcTemplate.update(
                 "UPDATE book SET deleted = false, updated_at = NOW() WHERE deleted = true"
         );
+
+        auditLogService.logAdmin("BOOK", "Restauration de tous les livres", AuditLogService.STATUS_SUCCESS,
+                updated + " livre(s) restauré(s)");
 
         return ResponseEntity.ok(Map.of(
                 "success", true,

@@ -1,5 +1,6 @@
 package fr.openbook.api.controllers;
 
+import fr.openbook.api.services.AuditLogService;
 import fr.openbook.backup.model.BackupMetadata;
 import fr.openbook.backup.model.RestoreResult;
 import fr.openbook.backup.service.BackupService;
@@ -33,6 +34,7 @@ import java.util.Map;
 public class AdminBackupController {
 
     private final BackupService backupService;
+    private final AuditLogService auditLogService;
 
     /**
      * Lists existing backup files.
@@ -49,9 +51,13 @@ public class AdminBackupController {
     public ResponseEntity<?> createBackup() {
         try {
             BackupMetadata meta = backupService.createBackup();
+            auditLogService.logAdmin("BACKUP", "Création de sauvegarde", AuditLogService.STATUS_SUCCESS,
+                    "Archive '" + meta.getFilename() + "' créée");
             return ResponseEntity.status(HttpStatus.CREATED).body(meta);
         } catch (Exception e) {
             log.error("[AdminBackup] Failed to create backup: {}", e.getMessage(), e);
+            auditLogService.logAdmin("BACKUP", "Création de sauvegarde", AuditLogService.STATUS_FAILURE,
+                    e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Backup failed: " + e.getMessage()));
         }
@@ -85,11 +91,15 @@ public class AdminBackupController {
         try {
             log.info("[AdminBackup] Received restore request for backup: {}", filename);
             RestoreResult result = backupService.restoreBackup(filename);
+            auditLogService.logAdmin("BACKUP", "Restauration de sauvegarde", AuditLogService.STATUS_SUCCESS,
+                    "Archive '" + filename + "' restaurée");
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             log.error("[AdminBackup] Restore failed for backup {}: {}", filename, e.getMessage(), e);
+            auditLogService.logAdmin("BACKUP", "Restauration de sauvegarde", AuditLogService.STATUS_FAILURE,
+                    "Archive '" + filename + "' : " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Restore failed: " + e.getMessage()));
         }
@@ -103,8 +113,12 @@ public class AdminBackupController {
         try {
             boolean deleted = backupService.deleteBackup(filename);
             if (deleted) {
+                auditLogService.logAdmin("BACKUP", "Suppression de sauvegarde", AuditLogService.STATUS_SUCCESS,
+                        "Archive '" + filename + "' supprimée");
                 return ResponseEntity.noContent().build();
             } else {
+                auditLogService.logAdmin("BACKUP", "Suppression de sauvegarde", AuditLogService.STATUS_FAILURE,
+                        "Impossible de supprimer '" + filename + "'");
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                         .body(Map.of("error", "Could not delete backup file"));
             }

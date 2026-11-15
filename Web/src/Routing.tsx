@@ -27,6 +27,7 @@ import AdminBackupsPage from "./pages/app/AdminBackupsPage.tsx";
 import AdminDeletedBooksPage from "./pages/app/AdminDeletedBooksPage.tsx";
 import AdminUsersPage from "./pages/app/AdminUsersPage.tsx";
 import AdminConfigPage from "./pages/app/AdminConfigPage.tsx";
+import AdminLogsPage from "./pages/app/AdminLogsPage.tsx";
 import StatisticsPage from "./pages/app/StatisticsPage.tsx";
 import NotesPage from "./pages/app/NotesPage.tsx";
 import GlossaryPage from "./pages/app/GlossaryPage.tsx";
@@ -187,6 +188,7 @@ export default function Routing() {
                 <Route path="admin/users" element={<AdminOnlyRoute><AdminUsersPage key={location.pathname}/></AdminOnlyRoute>} />
                 <Route path="admin/config" element={<AdminOnlyRoute><AdminConfigPage key={location.pathname}/></AdminOnlyRoute>} />
                 <Route path="admin/configuration" element={<AdminOnlyRoute><AdminConfigPage key={location.pathname}/></AdminOnlyRoute>} />
+                <Route path="admin/logs" element={<AdminOnlyRoute><AdminLogsPage key={location.pathname}/></AdminOnlyRoute>} />
 
                 {/* Routes communes */}
                 <Route path="settings" element={<SettingsPage key={location.pathname}/>} />

@@ -6,6 +6,7 @@ import fr.openbook.api.dtos.admin.AdminSetBlockStatusRequestDTO;
 import fr.openbook.api.dtos.admin.AdminUserDTO;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.repositories.UserOwnsBooksRepository;
+import fr.openbook.api.services.AuditLogService;
 import fr.openbook.api.services.AvatarService;
 import fr.openbook.api.services.RepositoryService;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class AdminUserController {
     private final UserOwnsBooksRepository userOwnsBooksRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final AvatarService avatarService;
+    private final AuditLogService auditLogService;
 
     private UserEntity getAuthenticatedUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -117,6 +119,8 @@ public class AdminUserController {
         UserEntity savedUser = repositoryService.getUserRepository().save(user);
         log.info("[AdminUser] Created user id={} username={} role={} with temporary password",
                 savedUser.getId(), savedUser.getUsername(), savedUser.getRole());
+        auditLogService.logAdmin("USER", "Création d'utilisateur", AuditLogService.STATUS_SUCCESS,
+                "Utilisateur '" + savedUser.getRealUsername() + "' créé (" + savedUser.getRole() + ")");
 
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                 "message", "Compte utilisateur créé avec succès avec un mot de passe provisoire.",
@@ -143,6 +147,8 @@ public class AdminUserController {
         repositoryService.getUserRepository().save(user);
 
         log.info("[AdminUser] User id={} username={} blocked={}", user.getId(), user.getUsername(), newStatus);
+        auditLogService.logAdmin("USER", "Modification d'utilisateur", AuditLogService.STATUS_SUCCESS,
+                (newStatus ? "Blocage" : "Déblocage") + " de l'utilisateur '" + user.getRealUsername() + "'");
 
         return ResponseEntity.ok(Map.of(
                 "message", newStatus ? "Utilisateur bloqué avec succès." : "Utilisateur débloqué avec succès.",
@@ -181,6 +187,8 @@ public class AdminUserController {
         repositoryService.getUserRepository().save(user);
 
         log.info("[AdminUser] Password reset for user id={} username={}", user.getId(), user.getUsername());
+        auditLogService.logAdmin("USER", "Réinitialisation de mot de passe", AuditLogService.STATUS_SUCCESS,
+                "Mot de passe provisoire réinitialisé pour '" + user.getRealUsername() + "'");
 
         return ResponseEntity.ok(Map.of(
                 "message", "Nouveau mot de passe provisoire défini. L'utilisateur devra le changer à sa prochaine connexion.",
@@ -215,6 +223,8 @@ public class AdminUserController {
         repositoryService.getUserRepository().delete(user);
 
         log.info("[AdminUser] Deleted user id={} username={}", id, user.getUsername());
+        auditLogService.logAdmin("USER", "Suppression d'utilisateur", AuditLogService.STATUS_SUCCESS,
+                "Utilisateur '" + user.getRealUsername() + "' (id=" + id + ") supprimé");
 
         return ResponseEntity.ok(Map.of("message", "Utilisateur supprimé avec succès."));
     }

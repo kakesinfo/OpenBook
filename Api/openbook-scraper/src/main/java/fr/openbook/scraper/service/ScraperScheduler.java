@@ -1,5 +1,6 @@
 package fr.openbook.scraper.service;
 
+import fr.openbook.api.services.AuditLogService;
 import fr.openbook.api.services.ConfigurationService;
 import fr.openbook.api.services.ConfigurationUpdatedEvent;
 import fr.openbook.scraper.config.ScraperProperties;
@@ -96,6 +97,6 @@ public class ScraperScheduler {
      */
     public void executeDailyScheduledScrape() {
         log.info("Executing scheduled crawl (cron: {}) for all active sources...", properties.getScheduleCron());
-        engineService.triggerScrape(null, false);
+        engineService.triggerScrape(null, false, AuditLogService.ACTOR_CRON);
     }
 }

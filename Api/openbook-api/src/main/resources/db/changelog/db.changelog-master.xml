@@ -1775,4 +1775,38 @@
             <column name="updated_at" valueComputed="NOW()" />
         </insert>
     </changeSet>
+    <changeSet id="45" author="Axel">
+        <createTable tableName="audit_log">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+            <column name="category" type="varchar(40)">
+                <constraints nullable="false" />
+            </column>
+            <column name="action" type="varchar(150)">
+                <constraints nullable="false" />
+            </column>
+            <column name="actor" type="varchar(100)">
+                <constraints nullable="false" />
+            </column>
+            <column name="status" type="varchar(30)">
+                <constraints nullable="false" />
+            </column>
+            <column name="comment" type="text">
+                <constraints nullable="true" />
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+        <createIndex tableName="audit_log" indexName="idx_audit_log_created_at">
+            <column name="created_at" />
+        </createIndex>
+        <createIndex tableName="audit_log" indexName="idx_audit_log_category">
+            <column name="category" />
+        </createIndex>
+    </changeSet>
 </databaseChangeLog>

@@ -2,6 +2,7 @@ package fr.openbook.scraper.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.openbook.api.services.AuditLogService;
 import fr.openbook.scraper.config.ScraperProperties;
 import fr.openbook.scraper.model.ScanOptions;
 import fr.openbook.scraper.model.ScrapedAuthorDTO;
@@ -56,6 +57,7 @@ public class ScraperEngineService {
     private final ScraperDbService scraperDbService;
     private final List<ScraperSource> scraperSources;
     private final ObjectMapper objectMapper;
+    private final AuditLogService auditLogService;
 
     private final Map<String, ScraperSource> sourceMap = new LinkedHashMap<>();
     private final Set<String> disabledSources = ConcurrentHashMap.newKeySet();
@@ -299,6 +301,10 @@ public class ScraperEngineService {
     }
 
     public Map<String, Object> triggerScrape(List<String> sources, boolean fullScan) {
+        return triggerScrape(sources, fullScan, auditLogService.getCurrentActor());
+    }
+
+    public Map<String, Object> triggerScrape(List<String> sources, boolean fullScan, String actorOverride) {
         if (!isRunning.compareAndSet(false, true)) {
             return Map.of(
                     "status", "already_running",
@@ -327,7 +333,14 @@ public class ScraperEngineService {
         liveScan.put("job_name", currentJob);
         liveScan.put("started_at", Instant.now().toString());
 
-        Thread.ofVirtual().name("scraper-worker").start(() -> runScrape(sources, fullScan, currentJob));
+        String resolvedActor = (actorOverride != null && !actorOverride.isBlank())
+                ? actorOverride
+                : AuditLogService.ACTOR_SYSTEM;
+        String actionName = fullScan ? "Scraping complet" : "Scraping standard";
+        auditLogService.log("SCRAPER", actionName, resolvedActor, AuditLogService.STATUS_STARTED,
+                "Sources : " + targetDesc);
+
+        Thread.ofVirtual().name("scraper-worker").start(() -> runScrape(sources, fullScan, currentJob, resolvedActor, actionName));
 
         String modeStr = fullScan ? "full catalog scan" : "standard scan";
         return Map.of(
@@ -338,7 +351,7 @@ public class ScraperEngineService {
         );
     }
 
-    private void runScrape(List<String> requestedSources, boolean fullScan, String jobName) {
+    private void runScrape(List<String> requestedSources, boolean fullScan, String jobName, String actor, String actionName) {
         Instant startTime = Instant.now();
         List<String> sourcesToRun = new ArrayList<>();
 
@@ -598,6 +611,19 @@ public class ScraperEngineService {
                     summary.get("total_saved"),
                     summary.get("status")
             );
+
+            String auditStatus = (!cancelled && errorsList.isEmpty())
+                    ? AuditLogService.STATUS_SUCCESS
+                    : AuditLogService.STATUS_FAILURE;
+            StringBuilder comment = new StringBuilder();
+            comment.append(totalScraped).append(" trouvé(s), ").append(totalSaved).append(" enregistré(s)");
+            if (cancelled) {
+                comment.append(" (annulé)");
+            } else if (!errorsList.isEmpty()) {
+                comment.append(" (").append(errorsList.size()).append(" erreur(s) : ")
+                        .append(errorsList.get(0)).append(")");
+            }
+            auditLogService.log("SCRAPER", actionName, actor, auditStatus, comment.toString());
         }
     }
 }
