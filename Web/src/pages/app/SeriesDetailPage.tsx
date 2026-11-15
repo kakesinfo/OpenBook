@@ -11,6 +11,7 @@ import Pagination from "../../components/Pagination/Pagination.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import HeaderFilterTabs from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
+import HeroProgressStats from "../../components/HeroProgressStats/HeroProgressStats.tsx";
 import { Dialog } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -447,7 +448,6 @@ export default function SeriesDetailPage() {
     const ownedCount = series.ownedCount || 0;
     const totalCount = series.books?.length || 0;
     const wishlistedCount = (series.books || []).filter((b) => b.status === "WISHLISTED").length;
-    const progressPercent = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
 
     return (
         <div className="series-detail-page">
@@ -520,16 +520,6 @@ export default function SeriesDetailPage() {
             <div className="series-detail-page__content">
                 {/* Hero / Information Card */}
                 <div className="series-detail-hero">
-                    <div className="series-detail-hero__cover">
-                        {series.coverUrl ? (
-                            <img src={series.coverUrl} alt={tr(`Cover of ${series.name}`, `Couverture de ${series.name}`)} />
-                        ) : (
-                            <div className="series-detail-hero__cover-fallback">
-                                <FontAwesomeIcon icon={faLayerGroup} />
-                            </div>
-                        )}
-                    </div>
-
                     <div className="series-detail-hero__info">
                         <div className="series-detail-hero__tags">
                             {series.category && (
@@ -542,9 +532,6 @@ export default function SeriesDetailPage() {
                                     {getSeriesStatusLabel(series.status)}
                                 </span>
                             )}
-                            <span className="series-detail-hero__tag series-detail-hero__tag--neutral">
-                                {totalCount} {totalCount > 1 ? tr("books in series", "albums dans la série") : tr("book in series", "album dans la série")}
-                            </span>
                         </div>
 
                         <h1 className="series-detail-hero__title">{series.name}</h1>
@@ -554,60 +541,44 @@ export default function SeriesDetailPage() {
                         )}
 
                         {/* Progress Bar & Stats */}
-                        <div className="series-detail-hero__stats">
-                            <div className="series-detail-hero__progress-header">
-                                <span className="series-detail-hero__progress-label">
-                                    <FontAwesomeIcon icon={faBook} /> {tr("Collection progress", "Progression dans votre collection")}
-                                </span>
-                                <span className="series-detail-hero__progress-val">
-                                    <strong>{ownedCount}</strong> / {totalCount} {ownedCount > 1 ? tr("owned", "possédés") : tr("owned", "possédé")} ({progressPercent}%)
-                                </span>
-                            </div>
-                            <div className="series-detail-hero__progress-bar">
-                                <div
-                                    className="series-detail-hero__progress-fill"
-                                    style={{ width: `${Math.min(100, progressPercent)}%` }}
-                                />
-                            </div>
-                        </div>
+                        <HeroProgressStats ownedCount={ownedCount} totalCount={totalCount} />
                     </div>
-                </div>
 
-                {/* Albums section header and controls */}
-                <PageControls
-                    center={
-                        <SearchBar
-                            value={searchQuery}
-                            onChange={setSearchQuery}
-                            placeholder={tr("Filter books...", "Filtrer les albums...")}
-                            clearLabel={tr("Clear search", "Effacer la recherche")}
-                        />
-                    }
-                    right={
-                        <div className="series-detail-page__view-toggle">
-                            <button
-                                type="button"
-                                className={`series-detail-page__view-btn ${viewMode === "grid" ? "is-active" : ""}`}
-                                onClick={() => setViewMode("grid")}
-                                title={tr("Gallery view", "Mode Galerie")}
-                                aria-label={tr("Gallery view", "Mode Galerie")}
-                            >
-                                <FontAwesomeIcon icon={faBorderAll} />
-                                <span>{tr("Gallery", "Galerie")}</span>
-                            </button>
-                            <button
-                                type="button"
-                                className={`series-detail-page__view-btn ${viewMode === "list" ? "is-active" : ""}`}
-                                onClick={() => setViewMode("list")}
-                                title={tr("Compact list view", "Mode Liste compacte")}
-                                aria-label={tr("Compact list view", "Mode Liste compacte")}
-                            >
-                                <FontAwesomeIcon icon={faList} />
-                                <span>{tr("List", "Liste")}</span>
-                            </button>
-                        </div>
-                    }
-                />
+                    <PageControls
+                        center={
+                            <SearchBar
+                                value={searchQuery}
+                                onChange={setSearchQuery}
+                                placeholder={tr("Filter books...", "Filtrer les albums...")}
+                                clearLabel={tr("Clear search", "Effacer la recherche")}
+                            />
+                        }
+                        right={
+                            <div className="series-detail-page__view-toggle">
+                                <button
+                                    type="button"
+                                    className={`series-detail-page__view-btn ${viewMode === "grid" ? "is-active" : ""}`}
+                                    onClick={() => setViewMode("grid")}
+                                    title={tr("Gallery view", "Mode Galerie")}
+                                    aria-label={tr("Gallery view", "Mode Galerie")}
+                                >
+                                    <FontAwesomeIcon icon={faBorderAll} />
+                                    <span>{tr("Gallery", "Galerie")}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`series-detail-page__view-btn ${viewMode === "list" ? "is-active" : ""}`}
+                                    onClick={() => setViewMode("list")}
+                                    title={tr("Compact list view", "Mode Liste compacte")}
+                                    aria-label={tr("Compact list view", "Mode Liste compacte")}
+                                >
+                                    <FontAwesomeIcon icon={faList} />
+                                    <span>{tr("List", "Liste")}</span>
+                                </button>
+                            </div>
+                        }
+                    />
+                </div>
 
                 {/* Albums content */}
                 {filteredBooks.length === 0 ? (

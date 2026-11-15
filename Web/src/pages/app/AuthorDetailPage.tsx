@@ -10,6 +10,7 @@ import Pagination from "../../components/Pagination/Pagination.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import HeaderFilterTabs from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
+import HeroProgressStats from "../../components/HeroProgressStats/HeroProgressStats.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faArrowLeft,
@@ -18,8 +19,7 @@ import {
     faPenNib,
     faBook,
     faBorderAll,
-    faList,
-    faHeart
+    faList
 } from "@fortawesome/free-solid-svg-icons";
 import "./AuthorDetailPage.scss";
 
@@ -152,10 +152,6 @@ export default function AuthorDetailPage() {
         ? `${author.firstname || ""} ${author.lastname || ""}`.trim()
         : "";
 
-    const initials = author
-        ? `${author.firstname?.[0] || ""}${author.lastname?.[0] || ""}`.toUpperCase()
-        : "";
-
     if (loading) {
         return (
             <div className="author-detail-page">
@@ -269,14 +265,6 @@ export default function AuthorDetailPage() {
             <div className="author-detail-page__content">
                 {/* Hero / Information Card */}
                 <div className="author-detail-hero">
-                    <div className="author-detail-hero__avatar">
-                        {initials ? (
-                            <span className="author-detail-hero__initials">{initials}</span>
-                        ) : (
-                            <FontAwesomeIcon icon={faPenNib} />
-                        )}
-                    </div>
-
                     <div className="author-detail-hero__info">
                         <div className="author-detail-hero__badge">
                             <FontAwesomeIcon icon={faPenNib} />
@@ -285,59 +273,44 @@ export default function AuthorDetailPage() {
 
                         <h1 className="author-detail-hero__name">{fullName}</h1>
 
-                        <div className="author-detail-hero__stats">
-                            <span className="author-detail-hero__stat-pill">
-                                <FontAwesomeIcon icon={faBook} />
-                                <strong>{totalBooks}</strong> {totalBooks > 1 ? tr("books", "albums") : tr("book", "album")}
-                            </span>
-                            <span className="author-detail-hero__stat-pill author-detail-hero__stat-pill--owned">
-                                <strong>{ownedBooks}</strong> {tr("in your collection", "dans votre collection")}
-                            </span>
-                            {wishlistedBooks > 0 && (
-                                <span className="author-detail-hero__stat-pill author-detail-hero__stat-pill--wishlist">
-                                    <FontAwesomeIcon icon={faHeart} />
-                                    <strong>{wishlistedBooks}</strong> {wishlistedBooks > 1 ? tr("wishlisted", "souhaits") : tr("wishlisted", "souhait")}
-                                </span>
-                            )}
-                        </div>
+                        <HeroProgressStats ownedCount={ownedBooks} totalCount={totalBooks} />
                     </div>
-                </div>
 
-                {/* Albums section header and controls */}
-                <PageControls
-                    center={
-                        <SearchBar
-                            value={searchQuery}
-                            onChange={setSearchQuery}
-                            placeholder={tr("Filter books...", "Filtrer les albums...")}
-                            clearLabel={tr("Clear search", "Effacer la recherche")}
-                        />
-                    }
-                    right={
-                        <div className="author-detail-page__view-toggle">
-                            <button
-                                type="button"
-                                className={`author-detail-page__view-btn ${viewMode === "grid" ? "is-active" : ""}`}
-                                onClick={() => setViewMode("grid")}
-                                title={tr("Gallery view", "Mode Galerie")}
-                                aria-label={tr("Gallery view", "Mode Galerie")}
-                            >
-                                <FontAwesomeIcon icon={faBorderAll} />
-                                <span>{tr("Gallery", "Galerie")}</span>
-                            </button>
-                            <button
-                                type="button"
-                                className={`author-detail-page__view-btn ${viewMode === "list" ? "is-active" : ""}`}
-                                onClick={() => setViewMode("list")}
-                                title={tr("Compact list view", "Mode Liste compacte")}
-                                aria-label={tr("Compact list view", "Mode Liste compacte")}
-                            >
-                                <FontAwesomeIcon icon={faList} />
-                                <span>{tr("List", "Liste")}</span>
-                            </button>
-                        </div>
-                    }
-                />
+                    <PageControls
+                        center={
+                            <SearchBar
+                                value={searchQuery}
+                                onChange={setSearchQuery}
+                                placeholder={tr("Filter books...", "Filtrer les albums...")}
+                                clearLabel={tr("Clear search", "Effacer la recherche")}
+                            />
+                        }
+                        right={
+                            <div className="author-detail-page__view-toggle">
+                                <button
+                                    type="button"
+                                    className={`author-detail-page__view-btn ${viewMode === "grid" ? "is-active" : ""}`}
+                                    onClick={() => setViewMode("grid")}
+                                    title={tr("Gallery view", "Mode Galerie")}
+                                    aria-label={tr("Gallery view", "Mode Galerie")}
+                                >
+                                    <FontAwesomeIcon icon={faBorderAll} />
+                                    <span>{tr("Gallery", "Galerie")}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`author-detail-page__view-btn ${viewMode === "list" ? "is-active" : ""}`}
+                                    onClick={() => setViewMode("list")}
+                                    title={tr("Compact list view", "Mode Liste compacte")}
+                                    aria-label={tr("Compact list view", "Mode Liste compacte")}
+                                >
+                                    <FontAwesomeIcon icon={faList} />
+                                    <span>{tr("List", "Liste")}</span>
+                                </button>
+                            </div>
+                        }
+                    />
+                </div>
 
                 {/* Albums content */}
                 {filteredBooks.length === 0 ? (

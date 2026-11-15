@@ -130,18 +130,25 @@
 /* Author Hero Card */
 .author-detail-hero {
   display: flex;
-  gap: 24px;
+  flex-direction: column;
+  gap: 16px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 24px;
-  align-items: center;
+  padding: 24px 24px 16px;
 
   @media (max-width: 600px) {
-    flex-direction: column;
-    padding: 20px;
-    text-align: center;
-    gap: 16px;
+    padding: 18px 16px 14px;
+    gap: 14px;
+  }
+
+  .shared-page-controls {
+    background: transparent;
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    border-radius: 0;
+    box-shadow: none;
+    padding: 14px 0 0;
   }
 
   &__avatar {
