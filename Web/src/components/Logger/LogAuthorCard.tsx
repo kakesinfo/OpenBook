@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowRight, faUserPen } from "@fortawesome/free-solid-svg-icons";
 import AuthorDTO from "../../dto/Author.dto.ts";
 import useLanguage from "../../hooks/UseLanguage.tsx";
+import { isCollectifAuthor } from "../../utils/authorUtils.ts";
 
 type Props = {
     author: AuthorDTO;
@@ -13,6 +14,10 @@ type Props = {
 export default function LogAuthorCard({ author, onClose }: Props) {
     const navigate = useNavigate();
     const { tr } = useLanguage();
+
+    if (isCollectifAuthor(author)) {
+        return null;
+    }
 
     const handleClick = (e: React.MouseEvent) => {
         e.preventDefault();

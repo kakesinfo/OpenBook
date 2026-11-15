@@ -8,6 +8,7 @@ import useSession, { SessionContextType } from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { trStatic } from "../../i18n";
 import { getSeriesStatusLabel } from "../../dto/Series.dto.ts";
+import { isCollectifAuthor } from "../../utils/authorUtils.ts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faArrowLeft,
@@ -1111,7 +1112,7 @@ export default function BookPage() {
                 if (data.editor?.id) params.set("editorId", String(data.editor.id));
                 if (data.collection?.id) params.set("collectionId", String(data.collection.id));
                 if (data.authors && data.authors.length > 0) {
-                    const aIds = data.authors.map((a) => a.id).filter(Boolean);
+                    const aIds = data.authors.filter((a) => !isCollectifAuthor(a)).map((a) => a.id).filter(Boolean);
                     if (aIds.length > 0) params.set("authorIds", aIds.join(","));
                 }
 
@@ -1644,7 +1645,7 @@ export default function BookPage() {
                                             const isFollowed = author.id ? Boolean(followStates[`author_${author.id}`]) : false;
                                             return (
                                                 <span key={`${author.id || idx}-${author.type || idx}`} className="book-page__author-item">
-                                                    {author.id ? (
+                                                    {author.id && !isCollectifAuthor(author) ? (
                                                         <Link
                                                             to={`/app/author/${author.id}`}
                                                             className="book-page__entity-inline-btn"
@@ -1656,7 +1657,7 @@ export default function BookPage() {
                                                             )}
                                                         </Link>
                                                     ) : (
-                                                        <span className="book-page__entity-inline-btn">
+                                                        <span className="book-page__entity-inline-btn book-page__entity-inline-btn--static">
                                                             <span>{fullName}</span>
                                                         </span>
                                                     )}
@@ -1837,7 +1838,7 @@ export default function BookPage() {
                                                     const isFollowed = a.id ? Boolean(followStates[`author_${a.id}`]) : false;
                                                     return (
                                                         <span key={a.id || i} className="book-page__spec-author-item">
-                                                            {a.id ? (
+                                                            {a.id && !isCollectifAuthor(a) ? (
                                                                 <Link
                                                                     to={`/app/author/${a.id}`}
                                                                     className="book-page__spec-author-link"
@@ -1849,7 +1850,7 @@ export default function BookPage() {
                                                                     )}
                                                                 </Link>
                                                             ) : (
-                                                                <span className="book-page__spec-author-link">
+                                                                <span className="book-page__spec-author-link book-page__spec-author-link--static">
                                                                     <span>{name}</span>
                                                                 </span>
                                                             )}
@@ -1873,7 +1874,7 @@ export default function BookPage() {
                                                     const isFollowed = a.id ? Boolean(followStates[`author_${a.id}`]) : false;
                                                     return (
                                                         <span key={a.id || i} className="book-page__spec-author-item">
-                                                            {a.id ? (
+                                                            {a.id && !isCollectifAuthor(a) ? (
                                                                 <Link
                                                                     to={`/app/author/${a.id}`}
                                                                     className="book-page__spec-author-link"
@@ -1885,7 +1886,7 @@ export default function BookPage() {
                                                                     )}
                                                                 </Link>
                                                             ) : (
-                                                                <span className="book-page__spec-author-link">
+                                                                <span className="book-page__spec-author-link book-page__spec-author-link--static">
                                                                     <span>{name}</span>
                                                                 </span>
                                                             )}
@@ -1909,7 +1910,7 @@ export default function BookPage() {
                                                     const isFollowed = a.id ? Boolean(followStates[`author_${a.id}`]) : false;
                                                     return (
                                                         <span key={a.id || i} className="book-page__spec-author-item">
-                                                            {a.id ? (
+                                                            {a.id && !isCollectifAuthor(a) ? (
                                                                 <Link
                                                                     to={`/app/author/${a.id}`}
                                                                     className="book-page__spec-author-link"
@@ -1921,7 +1922,7 @@ export default function BookPage() {
                                                                     )}
                                                                 </Link>
                                                             ) : (
-                                                                <span className="book-page__spec-author-link">
+                                                                <span className="book-page__spec-author-link book-page__spec-author-link--static">
                                                                     <span>{name}</span>
                                                                 </span>
                                                             )}

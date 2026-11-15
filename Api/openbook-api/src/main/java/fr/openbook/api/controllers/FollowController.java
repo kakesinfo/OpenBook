@@ -116,7 +116,13 @@ public class FollowController {
     private boolean checkIsFollowing(Long userId, String type, Long id) {
         return switch (type.toLowerCase()) {
             case "series" -> repositoryService.getUserFollowsSeriesRepository().existsByUserIdAndSeriesId(userId, id.intValue());
-            case "author" -> repositoryService.getUserFollowsAuthorRepository().existsByUserIdAndAuthorId(userId, id.intValue());
+            case "author" -> {
+                AuthorEntity author = repositoryService.getAuthorRepository().findById(id).orElse(null);
+                if (author != null && author.isCollectif()) {
+                    yield false;
+                }
+                yield repositoryService.getUserFollowsAuthorRepository().existsByUserIdAndAuthorId(userId, id.intValue());
+            }
             case "editor" -> repositoryService.getUserFollowsEditorRepository().existsByUserIdAndEditorId(userId, id);
             case "collection" -> repositoryService.getUserFollowsCollectionRepository().existsByUserIdAndCollectionId(userId, id.intValue());
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown type: " + type);
@@ -144,9 +150,12 @@ public class FollowController {
             case "author" -> {
                 int aId = id.intValue();
                 if (follow) {
+                    AuthorEntity author = repositoryService.getAuthorRepository().findById(id)
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Author not found"));
+                    if (author.isCollectif()) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot follow placeholder author 'Collectif'");
+                    }
                     if (!repositoryService.getUserFollowsAuthorRepository().existsByUserIdAndAuthorId(userId, aId)) {
-                        AuthorEntity author = repositoryService.getAuthorRepository().findById(id)
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Author not found"));
                         UserFollowsAuthorEntity entity = new UserFollowsAuthorEntity();
                         entity.setUser(user);
                         entity.setAuthor(author);

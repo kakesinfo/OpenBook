@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -47,5 +48,13 @@ public class AuthorEntity {
     protected void onUpdate()
     {
         updatedAt = new Date().toInstant();
+    }
+
+    @Transient
+    public boolean isCollectif() {
+        String first = firstname != null ? firstname.trim() : "";
+        String last = lastname != null ? lastname.trim() : "";
+        String full = (first + " " + last).trim().toLowerCase();
+        return full.matches("^collectif(\\b.*)?$") || first.equalsIgnoreCase("collectif") || last.equalsIgnoreCase("collectif");
     }
 }

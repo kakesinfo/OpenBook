@@ -666,6 +666,15 @@
       color: var(--accent-primary);
       text-decoration: underline;
     }
+
+    &--static {
+      cursor: default;
+
+      &:hover {
+        color: var(--text-primary);
+        text-decoration: none;
+      }
+    }
   }
 
   &__spec-separator {
@@ -880,6 +889,15 @@
   &:hover {
     background: rgba(255, 255, 255, 0.08);
     color: var(--accent-primary);
+  }
+
+  &--static {
+    cursor: default;
+
+    &:hover {
+      background: transparent;
+      color: var(--text-primary);
+    }
   }
 }
 

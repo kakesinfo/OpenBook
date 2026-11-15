@@ -64,7 +64,10 @@ public class AuthorController {
 
     @GetMapping
     public List<AuthorDTO> getAll(@RequestParam(required = false) String query) {
-        List<AuthorEntity> authorList = repositoryService.getAuthorRepository().findAllByOrderByLastnameAscFirstnameAsc();
+        List<AuthorEntity> authorList = repositoryService.getAuthorRepository().findAllByOrderByLastnameAscFirstnameAsc()
+                .stream()
+                .filter(a -> !a.isCollectif())
+                .toList();
         if (query != null && !query.trim().isEmpty()) {
             String q = query.trim().toLowerCase();
             authorList = authorList.stream()
@@ -89,6 +92,9 @@ public class AuthorController {
     public AuthorDTO getById(@PathVariable Long id) {
         AuthorEntity author = repositoryService.getAuthorRepository().findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Author not found"));
+        if (author.isCollectif()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Author not found");
+        }
 
         UserEntity currentUser = getOptionalAuthenticatedUser().orElse(null);
 

@@ -1545,9 +1545,9 @@ public class UserController {
 
             if (book.getBookHasAuthors() != null) {
                 for (var bha : book.getBookHasAuthors()) {
-                    if (bha.getAuthor() != null) {
+                    if (bha.getAuthor() != null && !bha.getAuthor().isCollectif()) {
                         String authorName = (bha.getAuthor().getFirstname() + " " + bha.getAuthor().getLastname()).trim();
-                        if (!authorName.isBlank() && !"Collectif".equalsIgnoreCase(authorName)) {
+                        if (!authorName.isBlank()) {
                             authorCounts.put(authorName, authorCounts.getOrDefault(authorName, 0) + 1);
                             authorIds.putIfAbsent(authorName, bha.getAuthor().getId());
                         }

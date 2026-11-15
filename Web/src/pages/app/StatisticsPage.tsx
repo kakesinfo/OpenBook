@@ -1,4 +1,5 @@
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
+import { isCollectifAuthor } from "../../utils/authorUtils.ts";
 import { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -725,7 +726,7 @@ export default function StatisticsPage() {
                                                     </span>
                                                 </>
                                             );
-                                            return author.id ? (
+                                            return author.id && !isCollectifAuthor(author) ? (
                                                 <Link
                                                     key={author.name}
                                                     to={`/app/author/${author.id}`}
@@ -1010,7 +1011,7 @@ export default function StatisticsPage() {
                                             )}
                                         </>
                                     );
-                                    return stats.topAuthor.id ? (
+                                    return stats.topAuthor.id && !isCollectifAuthor(stats.topAuthor) ? (
                                         <Link
                                             to={`/app/author/${stats.topAuthor.id}`}
                                             className="stats-page__record-card stats-page__record-card--clickable"

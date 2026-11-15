@@ -4,6 +4,7 @@ import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useSnackbar } from "notistack";
 import AuthorDTO from "../../dto/Author.dto.ts";
+import { isCollectifAuthor } from "../../utils/authorUtils.ts";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import BookList from "../../components/BookList/BookList.tsx";
 import Pagination from "../../components/Pagination/Pagination.tsx";
@@ -46,7 +47,12 @@ export default function AuthorDetailPage() {
             const res = await session.customFetch(`/authors/${id}`, { method: "GET" });
             if (res.ok) {
                 const data: AuthorDTO = await res.json();
-                setAuthor(data);
+                if (isCollectifAuthor(data)) {
+                    setAuthor(null);
+                    enqueueSnackbar(tr("Author not found", "Auteur introuvable"), { variant: "error" });
+                } else {
+                    setAuthor(data);
+                }
             } else {
                 enqueueSnackbar(tr("Author not found", "Auteur introuvable"), { variant: "error" });
             }
