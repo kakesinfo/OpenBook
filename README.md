@@ -1,18 +1,22 @@
-# Yet Another Library
+# OpenBook
 
-*A library to manage your libraries.*  
+*An app to manage your books and reading sessions.*  
 
 ### 📚 About  
-**Yet Another Library** is an open-source book collection manager.
+**OpenBook** is an open-source book collection manager.
 It helps you track your books, mangas, comics and graphic novels without the overhead of a bloated SaaS or the shame of an Excel sheet.  
 Built by readers, for readers, who also happen to write code at 2 AM.  
 
 ### 🚀 Features  
 - Add, edit, and browse your collection  
 - Filter by type, title, or author  
-- Track owned vs missing volumes  
+- Track owned vs wanted volumes
+- Manage the books you are selling
+- Take notes and write down lexical discoveries
+- Follow the series, authors and editors you love
+- Find their upcoming books in a provided Schedule
+- Discover a lot of statistics
 - Clean, minimal interface that *mostly works*  
-- 100 % over-engineered for a “personal project”  
 
 ### 🧠 Roadmap  
 
@@ -24,7 +28,7 @@ You can find the board [here](https://trello.com/b/rYIRIKxi/yet-another-library-
 ### 💡 Philosophy
 
 There are already too many collection managers.
-So here’s Yet Another One, built with just enough irony to justify its existence.
+So here’s yet another one, built with just enough irony to justify its existence.
 
 “It’s not about managing books. It’s about managing the illusion of order.”
 
