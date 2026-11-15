@@ -20,7 +20,7 @@ Built by readers, for readers, who also happen to write code at 2 AM.
 
 ### 🧠 Roadmap  
 
-I've created a Trello board to provide some insight on what I have planned for the future of the manager. On this board, you'll find upcoming features and any emergent known issues. Please note that at this time, the current Trello is in English only.
+I've created a Trello board to provide some insight on what I have planned for the future of the manager. On this board, you'll find upcoming features and any emergent known issues. Please note that at this time, the current Trello is in French only.
 
 You can find the board [here](https://trello.com/b/rYIRIKxi/yet-another-library-road-map).
 
