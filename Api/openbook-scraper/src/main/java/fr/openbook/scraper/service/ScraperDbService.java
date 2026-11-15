@@ -1,7 +1,7 @@
 package fr.openbook.scraper.service;
 
-import fr.openbook.api.importing.bnf.BnfBookData;
-import fr.openbook.api.importing.bnf.BnfClient;
+import fr.openbook.api.bnf.BnfBookData;
+import fr.openbook.api.bnf.BnfClient;
 import fr.openbook.api.entities.AuthorEntity;
 import fr.openbook.api.services.AuthorDeduplicationService;
 import fr.openbook.api.services.media.MediaService;

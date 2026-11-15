@@ -1,4 +1,4 @@
-package fr.openbook.api.importing.bnf;
+package fr.openbook.api.bnf;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -18,6 +18,7 @@ import org.xml.sax.InputSource;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.StringReader;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
@@ -272,7 +273,7 @@ public class BnfClient {
     }
 
     private String cleanTitleForCQL(String text) {
-        String cleaned = cleanText(text);
+        String cleaned = cleanText(text).replaceAll("['’]", " ");
         cleaned = RE_BNF_CQL_CHARS.matcher(cleaned).replaceAll(" ");
         return cleaned.replaceAll("\\s+", " ").trim();
     }
@@ -450,7 +451,7 @@ public class BnfClient {
         headers.set("User-Agent", BNF_USER_AGENT);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-        ResponseEntity<String> response = restTemplate.exchange(urlStr, HttpMethod.GET, entity, String.class);
+        ResponseEntity<String> response = restTemplate.exchange(URI.create(urlStr), HttpMethod.GET, entity, String.class);
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
             return List.of();
         }

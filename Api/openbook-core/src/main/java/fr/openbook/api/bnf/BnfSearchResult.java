@@ -1,4 +1,4 @@
-package fr.openbook.api.importing.bnf;
+package fr.openbook.api.bnf;
 
 import lombok.Data;
 

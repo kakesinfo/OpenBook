@@ -1,7 +1,7 @@
 package fr.openbook.api.importing.service;
 
-import fr.openbook.api.importing.bnf.BnfBookData;
-import fr.openbook.api.importing.bnf.BnfClient;
+import fr.openbook.api.bnf.BnfBookData;
+import fr.openbook.api.bnf.BnfClient;
 import fr.openbook.api.importing.job.ImportJob;
 import fr.openbook.api.importing.job.ImportJobManager;
 import fr.openbook.api.importing.job.ImportOptions;
