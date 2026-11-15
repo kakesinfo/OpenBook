@@ -441,6 +441,10 @@
   text-decoration: none;
   transition: transform var(--transition-fast), border-color var(--transition-fast);
 
+  &--full {
+    grid-column: 1 / -1;
+  }
+
   &:hover {
     transform: translateY(-1px);
     border-color: var(--border-focus);
@@ -474,6 +478,11 @@
     &.is-danger {
       background: rgba(239, 68, 68, 0.14);
       color: #ef4444;
+    }
+
+    &.is-amber {
+      background: rgba(245, 158, 11, 0.14);
+      color: #f59e0b;
     }
   }
 

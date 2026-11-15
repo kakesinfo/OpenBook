@@ -9,13 +9,15 @@ import {
     faCalendarDays,
     faChevronRight,
     faNoteSticky,
-    faSpellCheck
+    faSpellCheck,
+    faTrophy
 } from "@fortawesome/free-solid-svg-icons";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import ReadingSessionDTO from "../../dto/ReadingSession.dto.ts";
 import NoteDTO from "../../dto/Note.dto.ts";
 import WordDTO from "../../dto/Word.dto.ts";
+import AchievementDTO from "../../dto/Achievement.dto.ts";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import ReadingStreakWidget from "../../components/HomeWidgets/ReadingStreakWidget.tsx";
@@ -31,6 +33,7 @@ export default function HomePage() {
     const [readingSessions, setReadingSessions] = useState<ReadingSessionDTO[]>([]);
     const [notes, setNotes] = useState<NoteDTO[]>([]);
     const [words, setWords] = useState<WordDTO[]>([]);
+    const [achievements, setAchievements] = useState<AchievementDTO[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
     useEffect(() => {
@@ -52,9 +55,12 @@ export default function HomePage() {
                 .catch(() => []),
             session.customFetch("/words", { method: "GET" })
                 .then(async (res) => (res.ok ? await res.json() : []))
+                .catch(() => []),
+            session.customFetch("/achievements", { method: "GET" })
+                .then(async (res) => (res.ok ? await res.json() : []))
                 .catch(() => [])
         ])
-            .then(([colData, wishData, sessionsData, notesData, wordsData]) => {
+            .then(([colData, wishData, sessionsData, notesData, wordsData, achievementsData]) => {
                 if (cancelled) return;
                 const booksList: BookSummaryDTO[] = Array.isArray(colData)
                     ? colData
@@ -66,6 +72,7 @@ export default function HomePage() {
                 setReadingSessions(Array.isArray(sessionsData) ? sessionsData : []);
                 setNotes(Array.isArray(notesData) ? notesData : []);
                 setWords(Array.isArray(wordsData) ? wordsData : []);
+                setAchievements(Array.isArray(achievementsData) ? achievementsData : []);
             })
             .finally(() => {
                 if (!cancelled) setLoading(false);
@@ -259,6 +266,31 @@ export default function HomePage() {
                                             {words[0]?.word
                                                 ? tr(`Ex: ${words[0].word}`, `Ex : ${words[0].word}`)
                                                 : tr("Linked to your reads", "Lié à vos lectures")}
+                                        </span>
+                                    </div>
+                                    <FontAwesomeIcon icon={faChevronRight} className="home-bento-tile__arrow" />
+                                </Link>
+
+                                <Link to="/app/achievements" className="home-widget home-bento-tile home-bento-tile--full">
+                                    <div className="home-bento-tile__icon is-amber">
+                                        <FontAwesomeIcon icon={faTrophy} />
+                                    </div>
+                                    <div className="home-bento-tile__info">
+                                        <span className="home-bento-tile__title">
+                                            {tr("Achievements", "Succès")}
+                                        </span>
+                                        <span className="home-bento-tile__sub">
+                                            {loading
+                                                ? tr("Loading...", "Chargement...")
+                                                : achievements.length === 0
+                                                    ? tr("Personal challenges", "Défis personnels")
+                                                    : tr(
+                                                        `${achievements.filter((a) => a.unlocked).length} / ${achievements.length} unlocked`,
+                                                        `${achievements.filter((a) => a.unlocked).length} / ${achievements.length} débloqué${achievements.filter((a) => a.unlocked).length > 1 ? "s" : ""}`
+                                                    )}
+                                        </span>
+                                        <span className="home-bento-tile__caption">
+                                            {tr("Create and check off your achievements", "Créez et cochez vos succès")}
                                         </span>
                                     </div>
                                     <FontAwesomeIcon icon={faChevronRight} className="home-bento-tile__arrow" />

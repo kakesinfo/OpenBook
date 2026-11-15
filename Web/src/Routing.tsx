@@ -33,6 +33,7 @@ import AdminLogsPage from "./pages/app/AdminLogsPage.tsx";
 import StatisticsPage from "./pages/app/StatisticsPage.tsx";
 import NotesPage from "./pages/app/NotesPage.tsx";
 import GlossaryPage from "./pages/app/GlossaryPage.tsx";
+import AchievementsPage from "./pages/app/AchievementsPage.tsx";
 
 function ProtectedRoute({ redirectPath = "/login", children }: { redirectPath?: string, children: React.ReactNode }) {
     const session = useSession();
@@ -180,6 +181,8 @@ export default function Routing() {
                 <Route path="notes" element={<UserOnlyRoute><NotesPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="glossary" element={<UserOnlyRoute><GlossaryPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="glossaire" element={<UserOnlyRoute><GlossaryPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="achievements" element={<UserOnlyRoute><AchievementsPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="succes" element={<UserOnlyRoute><AchievementsPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="statistics" element={<UserOnlyRoute><StatisticsPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="book/:id" element={<UserOnlyRoute><BookPage key={location.pathname}/></UserOnlyRoute>} />
 
