@@ -14,6 +14,7 @@ export interface AuthorHighlightDTO {
 }
 
 export interface PublisherStatDTO {
+    id?: number;
     name: string;
     count: number;
     percentage: number;

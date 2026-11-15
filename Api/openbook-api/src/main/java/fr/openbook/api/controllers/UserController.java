@@ -1449,6 +1449,7 @@ public class UserController {
         Map<String, Integer> authorCounts = new HashMap<>();
         Map<String, Integer> authorIds = new HashMap<>();
         Map<String, Integer> publisherCounts = new HashMap<>();
+        Map<String, Long> publisherIds = new HashMap<>();
         Map<Integer, Integer> seriesOwnedCount = new HashMap<>();
         Map<Integer, SeriesEntity> seriesMap = new HashMap<>();
         Map<String, Integer> decadeCounts = new LinkedHashMap<>();
@@ -1481,6 +1482,7 @@ public class UserController {
             if (book.getEditor() != null && book.getEditor().getName() != null && !book.getEditor().getName().isBlank()) {
                 String edName = book.getEditor().getName().trim();
                 publisherCounts.put(edName, publisherCounts.getOrDefault(edName, 0) + 1);
+                publisherIds.putIfAbsent(edName, book.getEditor().getId());
             }
 
             if (book.getSeries() != null && book.getSeries().getId() != null) {
@@ -1674,7 +1676,7 @@ public class UserController {
         for (int i = 0; i < Math.min(5, sortedPubs.size()); i++) {
             var entry = sortedPubs.get(i);
             double pct = Math.round((entry.getValue() * 100.0 / totalOwned) * 10.0) / 10.0;
-            topPubList.add(new PublisherStatDTO(entry.getKey(), entry.getValue(), pct));
+            topPubList.add(new PublisherStatDTO(publisherIds.get(entry.getKey()), entry.getKey(), entry.getValue(), pct));
         }
         stats.setTopPublishers(topPubList);
         if (!topPubList.isEmpty()) {

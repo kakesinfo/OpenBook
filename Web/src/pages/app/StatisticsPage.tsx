@@ -292,7 +292,7 @@ export default function StatisticsPage() {
                         {visibleSections >= 1 && <div className="stats-page__kpi-grid">
                             {/* Owned / Active Books */}
                             <div className="stats-page__metric-card stats-page__metric-card--blue">
-                                <div className="stats-page__metric-icon" style={{ background: "rgba(99, 102, 241, 0.15)", color: "#818cf8" }}>
+                                <div className="stats-page__metric-icon" style={{ background: "var(--accent-primary-light)", color: "var(--stat-indigo)" }}>
                                     <FontAwesomeIcon icon={faBook} />
                                 </div>
                                 <div className="stats-page__metric-body">
@@ -314,7 +314,7 @@ export default function StatisticsPage() {
 
                             {/* Series */}
                             <div className="stats-page__metric-card stats-page__metric-card--purple">
-                                <div className="stats-page__metric-icon" style={{ background: "rgba(168, 85, 247, 0.15)", color: "#c084fc" }}>
+                                <div className="stats-page__metric-icon" style={{ background: "var(--accent-primary-light)", color: "var(--accent-primary)" }}>
                                     <FontAwesomeIcon icon={faLayerGroup} />
                                 </div>
                                 <div className="stats-page__metric-body">
@@ -369,7 +369,7 @@ export default function StatisticsPage() {
 
                             {/* Estimated Reading Time */}
                             <div className="stats-page__metric-card stats-page__metric-card--purple">
-                                <div className="stats-page__metric-icon" style={{ background: "rgba(236, 72, 153, 0.15)", color: "#f472b6" }}>
+                                <div className="stats-page__metric-icon" style={{ background: "var(--accent-primary-light)", color: "var(--stat-pink)" }}>
                                     <FontAwesomeIcon icon={faHourglassHalf} />
                                 </div>
                                 <div className="stats-page__metric-body">
@@ -385,7 +385,7 @@ export default function StatisticsPage() {
 
                             {/* Wishlist */}
                             <div className="stats-page__metric-card stats-page__metric-card--rose">
-                                <div className="stats-page__metric-icon" style={{ background: "rgba(244, 63, 94, 0.15)", color: "#fb7185" }}>
+                                <div className="stats-page__metric-icon" style={{ background: "var(--accent-primary-light)", color: "var(--accent-primary-hover)" }}>
                                     <FontAwesomeIcon icon={faHeart} />
                                 </div>
                                 <div className="stats-page__metric-body">
@@ -461,7 +461,7 @@ export default function StatisticsPage() {
                                                     stats.totalOwnedBooks > 0
                                                         ? Math.round((stats.booksReadingCount * 1000) / stats.totalOwnedBooks) / 10
                                                         : 0,
-                                                color: "#3b82f6"
+                                                color: "var(--accent-primary)"
                                             },
                                             {
                                                 name: tr("To read (PAL)", "À lire (PAL)"),
@@ -510,7 +510,7 @@ export default function StatisticsPage() {
                                             fontSize: "0.85rem",
                                             color: "var(--text-secondary, #94a3b8)"
                                         }}>
-                                            <FontAwesomeIcon icon={faClock} style={{ color: "#818cf8" }} />
+                                            <FontAwesomeIcon icon={faClock} style={{ color: "var(--stat-indigo)" }} />
                                             <span>
                                                 <strong style={{ color: "var(--text-primary, #fff)" }}>{formatMinutes(stats.totalLoggedReadingMinutes)}</strong>{" "}
                                                 {tr("of timed reading recorded across ", "de lecture chronométrée enregistrée sur ")}
@@ -527,7 +527,7 @@ export default function StatisticsPage() {
                                 <div className="stats-page__section-header">
                                     <div>
                                         <h3>
-                                            <FontAwesomeIcon icon={faRulerVertical} style={{ color: "#818cf8" }} />
+                                            <FontAwesomeIcon icon={faRulerVertical} style={{ color: "var(--stat-indigo)" }} />
                                             <span>{tr("Physical data & Dimensions", "Données physiques & Dimensions")}</span>
                                         </h3>
                                         <p>{tr("Measurements and cumulative weight of your collection", "Mensurations et poids cumulé de votre collection")}</p>
@@ -541,8 +541,8 @@ export default function StatisticsPage() {
                                                 width: "36px",
                                                 height: "36px",
                                                 borderRadius: "10px",
-                                                background: "rgba(99, 102, 241, 0.15)",
-                                                color: "#818cf8",
+                                                background: "var(--accent-primary-light)",
+                                                color: "var(--stat-indigo)",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "center",
@@ -560,7 +560,7 @@ export default function StatisticsPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#818cf8", flexShrink: 0 }}>
+                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--stat-indigo)", flexShrink: 0 }}>
                                             {stats.totalHeightMeters} m
                                         </div>
                                     </div>
@@ -601,8 +601,8 @@ export default function StatisticsPage() {
                                                 width: "36px",
                                                 height: "36px",
                                                 borderRadius: "10px",
-                                                background: "rgba(6, 182, 212, 0.15)",
-                                                color: "#22d3ee",
+                                                background: "var(--accent-primary-light)",
+                                                color: "var(--accent-primary)",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "center",
@@ -620,7 +620,7 @@ export default function StatisticsPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#22d3ee", flexShrink: 0 }}>
+                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--accent-primary)", flexShrink: 0 }}>
                                             ~{stats.averagePagesPerBook} p.
                                         </div>
                                     </div>
@@ -635,7 +635,7 @@ export default function StatisticsPage() {
                                 <div className="stats-page__section-header">
                                     <div>
                                         <h3>
-                                            <FontAwesomeIcon icon={faChartPie} style={{ color: "#3b82f6" }} />
+                                            <FontAwesomeIcon icon={faChartPie} style={{ color: "var(--accent-primary)" }} />
                                             <span>{tr("Genres & Formats", "Genres & Formats")}</span>
                                         </h3>
                                         <p>{tr("Breakdown by book category", "Répartition par catégorie d'ouvrages")}</p>
@@ -656,7 +656,7 @@ export default function StatisticsPage() {
                                 <div className="stats-page__section-header">
                                     <div>
                                         <h3>
-                                            <FontAwesomeIcon icon={faTimeline} style={{ color: "#a855f7" }} />
+                                            <FontAwesomeIcon icon={faTimeline} style={{ color: "var(--accent-primary)" }} />
                                             <span>{tr("Eras & Decades", "Époques & Décennies")}</span>
                                         </h3>
                                         <p>{tr("Breakdown by publication period", "Répartition par période de parution")}</p>
@@ -700,7 +700,7 @@ export default function StatisticsPage() {
                                 <div className="stats-page__section-header">
                                     <div>
                                         <h3>
-                                            <FontAwesomeIcon icon={faUserPen} style={{ color: "#818cf8" }} />
+                                            <FontAwesomeIcon icon={faUserPen} style={{ color: "var(--stat-indigo)" }} />
                                             <span>{tr("Most represented authors", "Auteurs les plus représentés")}</span>
                                         </h3>
                                         <p>{tr("Authors with the most books in your collection", "Auteurs ayant le plus d'albums dans votre collection")}</p>
@@ -709,31 +709,37 @@ export default function StatisticsPage() {
 
                                 {stats.topAuthors && stats.topAuthors.length > 0 ? (
                                     <div className="stats-page__leaderboard">
-                                        {stats.topAuthors.map((author, idx) => (
-                                            <div key={author.name} className="stats-page__leaderboard-item">
-                                                <div className="stats-page__leaderboard-item-left">
-                                                    <span className={`stats-page__leaderboard-item-rank stats-page__leaderboard-item-rank--${idx + 1}`}>
-                                                        {idx + 1}
-                                                    </span>
-                                                    {author.id ? (
-                                                        <Link
-                                                            to={`/app/author/${author.id}`}
-                                                            className="stats-page__leaderboard-item-name"
-                                                            title={tr(`View ${author.name}'s page`, `Voir la page de ${author.name}`)}
-                                                        >
-                                                            {author.name}
-                                                        </Link>
-                                                    ) : (
+                                        {stats.topAuthors.map((author, idx) => {
+                                            const content = (
+                                                <>
+                                                    <div className="stats-page__leaderboard-item-left">
+                                                        <span className={`stats-page__leaderboard-item-rank stats-page__leaderboard-item-rank--${idx + 1}`}>
+                                                            {idx + 1}
+                                                        </span>
                                                         <span className="stats-page__leaderboard-item-name" title={author.name}>
                                                             {author.name}
                                                         </span>
-                                                    )}
+                                                    </div>
+                                                    <span className="stats-page__leaderboard-item-badge">
+                                                        {author.bookCount} {author.bookCount > 1 ? tr("books", "albums") : tr("book", "album")}
+                                                    </span>
+                                                </>
+                                            );
+                                            return author.id ? (
+                                                <Link
+                                                    key={author.name}
+                                                    to={`/app/author/${author.id}`}
+                                                    className="stats-page__leaderboard-item stats-page__leaderboard-item--clickable"
+                                                    title={tr(`View ${author.name}'s page`, `Voir la page de ${author.name}`)}
+                                                >
+                                                    {content}
+                                                </Link>
+                                            ) : (
+                                                <div key={author.name} className="stats-page__leaderboard-item">
+                                                    {content}
                                                 </div>
-                                                <span className="stats-page__leaderboard-item-badge">
-                                                    {author.bookCount} {author.bookCount > 1 ? tr("books", "albums") : tr("book", "album")}
-                                                </span>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div style={{ padding: "24px", textAlign: "center", color: "var(--text-muted, #64748b)", fontSize: "0.9rem" }}>
@@ -756,25 +762,41 @@ export default function StatisticsPage() {
 
                                 {stats.topPublishers && stats.topPublishers.length > 0 ? (
                                     <div className="stats-page__leaderboard">
-                                        {stats.topPublishers.map((pub, idx) => (
-                                            <div key={pub.name} className="stats-page__leaderboard-item">
-                                                <div className="stats-page__leaderboard-item-left">
-                                                    <span className={`stats-page__leaderboard-item-rank stats-page__leaderboard-item-rank--${idx + 1}`}>
-                                                        {idx + 1}
+                                        {stats.topPublishers.map((pub, idx) => {
+                                            const content = (
+                                                <>
+                                                    <div className="stats-page__leaderboard-item-left">
+                                                        <span className={`stats-page__leaderboard-item-rank stats-page__leaderboard-item-rank--${idx + 1}`}>
+                                                            {idx + 1}
+                                                        </span>
+                                                        <span className="stats-page__leaderboard-item-name" title={pub.name}>
+                                                            {pub.name}
+                                                        </span>
+                                                    </div>
+                                                    <span className="stats-page__leaderboard-item-badge" style={{
+                                                        background: "var(--accent-primary-light)",
+                                                        color: "var(--accent-primary)",
+                                                        borderColor: "var(--border-focus)"
+                                                    }}>
+                                                        {pub.count} {pub.count > 1 ? tr("books", "albums") : tr("book", "album")} ({pub.percentage}%)
                                                     </span>
-                                                    <span className="stats-page__leaderboard-item-name" title={pub.name}>
-                                                        {pub.name}
-                                                    </span>
+                                                </>
+                                            );
+                                            return pub.id ? (
+                                                <Link
+                                                    key={pub.name}
+                                                    to={`/app/editor/${pub.id}`}
+                                                    className="stats-page__leaderboard-item stats-page__leaderboard-item--clickable"
+                                                    title={tr(`View ${pub.name}'s page`, `Voir la page de ${pub.name}`)}
+                                                >
+                                                    {content}
+                                                </Link>
+                                            ) : (
+                                                <div key={pub.name} className="stats-page__leaderboard-item">
+                                                    {content}
                                                 </div>
-                                                <span className="stats-page__leaderboard-item-badge" style={{
-                                                    background: "var(--accent-primary-light)",
-                                                    color: "var(--accent-primary)",
-                                                    borderColor: "var(--border-focus)"
-                                                }}>
-                                                    {pub.count} {pub.count > 1 ? tr("books", "albums") : tr("book", "album")} ({pub.percentage}%)
-                                                </span>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 ) : (
                                     <div style={{ padding: "24px", textAlign: "center", color: "var(--text-muted, #64748b)", fontSize: "0.9rem" }}>
@@ -810,8 +832,8 @@ export default function StatisticsPage() {
                                                 width: "36px",
                                                 height: "36px",
                                                 borderRadius: "10px",
-                                                background: "rgba(16, 185, 129, 0.15)",
-                                                color: "#34d399",
+                                                background: "var(--accent-primary-light)",
+                                                color: "var(--stat-emerald)",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "center",
@@ -830,7 +852,7 @@ export default function StatisticsPage() {
                                             </div>
                                         </div>
                                         <div style={{ textAlign: "right", flexShrink: 0 }}>
-                                            <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#34d399", lineHeight: 1.15 }}>
+                                            <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "var(--stat-emerald)", lineHeight: 1.15 }}>
                                                 {stats.totalBoughtCount ?? 0}
                                             </div>
                                             <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary, #cbd5e1)" }}>
@@ -846,8 +868,8 @@ export default function StatisticsPage() {
                                                 width: "36px",
                                                 height: "36px",
                                                 borderRadius: "10px",
-                                                background: "rgba(236, 72, 153, 0.15)",
-                                                color: "#f472b6",
+                                                background: "var(--accent-primary-light)",
+                                                color: "var(--stat-pink)",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "center",
@@ -865,7 +887,7 @@ export default function StatisticsPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#f472b6", flexShrink: 0 }}>
+                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--stat-pink)", flexShrink: 0 }}>
                                             {stats.totalGiftCount ?? 0}
                                         </div>
                                     </div>
@@ -913,8 +935,8 @@ export default function StatisticsPage() {
                                                 width: "36px",
                                                 height: "36px",
                                                 borderRadius: "10px",
-                                                background: "rgba(99, 102, 241, 0.15)",
-                                                color: "#818cf8",
+                                                background: "var(--accent-primary-light)",
+                                                color: "var(--stat-indigo)",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "center",
@@ -932,7 +954,7 @@ export default function StatisticsPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#818cf8", flexShrink: 0 }}>
+                                        <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--stat-indigo)", flexShrink: 0 }}>
                                             {formatAmount(stats.netSpentAmount)}
                                         </div>
                                     </div>
@@ -953,50 +975,59 @@ export default function StatisticsPage() {
 
                             <div className="stats-page__records-grid">
                                 {/* Top Author */}
-                                {stats.topAuthor && (
-                                    <div className="stats-page__record-card">
-                                        <div className="stats-page__record-header" style={{ color: "#818cf8" }}>
-                                            <FontAwesomeIcon icon={faUserPen} />
-                                            <span>{tr("Featured author", "Auteur vedette")}</span>
-                                        </div>
-                                        <div className="stats-page__record-body">
-                                            <div className="stats-page__record-cover-placeholder" style={{ color: "#818cf8" }}>
-                                                <FontAwesomeIcon icon={faCrown} />
+                                {stats.topAuthor && (() => {
+                                    const cardContent = (
+                                        <>
+                                            <div className="stats-page__record-header" style={{ color: "var(--stat-indigo)" }}>
+                                                <FontAwesomeIcon icon={faUserPen} />
+                                                <span>{tr("Featured author", "Auteur vedette")}</span>
                                             </div>
-                                            <div className="stats-page__record-info">
-                                                {stats.topAuthor.id ? (
-                                                    <Link
-                                                        to={`/app/author/${stats.topAuthor.id}`}
-                                                        className="stats-page__record-title"
-                                                        title={tr(`View ${stats.topAuthor.name}'s page`, `Voir la page de ${stats.topAuthor.name}`)}
-                                                    >
-                                                        {stats.topAuthor.name}
-                                                    </Link>
-                                                ) : (
+                                            <div className="stats-page__record-body">
+                                                <div className="stats-page__record-info">
                                                     <div className="stats-page__record-title">
                                                         {stats.topAuthor.name}
                                                     </div>
-                                                )}
-                                                <div className="stats-page__record-meta">
-                                                    {tr("Most represented author", "Auteur le plus représenté")}
+                                                    <div className="stats-page__record-meta">
+                                                        {tr("Most represented author", "Auteur le plus représenté")}
+                                                    </div>
+                                                    <span className="stats-page__record-tag" style={{ color: "var(--stat-indigo)" }}>
+                                                        {stats.topAuthor.bookCount}{" "}
+                                                        {stats.topAuthor.bookCount > 1
+                                                            ? tr("owned books", "albums possédés")
+                                                            : tr("owned book", "album possédé")}
+                                                    </span>
                                                 </div>
-                                                <span className="stats-page__record-tag" style={{ color: "#818cf8" }}>
-                                                    {stats.topAuthor.bookCount}{" "}
-                                                    {stats.topAuthor.bookCount > 1
-                                                        ? tr("owned books", "albums possédés")
-                                                        : tr("owned book", "album possédé")}
-                                                </span>
                                             </div>
-                                        </div>
-                                        <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #64748b)" }}>
-                                            {tr("Leading figure of your collection", "Figure de proue de votre collection")}
-                                        </div>
-                                    </div>
-                                )}
+                                            {stats.topAuthor.id ? (
+                                                <span className="stats-page__record-link" style={{ color: "var(--stat-indigo)" }}>
+                                                    <span>{tr("View details", "Consulter la fiche")}</span>
+                                                    <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.75rem" }} />
+                                                </span>
+                                            ) : (
+                                                <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #64748b)" }}>
+                                                    {tr("Leading figure of your collection", "Figure de proue de votre collection")}
+                                                </div>
+                                            )}
+                                        </>
+                                    );
+                                    return stats.topAuthor.id ? (
+                                        <Link
+                                            to={`/app/author/${stats.topAuthor.id}`}
+                                            className="stats-page__record-card stats-page__record-card--clickable"
+                                        >
+                                            {cardContent}
+                                        </Link>
+                                    ) : (
+                                        <div className="stats-page__record-card">{cardContent}</div>
+                                    );
+                                })()}
 
                                 {/* Oldest Book */}
                                 {stats.oldestBook && (
-                                    <div className="stats-page__record-card">
+                                    <Link
+                                        to={`/app/book/${stats.oldestBook.id}`}
+                                        className="stats-page__record-card stats-page__record-card--clickable"
+                                    >
                                         <div className="stats-page__record-header" style={{ color: "var(--accent-primary)" }}>
                                             <FontAwesomeIcon icon={faCalendarDays} />
                                             <span>{tr("The oldest", "Le doyen")}</span>
@@ -1029,20 +1060,19 @@ export default function StatisticsPage() {
                                                 )}
                                             </div>
                                         </div>
-                                        <Link
-                                            to={`/app/book/${stats.oldestBook.id}`}
-                                            className="stats-page__record-link"
-                                            style={{ color: "var(--accent-primary)" }}
-                                        >
+                                        <span className="stats-page__record-link" style={{ color: "var(--accent-primary)" }}>
                                             <span>{tr("View details", "Consulter la fiche")}</span>
                                             <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.75rem" }} />
-                                        </Link>
-                                    </div>
+                                        </span>
+                                    </Link>
                                 )}
 
                                 {/* Newest Book */}
                                 {stats.newestBook && (
-                                    <div className="stats-page__record-card">
+                                    <Link
+                                        to={`/app/book/${stats.newestBook.id}`}
+                                        className="stats-page__record-card stats-page__record-card--clickable"
+                                    >
                                         <div className="stats-page__record-header" style={{ color: "var(--accent-primary)" }}>
                                             <FontAwesomeIcon icon={faCalendarDays} />
                                             <span>{tr("Latest release", "Dernière parution")}</span>
@@ -1075,21 +1105,20 @@ export default function StatisticsPage() {
                                                 )}
                                             </div>
                                         </div>
-                                        <Link
-                                            to={`/app/book/${stats.newestBook.id}`}
-                                            className="stats-page__record-link"
-                                            style={{ color: "var(--accent-primary)" }}
-                                        >
+                                        <span className="stats-page__record-link" style={{ color: "var(--accent-primary)" }}>
                                             <span>{tr("View details", "Consulter la fiche")}</span>
                                             <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.75rem" }} />
-                                        </Link>
-                                    </div>
+                                        </span>
+                                    </Link>
                                 )}
 
                                 {/* Thickest Book */}
                                 {stats.thickestBook && (
-                                    <div className="stats-page__record-card">
-                                        <div className="stats-page__record-header" style={{ color: "#38bdf8" }}>
+                                    <Link
+                                        to={`/app/book/${stats.thickestBook.id}`}
+                                        className="stats-page__record-card stats-page__record-card--clickable"
+                                    >
+                                        <div className="stats-page__record-header" style={{ color: "var(--stat-sky)" }}>
                                             <FontAwesomeIcon icon={faFileLines} />
                                             <span>{tr("Largest volume", "Le plus gros volume")}</span>
                                         </div>
@@ -1114,25 +1143,24 @@ export default function StatisticsPage() {
                                                 <div className="stats-page__record-meta">
                                                     {tr("Most imposing volume", "Volume le plus imposant")}
                                                 </div>
-                                                <span className="stats-page__record-tag" style={{ color: "#38bdf8" }}>
+                                                <span className="stats-page__record-tag" style={{ color: "var(--stat-sky)" }}>
                                                     {stats.thickestBook.highlightValue || `${stats.thickestBook.pageCount} pages`}
                                                 </span>
                                             </div>
                                         </div>
-                                        <Link
-                                            to={`/app/book/${stats.thickestBook.id}`}
-                                            className="stats-page__record-link"
-                                            style={{ color: "#38bdf8" }}
-                                        >
+                                        <span className="stats-page__record-link" style={{ color: "var(--stat-sky)" }}>
                                             <span>{tr("View details", "Consulter la fiche")}</span>
                                             <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.75rem" }} />
-                                        </Link>
-                                    </div>
+                                        </span>
+                                    </Link>
                                 )}
 
                                 {/* Most Valuable Book */}
                                 {stats.mostValuableBook && stats.mostValuableBook.price && stats.mostValuableBook.price > 0 && (
-                                    <div className="stats-page__record-card">
+                                    <Link
+                                        to={`/app/book/${stats.mostValuableBook.id}`}
+                                        className="stats-page__record-card stats-page__record-card--clickable"
+                                    >
                                         <div className="stats-page__record-header" style={{ color: "var(--accent-primary)" }}>
                                             <FontAwesomeIcon icon={faGem} />
                                             <span>{tr("Crown jewel", "La plus belle pièce")}</span>
@@ -1163,15 +1191,11 @@ export default function StatisticsPage() {
                                                 </span>
                                             </div>
                                         </div>
-                                        <Link
-                                            to={`/app/book/${stats.mostValuableBook.id}`}
-                                            className="stats-page__record-link"
-                                            style={{ color: "var(--accent-primary)" }}
-                                        >
+                                        <span className="stats-page__record-link" style={{ color: "var(--accent-primary)" }}>
                                             <span>{tr("View details", "Consulter la fiche")}</span>
                                             <FontAwesomeIcon icon={faArrowRight} style={{ fontSize: "0.75rem" }} />
-                                        </Link>
-                                    </div>
+                                        </span>
+                                    </Link>
                                 )}
                             </div>
                             </div>
