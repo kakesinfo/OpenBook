@@ -23,6 +23,8 @@ import fr.openbook.api.entities.SeriesHasThemeEntity;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
 import fr.openbook.api.entities.UserSellsBookEntity;
+import fr.openbook.api.importing.bnf.BnfClient;
+import fr.openbook.api.importing.bnf.BnfSearchResult;
 import fr.openbook.api.repositories.BookRepository;
 import fr.openbook.api.services.AuthorDeduplicationService;
 import fr.openbook.api.services.CollectionService;
@@ -60,6 +62,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.text.Normalizer;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -87,6 +90,7 @@ public class BookController {
     private final MediaService mediaServiceClient;
     private final AuthorDeduplicationService authorDeduplicationService;
     private final CalendarIcsService calendarIcsService;
+    private final BnfClient bnfClient;
 
     private UserEntity getAuthenticatedUser(HttpSession session) {
         if (session != null) {
@@ -443,6 +447,11 @@ public class BookController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found"));
     }
 
+    @GetMapping("/bnf/search")
+    public List<BnfSearchResult> searchBnf(@RequestParam(name = "query", required = false) String query) {
+        return bnfClient.searchQuick(query);
+    }
+
     @GetMapping("/search")
     public List<BookSummaryDTO> searchWithParam(HttpSession session, @RequestParam(name = "query", required = false) String query) {
         return performSearch(session, query);
@@ -460,6 +469,9 @@ public class BookController {
 
         String trimmed = rawQuery.trim();
         String queryApos = trimmed.replace('’', '\'');
+        String queryNoAccent = Normalizer.normalize(queryApos, Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .toLowerCase(Locale.ROOT);
 
         String cleanDigits = trimmed.replaceAll("[^0-9Xx]", "");
         // If 18 digits (e.g. EAN-13 + EAN-5 barcode addon) starting with 978 or 979, extract 13-digit ISBN
@@ -480,7 +492,7 @@ public class BookController {
         }
 
         List<BookSummaryDTO> list = repositoryService.getBookRepository()
-                .searchBooks(queryApos, trimmed, cleanIsbn, altIsbn)
+                .searchBooks(queryNoAccent, trimmed, cleanIsbn, altIsbn)
                 .stream()
                 .map(this::entityToSummaryDTO)
                 .collect(Collectors.toList());
@@ -934,6 +946,7 @@ public class BookController {
         BookSummaryDTO dto = new BookSummaryDTO();
         dto.setId(book.getId());
         dto.setTitle(book.getTitle());
+        dto.setIsbn(book.getIsbn());
         dto.setVolume(book.getSeries() != null ? book.getVolume() : null);
         dto.setPrice(book.getPrice());
         if (book.getReleaseDate() != null) {
@@ -951,6 +964,9 @@ public class BookController {
             if (book.getSeries().getCategory() != null) {
                 dto.setCategory(book.getSeries().getCategory().getName());
             }
+        }
+        if (book.getEditor() != null) {
+            dto.setEditorName(book.getEditor().getName());
         }
         dto.setPageCount(book.getPageCount());
         if (book.getBookHasAuthors() != null && !book.getBookHasAuthors().isEmpty()) {

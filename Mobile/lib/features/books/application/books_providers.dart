@@ -13,7 +13,8 @@ import '../data/glossary_word.dart';
 import '../data/reading_session.dart';
 
 final bnfServiceProvider = Provider<BnfService>((ref) {
-  return BnfService();
+  final clientNotifier = ref.watch(apiClientProvider.notifier);
+  return BnfService(apiClient: clientNotifier);
 });
 
 final booksRepositoryProvider = Provider<BooksRepository>((ref) {

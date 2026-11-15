@@ -6,6 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../app/theme.dart';
 import '../../application/books_providers.dart';
+import '../../data/bnf_service.dart';
 import '../../data/book.dart';
 import 'book_cover.dart';
 import 'quick_create_book_sheet.dart';
@@ -49,6 +50,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
   bool _isSearching = false;
   String? _searchError;
   List<Book> _searchResults = [];
+  List<BnfBookResult> _bnfResults = [];
 
   // Scanner state
   late final MobileScannerController _scannerController;
@@ -83,10 +85,16 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
       setState(() {
         _isSearching = false;
         _searchResults = [];
+        _bnfResults = [];
         _searchError = null;
       });
       return;
     }
+
+    setState(() {
+      _isSearching = true;
+      _searchError = null;
+    });
 
     _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
       _executeSearch(trimmed, requestId);
@@ -105,48 +113,54 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
     setState(() {
       _isSearching = true;
       _searchError = null;
+      _searchResults = [];
+      _bnfResults = [];
     });
 
     try {
       final repo = ref.read(booksRepositoryProvider);
-      final results = await repo.searchBooks(trimmed);
+      final bnfService = ref.read(bnfServiceProvider);
+
+      final dbFuture = repo.searchBooks(trimmed);
+      final bnfFuture = bnfService.search(trimmed);
+
+      final results = await dbFuture;
+      final bnfs = await bnfFuture;
       if (!mounted || requestId != _searchRequestId) return;
 
-      if (results.isNotEmpty) {
+      if (results.isEmpty && _isIsbn(trimmed) && bnfs.isNotEmpty) {
+        final bnf = bnfs.first;
         setState(() {
-          _searchResults = results;
           _isSearching = false;
         });
-      } else {
-        // S'il n'existe pas en BDD, vérifier s'il s'agit d'un ISBN pour chercher sur la BNF
-        if (_isIsbn(trimmed)) {
-          final bnf = await ref.read(bnfServiceProvider).lookupByIsbn(trimmed);
-          if (!mounted || requestId != _searchRequestId) return;
-
-          if (bnf != null) {
-            setState(() {
-              _isSearching = false;
-            });
-            await _openQuickCreate(
-              initialTitle: bnf.title,
-              initialIsbn: bnf.isbn,
-              initialPrice: bnf.price,
-              initialCoverUrl: bnf.coverUrl,
-            );
-            return;
-          }
-        }
-
-        // Sinon comme d'habitude affiche introuvable
-        setState(() {
-          _searchResults = [];
-          _isSearching = false;
-        });
+        await _openQuickCreate(
+          initialTitle: bnf.title,
+          initialIsbn: bnf.isbn.isNotEmpty ? bnf.isbn : null,
+          initialPrice: bnf.price,
+          initialCoverUrl: bnf.coverUrl.isNotEmpty ? bnf.coverUrl : null,
+        );
+        return;
       }
+
+      final dbIsbns = results
+          .map((b) => (b.isbn ?? '').replaceAll(RegExp(r'[^0-9Xx]'), '').toUpperCase())
+          .where((s) => s.isNotEmpty)
+          .toSet();
+      final filteredBnfs = bnfs.where((bnf) {
+        final clean = bnf.isbn.replaceAll(RegExp(r'[^0-9Xx]'), '').toUpperCase();
+        return clean.isEmpty || !dbIsbns.contains(clean);
+      }).toList();
+
+      setState(() {
+        _searchResults = results;
+        _bnfResults = filteredBnfs;
+        _isSearching = false;
+      });
     } catch (e) {
       if (mounted && requestId == _searchRequestId) {
         setState(() {
           _searchError = 'Erreur lors de la recherche : $e';
+          _bnfResults = [];
           _isSearching = false;
         });
       }
@@ -486,7 +500,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                         ),
                       ),
                     )
-                  : _searchController.text.trim().isNotEmpty && _searchResults.isEmpty
+                  : _searchController.text.trim().isNotEmpty && _searchResults.isEmpty && _bnfResults.isEmpty
                       ? Center(
                           child: SingleChildScrollView(
                             padding: const EdgeInsets.all(24),
@@ -550,29 +564,209 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                         )
                       : _searchController.text.trim().isEmpty
                           ? _buildSearchEmptyPlaceholder()
-                          : ListView.separated(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                              itemCount: _searchResults.length + 1,
-                              separatorBuilder: (_, _) => const SizedBox(height: 10),
-                              itemBuilder: (context, index) {
-                                if (index == _searchResults.length) {
-                                  // Footer tile proposing quick creation
-                                  return _buildQuickCreateFooterTile(_searchController.text.trim());
-                                }
+                          : Builder(
+                              builder: (context) {
+                                final merged = <({Book? dbBook, BnfBookResult? bnf, DateTime? releaseDate})>[
+                                  ..._searchResults.map(
+                                    (b) => (
+                                      dbBook: b,
+                                      bnf: null,
+                                      releaseDate: b.releaseDate != null ? DateTime.tryParse(b.releaseDate!) : null,
+                                    ),
+                                  ),
+                                  ..._bnfResults.map(
+                                    (bnf) => (
+                                      dbBook: null,
+                                      bnf: bnf,
+                                      releaseDate: bnf.releaseDate != null ? DateTime.tryParse(bnf.releaseDate!) : null,
+                                    ),
+                                  ),
+                                ]..sort((a, b) {
+                                    if (a.releaseDate == null && b.releaseDate == null) return 0;
+                                    if (a.releaseDate == null) return 1;
+                                    if (b.releaseDate == null) return -1;
+                                    return b.releaseDate!.compareTo(a.releaseDate!);
+                                  });
 
-                                final book = _searchResults[index];
-                                final existing = userBooks.where((b) => b.id == book.id).firstOrNull;
+                                return ListView.separated(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                  itemCount: merged.length,
+                                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                                  itemBuilder: (context, index) {
+                                    final entry = merged[index];
+                                    if (entry.dbBook != null) {
+                                      final book = entry.dbBook!;
+                                      final existing = userBooks.where((b) => b.id == book.id).firstOrNull;
 
-                                return _BookResultTile(
-                                  book: book,
-                                  existingBook: existing,
-                                  isWishlistContext: isWishlistContext,
-                                  onAdd: (status) => _addBookToUser(book, status),
+                                      return _BookResultTile(
+                                        book: book,
+                                        existingBook: existing,
+                                        isWishlistContext: isWishlistContext,
+                                        onAdd: (status) => _addBookToUser(book, status),
+                                      );
+                                    }
+
+                                    return _buildBnfCard(entry.bnf!);
+                                  },
                                 );
                               },
                             ),
         ),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+          decoration: BoxDecoration(
+            color: AppTheme.bgSurface,
+            border: Border(top: BorderSide(color: AppTheme.borderSubtle, width: 1)),
+          ),
+          child: OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.accentPrimary,
+              side: BorderSide(color: AppTheme.accentPrimary.withValues(alpha: 0.4)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+              ),
+            ),
+            onPressed: () {
+              final q = _searchController.text.trim();
+              final isIsbn = q.isNotEmpty &&
+                  RegExp(r'^[0-9Xx\-]+$').hasMatch(q) &&
+                  q.replaceAll(RegExp(r'[^0-9Xx]'), '').length >= 10;
+              _openQuickCreate(
+                initialTitle: q.isEmpty || isIsbn ? null : q,
+                initialIsbn: isIsbn ? _cleanBarcode(q) : null,
+              );
+            },
+            icon: const Icon(Icons.edit_note_rounded, size: 20),
+            label: const Text(
+              'Créer un livre manquant',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildBnfCard(BnfBookResult bnf) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.bgElevated,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(
+          color: AppTheme.accentPrimary.withValues(alpha: 0.4),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.account_balance_rounded, size: 16, color: AppTheme.accentPrimary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Trouvé dans la BnF',
+                  style: TextStyle(
+                    color: AppTheme.accentPrimary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (bnf.isbn.isNotEmpty)
+                Text(
+                  'ISBN ${bnf.isbn}',
+                  style: TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (bnf.coverUrl.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    bnf.coverUrl,
+                    width: 56,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      width: 56,
+                      height: 80,
+                      color: AppTheme.bgSurface,
+                      child: Icon(Icons.book_rounded, color: AppTheme.textMuted),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      bnf.title,
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (bnf.price != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        '${bnf.price} €',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.accentPrimary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                ),
+              ),
+              onPressed: () {
+                _openQuickCreate(
+                  initialTitle: bnf.title,
+                  initialIsbn: bnf.isbn.isNotEmpty ? bnf.isbn : null,
+                  initialPrice: bnf.price,
+                  initialCoverUrl: bnf.coverUrl.isNotEmpty ? bnf.coverUrl : null,
+                );
+              },
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: const Text(
+                'Créer avec la BnF',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

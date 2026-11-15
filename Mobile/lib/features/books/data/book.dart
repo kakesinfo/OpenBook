@@ -79,6 +79,8 @@ class Book {
   Book({
     this.id,
     required this.title,
+    this.isbn,
+    this.releaseDate,
     this.author = '',
     this.series = '',
     this.volume,
@@ -95,6 +97,10 @@ class Book {
   final int? id;
 
   final String title;
+
+  final String? isbn;
+
+  final String? releaseDate;
 
   final String author;
 

@@ -17,18 +17,18 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
            "LEFT JOIN b.series s " +
            "LEFT JOIN b.bookHasAuthors bha " +
            "LEFT JOIN bha.author a " +
-           "WHERE LOWER(REPLACE(b.title, '’', '''')) LIKE LOWER(CONCAT('%', :queryApos, '%')) " +
+           "WHERE CAST(FUNCTION('translate', LOWER(REPLACE(b.title, '’', '''')), 'àáâãäåçèéêëìíîïñòóôõöùúûüýÿ', 'aaaaaaceeeeiiiinooooouuuuyy') AS string) LIKE CONCAT('%', :queryNoAccent, '%') " +
            "OR (b.title IS NOT NULL AND LOWER(b.title) LIKE LOWER(CONCAT('%', :rawQuery, '%'))) " +
-           "OR (s.name IS NOT NULL AND LOWER(REPLACE(s.name, '’', '''')) LIKE LOWER(CONCAT('%', :queryApos, '%'))) " +
+           "OR (s.name IS NOT NULL AND CAST(FUNCTION('translate', LOWER(REPLACE(s.name, '’', '''')), 'àáâãäåçèéêëìíîïñòóôõöùúûüýÿ', 'aaaaaaceeeeiiiinooooouuuuyy') AS string) LIKE CONCAT('%', :queryNoAccent, '%')) " +
            "OR (s.name IS NOT NULL AND LOWER(s.name) LIKE LOWER(CONCAT('%', :rawQuery, '%'))) " +
            "OR (b.isbn IS NOT NULL AND :cleanIsbn != '' AND REPLACE(REPLACE(b.isbn, '-', ''), ' ', '') LIKE CONCAT('%', :cleanIsbn, '%')) " +
            "OR (b.isbn IS NOT NULL AND :altIsbn != '' AND REPLACE(REPLACE(b.isbn, '-', ''), ' ', '') LIKE CONCAT('%', :altIsbn, '%')) " +
            "OR (b.isbn IS NOT NULL AND b.isbn LIKE CONCAT('%', :rawQuery, '%')) " +
-           "OR (a.firstname IS NOT NULL AND LOWER(a.firstname) LIKE LOWER(CONCAT('%', :rawQuery, '%'))) " +
-           "OR (a.lastname IS NOT NULL AND LOWER(a.lastname) LIKE LOWER(CONCAT('%', :rawQuery, '%'))) " +
-           "OR (a.firstname IS NOT NULL AND a.lastname IS NOT NULL AND LOWER(CONCAT(a.firstname, ' ', a.lastname)) LIKE LOWER(CONCAT('%', :rawQuery, '%')))")
+           "OR (a.firstname IS NOT NULL AND CAST(FUNCTION('translate', LOWER(a.firstname), 'àáâãäåçèéêëìíîïñòóôõöùúûüýÿ', 'aaaaaaceeeeiiiinooooouuuuyy') AS string) LIKE CONCAT('%', :queryNoAccent, '%')) " +
+           "OR (a.lastname IS NOT NULL AND CAST(FUNCTION('translate', LOWER(a.lastname), 'àáâãäåçèéêëìíîïñòóôõöùúûüýÿ', 'aaaaaaceeeeiiiinooooouuuuyy') AS string) LIKE CONCAT('%', :queryNoAccent, '%')) " +
+           "OR (a.firstname IS NOT NULL AND a.lastname IS NOT NULL AND CAST(FUNCTION('translate', LOWER(CONCAT(a.firstname, ' ', a.lastname)), 'àáâãäåçèéêëìíîïñòóôõöùúûüýÿ', 'aaaaaaceeeeiiiinooooouuuuyy') AS string) LIKE CONCAT('%', :queryNoAccent, '%'))")
     List<BookEntity> searchBooks(
-        @Param("queryApos") String queryApos,
+        @Param("queryNoAccent") String queryNoAccent,
         @Param("rawQuery") String rawQuery,
         @Param("cleanIsbn") String cleanIsbn,
         @Param("altIsbn") String altIsbn

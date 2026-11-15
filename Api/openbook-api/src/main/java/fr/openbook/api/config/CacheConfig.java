@@ -33,6 +33,11 @@ public class CacheConfig {
                         .maximumSize(bnfCacheMaxSize)
                         .recordStats()
                         .build()),
+                new CaffeineCache("bnf-quick-search", Caffeine.newBuilder()
+                        .expireAfterWrite(bnfCacheTtl)
+                        .maximumSize(bnfCacheMaxSize)
+                        .recordStats()
+                        .build()),
                 new CaffeineCache("user-statistics", Caffeine.newBuilder()
                         .expireAfterWrite(statisticsCacheTtl)
                         .maximumSize(statisticsCacheMaxSize)

@@ -12,9 +12,7 @@ import {
     faCoins,
     faLink,
     faArrowLeft,
-    faBuildingColumns,
-    faSpinner,
-    faPen
+    faSpinner
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router";
@@ -22,7 +20,7 @@ import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
-import { lookupBnfByIsbn, isIsbn, BnfBookResult } from "../../services/bnfService.ts";
+import { searchBnf, BnfBookResult } from "../../services/bnfService.ts";
 import { InitialBookData } from "./CreateMissingBookModal.tsx";
 
 interface Props {
@@ -43,10 +41,10 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
     const [query, setQuery] = useState("");
     const [books, setBooks] = useState<BookSummaryDTO[]>([]);
     const [searching, setSearching] = useState(false);
-    const [bnfResult, setBnfResult] = useState<BnfBookResult | null>(null);
+    const [bnfResults, setBnfResults] = useState<BnfBookResult[]>([]);
     const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
-    const [creatingFromBnf, setCreatingFromBnf] = useState(false);
+    const [creatingBnfKey, setCreatingBnfKey] = useState<string | null>(null);
 
     // Listing details step when putting a book up for sale
     const [listingTargetBook, setListingTargetBook] = useState<BookSummaryDTO | null>(null);
@@ -62,9 +60,9 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
             setQuery("");
             setBooks([]);
             setSearching(false);
-            setBnfResult(null);
+            setBnfResults([]);
             setAddedIds(new Set());
-            setCreatingFromBnf(false);
+            setCreatingBnfKey(null);
             setListingTargetBook(null);
             setListingPrice("");
             setListingUrl("");
@@ -82,18 +80,21 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
         if (!trimmed) {
             setBooks([]);
             setSearching(false);
-            setBnfResult(null);
+            setBnfResults([]);
             return;
         }
 
         setSearching(true);
-        setBnfResult(null);
+        setBooks([]);
+        setBnfResults([]);
 
         try {
-            // 1. Chercher d'abord dans la base de données
-            const res = await session.customFetch(`/books/search?query=${encodeURIComponent(trimmed)}`, {
-                method: "GET"
-            });
+            const [res, bnfs] = await Promise.all([
+                session.customFetch(`/books/search?query=${encodeURIComponent(trimmed)}`, {
+                    method: "GET"
+                }),
+                searchBnf(session.customFetch, trimmed)
+            ]);
 
             if (requestId !== searchRequestIdRef.current) return;
 
@@ -102,27 +103,23 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                 dbBooks = await res.json();
             }
 
-            if (dbBooks.length > 0) {
-                setBooks(dbBooks);
-                setBnfResult(null);
-                setSearching(false);
-                return;
-            }
+            const dbIsbns = new Set(
+                dbBooks
+                    .map((b) => b.isbn?.replace(/[^0-9Xx]/g, "").toUpperCase())
+                    .filter((isbn): isbn is string => Boolean(isbn))
+            );
+            const filteredBnfs = bnfs.filter((bnf) => {
+                const cleanBnfIsbn = bnf.isbn?.replace(/[^0-9Xx]/g, "").toUpperCase();
+                return !cleanBnfIsbn || !dbIsbns.has(cleanBnfIsbn);
+            });
 
-            // 2. Si pas trouvé en BDD et que la saisie ressemble à un ISBN, chercher dans la BNF
-            setBooks([]);
-            if (isIsbn(trimmed)) {
-                const bnf = await lookupBnfByIsbn(trimmed);
-                if (requestId !== searchRequestIdRef.current) return;
-                setBnfResult(bnf);
-            } else {
-                setBnfResult(null);
-            }
+            setBooks(dbBooks);
+            setBnfResults(filteredBnfs);
         } catch (err) {
             console.error("Search error:", err);
             if (requestId === searchRequestIdRef.current) {
                 setBooks([]);
-                setBnfResult(null);
+                setBnfResults([]);
             }
         } finally {
             if (requestId === searchRequestIdRef.current) {
@@ -224,10 +221,10 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
         onOpenCreateBook?.(query.trim());
     };
 
-    const handleDirectCreateFromBnf = async (bnf: BnfBookResult) => {
-        if (!session.token || creatingFromBnf) return;
+    const handleDirectCreateFromBnf = async (bnf: BnfBookResult, bnfKey: string) => {
+        if (!session.token || creatingBnfKey) return;
 
-        setCreatingFromBnf(true);
+        setCreatingBnfKey(bnfKey);
         try {
             const payload = {
                 title: bnf.title,
@@ -286,7 +283,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
             console.error("Error creating book from BnF:", err);
             enqueueSnackbar(tr("Connection error", "Erreur de connexion"), { variant: "error" });
         } finally {
-            setCreatingFromBnf(false);
+            setCreatingBnfKey(null);
         }
     };
 
@@ -418,202 +415,241 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                 ref={inputRef}
                                 type="text"
                                 value={query}
-                                onChange={(e) => setQuery(e.target.value)}
+                                onChange={(e) => {
+                                    const next = e.target.value;
+                                    setQuery(next);
+                                    if (next.trim()) {
+                                        setSearching(true);
+                                    } else {
+                                        setSearching(false);
+                                        setBooks([]);
+                                        setBnfResults([]);
+                                    }
+                                }}
                                 placeholder={isSaleMode ? tr("Search for a book to list for sale...", "Rechercher un livre à mettre en vente...") : tr("Search by title, series or ISBN...", "Rechercher par titre, série ou ISBN...")}
                                 autoComplete="off"
                             />
                         </div>
 
                         {searching && (
-                            <p style={{ textAlign: "center", color: "var(--text-muted)", padding: "14px 0", fontSize: "0.875rem" }}>
-                                {tr("Searching...", "Recherche en cours...")}
-                            </p>
-                        )}
-
-                        {/* Livre trouvé dans la BNF */}
-                        {!searching && query.trim() && books.length === 0 && bnfResult && (
-                            <div className="fab-bnf-card">
-                                <div className="fab-bnf-card__header">
-                                    <div className="fab-bnf-card__badge">
-                                        <FontAwesomeIcon icon={faBuildingColumns} />
-                                        <span>{tr("Found in BnF (Bibliothèque Nationale de France)", "Trouvé dans la BnF (Bibliothèque Nationale de France)")}</span>
-                                    </div>
-                                    {bnfResult.isbn && (
-                                        <span className="fab-bnf-card__isbn-tag">
-                                            ISBN {bnfResult.isbn}
-                                        </span>
-                                    )}
-                                </div>
-
-                                <div className="fab-bnf-card__body">
-                                    <div className="fab-bnf-card__cover">
-                                        {bnfResult.coverUrl ? (
-                                            <img
-                                                src={bnfResult.coverUrl}
-                                                alt={bnfResult.title}
-                                                onError={(e) => { (e.target as HTMLElement).style.display = "none"; }}
-                                            />
-                                        ) : (
-                                            <FontAwesomeIcon icon={faBook} />
-                                        )}
-                                    </div>
-
-                                    <div className="fab-bnf-card__content">
-                                        <h4 className="fab-bnf-card__title">
-                                            {bnfResult.title}
-                                        </h4>
-
-                                        {bnfResult.authors && bnfResult.authors.length > 0 && (
-                                            <div className="fab-bnf-card__authors">
-                                                <FontAwesomeIcon icon={faPen} />
-                                                <span>
-                                                    {bnfResult.authors.map((a) => `${a.firstname ? a.firstname + " " : ""}${a.lastname}`).join(", ")}
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        <div className="fab-bnf-card__chips">
-                                            {bnfResult.volume !== null && bnfResult.volume !== undefined && (
-                                                <span className="fab-bnf-chip fab-bnf-chip--volume">
-                                                    {bnfResult.volume > 0 ? `${tr("Volume", "Tome")} ${bnfResult.volume}` : "One-shot"}
-                                                </span>
-                                            )}
-                                            {bnfResult.editorName && (
-                                                <span className="fab-bnf-chip">
-                                                    {bnfResult.editorName}
-                                                </span>
-                                            )}
-                                            {bnfResult.releaseDate && (
-                                                <span className="fab-bnf-chip">
-                                                    {bnfResult.releaseDate.substring(0, 4)}
-                                                </span>
-                                            )}
-                                            {bnfResult.pageCount ? (
-                                                <span className="fab-bnf-chip">
-                                                    {bnfResult.pageCount} p.
-                                                </span>
-                                            ) : null}
-                                            {bnfResult.price != null && (
-                                                <span className="fab-bnf-chip fab-bnf-chip--price">
-                                                    {bnfResult.price} €
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="fab-bnf-card__footer">
-                                    <button
-                                        type="button"
-                                        className="fab-btn-add fab-bnf-card__submit-btn"
-                                        disabled={creatingFromBnf}
-                                        onClick={() => handleDirectCreateFromBnf(bnfResult)}
-                                    >
-                                        <FontAwesomeIcon icon={creatingFromBnf ? faSpinner : faPlus} spin={creatingFromBnf} />
-                                        <span>{creatingFromBnf ? tr("Creating...", "Création...") : tr("Create & Add", "Créer et ajouter")}</span>
-                                    </button>
-                                </div>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", color: "var(--text-muted)", padding: "24px 0", fontSize: "0.875rem" }}>
+                                <FontAwesomeIcon icon={faSpinner} spin />
+                                <span>{tr("Searching...", "Recherche en cours...")}</span>
                             </div>
                         )}
 
-                        {/* Aucun livre en BDD ni dans la BNF */}
-                        {!searching && query.trim() && books.length === 0 && !bnfResult && (
-                            <div className="fab-no-results">
-                                <p className="fab-no-results__text">
-                                    {tr("No books found for", "Aucun livre trouvé pour")} « <strong>{query}</strong> »
-                                </p>
-                                <button
-                                    type="button"
-                                    className="fab-no-results__btn"
-                                    onClick={handleCreateMissingFromScratch}
-                                >
-                                    <FontAwesomeIcon icon={faPenNib} />
-                                    <span>{tr("Create a missing book", "Créer un livre manquant")}</span>
-                                </button>
-                            </div>
-                        )}
+                        {/* Résultats BDD et BNF mélangés et triés par date décroissante */}
+                        {!searching && (books.length > 0 || bnfResults.length > 0) && (() => {
+                            const parseReleaseTs = (raw?: string | null): number => {
+                                if (!raw) return Number.NEGATIVE_INFINITY;
+                                const ts = Date.parse(raw);
+                                return Number.isNaN(ts) ? Number.NEGATIVE_INFINITY : ts;
+                            };
 
-                        {books.length > 0 && (
+                            type CombinedItem =
+                                | { kind: "db"; book: BookSummaryDTO; releaseTs: number }
+                                | { kind: "bnf"; bnf: BnfBookResult; bnfKey: string; releaseTs: number };
+
+                            const combined: CombinedItem[] = [
+                                ...books.map((book) => ({
+                                    kind: "db" as const,
+                                    book,
+                                    releaseTs: parseReleaseTs(book.releaseDate)
+                                })),
+                                ...bnfResults.map((bnf, idx) => ({
+                                    kind: "bnf" as const,
+                                    bnf,
+                                    bnfKey: `${bnf.isbn || bnf.title}-${idx}`,
+                                    releaseTs: parseReleaseTs(bnf.releaseDate)
+                                }))
+                            ].sort((a, b) => b.releaseTs - a.releaseTs);
+
+                            return (
                             <ul className="fab-search-results">
-                                {books.map((book) => {
-                                    const isOwned = book.status === "OWNED" || addedIds.has(book.id);
-                                    const isForSale = book.status === "FOR_SALE" || (isSaleMode && addedIds.has(book.id));
-                                    const isAdding = addingIds.has(book.id);
+                                {combined.map((item) => {
+                                    if (item.kind === "db") {
+                                        const book = item.book;
+                                        const isOwned = book.status === "OWNED" || addedIds.has(book.id);
+                                        const isForSale = book.status === "FOR_SALE" || (isSaleMode && addedIds.has(book.id));
+                                        const isAdding = addingIds.has(book.id);
 
-                                    return (
-                                        <li
-                                            key={book.id}
-                                            className="fab-search-item"
-                                            onClick={() => handleBookClick(book.id)}
-                                        >
-                                            <div className="fab-search-item__left">
-                                                <div className="fab-search-item__thumb">
-                                                    {book.coverUrl ? (
-                                                        <img src={book.coverUrl} alt={book.title} loading="lazy" />
-                                                    ) : (
-                                                        <FontAwesomeIcon icon={faBook} />
-                                                    )}
-                                                </div>
-                                                <div className="fab-search-item__info">
-                                                    {book.seriesName && (
-                                                        <span className="fab-search-item__series">
-                                                            {book.seriesName}
-                                                        </span>
-                                                    )}
-                                                    <span className="fab-search-item__title">
-                                                        {book.title}
-                                                    </span>
-                                                    <div className="fab-search-item__meta">
-                                                        {book.volume !== undefined && book.volume !== null && (
-                                                            <span>{book.volume > 0 ? `${tr("Volume", "Tome")} ${book.volume}` : "One-shot"}</span>
-                                                        )}
-                                                        {book.releaseDate && (
-                                                            <span>• {new Date(book.releaseDate).getFullYear()}</span>
+                                        return (
+                                            <li
+                                                key={`db-${book.id}`}
+                                                className="fab-search-item"
+                                                onClick={() => handleBookClick(book.id)}
+                                            >
+                                                <div className="fab-search-item__left">
+                                                    <div className="fab-search-item__thumb">
+                                                        {book.coverUrl ? (
+                                                            <img src={book.coverUrl} alt={book.title} loading="lazy" />
+                                                        ) : (
+                                                            <FontAwesomeIcon icon={faBook} />
                                                         )}
                                                     </div>
+                                                    <div className="fab-search-item__info">
+                                                        {(book.seriesName || book.editorName) && (
+                                                            <span className="fab-search-item__series">
+                                                                {[book.seriesName, book.editorName].filter(Boolean).join(" • ")}
+                                                            </span>
+                                                        )}
+                                                        <span className="fab-search-item__title">
+                                                            {book.title}
+                                                        </span>
+                                                        {book.author && (
+                                                            <span className="fab-search-item__authors">
+                                                                {book.author}
+                                                            </span>
+                                                        )}
+                                                        <div className="fab-search-item__meta">
+                                                            {book.volume !== undefined && book.volume !== null && (
+                                                                <span>{book.volume > 0 ? `${tr("Volume", "Tome")} ${book.volume}` : "One-shot"}</span>
+                                                            )}
+                                                            {book.releaseDate && (
+                                                                <span>• {new Date(book.releaseDate).getFullYear()}</span>
+                                                            )}
+                                                            {book.pageCount ? (
+                                                                <span>• {book.pageCount} p.</span>
+                                                            ) : null}
+                                                            {book.price != null && (
+                                                                <span>• {book.price} €</span>
+                                                            )}
+                                                            {book.isbn && (
+                                                                <span>• ISBN {book.isbn}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            <div className="fab-search-item__actions">
-                                                {isSaleMode ? (
-                                                    isForSale ? (
+                                                <div className="fab-search-item__actions">
+                                                    {isSaleMode ? (
+                                                        isForSale ? (
+                                                            <span className="fab-badge-owned">
+                                                                <FontAwesomeIcon icon={faCheck} />
+                                                                <span>{tr("For sale", "En vente")}</span>
+                                                            </span>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                className="fab-btn-add"
+                                                                disabled={isAdding}
+                                                                onClick={(e) => handleOpenListingStep(book, e)}
+                                                            >
+                                                                <FontAwesomeIcon icon={faTag} />
+                                                                <span>{isAdding ? tr("Checking...", "Vérification...") : tr("List for sale", "Mettre en vente")}</span>
+                                                            </button>
+                                                        )
+                                                    ) : isOwned ? (
                                                         <span className="fab-badge-owned">
                                                             <FontAwesomeIcon icon={faCheck} />
-                                                            <span>{tr("For sale", "En vente")}</span>
+                                                            <span>{tr("In your library", "Dans votre bibliothèque")}</span>
                                                         </span>
                                                     ) : (
                                                         <button
                                                             type="button"
                                                             className="fab-btn-add"
                                                             disabled={isAdding}
-                                                            onClick={(e) => handleOpenListingStep(book, e)}
+                                                            onClick={(e) => handleAddBook(book, e)}
                                                         >
-                                                            <FontAwesomeIcon icon={faTag} />
-                                                            <span>{isAdding ? tr("Checking...", "Vérification...") : tr("List for sale", "Mettre en vente")}</span>
+                                                            <FontAwesomeIcon icon={isAdding ? faCheck : faPlus} />
+                                                            <span>{isAdding ? tr("Adding...", "Ajout...") : tr("Add", "Ajouter")}</span>
                                                         </button>
-                                                    )
-                                                ) : isOwned ? (
-                                                    <span className="fab-badge-owned">
-                                                        <FontAwesomeIcon icon={faCheck} />
-                                                        <span>{tr("In your library", "Dans votre bibliothèque")}</span>
+                                                    )}
+                                                </div>
+                                            </li>
+                                        );
+                                    }
+
+                                    const bnfResult = item.bnf;
+                                    const bnfKey = item.bnfKey;
+                                    const isCreatingThis = creatingBnfKey === bnfKey;
+                                    return (
+                                        <li key={bnfKey} className="fab-search-item fab-search-item--bnf">
+                                            <div className="fab-search-item__left" onClick={() => handleDirectCreateFromBnf(bnfResult, bnfKey)}>
+                                                <div className="fab-search-item__thumb">
+                                                    {bnfResult.coverUrl ? (
+                                                        <img
+                                                            src={bnfResult.coverUrl}
+                                                            alt={bnfResult.title}
+                                                            loading="lazy"
+                                                            onError={(e) => { (e.target as HTMLElement).style.display = "none"; }}
+                                                        />
+                                                    ) : (
+                                                        <FontAwesomeIcon icon={faBook} />
+                                                    )}
+                                                </div>
+
+                                                <div className="fab-search-item__info">
+                                                    <span className="fab-search-item__series">
+                                                        BnF{bnfResult.editorName ? ` • ${bnfResult.editorName}` : ""}
                                                     </span>
-                                                ) : (
-                                                    <button
-                                                        type="button"
-                                                        className="fab-btn-add"
-                                                        disabled={isAdding}
-                                                        onClick={(e) => handleAddBook(book, e)}
-                                                    >
-                                                        <FontAwesomeIcon icon={isAdding ? faCheck : faPlus} />
-                                                        <span>{isAdding ? tr("Adding...", "Ajout...") : tr("Add", "Ajouter")}</span>
-                                                    </button>
-                                                )}
+                                                    <span className="fab-search-item__title">
+                                                        {bnfResult.title}
+                                                    </span>
+                                                    {bnfResult.authors && bnfResult.authors.length > 0 && (
+                                                        <span className="fab-search-item__authors">
+                                                            {bnfResult.authors.map((a) => `${a.firstname ? a.firstname + " " : ""}${a.lastname}`).join(", ")}
+                                                        </span>
+                                                    )}
+                                                    <div className="fab-search-item__meta">
+                                                        {bnfResult.volume !== null && bnfResult.volume !== undefined && (
+                                                            <span>{bnfResult.volume > 0 ? `${tr("Volume", "Tome")} ${bnfResult.volume}` : "One-shot"}</span>
+                                                        )}
+                                                        {bnfResult.releaseDate && (
+                                                            <span>• {bnfResult.releaseDate.substring(0, 4)}</span>
+                                                        )}
+                                                        {bnfResult.pageCount ? (
+                                                            <span>• {bnfResult.pageCount} p.</span>
+                                                        ) : null}
+                                                        {bnfResult.price != null && (
+                                                            <span>• {bnfResult.price} €</span>
+                                                        )}
+                                                        {bnfResult.isbn && (
+                                                            <span>• ISBN {bnfResult.isbn}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="fab-search-item__actions">
+                                                <button
+                                                    type="button"
+                                                    className="fab-btn-add fab-btn-add--bnf"
+                                                    disabled={Boolean(creatingBnfKey)}
+                                                    onClick={() => handleDirectCreateFromBnf(bnfResult, bnfKey)}
+                                                >
+                                                    <FontAwesomeIcon icon={isCreatingThis ? faSpinner : faPlus} spin={isCreatingThis} />
+                                                    <span>{isCreatingThis ? tr("Creating...", "Création...") : tr("Create & Add", "Créer et ajouter")}</span>
+                                                </button>
                                             </div>
                                         </li>
                                     );
                                 })}
                             </ul>
+                            );
+                        })()}
+
+                        {/* Aucun livre en BDD ni dans la BNF */}
+                        {!searching && query.trim() && books.length === 0 && bnfResults.length === 0 && (
+                            <div className="fab-no-results">
+                                <p className="fab-no-results__text">
+                                    {tr("No books found for", "Aucun livre trouvé pour")} « <strong>{query}</strong> »
+                                </p>
+                            </div>
                         )}
+                    </div>
+                )}
+
+                {!listingTargetBook && (
+                    <div className="fab-modal__footer">
+                        <button
+                            type="button"
+                            className="fab-no-results__btn"
+                            onClick={handleCreateMissingFromScratch}
+                        >
+                            <FontAwesomeIcon icon={faPenNib} />
+                            <span>{tr("Create a missing book", "Créer un livre manquant")}</span>
+                        </button>
                     </div>
                 )}
             </div>

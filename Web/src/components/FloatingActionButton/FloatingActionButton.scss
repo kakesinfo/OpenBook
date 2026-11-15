@@ -366,6 +366,18 @@
     opacity: 0.6;
     cursor: not-allowed;
   }
+
+  &--bnf {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.45);
+    color: #3b82f6;
+
+    &:hover:not(:disabled) {
+      background: #3b82f6;
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(59, 130, 246, 0.35);
+    }
+  }
 }
 
 .fab-badge-owned {
@@ -382,13 +394,23 @@
 }
 
 /* BnF Result Card Redesign */
+.fab-bnf-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-top: 6px;
+}
+
 .fab-bnf-card {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   background: var(--bg-card);
   border: 1px solid rgba(59, 130, 246, 0.25);
   border-radius: var(--radius-md, 12px);
-  margin-top: 14px;
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -1248,6 +1270,18 @@
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  &--bnf {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.45);
+    color: #3b82f6;
+
+    &:hover:not(:disabled) {
+      background: #3b82f6;
+      color: #ffffff;
+      box-shadow: 0 2px 10px rgba(59, 130, 246, 0.35);
+    }
   }
 }
 

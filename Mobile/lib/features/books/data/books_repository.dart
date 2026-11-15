@@ -116,6 +116,8 @@ class BooksRepository {
     return Book(
       id: (item['id'] as num?)?.toInt(),
       title: item['title'] as String? ?? '',
+      isbn: item['isbn']?.toString(),
+      releaseDate: item['releaseDate']?.toString(),
       author: authorName,
       series: seriesName,
       volume: (item['volume'] as num?)?.toInt(),

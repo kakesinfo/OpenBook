@@ -1,6 +1,7 @@
 export default interface BookSummaryDTO {
     id: string;
     title: string;
+    isbn?: string;
     volume: number;
     price: number;
     listingUrl?: string | null;
@@ -15,5 +16,7 @@ export default interface BookSummaryDTO {
     seriesName?: string;
     seriesTotalVolumes?: number;
     seriesCoverUrl?: string;
+    editorName?: string;
+    pageCount?: number;
     readingStatus?: string;
 }
