@@ -328,11 +328,8 @@ export default function SettingsPage() {
                             if (importPollingRef.current) clearInterval(importPollingRef.current);
                             setImporting(false);
                             enqueueSnackbar(
-                                tr(
-                                    `Bookmory import successful! (${updatedJob.created_books} created, ${updatedJob.updated_books} updated, ${updatedJob.imported_purchases} purchases, ${updatedJob.imported_reading_sessions} reading sessions, ${updatedJob.imported_notes ?? 0} notes)`,
-                                    `Importation Bookmory réussie ! (${updatedJob.created_books} créés, ${updatedJob.updated_books} mis à jour, ${updatedJob.imported_purchases} achats, ${updatedJob.imported_reading_sessions} temps de lecture, ${updatedJob.imported_notes ?? 0} notes)`
-                                ),
-                                { variant: "success", autoHideDuration: 6000 }
+                                tr("Bookmory import successful!", "Importation Bookmory réussie !"),
+                                { variant: "success" }
                             );
                         } else if (updatedJob.status === "failed") {
                             if (importPollingRef.current) clearInterval(importPollingRef.current);

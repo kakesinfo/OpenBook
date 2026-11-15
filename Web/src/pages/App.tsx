@@ -9,6 +9,7 @@ import {
     WrapperSubButton
 } from "../components/Wrapper/Wrapper.tsx";
 import {
+    faHouse,
     faNewspaper,
     faBook,
     faBookOpen,
@@ -26,9 +27,7 @@ import {
     faUsers,
     faSliders,
     faClipboardList,
-    faUserPen,
-    faNoteSticky,
-    faSpellCheck
+    faUserPen
 } from '@fortawesome/free-solid-svg-icons';
 import { useState } from "react";
 import useSession from "../hooks/UseSession.tsx";
@@ -128,7 +127,8 @@ export default function App() {
                 {!session.isAdmin ? (
                     <>
                         <WrapperAction icon={faMagnifyingGlass} callback={handleOpen}>{t("nav.search")}</WrapperAction>
-                        <WrapperButton to={'/app/home'} icon={faNewspaper}>{t("nav.news")}</WrapperButton>
+                        <WrapperButton to={'/app/home'} icon={faHouse}>{t("nav.home")}</WrapperButton>
+                        <WrapperButton to={'/app/news'} icon={faNewspaper}>{t("nav.news")}</WrapperButton>
                         <WrapperButton to={'/app/collection'} icon={faBook} activeRoutes={['/app/series', '/app/collection/series', '/app/sales', '/app/ventes']}>{t("nav.library")}</WrapperButton>
                         <WrapperSubGroup>
                             <WrapperSubButton to={'/app/collection'} icon={faBookOpen}>{t("nav.myBooks")}</WrapperSubButton>
@@ -137,8 +137,6 @@ export default function App() {
                         </WrapperSubGroup>
                         <WrapperButton to={'/app/wishlist'} icon={faHeart}>{t("nav.wishlist")}</WrapperButton>
                         <WrapperButton to={'/app/planning'} icon={faCalendarDays}>{t("nav.planning")}</WrapperButton>
-                        <WrapperButton to={'/app/notes'} icon={faNoteSticky}>{t("nav.notes")}</WrapperButton>
-                        <WrapperButton to={'/app/glossary'} icon={faSpellCheck} activeRoutes={['/app/glossaire']}>{t("nav.glossary")}</WrapperButton>
                         <WrapperButton to={'/app/statistics'} icon={faChartPie}>{t("nav.statistics")}</WrapperButton>
                     </>
                 ) : (

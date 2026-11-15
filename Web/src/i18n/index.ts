@@ -98,6 +98,7 @@ export const translations: Record<LanguageId, Record<string, string>> = {
     en: {
         "nav.search": "Search in DB",
         "nav.searchDialog": "Search in database",
+        "nav.home": "Home",
         "nav.news": "New Releases",
         "nav.library": "Library",
         "nav.myBooks": "My Books",
@@ -133,6 +134,7 @@ export const translations: Record<LanguageId, Record<string, string>> = {
     fr: {
         "nav.search": "Rechercher en BDD",
         "nav.searchDialog": "Rechercher en base de données",
+        "nav.home": "Accueil",
         "nav.news": "Nouveautés",
         "nav.library": "Bibliothèque",
         "nav.myBooks": "Mes Albums",

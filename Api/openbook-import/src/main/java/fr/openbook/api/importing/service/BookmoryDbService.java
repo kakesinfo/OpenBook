@@ -508,12 +508,32 @@ public class BookmoryDbService {
             sessionTime = Instant.ofEpochMilli(timer.getCreatedAt());
         }
 
+        return importReadingSessionAt(userId, bookId, page, minutesRead, secondsRead, 1, sessionTime);
+    }
+
+    public boolean importReadingSessionAt(
+            Long userId,
+            Long bookId,
+            int page,
+            int minutesRead,
+            int secondsRead,
+            int sessionType,
+            Instant sessionTime
+    ) {
+        if (userId == null || bookId == null || sessionTime == null) {
+            return false;
+        }
+
         try {
-            Integer exists = jdbcTemplate.queryForObject(
-                    "SELECT 1 FROM reading_session WHERE user_id = ? AND book_id = ? AND created_at = ? LIMIT 1",
-                    Integer.class, userId, bookId, Timestamp.from(sessionTime)
+            Long existingId = jdbcTemplate.queryForObject(
+                    "SELECT id FROM reading_session WHERE user_id = ? AND book_id = ? AND session_type = ? AND created_at = ? LIMIT 1",
+                    Long.class, userId, bookId, sessionType, Timestamp.from(sessionTime)
             );
-            if (exists != null) {
+            if (existingId != null) {
+                jdbcTemplate.update(
+                        "UPDATE reading_session SET current_page = ?, minutes_read = ?, seconds_read = ? WHERE id = ?",
+                        Math.max(0, page), Math.max(0, minutesRead), Math.max(0, secondsRead), existingId
+                );
                 return false;
             }
         } catch (EmptyResultDataAccessException ignored) {}
@@ -521,42 +541,18 @@ public class BookmoryDbService {
         try {
             jdbcTemplate.update(
                     "INSERT INTO reading_session (user_id, book_id, current_page, minutes_read, seconds_read, session_type, created_at) " +
-                    "VALUES (?, ?, ?, ?, ?, 1, ?)",
-                    userId, bookId, page, minutesRead, secondsRead, Timestamp.from(sessionTime)
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    userId, bookId, Math.max(0, page), Math.max(0, minutesRead), Math.max(0, secondsRead), sessionType, Timestamp.from(sessionTime)
             );
             return true;
         } catch (Exception ex) {
-            log.warn("Failed to insert reading session for user {} book {}: {}", userId, bookId, ex.getMessage());
+            log.warn("Failed to insert reading session (type {}) for user {} book {}: {}", sessionType, userId, bookId, ex.getMessage());
             return false;
         }
     }
 
     public boolean ensureReadingStartSession(Long userId, Long bookId, Instant startTime) {
-        if (userId == null || bookId == null || startTime == null) {
-            return false;
-        }
-
-        try {
-            Integer exists = jdbcTemplate.queryForObject(
-                    "SELECT 1 FROM reading_session WHERE user_id = ? AND book_id = ? AND session_type = 0 LIMIT 1",
-                    Integer.class, userId, bookId
-            );
-            if (exists != null) {
-                return false;
-            }
-        } catch (EmptyResultDataAccessException ignored) {}
-
-        try {
-            jdbcTemplate.update(
-                    "INSERT INTO reading_session (user_id, book_id, current_page, minutes_read, seconds_read, session_type, created_at) " +
-                    "VALUES (?, ?, 0, 0, 0, 0, ?)",
-                    userId, bookId, Timestamp.from(startTime)
-            );
-            return true;
-        } catch (Exception ex) {
-            log.warn("Failed to insert reading start session for user {} book {}: {}", userId, bookId, ex.getMessage());
-            return false;
-        }
+        return importReadingSessionAt(userId, bookId, 0, 0, 0, 0, startTime);
     }
 
     public boolean importBookNote(Long userId, Long bookId, List<BookmoryNote> notesForBook, List<String> readComments) {

@@ -19,4 +19,5 @@ export default interface BookSummaryDTO {
     editorName?: string;
     pageCount?: number;
     readingStatus?: string;
+    finishedAt?: number | null;
 }

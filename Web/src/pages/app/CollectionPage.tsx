@@ -515,7 +515,7 @@ export default function CollectionPage() {
                             )}
                         </p>
                         <Link
-                            to="/app/home"
+                            to="/app/news"
                             style={{
                                 display: "inline-flex",
                                 alignItems: "center",
