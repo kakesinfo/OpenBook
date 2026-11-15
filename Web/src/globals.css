@@ -53,3 +53,7 @@ a {
 button {
   font-family: inherit;
 }
+
+.notistack-Snackbar {
+  max-width: 420px;
+}
