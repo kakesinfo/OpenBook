@@ -349,22 +349,6 @@ public class UserController {
                 .orElseThrow(() -> new RuntimeException("Book not found"));
 
         if ("FOR_SALE".equals(upperStatus) || "SOLD".equals(upperStatus)) {
-            List<UserBookTransactionEntity> existingTxs = repositoryService.getUserBookTransactionRepository()
-                    .findAllByUserIdAndBookIdOrderByTransactionDateDescCreatedAtDesc(user.getId(), id);
-            long acquiredCount = existingTxs.stream()
-                    .filter(t -> "BOUGHT".equalsIgnoreCase(t.getType()) || "GIFT".equalsIgnoreCase(t.getType()))
-                    .count();
-            long soldCount = existingTxs.stream()
-                    .filter(t -> "SOLD".equalsIgnoreCase(t.getType()))
-                    .count();
-
-            if (soldCount + 1 > acquiredCount) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Impossible de vendre ce livre : le nombre de ventes ne peut pas dépasser le nombre d'achats et de cadeaux reçus."
-                );
-            }
-
             repositoryService.getUserOwnsBooksRepository()
                     .findByUserIdAndBookId(user.getId(), id)
                     .ifPresent(repositoryService.getUserOwnsBooksRepository()::delete);
@@ -959,24 +943,7 @@ public class UserController {
                 .findByUserIdAndBookId(user.getId(), bookId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found in sales"));
 
-        if ("SOLD".equals(upperStatus)) {
-            List<UserBookTransactionEntity> existingTxs = repositoryService.getUserBookTransactionRepository()
-                    .findAllByUserIdAndBookIdOrderByTransactionDateDescCreatedAtDesc(user.getId(), bookId);
-            long acquiredCount = existingTxs.stream()
-                    .filter(t -> "BOUGHT".equalsIgnoreCase(t.getType()) || "GIFT".equalsIgnoreCase(t.getType()))
-                    .count();
-            long soldCount = existingTxs.stream()
-                    .filter(t -> "SOLD".equalsIgnoreCase(t.getType()))
-                    .count();
-
-            if (soldCount + 1 > acquiredCount) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Impossible d'enregistrer la vente : le nombre de ventes ne peut pas dépasser le nombre d'achats et de cadeaux reçus."
-                );
-            }
-        }
-
+        String previousStatus = entity.getStatus();
         entity.setStatus(upperStatus);
         if (request != null && request.getPrice() != null) {
             entity.setPrice(request.getPrice());
@@ -985,6 +952,15 @@ public class UserController {
             entity.setListingUrl(request.getListingUrl());
         }
         repositoryService.getUserSellsBookRepository().saveAndFlush(entity);
+
+        if ("SOLD".equalsIgnoreCase(previousStatus) && "FOR_SALE".equals(upperStatus)) {
+            List<UserBookTransactionEntity> existingTxs = repositoryService.getUserBookTransactionRepository()
+                    .findAllByUserIdAndBookIdOrderByTransactionDateDescCreatedAtDesc(user.getId(), bookId);
+            existingTxs.stream()
+                    .filter(t -> "SOLD".equalsIgnoreCase(t.getType()))
+                    .findFirst()
+                    .ifPresent(repositoryService.getUserBookTransactionRepository()::delete);
+        }
 
         if ("SOLD".equals(upperStatus)) {
             UserBookTransactionEntity tx = new UserBookTransactionEntity();
@@ -1121,24 +1097,6 @@ public class UserController {
         String type = (req.getType() != null) ? req.getType().toUpperCase() : "BOUGHT";
         if (!"BOUGHT".equals(type) && !"GIFT".equals(type) && !"SOLD".equals(type)) {
             type = "BOUGHT";
-        }
-
-        if ("SOLD".equals(type)) {
-            List<UserBookTransactionEntity> existingTxs = repositoryService.getUserBookTransactionRepository()
-                    .findAllByUserIdAndBookIdOrderByTransactionDateDescCreatedAtDesc(user.getId(), bookId);
-            long acquiredCount = existingTxs.stream()
-                    .filter(t -> "BOUGHT".equalsIgnoreCase(t.getType()) || "GIFT".equalsIgnoreCase(t.getType()))
-                    .count();
-            long soldCount = existingTxs.stream()
-                    .filter(t -> "SOLD".equalsIgnoreCase(t.getType()))
-                    .count();
-
-            if (soldCount + 1 > acquiredCount) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Impossible d'enregistrer la vente : le nombre de ventes ne peut pas dépasser le nombre d'achats et de cadeaux reçus."
-                );
-            }
         }
 
         UserBookTransactionEntity tx = new UserBookTransactionEntity();

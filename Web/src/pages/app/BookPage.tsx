@@ -572,6 +572,8 @@ export default function BookPage() {
     const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
     const [saleModalOpen, setSaleModalOpen] = useState(false);
     const [listingModalOpen, setListingModalOpen] = useState(false);
+    const [relistModalOpen, setRelistModalOpen] = useState(false);
+    const [relisting, setRelisting] = useState(false);
     const [submittingTx, setSubmittingTx] = useState(false);
     const [submittingListing, setSubmittingListing] = useState(false);
 
@@ -821,6 +823,38 @@ export default function BookPage() {
             enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
         } finally {
             setSubmittingTx(false);
+        }
+    };
+
+    const handleConfirmRelist = async () => {
+        if (!id || relisting) return;
+
+        setRelisting(true);
+        try {
+            const res = await session.customFetch(`/user/sales/${encodeURIComponent(id)}/status/FOR_SALE`, {
+                method: "POST"
+            });
+
+            if (res.ok) {
+                enqueueSnackbar(tr("Book relisted for sale!", "Livre remis en vente !"), { variant: "success" });
+                setRelistModalOpen(false);
+                setBookStatus("FOR_SALE");
+                fetchTransactions(id);
+            } else {
+                let errMsg = tr("Error relisting book", "Erreur lors de la remise en vente");
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.message || errData.error || errMsg;
+                } catch {
+                    const text = await res.text().catch(() => "");
+                    if (text) errMsg = text;
+                }
+                enqueueSnackbar(errMsg, { variant: "error" });
+            }
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } finally {
+            setRelisting(false);
         }
     };
 
@@ -1706,29 +1740,55 @@ export default function BookPage() {
                                     </ChangeBookStatusButton>
                                 )}
 
-                                {bookStatus !== "WISHLISTED" && (
-                                    <ChangeBookStatusButton
-                                        status={bookStatus}
-                                        setStatus={setBookStatus}
-                                        newStatus="FOR_SALE"
-                                        bookId={id}
-                                        session={session}
-                                        icon={faTag}
-                                        onRequestSale={handleOpenListingModal}
-                                    >
-                                        {bookStatus === "FOR_SALE" ? tr("For sale", "En vente") : (bookStatus === "SOLD" ? tr("Sold (relist)", "Vendu (remettre en vente)") : tr("List for sale", "Mettre à vendre"))}
-                                    </ChangeBookStatusButton>
-                                )}
+                                {bookStatus === "FOR_SALE" ? (
+                                    <div className="book-action-group">
+                                        <ChangeBookStatusButton
+                                            status={bookStatus}
+                                            setStatus={setBookStatus}
+                                            newStatus="FOR_SALE"
+                                            bookId={id}
+                                            session={session}
+                                            icon={faTag}
+                                            onRequestSale={handleOpenListingModal}
+                                        >
+                                            {tr("For sale", "En vente")}
+                                        </ChangeBookStatusButton>
+                                        <button
+                                            type="button"
+                                            className="book-action-btn"
+                                            onClick={handleOpenSaleModal}
+                                        >
+                                            <FontAwesomeIcon icon={faCoins} />
+                                            <span>{tr("Mark as sold", "Marquer comme vendu")}</span>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {bookStatus !== "SOLD" && (
+                                            <ChangeBookStatusButton
+                                                status={bookStatus}
+                                                setStatus={setBookStatus}
+                                                newStatus="FOR_SALE"
+                                                bookId={id}
+                                                session={session}
+                                                icon={faTag}
+                                                onRequestSale={handleOpenListingModal}
+                                            >
+                                                {tr("List for sale", "Mettre à vendre")}
+                                            </ChangeBookStatusButton>
+                                        )}
 
-                                {(bookStatus === "FOR_SALE" || bookStatus === "SOLD") && (
-                                    <button
-                                        type="button"
-                                        className={`book-action-btn ${bookStatus === 'SOLD' ? 'book-action-btn--active' : ''}`}
-                                        onClick={handleOpenSaleModal}
-                                    >
-                                        <FontAwesomeIcon icon={bookStatus === 'SOLD' ? faCheck : faCoins} />
-                                        <span>{bookStatus === 'SOLD' ? tr('Sold', 'Vendu') : tr('Mark as sold', 'Marquer comme vendu')}</span>
-                                    </button>
+                                        {bookStatus === "SOLD" && (
+                                            <button
+                                                type="button"
+                                                className="book-action-btn book-action-btn--active"
+                                                onClick={() => setRelistModalOpen(true)}
+                                            >
+                                                <FontAwesomeIcon icon={faCheck} />
+                                                <span>{tr("Sold", "Vendu")}</span>
+                                            </button>
+                                        )}
+                                    </>
                                 )}
 
                                 <Select
@@ -3393,6 +3453,68 @@ export default function BookPage() {
                             </button>
                         </div>
                     </form>
+                </div>
+            </Dialog>
+
+            {/* Relist Confirmation Modal */}
+            <Dialog
+                open={relistModalOpen}
+                onClose={() => !relisting && setRelistModalOpen(false)}
+                PaperProps={{
+                    style: {
+                        backgroundColor: "var(--bg-surface, #1e1e24)",
+                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                        borderRadius: "16px",
+                        maxWidth: "440px",
+                        width: "100%",
+                        padding: "24px",
+                        color: "var(--text-primary)",
+                        overflow: "visible"
+                    }
+                }}
+            >
+                <div className="tx-dialog">
+                    <div className="tx-dialog__header">
+                        <div className="tx-dialog__header-title">
+                            <FontAwesomeIcon icon={faTag} style={{ color: "var(--accent-primary)" }} />
+                            <h3>{tr("Relist for sale", "Remettre en vente")}</h3>
+                        </div>
+                        <button
+                            type="button"
+                            className="tx-dialog__header-close"
+                            onClick={() => setRelistModalOpen(false)}
+                            disabled={relisting}
+                            aria-label={tr("Close", "Fermer")}
+                        >
+                            <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                    </div>
+
+                    <p style={{ margin: "0 0 8px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
+                        {book
+                            ? tr(`Do you want to relist « ${book.title} » for sale?`, `Voulez-vous remettre « ${book.title} » en vente ?`)
+                            : tr("Do you want to relist this book for sale?", "Voulez-vous remettre ce livre en vente ?")}
+                    </p>
+
+                    <div className="tx-dialog__actions">
+                        <button
+                            type="button"
+                            className="tx-dialog__btn-cancel"
+                            onClick={() => setRelistModalOpen(false)}
+                            disabled={relisting}
+                        >
+                            {tr("Cancel", "Annuler")}
+                        </button>
+                        <button
+                            type="button"
+                            disabled={relisting}
+                            className="tx-dialog__btn-submit"
+                            onClick={handleConfirmRelist}
+                        >
+                            <FontAwesomeIcon icon={faCheck} />
+                            <span>{relisting ? tr("Relisting...", "Mise en vente...") : tr("Confirm", "Valider")}</span>
+                        </button>
+                    </div>
                 </div>
             </Dialog>
         </div>
