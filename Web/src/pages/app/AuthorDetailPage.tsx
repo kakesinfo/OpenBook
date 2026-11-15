@@ -6,6 +6,10 @@ import { useSnackbar } from "notistack";
 import AuthorDTO from "../../dto/Author.dto.ts";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import BookList from "../../components/BookList/BookList.tsx";
+import Pagination from "../../components/Pagination/Pagination.tsx";
+import PageControls from "../../components/PageControls/PageControls.tsx";
+import SearchBar from "../../components/SearchBar/SearchBar.tsx";
+import HeaderFilterTabs from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faArrowLeft,
@@ -15,8 +19,6 @@ import {
     faBook,
     faBorderAll,
     faList,
-    faMagnifyingGlass,
-    faXmark,
     faHeart
 } from "@fortawesome/free-solid-svg-icons";
 import "./AuthorDetailPage.scss";
@@ -33,6 +35,8 @@ export default function AuthorDetailPage() {
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<"all" | "owned" | "wishlisted">("all");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(24);
 
     // Fetch author data
     const fetchAuthor = async () => {
@@ -57,6 +61,10 @@ export default function AuthorDetailPage() {
     useEffect(() => {
         fetchAuthor();
     }, [id, session]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [id, searchQuery, statusFilter]);
 
     // Toggle follow
     const handleToggleFollow = async () => {
@@ -121,6 +129,24 @@ export default function AuthorDetailPage() {
             return tb - ta;
         });
     }, [author?.books, statusFilter, searchQuery]);
+
+    const totalItems = filteredBooks.length;
+    const isAll = pageSize === 0 || pageSize >= 9999;
+    const totalPages = isAll ? 1 : Math.max(1, Math.ceil(totalItems / pageSize));
+    const safePage = Math.min(currentPage, totalPages);
+    const startIndex = totalItems === 0 ? 0 : (safePage - 1) * (isAll ? totalItems : pageSize);
+    const endIndex = isAll ? totalItems : Math.min(startIndex + pageSize, totalItems);
+    const paginatedBooks = isAll ? filteredBooks : filteredBooks.slice(startIndex, endIndex);
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    const handlePageSizeChange = (newSize: number) => {
+        setPageSize(newSize);
+        setCurrentPage(1);
+    };
 
     const fullName = author
         ? `${author.firstname || ""} ${author.lastname || ""}`.trim()
@@ -206,7 +232,20 @@ export default function AuthorDetailPage() {
                         >
                             <FontAwesomeIcon icon={faArrowLeft} />
                         </button>
-                        <h2 style={{ margin: 0 }}>{fullName}</h2>
+                    </div>
+
+                    <div>
+                        <HeaderFilterTabs
+                            tabs={[
+                                { id: "all", label: tr("All", "Tous"), count: totalBooks },
+                                { id: "owned", label: tr("Owned", "Possédés"), count: ownedBooks },
+                                ...(wishlistedBooks > 0
+                                    ? [{ id: "wishlisted" as const, label: tr("Wishlist", "Souhaits"), count: wishlistedBooks }]
+                                    : [])
+                            ]}
+                            selectedId={statusFilter}
+                            onChange={setStatusFilter}
+                        />
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
@@ -265,76 +304,40 @@ export default function AuthorDetailPage() {
                 </div>
 
                 {/* Albums section header and controls */}
-                <div className="author-detail-albums-header">
-                    <div className="author-detail-albums-header__left">
-                        <h3>{tr("Books", "Albums")} ({filteredBooks.length})</h3>
-
-                        {/* Filter pills */}
-                        <div className="author-detail-albums-header__filter-pills">
+                <PageControls
+                    center={
+                        <SearchBar
+                            value={searchQuery}
+                            onChange={setSearchQuery}
+                            placeholder={tr("Filter books...", "Filtrer les albums...")}
+                            clearLabel={tr("Clear search", "Effacer la recherche")}
+                        />
+                    }
+                    right={
+                        <div className="author-detail-page__view-toggle">
                             <button
                                 type="button"
-                                className={`author-detail-filter-pill ${statusFilter === "all" ? "is-active" : ""}`}
-                                onClick={() => setStatusFilter("all")}
-                            >
-                                {tr("All", "Tous")} ({totalBooks})
-                            </button>
-                            <button
-                                type="button"
-                                className={`author-detail-filter-pill ${statusFilter === "owned" ? "is-active" : ""}`}
-                                onClick={() => setStatusFilter("owned")}
-                            >
-                                {tr("Owned", "Possédés")} ({ownedBooks})
-                            </button>
-                            {wishlistedBooks > 0 && (
-                                <button
-                                    type="button"
-                                    className={`author-detail-filter-pill ${statusFilter === "wishlisted" ? "is-active" : ""}`}
-                                    onClick={() => setStatusFilter("wishlisted")}
-                                >
-                                    {tr("Wishlist", "Souhaits")} ({wishlistedBooks})
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="author-detail-albums-header__right">
-                        <div className="author-detail-albums-header__search">
-                            <FontAwesomeIcon icon={faMagnifyingGlass} />
-                            <input
-                                type="text"
-                                placeholder={tr("Filter books...", "Filtrer les albums...")}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            {searchQuery && (
-                                <button type="button" onClick={() => setSearchQuery("")}>
-                                    <FontAwesomeIcon icon={faXmark} />
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="author-detail-albums-header__view-mode">
-                            <button
-                                type="button"
-                                className={`author-detail-albums-header__mode-btn ${viewMode === "grid" ? "is-active" : ""}`}
+                                className={`author-detail-page__view-btn ${viewMode === "grid" ? "is-active" : ""}`}
                                 onClick={() => setViewMode("grid")}
-                                title={tr("Grid view", "Affichage grille")}
-                                aria-label={tr("Grid view", "Affichage grille")}
+                                title={tr("Gallery view", "Mode Galerie")}
+                                aria-label={tr("Gallery view", "Mode Galerie")}
                             >
                                 <FontAwesomeIcon icon={faBorderAll} />
+                                <span>{tr("Gallery", "Galerie")}</span>
                             </button>
                             <button
                                 type="button"
-                                className={`author-detail-albums-header__mode-btn ${viewMode === "list" ? "is-active" : ""}`}
+                                className={`author-detail-page__view-btn ${viewMode === "list" ? "is-active" : ""}`}
                                 onClick={() => setViewMode("list")}
-                                title={tr("List view", "Affichage liste")}
-                                aria-label={tr("List view", "Affichage liste")}
+                                title={tr("Compact list view", "Mode Liste compacte")}
+                                aria-label={tr("Compact list view", "Mode Liste compacte")}
                             >
                                 <FontAwesomeIcon icon={faList} />
+                                <span>{tr("List", "Liste")}</span>
                             </button>
                         </div>
-                    </div>
-                </div>
+                    }
+                />
 
                 {/* Albums content */}
                 {filteredBooks.length === 0 ? (
@@ -351,11 +354,13 @@ export default function AuthorDetailPage() {
                                 : tr("This author does not have any books linked in the database yet.", "Cet auteur n'a pas encore d'album associé dans la base de données.")}
                         </p>
                     </div>
-                ) : viewMode === "grid" ? (
-                    <BookList books={filteredBooks} />
                 ) : (
-                    <div className="author-detail-list">
-                        {filteredBooks.map((b) => (
+                    <>
+                        {viewMode === "grid" ? (
+                            <BookList books={paginatedBooks} />
+                        ) : (
+                            <div className="author-detail-list">
+                                {paginatedBooks.map((b) => (
                             <div key={b.id} className="author-detail-list-item">
                                 <div className="author-detail-list-item__thumb">
                                     {b.coverUrl ? (
@@ -404,7 +409,21 @@ export default function AuthorDetailPage() {
                                 </div>
                             </div>
                         ))}
-                    </div>
+                            </div>
+                        )}
+                        <Pagination
+                            currentPage={safePage}
+                            totalPages={totalPages}
+                            onPageChange={handlePageChange}
+                            totalItems={totalItems}
+                            startIndex={startIndex}
+                            endIndex={endIndex}
+                            pageSize={pageSize}
+                            onPageSizeChange={handlePageSizeChange}
+                            pageSizeOptions={viewMode === "grid" ? [24, 48, 96, 0] : [25, 50, 100, 0]}
+                            itemLabel={tr("books", "albums")}
+                        />
+                    </>
                 )}
             </div>
         </div>

@@ -25,6 +25,8 @@ import Select, { type CategoryOption as MultiSelectOption, DEFAULT_APP_CATEGORIE
 import "./SeriesPage.scss";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
+import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
+import HeaderFilterTabs from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
 
 interface CategoryOption {
     id: number;
@@ -60,6 +62,7 @@ export default function SeriesPage() {
 
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [statusFilter, setStatusFilter] = useState<"all" | "ON_GOING" | "FINISHED">("all");
 
     const seriesCategoryOptions: MultiSelectOption[] = useMemo(() => {
         return categories.map((cat) => {
@@ -475,6 +478,9 @@ export default function SeriesPage() {
     // Filter displayed series
     const displayedSeries = useMemo(() => {
         return mySeries.filter((s) => {
+            if (statusFilter !== "all" && s.status !== statusFilter) {
+                return false;
+            }
             if (selectedCategories.length > 0) {
                 if (!s.category || !selectedCategories.some((cat) => cat.toLowerCase() === s.category!.toLowerCase())) {
                     return false;
@@ -488,12 +494,12 @@ export default function SeriesPage() {
             }
             return true;
         });
-    }, [mySeries, selectedCategories, searchQuery]);
+    }, [mySeries, statusFilter, selectedCategories, searchQuery]);
 
     // Reset page to 1 whenever filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [selectedCategories, searchQuery]);
+    }, [statusFilter, selectedCategories, searchQuery]);
 
     // Pagination calculations
     const totalFiltered = displayedSeries.length;
@@ -516,8 +522,22 @@ export default function SeriesPage() {
         setCurrentPage(1);
     };
 
+    const ongoingCount = mySeries.filter((s) => s.status === "ON_GOING").length;
+    const finishedCount = mySeries.filter((s) => s.status === "FINISHED").length;
+
     return (
         <div className="series-page">
+            <WrapperHeader>
+                <HeaderFilterTabs
+                    tabs={[
+                        { id: "all", label: tr("All", "Toutes"), count: mySeries.length },
+                        { id: "ON_GOING", label: tr("Ongoing", "En cours"), count: ongoingCount },
+                        { id: "FINISHED", label: tr("Completed", "Terminées"), count: finishedCount }
+                    ]}
+                    selectedId={statusFilter}
+                    onChange={setStatusFilter}
+                />
+            </WrapperHeader>
             <div className="series-page__content">
                 {/* Controls: Scope tabs, Search, Categories */}
                 <PageControls

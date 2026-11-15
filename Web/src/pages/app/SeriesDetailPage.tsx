@@ -7,6 +7,10 @@ import SeriesDTO, { getSeriesStatusLabel } from "../../dto/Series.dto.ts";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import BookList from "../../components/BookList/BookList.tsx";
+import Pagination from "../../components/Pagination/Pagination.tsx";
+import PageControls from "../../components/PageControls/PageControls.tsx";
+import SearchBar from "../../components/SearchBar/SearchBar.tsx";
+import HeaderFilterTabs from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
 import { Dialog } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -52,6 +56,9 @@ export default function SeriesDetailPage() {
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<"all" | "owned" | "wishlisted">("all");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(24);
 
     // Edit Series Dialog
     const [categories, setCategories] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
@@ -94,6 +101,10 @@ export default function SeriesDetailPage() {
     useEffect(() => {
         fetchSeries();
     }, [id, session]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [id, searchQuery, statusFilter]);
 
     // Fetch categories for edit dialog
     useEffect(() => {
@@ -338,14 +349,46 @@ export default function SeriesDetailPage() {
     // Filtered books
     const filteredBooks = useMemo(() => {
         if (!series?.books) return [];
-        if (!searchQuery.trim()) return series.books;
-        const q = searchQuery.toLowerCase().trim();
-        return series.books.filter((b) =>
-            b.title.toLowerCase().includes(q) ||
-            (b.author && b.author.toLowerCase().includes(q)) ||
-            (b.volume && String(b.volume).includes(q))
-        );
-    }, [series?.books, searchQuery]);
+        let list = series.books;
+        if (statusFilter === "owned") {
+            list = list.filter((b) => b.status === "OWNED");
+        } else if (statusFilter === "wishlisted") {
+            list = list.filter((b) => b.status === "WISHLISTED");
+        }
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase().trim();
+            list = list.filter((b) =>
+                b.title.toLowerCase().includes(q) ||
+                (b.author && b.author.toLowerCase().includes(q)) ||
+                (b.volume && String(b.volume).includes(q))
+            );
+        }
+        // Sort by volume number descending, books without a volume number at the end
+        return [...list].sort((a, b) => {
+            const va = a.volume ?? Number.MIN_SAFE_INTEGER;
+            const vb = b.volume ?? Number.MIN_SAFE_INTEGER;
+            if (va !== vb) return vb - va;
+            return a.title.localeCompare(b.title);
+        });
+    }, [series?.books, statusFilter, searchQuery]);
+
+    const totalItems = filteredBooks.length;
+    const isAll = pageSize === 0 || pageSize >= 9999;
+    const totalPages = isAll ? 1 : Math.max(1, Math.ceil(totalItems / pageSize));
+    const safePage = Math.min(currentPage, totalPages);
+    const startIndex = totalItems === 0 ? 0 : (safePage - 1) * (isAll ? totalItems : pageSize);
+    const endIndex = isAll ? totalItems : Math.min(startIndex + pageSize, totalItems);
+    const paginatedBooks = isAll ? filteredBooks : filteredBooks.slice(startIndex, endIndex);
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    const handlePageSizeChange = (newSize: number) => {
+        setPageSize(newSize);
+        setCurrentPage(1);
+    };
 
     if (loading) {
         return (
@@ -403,6 +446,7 @@ export default function SeriesDetailPage() {
 
     const ownedCount = series.ownedCount || 0;
     const totalCount = series.books?.length || 0;
+    const wishlistedCount = (series.books || []).filter((b) => b.status === "WISHLISTED").length;
     const progressPercent = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
 
     return (
@@ -419,7 +463,20 @@ export default function SeriesDetailPage() {
                         >
                             <FontAwesomeIcon icon={faArrowLeft} />
                         </button>
-                        <h2 style={{ margin: 0 }}>{series.name}</h2>
+                    </div>
+
+                    <div>
+                        <HeaderFilterTabs
+                            tabs={[
+                                { id: "all", label: tr("All", "Tous"), count: totalCount },
+                                { id: "owned", label: tr("Owned", "Possédés"), count: ownedCount },
+                                ...(wishlistedCount > 0
+                                    ? [{ id: "wishlisted" as const, label: tr("Wishlist", "Souhaits"), count: wishlistedCount }]
+                                    : [])
+                            ]}
+                            selectedId={statusFilter}
+                            onChange={setStatusFilter}
+                        />
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
@@ -517,49 +574,40 @@ export default function SeriesDetailPage() {
                 </div>
 
                 {/* Albums section header and controls */}
-                <div className="series-detail-albums-header">
-                    <div className="series-detail-albums-header__left">
-                        <h3>{tr("Books", "Albums")} ({filteredBooks.length})</h3>
-                    </div>
-
-                    <div className="series-detail-albums-header__right">
-                        <div className="series-detail-albums-header__search">
-                            <FontAwesomeIcon icon={faMagnifyingGlass} />
-                            <input
-                                type="text"
-                                placeholder={tr("Filter books...", "Filtrer les albums...")}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                            {searchQuery && (
-                                <button type="button" onClick={() => setSearchQuery("")}>
-                                    <FontAwesomeIcon icon={faXmark} />
-                                </button>
-                            )}
-                        </div>
-
-                        <div className="series-detail-albums-header__view-mode">
+                <PageControls
+                    center={
+                        <SearchBar
+                            value={searchQuery}
+                            onChange={setSearchQuery}
+                            placeholder={tr("Filter books...", "Filtrer les albums...")}
+                            clearLabel={tr("Clear search", "Effacer la recherche")}
+                        />
+                    }
+                    right={
+                        <div className="series-detail-page__view-toggle">
                             <button
                                 type="button"
-                                className={`series-detail-albums-header__mode-btn ${viewMode === "grid" ? "is-active" : ""}`}
+                                className={`series-detail-page__view-btn ${viewMode === "grid" ? "is-active" : ""}`}
                                 onClick={() => setViewMode("grid")}
-                                title={tr("Grid view", "Affichage grille")}
-                                aria-label={tr("Grid view", "Affichage grille")}
+                                title={tr("Gallery view", "Mode Galerie")}
+                                aria-label={tr("Gallery view", "Mode Galerie")}
                             >
                                 <FontAwesomeIcon icon={faBorderAll} />
+                                <span>{tr("Gallery", "Galerie")}</span>
                             </button>
                             <button
                                 type="button"
-                                className={`series-detail-albums-header__mode-btn ${viewMode === "list" ? "is-active" : ""}`}
+                                className={`series-detail-page__view-btn ${viewMode === "list" ? "is-active" : ""}`}
                                 onClick={() => setViewMode("list")}
-                                title={tr("List view", "Affichage liste")}
-                                aria-label={tr("List view", "Affichage liste")}
+                                title={tr("Compact list view", "Mode Liste compacte")}
+                                aria-label={tr("Compact list view", "Mode Liste compacte")}
                             >
                                 <FontAwesomeIcon icon={faList} />
+                                <span>{tr("List", "Liste")}</span>
                             </button>
                         </div>
-                    </div>
-                </div>
+                    }
+                />
 
                 {/* Albums content */}
                 {filteredBooks.length === 0 ? (
@@ -586,11 +634,13 @@ export default function SeriesDetailPage() {
                             </button>
                         )}
                     </div>
-                ) : viewMode === "grid" ? (
-                    <BookList books={filteredBooks} />
                 ) : (
-                    <div className="series-detail-list">
-                        {filteredBooks.map((b) => (
+                    <>
+                        {viewMode === "grid" ? (
+                            <BookList books={paginatedBooks} />
+                        ) : (
+                            <div className="series-detail-list">
+                                {paginatedBooks.map((b) => (
                             <div key={b.id} className="series-detail-list-item">
                                 <button
                                     type="button"
@@ -647,7 +697,21 @@ export default function SeriesDetailPage() {
                                 </button>
                             </div>
                         ))}
-                    </div>
+                            </div>
+                        )}
+                        <Pagination
+                            currentPage={safePage}
+                            totalPages={totalPages}
+                            onPageChange={handlePageChange}
+                            totalItems={totalItems}
+                            startIndex={startIndex}
+                            endIndex={endIndex}
+                            pageSize={pageSize}
+                            onPageSizeChange={handlePageSizeChange}
+                            pageSizeOptions={viewMode === "grid" ? [24, 48, 96, 0] : [25, 50, 100, 0]}
+                            itemLabel={tr("books", "albums")}
+                        />
+                    </>
                 )}
             </div>
 
