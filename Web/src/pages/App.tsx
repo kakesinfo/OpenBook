@@ -27,9 +27,7 @@ import {
     faUsers,
     faSliders,
     faClipboardList,
-    faUserPen,
-    faNoteSticky,
-    faSpellCheck
+    faUserPen
 } from '@fortawesome/free-solid-svg-icons';
 import { useState } from "react";
 import useSession from "../hooks/UseSession.tsx";
@@ -139,8 +137,6 @@ export default function App() {
                         </WrapperSubGroup>
                         <WrapperButton to={'/app/wishlist'} icon={faHeart}>{t("nav.wishlist")}</WrapperButton>
                         <WrapperButton to={'/app/planning'} icon={faCalendarDays}>{t("nav.planning")}</WrapperButton>
-                        <WrapperButton to={'/app/notes'} icon={faNoteSticky}>{t("nav.notes")}</WrapperButton>
-                        <WrapperButton to={'/app/glossary'} icon={faSpellCheck} activeRoutes={['/app/glossaire']}>{t("nav.glossary")}</WrapperButton>
                         <WrapperButton to={'/app/statistics'} icon={faChartPie}>{t("nav.statistics")}</WrapperButton>
                     </>
                 ) : (

@@ -80,48 +80,50 @@ export default function ReadingStreakWidget({
                     <div className={`home-streak-widget__icon ${streak > 0 ? "is-active" : ""}`}>
                         <FontAwesomeIcon icon={faFire} />
                     </div>
-                    <div>
-                        <h3 className="home-widget__title">
-                            {tr("Reading streak", "Série de lecture")}
-                        </h3>
-                        <span className={`home-streak-widget__count ${streak > 0 ? "is-active" : ""}`}>
-                            {loading ? tr("Calculating...", "Calcul...") : streakLabel}
-                        </span>
+                    <div className="home-streak-widget__text">
+                        <div className="home-streak-widget__title-row">
+                            <h3 className="home-streak-widget__title">
+                                {tr("Reading streak", "Série de lecture")}
+                            </h3>
+                            <span className={`home-streak-widget__count ${streak > 0 ? "is-active" : ""}`}>
+                                {loading ? tr("Calculating...", "Calcul...") : streakLabel}
+                            </span>
+                        </div>
+                        {!loading && weekSessions > 0 && (
+                            <span className="home-streak-widget__week-summary">
+                                {tr("This week:", "Cette semaine :")} {formatDurationSeconds(weekSeconds)}
+                            </span>
+                        )}
                     </div>
-                </div>
-                <div className="home-streak-widget__meta">
-                    {!loading && weekSessions > 0 && (
-                        <span className="home-streak-widget__week-summary">
-                            {tr("This week:", "Cette semaine :")} {formatDurationSeconds(weekSeconds)}
-                        </span>
-                    )}
-                    {onOpenCalendar && (
-                        <FontAwesomeIcon icon={faChevronRight} className="home-streak-widget__chevron" />
-                    )}
                 </div>
             </div>
 
-            <div className="home-streak-widget__week">
-                {dayLabels.map((label, idx) => {
-                    const hasRead = activeDayIndices.has(idx);
-                    const isToday = idx === todayIndex;
-                    return (
-                        <div key={idx} className="home-streak-widget__day">
-                            <span className={`home-streak-widget__day-label ${isToday ? "is-today" : ""}`}>
-                                {label}
-                            </span>
-                            <div
-                                className={`home-streak-widget__day-circle ${hasRead ? "is-active" : ""} ${isToday ? "is-today" : ""}`}
-                            >
-                                {hasRead ? (
-                                    <FontAwesomeIcon icon={faFire} />
-                                ) : (
-                                    <span className="home-streak-widget__day-dot" />
-                                )}
+            <div className="home-streak-widget__right">
+                <div className="home-streak-widget__week">
+                    {dayLabels.map((label, idx) => {
+                        const hasRead = activeDayIndices.has(idx);
+                        const isToday = idx === todayIndex;
+                        return (
+                            <div key={idx} className="home-streak-widget__day">
+                                <span className={`home-streak-widget__day-label ${isToday ? "is-today" : ""}`}>
+                                    {label}
+                                </span>
+                                <div
+                                    className={`home-streak-widget__day-circle ${hasRead ? "is-active" : ""} ${isToday ? "is-today" : ""}`}
+                                >
+                                    {hasRead ? (
+                                        <FontAwesomeIcon icon={faFire} />
+                                    ) : (
+                                        <span className="home-streak-widget__day-dot" />
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
+                {onOpenCalendar && (
+                    <FontAwesomeIcon icon={faChevronRight} className="home-streak-widget__chevron" />
+                )}
             </div>
         </div>
     );
