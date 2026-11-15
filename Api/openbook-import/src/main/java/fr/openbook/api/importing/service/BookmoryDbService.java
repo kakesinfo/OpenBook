@@ -22,6 +22,8 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -524,10 +526,12 @@ public class BookmoryDbService {
             return false;
         }
 
+        LocalDateTime utcSessionTime = LocalDateTime.ofInstant(sessionTime, ZoneOffset.UTC);
+
         try {
             Long existingId = jdbcTemplate.queryForObject(
                     "SELECT id FROM reading_session WHERE user_id = ? AND book_id = ? AND session_type = ? AND created_at = ? LIMIT 1",
-                    Long.class, userId, bookId, sessionType, Timestamp.from(sessionTime)
+                    Long.class, userId, bookId, sessionType, utcSessionTime
             );
             if (existingId != null) {
                 jdbcTemplate.update(
@@ -542,7 +546,7 @@ public class BookmoryDbService {
             jdbcTemplate.update(
                     "INSERT INTO reading_session (user_id, book_id, current_page, minutes_read, seconds_read, session_type, created_at) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    userId, bookId, Math.max(0, page), Math.max(0, minutesRead), Math.max(0, secondsRead), sessionType, Timestamp.from(sessionTime)
+                    userId, bookId, Math.max(0, page), Math.max(0, minutesRead), Math.max(0, secondsRead), sessionType, utcSessionTime
             );
             return true;
         } catch (Exception ex) {
