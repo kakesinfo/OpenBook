@@ -1,110 +1,190 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+    faBook,
+    faBookOpen,
+    faBookmark,
+    faHeart,
+    faCalendarDays,
+    faChevronRight
+} from "@fortawesome/free-solid-svg-icons";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
-import { useEffect, useState } from "react";
+import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
+import ReadingSessionDTO from "../../dto/ReadingSession.dto.ts";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
-import BookList from "../../components/BookList/BookList.tsx";
-import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
-import { faSliders } from "@fortawesome/free-solid-svg-icons";
-import Pagination from "../../components/Pagination/Pagination.tsx";
-import Select from "../../components/Select/Select.tsx";
+import ReadingStreakWidget from "../../components/HomeWidgets/ReadingStreakWidget.tsx";
 
 import "./HomePage.scss";
 
 export default function HomePage() {
     const session = useSession();
     const { tr } = useLanguage();
-    const [books, setBooks] = useState<BookSummaryDTO[]>([]);
-    const [order, setOrder] = useState<"oldest" | "newest">("newest");
-    const [loading, setLoading] = useState(true);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(20);
-    const [totalBooks, setTotalBooks] = useState(0);
-    const [totalPages, setTotalPages] = useState(1);
+
+    const [collectionBooks, setCollectionBooks] = useState<BookSummaryDTO[]>([]);
+    const [wishlistCount, setWishlistCount] = useState<number>(0);
+    const [readingSessions, setReadingSessions] = useState<ReadingSessionDTO[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
 
     useEffect(() => {
+        let cancelled = false;
         setLoading(true);
-        session.customFetch(`/books/${order}?page=${currentPage}&size=${pageSize}&limit=100`, {
-            method: "GET"
-        }).then(async (response) => {
-            if (response.ok) {
-                const data = await response.json();
-                if (data && Array.isArray(data.content)) {
-                    setBooks(data.content);
-                    setTotalBooks(data.totalElements ?? 0);
-                    setTotalPages(data.totalPages ?? 1);
-                } else if (Array.isArray(data)) {
-                    const capped = data.slice(0, 100);
-                    setBooks(capped.slice((currentPage - 1) * pageSize, currentPage * pageSize));
-                    setTotalBooks(capped.length);
-                    setTotalPages(Math.max(1, Math.ceil(capped.length / pageSize)));
-                }
+
+        Promise.all([
+            session.customFetch("/user/collection", { method: "GET" })
+                .then(async (res) => (res.ok ? await res.json() : []))
+                .catch(() => []),
+            session.customFetch("/user/wishlist", { method: "GET" })
+                .then(async (res) => (res.ok ? await res.json() : []))
+                .catch(() => []),
+            session.customFetch("/user/readingSessions", { method: "GET" })
+                .then(async (res) => (res.ok ? await res.json() : []))
+                .catch(() => [])
+        ])
+            .then(([colData, wishData, sessionsData]) => {
+                if (cancelled) return;
+                const booksList: BookSummaryDTO[] = Array.isArray(colData)
+                    ? colData
+                    : Array.isArray(colData?.content)
+                        ? colData.content
+                        : [];
+                setCollectionBooks(booksList);
+                setWishlistCount(Array.isArray(wishData) ? wishData.length : 0);
+                setReadingSessions(Array.isArray(sessionsData) ? sessionsData : []);
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [session]);
+
+    const { readingBooks, unreadBooks, readBooksCount } = useMemo(() => {
+        const reading: BookSummaryDTO[] = [];
+        const unread: BookSummaryDTO[] = [];
+        let readCount = 0;
+
+        for (const book of collectionBooks) {
+            const status = (book.readingStatus || "UNREAD").toUpperCase();
+            if (status === "READING") {
+                reading.push(book);
+            } else if (status === "UNREAD") {
+                unread.push(book);
+            } else if (status === "READ") {
+                readCount++;
             }
-        }).catch((err) => {
-            console.error("HomePage fetch error:", err);
-        }).finally(() => {
-            setLoading(false);
-        });
-    }, [order, currentPage, pageSize, session]);
+        }
 
-    const handleOrderChange = (newOrder: "oldest" | "newest") => {
-        setOrder(newOrder);
-        setCurrentPage(1);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    };
-
-    const handlePageChange = (page: number) => {
-        setCurrentPage(page);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    };
-
-    const handlePageSizeChange = (newSize: number) => {
-        setPageSize(newSize);
-        setCurrentPage(1);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    };
-
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = Math.min(startIndex + books.length, totalBooks);
+        return {
+            readingBooks: reading,
+            unreadBooks: unread,
+            readBooksCount: readCount
+        };
+    }, [collectionBooks]);
 
     return (
-        <div className="newbooks-wrapper">
+        <div className="home-dashboard">
             <WrapperHeader>
-                <h2>{tr("New Releases", "Nouveautés")}</h2>
-                <Select
-                    multiple={false}
-                    className="newbooks-order-select"
-                    icon={faSliders}
-                    placeholder={tr("Sort by", "Trier par")}
-                    value={order}
-                    onChange={(val) => handleOrderChange(val as "oldest" | "newest")}
-                    options={[
-                        { id: "newest", label: tr("Newest first", "Les plus récentes") },
-                        { id: "oldest", label: tr("Oldest first", "Les plus anciennes") }
-                    ]}
-                />
+                <div className="home-dashboard__header-title">
+                    <h2>{tr("Home", "Accueil")}</h2>
+                    <span className="home-dashboard__header-subtitle">
+                        {tr("Readings & Progress", "Lectures & Progression")}
+                    </span>
+                </div>
             </WrapperHeader>
 
-            <div className="newbooks-body">
-                {loading ? (
-                    <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-muted)" }}>
-                        {tr("Loading new releases...", "Chargement des nouveautés...")}
+            <div className="home-dashboard__body">
+                {/* 1. Stat Cards Strip */}
+                <section className="home-stats-strip" aria-label={tr("Summary", "Résumé")}>
+                    <Link to="/app/collection" className="home-stat-card home-stat-card--primary">
+                        <div className="home-stat-card__icon">
+                            <FontAwesomeIcon icon={faBook} />
+                        </div>
+                        <div className="home-stat-card__content">
+                            <span className="home-stat-card__value">
+                                {loading ? "—" : collectionBooks.length}
+                            </span>
+                            <span className="home-stat-card__label">
+                                {tr("Collection", "Collection")}
+                            </span>
+                        </div>
+                    </Link>
+
+                    <Link to="/app/collection" className="home-stat-card home-stat-card--secondary">
+                        <div className="home-stat-card__icon">
+                            <FontAwesomeIcon icon={faBookmark} />
+                        </div>
+                        <div className="home-stat-card__content">
+                            <span className="home-stat-card__value">
+                                {loading ? "—" : unreadBooks.length}
+                            </span>
+                            <span className="home-stat-card__label">
+                                {tr("To Read", "PAL")}
+                            </span>
+                        </div>
+                    </Link>
+
+                    <div className="home-stat-card home-stat-card--amber">
+                        <div className="home-stat-card__icon">
+                            <FontAwesomeIcon icon={faBookOpen} />
+                        </div>
+                        <div className="home-stat-card__content">
+                            <span className="home-stat-card__value">
+                                {loading ? "—" : readingBooks.length}
+                            </span>
+                            <span className="home-stat-card__label">
+                                {tr("Reading", "En cours")}
+                            </span>
+                        </div>
                     </div>
-                ) : (
-                    <>
-                        <BookList books={books} />
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={totalPages}
-                            onPageChange={handlePageChange}
-                            totalItems={totalBooks}
-                            startIndex={startIndex}
-                            endIndex={endIndex}
-                            pageSize={pageSize}
-                            onPageSizeChange={handlePageSizeChange}
-                            pageSizeOptions={[20, 50, 100]}
+
+                    <Link to="/app/wishlist" className="home-stat-card home-stat-card--rose">
+                        <div className="home-stat-card__icon">
+                            <FontAwesomeIcon icon={faHeart} />
+                        </div>
+                        <div className="home-stat-card__content">
+                            <span className="home-stat-card__value">
+                                {loading ? "—" : wishlistCount}
+                            </span>
+                            <span className="home-stat-card__label">
+                                {tr("Wishlist", "Souhaits")}
+                            </span>
+                        </div>
+                    </Link>
+                </section>
+
+                {/* 2. Série de lecture & Historique de lecture côte à côte */}
+                <section className="home-section">
+                    <div className="home-streak-history-row">
+                        <ReadingStreakWidget
+                            sessions={readingSessions}
+                            loading={loading}
                         />
-                    </>
-                )}
+
+                        <Link to="/app/reading-history" className="home-widget home-quick-nav-card">
+                            <div className="home-quick-nav-card__left">
+                                <div className="home-quick-nav-card__icon">
+                                    <FontAwesomeIcon icon={faCalendarDays} />
+                                </div>
+                                <div className="home-quick-nav-card__text">
+                                    <h3>{tr("Reading history", "Historique de lecture")}</h3>
+                                    <p>
+                                        {loading
+                                            ? tr("Loading...", "Chargement...")
+                                            : tr(
+                                                `${readBooksCount} books read • Browse covers by year`,
+                                                `${readBooksCount} livres lus • Consulter les couvertures par année`
+                                            )}
+                                    </p>
+                                </div>
+                            </div>
+                            <FontAwesomeIcon icon={faChevronRight} className="home-quick-nav-card__arrow" />
+                        </Link>
+                    </div>
+                </section>
             </div>
         </div>
     );

@@ -33,9 +33,15 @@ interface BookListProps {
     books: BookSummaryDTO[];
     onBookStatusChange?: (bookId: string, newStatus: string | null) => void;
     showReleaseDate?: boolean;
+    showFinishedDate?: boolean;
 }
 
-export default function BookList({ books, onBookStatusChange, showReleaseDate = false }: BookListProps) {
+export default function BookList({
+    books,
+    onBookStatusChange,
+    showReleaseDate = false,
+    showFinishedDate = false
+}: BookListProps) {
     const session = useSession();
     const { tr } = useLanguage();
     const { enqueueSnackbar } = useSnackbar();
@@ -135,6 +141,7 @@ export default function BookList({ books, onBookStatusChange, showReleaseDate = 
                         statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" }, tr)}
                         badgeText={book.volume > 0 ? `Vol. ${book.volume}` : tr("One-shot", "Unique")}
                         showReleaseDate={showReleaseDate}
+                        showFinishedDate={showFinishedDate}
                         actions={
                             <>
                                 <button

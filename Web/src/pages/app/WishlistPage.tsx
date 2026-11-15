@@ -82,7 +82,7 @@ export default function WishlistPage() {
                             {tr("Find here all the books you would like to acquire or read later.", "Retrouvez ici tous les ouvrages que vous aimeriez acquérir ou lire plus tard.")}
                         </p>
                         <Link
-                            to="/app/home"
+                            to="/app/news"
                             style={{
                                 display: "inline-flex",
                                 alignItems: "center",

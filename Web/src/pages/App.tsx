@@ -9,6 +9,7 @@ import {
     WrapperSubButton
 } from "../components/Wrapper/Wrapper.tsx";
 import {
+    faHouse,
     faNewspaper,
     faBook,
     faBookOpen,
@@ -128,7 +129,8 @@ export default function App() {
                 {!session.isAdmin ? (
                     <>
                         <WrapperAction icon={faMagnifyingGlass} callback={handleOpen}>{t("nav.search")}</WrapperAction>
-                        <WrapperButton to={'/app/home'} icon={faNewspaper}>{t("nav.news")}</WrapperButton>
+                        <WrapperButton to={'/app/home'} icon={faHouse}>{t("nav.home")}</WrapperButton>
+                        <WrapperButton to={'/app/news'} icon={faNewspaper}>{t("nav.news")}</WrapperButton>
                         <WrapperButton to={'/app/collection'} icon={faBook} activeRoutes={['/app/series', '/app/collection/series', '/app/sales', '/app/ventes']}>{t("nav.library")}</WrapperButton>
                         <WrapperSubGroup>
                             <WrapperSubButton to={'/app/collection'} icon={faBookOpen}>{t("nav.myBooks")}</WrapperSubButton>

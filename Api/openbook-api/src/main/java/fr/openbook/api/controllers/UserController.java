@@ -448,6 +448,13 @@ public class UserController {
                 });
 
         entity.setStatus(readingStatus.name());
+        if (readingStatus == BookReadingStatus.READ) {
+            if (entity.getFinishedAt() == null) {
+                entity.setFinishedAt(Instant.now());
+            }
+        } else {
+            entity.setFinishedAt(null);
+        }
         return BookStatusDTO.from(repositoryService.getBookStatusRepository().saveAndFlush(entity));
     }
 
@@ -628,10 +635,16 @@ public class UserController {
             return ResponseEntity.ok(new CollectionPageDTO(Collections.emptyList(), 0L, 1, 1, size != null ? size : 24, emptyCounts, 0L));
         }
 
-        Map<Long, String> readingStatusMap = repositoryService.getBookStatusRepository()
-                .findAllByUserIdWithBook(user.getId()).stream()
+        List<BookStatusEntity> bookStatusEntities = repositoryService.getBookStatusRepository()
+                .findAllByUserIdWithBook(user.getId());
+
+        Map<Long, String> readingStatusMap = bookStatusEntities.stream()
                 .filter(bse -> bse.getBook() != null)
                 .collect(Collectors.toMap(bse -> bse.getBook().getId(), BookStatusEntity::getStatus, (s1, s2) -> s1));
+
+        Map<Long, Long> readingFinishedAtMap = bookStatusEntities.stream()
+                .filter(bse -> bse.getBook() != null && bse.getFinishedAt() != null)
+                .collect(Collectors.toMap(bse -> bse.getBook().getId(), bse -> bse.getFinishedAt().toEpochMilli(), (s1, s2) -> s1));
 
         // If page is not specified, preserve legacy behavior (return all items as List<BookSummaryDTO>)
         if (page == null) {
@@ -658,6 +671,7 @@ public class UserController {
                         BookSummaryDTO dto = entityToSummaryDTO(book, authorsByBookId.get(book.getId()));
                         dto.setStatus(entity.getStatus());
                         dto.setReadingStatus(readingStatusMap.getOrDefault(book.getId(), "UNREAD"));
+                        dto.setFinishedAt(readingFinishedAtMap.get(book.getId()));
                         return dto;
                     })
                     .toList();
@@ -794,10 +808,16 @@ public class UserController {
                         )
                 ));
 
-        Map<Long, String> readingStatusMap = repositoryService.getBookStatusRepository()
-                .findAllByUserIdWithBook(user.getId()).stream()
+        List<BookStatusEntity> bookStatusEntities = repositoryService.getBookStatusRepository()
+                .findAllByUserIdWithBook(user.getId());
+
+        Map<Long, String> readingStatusMap = bookStatusEntities.stream()
                 .filter(bse -> bse.getBook() != null)
                 .collect(Collectors.toMap(bse -> bse.getBook().getId(), BookStatusEntity::getStatus, (s1, s2) -> s1));
+
+        Map<Long, Long> readingFinishedAtMap = bookStatusEntities.stream()
+                .filter(bse -> bse.getBook() != null && bse.getFinishedAt() != null)
+                .collect(Collectors.toMap(bse -> bse.getBook().getId(), bse -> bse.getFinishedAt().toEpochMilli(), (s1, s2) -> s1));
 
         Map<Long, UserSeriesSummaryDTO> seriesMap = new LinkedHashMap<>();
 

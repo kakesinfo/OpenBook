@@ -12,6 +12,8 @@ import useSession from "./hooks/UseSession.tsx";
 import App from "./pages/App.tsx";
 import BookPage from "./pages/app/BookPage.tsx";
 import HomePage from "./pages/app/HomePage.tsx";
+import NewsPage from "./pages/app/NewsPage.tsx";
+import ReadingHistoryPage from "./pages/app/ReadingHistoryPage.tsx";
 import CollectionPage from "./pages/app/CollectionPage.tsx";
 import SalesPage from "./pages/app/SalesPage.tsx";
 import SeriesPage from "./pages/app/SeriesPage.tsx";
@@ -160,6 +162,8 @@ export default function Routing() {
 
                 {/* Routes Utilisateur (bibliothèque, lecture, etc.) - non accessibles par l'admin */}
                 <Route path="home" element={<UserOnlyRoute><HomePage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="reading-history" element={<UserOnlyRoute><ReadingHistoryPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="news" element={<UserOnlyRoute><NewsPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="collection" element={<UserOnlyRoute><CollectionPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="sales" element={<UserOnlyRoute><SalesPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="ventes" element={<UserOnlyRoute><SalesPage key={location.pathname}/></UserOnlyRoute>} />

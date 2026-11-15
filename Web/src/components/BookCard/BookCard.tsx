@@ -13,6 +13,7 @@ interface BookCardProps {
     statusBadge?: ReactNode;
     badgeText?: string;
     showReleaseDate?: boolean;
+    showFinishedDate?: boolean;
     className?: string;
 }
 
@@ -27,16 +28,29 @@ function formatReleaseDate(dateStr: string | undefined, locale: string): string 
     });
 }
 
+function formatFinishedDate(finishedAt: number | null | undefined, locale: string): string | null {
+    if (!finishedAt) return null;
+    const date = new Date(finishedAt);
+    if (isNaN(date.getTime())) return null;
+    return date.toLocaleDateString(locale, {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+    });
+}
+
 export default function BookCard({
     book,
     actions,
     statusBadge,
     badgeText,
     showReleaseDate = false,
+    showFinishedDate = false,
     className = ""
 }: BookCardProps) {
     const { locale, tr } = useLanguage();
     const releaseDate = showReleaseDate ? formatReleaseDate(book.releaseDate, locale) : null;
+    const finishedDate = showFinishedDate ? formatFinishedDate(book.finishedAt, locale) : null;
 
     return (
         <div className={`book-card ${className}`.trim()}>
@@ -67,6 +81,12 @@ export default function BookCard({
                     <span className="book-card__release-date">
                         <FontAwesomeIcon icon={faCalendarDays} />
                         <span>{releaseDate}</span>
+                    </span>
+                )}
+                {finishedDate && (
+                    <span className="book-card__release-date" title={tr("Finished on", "Terminé le")}>
+                        <FontAwesomeIcon icon={faCalendarDays} />
+                        <span>{finishedDate}</span>
                     </span>
                 )}
             </div>

@@ -25,6 +25,7 @@ public class BookSummaryDTO {
     private Integer pageCount;
     private String status;
     private String readingStatus;
+    private Long finishedAt;
 
     public String getCoverUrl() {
         return MediaUrlUtils.formatCoverUrl(this.coverUrl);
