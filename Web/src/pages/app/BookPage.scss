@@ -2212,7 +2212,7 @@
     z-index: 60;
     max-height: 210px;
     overflow-y: auto;
-    background: var(--bg-card);
+    background: var(--bg-surface-elevated, var(--bg-surface));
     border: 1px solid var(--border-subtle);
     border-radius: 8px;
     box-shadow: var(--shadow-lg);

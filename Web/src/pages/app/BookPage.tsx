@@ -57,7 +57,7 @@ import {
 import { Dialog } from "@mui/material";
 
 import "./BookPage.scss";
-import Select from "../../components/Select/Select.tsx";
+import Select, { DEFAULT_APP_CATEGORIES } from "../../components/Select/Select.tsx";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import { detectEditionBadge } from "../../utils/editionBadge.ts";
 
@@ -75,19 +75,7 @@ interface MetadataNamedOption {
     name: string;
 }
 
-const DEFAULT_BOOK_TYPES = [
-    "Bande dessinée",
-    "Broché",
-    "Cartonné",
-    "Comics",
-    "E-book",
-    "Intégrale",
-    "Manga",
-    "Poche",
-    "Roman",
-    "Roman Graphique",
-    "Souple"
-];
+const DEFAULT_BOOK_TYPES = DEFAULT_APP_CATEGORIES.map((c) => c.label);
 
 function formatDimensions(length?: number, height?: number, thickness?: number): string | null {
     if (!length && !height && !thickness) return null;
@@ -925,12 +913,20 @@ export default function BookPage() {
         setEditModalOpen(true);
 
         try {
-            const res = await session.customFetch("/books/metadata-options", { method: "GET" });
+            const [res, catRes] = await Promise.all([
+                session.customFetch("/books/metadata-options", { method: "GET" }),
+                session.customFetch("/series/categories", { method: "GET" }),
+            ]);
             if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data.editors)) setEditorOptions(data.editors);
                 if (Array.isArray(data.collections)) setCollectionOptions(data.collections);
-                if (Array.isArray(data.types) && data.types.length > 0) setTypeOptions(data.types);
+            }
+            if (catRes.ok) {
+                const cats = await catRes.json();
+                if (Array.isArray(cats) && cats.length > 0) {
+                    setTypeOptions(cats.map((c: { name: string }) => c.name));
+                }
             }
         } catch (err) {
             console.error("Error loading metadata options:", err);
@@ -2237,13 +2233,13 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faBookBookmark} />
-                                    <span>{tr("Format / Type", "Format / Type")}</span>
+                                    <span>{tr("Category", "Catégorie")}</span>
                                 </label>
                                 <SearchableSelect
                                     value={editType}
                                     onChange={setEditType}
                                     options={typeOptions}
-                                    placeholder={tr("Search or choose a format...", "Rechercher ou choisir un format...")}
+                                    placeholder={tr("Search or choose a category...", "Rechercher ou choisir une catégorie...")}
                                     openDirection="up"
                                 />
                             </div>
