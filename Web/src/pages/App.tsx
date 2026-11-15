@@ -176,7 +176,7 @@ export default function App() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <FontAwesomeIcon icon={faMagnifyingGlass} style={{ color: "var(--accent-primary)" }} />
-                            <h3 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{t("nav.search")}</h3>
+                            <h3 style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{t("nav.searchDialog")}</h3>
                         </div>
                         <button
                             type="button"

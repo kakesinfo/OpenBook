@@ -28,7 +28,6 @@ export function WrapperAction({ children, icon, callback }: {
     icon: IconDefinition;
     callback?: () => void;
 }) {
-    const { t } = useLanguage();
     return (
         <button
             onClick={callback}
@@ -39,7 +38,6 @@ export function WrapperAction({ children, icon, callback }: {
                 <FontAwesomeIcon icon={icon} />
             </span>
             <span className="wrapper-navigation__text">{children}</span>
-            <span className="wrapper-navigation__shortcut">{t("nav.searchShortcut")}</span>
         </button>
     );
 }

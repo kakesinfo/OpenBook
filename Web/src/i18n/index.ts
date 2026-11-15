@@ -92,8 +92,8 @@ export function translateCategoryName(name?: string | null, lang: LanguageId = c
 
 export const translations: Record<LanguageId, Record<string, string>> = {
     en: {
-        "nav.search": "Search",
-        "nav.searchShortcut": "Search",
+        "nav.search": "Search in DB",
+        "nav.searchDialog": "Search in database",
         "nav.news": "New Releases",
         "nav.library": "Library",
         "nav.myBooks": "My Books",
@@ -125,8 +125,8 @@ export const translations: Record<LanguageId, Record<string, string>> = {
         "logout.error": "An error occurred while logging out"
     },
     fr: {
-        "nav.search": "Recherche",
-        "nav.searchShortcut": "Rechercher",
+        "nav.search": "Rechercher en BDD",
+        "nav.searchDialog": "Rechercher en base de données",
         "nav.news": "Nouveautés",
         "nav.library": "Bibliothèque",
         "nav.myBooks": "Mes Albums",
