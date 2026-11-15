@@ -9,7 +9,8 @@ import {
     faXmark,
     faPen,
     faTrash,
-    faClockRotateLeft
+    faClockRotateLeft,
+    faArrowLeft
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
@@ -21,6 +22,7 @@ import AsyncCoverImage from "../../components/AsyncCoverImage/AsyncCoverImage.ts
 import Select from "../../components/Select/Select.tsx";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
+import "./HomePage.scss";
 import "./NotesPage.scss";
 
 export default function NotesPage() {
@@ -242,10 +244,20 @@ export default function NotesPage() {
     return (
         <div className="notes-page">
             <WrapperHeader>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                    <h2>
-                        {tr("Book Notes", "Notes de lecture")} {notes.length > 0 ? `(${notes.length})` : ""}
-                    </h2>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px" }}>
+                    <div className="home-dashboard__header-title">
+                        <Link
+                            to="/app/home"
+                            className="home-btn home-btn--ghost home-btn--sm"
+                            aria-label={tr("Back to home", "Retour à l'accueil")}
+                        >
+                            <FontAwesomeIcon icon={faArrowLeft} />
+                            <span>{tr("Home", "Accueil")}</span>
+                        </Link>
+                        <h2>
+                            {tr("Book Notes", "Notes de lecture")} {notes.length > 0 ? `(${notes.length})` : ""}
+                        </h2>
+                    </div>
                     <div className="notes-page__header-actions">
                         <button
                             type="button"

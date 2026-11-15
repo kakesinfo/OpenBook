@@ -9,7 +9,8 @@ import {
     faPen,
     faTrash,
     faBook,
-    faXmark
+    faXmark,
+    faArrowLeft
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
@@ -20,6 +21,7 @@ import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import Select from "../../components/Select/Select.tsx";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
+import "./HomePage.scss";
 import "./GlossaryPage.scss";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -298,10 +300,20 @@ export default function GlossaryPage() {
     return (
         <div className="glossary-page">
             <WrapperHeader>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                    <h2>
-                        {tr("Glossary", "Glossaire")} {words.length > 0 ? `(${words.length})` : ""}
-                    </h2>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", gap: "12px" }}>
+                    <div className="home-dashboard__header-title">
+                        <Link
+                            to="/app/home"
+                            className="home-btn home-btn--ghost home-btn--sm"
+                            aria-label={tr("Back to home", "Retour à l'accueil")}
+                        >
+                            <FontAwesomeIcon icon={faArrowLeft} />
+                            <span>{tr("Home", "Accueil")}</span>
+                        </Link>
+                        <h2>
+                            {tr("Glossary", "Glossaire")} {words.length > 0 ? `(${words.length})` : ""}
+                        </h2>
+                    </div>
                     <div className="glossary-page__header-actions">
                         <button
                             type="button"
