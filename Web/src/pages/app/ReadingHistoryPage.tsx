@@ -134,19 +134,12 @@ export default function ReadingHistoryPage() {
 
     const { availableYears, booksByYear } = useMemo(() => {
         const latestEndByBookId = new Map<number, number>();
-        const latestAnyByBookId = new Map<number, number>();
 
         for (const s of readingSessions) {
-            if (!s.createdAt) continue;
-            const prevAny = latestAnyByBookId.get(s.bookId) ?? 0;
-            if (s.createdAt > prevAny) {
-                latestAnyByBookId.set(s.bookId, s.createdAt);
-            }
-            if (s.sessionType === 2) {
-                const prevEnd = latestEndByBookId.get(s.bookId) ?? 0;
-                if (s.createdAt > prevEnd) {
-                    latestEndByBookId.set(s.bookId, s.createdAt);
-                }
+            if (!s.createdAt || s.sessionType !== 2) continue;
+            const prevEnd = latestEndByBookId.get(s.bookId) ?? 0;
+            if (s.createdAt > prevEnd) {
+                latestEndByBookId.set(s.bookId, s.createdAt);
             }
         }
 
@@ -154,20 +147,16 @@ export default function ReadingHistoryPage() {
         const mapByYear = new Map<number, BookSummaryDTO[]>();
 
         for (const book of collectionBooks) {
-            if ((book.readingStatus || "").toUpperCase() !== "READ") continue;
-
             const numericId = Number(book.id);
-            const sessionFinishedAt =
-                latestEndByBookId.get(numericId) ?? latestAnyByBookId.get(numericId);
-            const effectiveFinishedAt = sessionFinishedAt ?? book.finishedAt ?? null;
-            const bookWithFinishedAt: BookSummaryDTO =
-                effectiveFinishedAt !== book.finishedAt
-                    ? { ...book, finishedAt: effectiveFinishedAt }
-                    : book;
+            const sessionFinishedAt = latestEndByBookId.get(numericId);
+            if (!sessionFinishedAt) continue;
 
-            const year = effectiveFinishedAt
-                ? new Date(effectiveFinishedAt).getFullYear()
-                : currentYear;
+            const bookWithFinishedAt: BookSummaryDTO = {
+                ...book,
+                finishedAt: sessionFinishedAt
+            };
+
+            const year = new Date(sessionFinishedAt).getFullYear();
             yearsSet.add(year);
 
             const list = mapByYear.get(year);

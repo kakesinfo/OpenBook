@@ -441,21 +441,15 @@ public class BookmoryDbService {
     }
 
     public void upsertBookStatus(Long userId, Long bookId, String status) {
-        upsertBookStatus(userId, bookId, status, null);
-    }
-
-    public void upsertBookStatus(Long userId, Long bookId, String status, Instant finishedAt) {
         if (userId == null || bookId == null) return;
         String cleanStatus = status != null ? status.trim().toUpperCase() : "UNREAD";
         if (cleanStatus.isBlank()) cleanStatus = "UNREAD";
-        Timestamp finishedTs = finishedAt != null ? Timestamp.from(finishedAt) : null;
         try {
             jdbcTemplate.update(
-                    "INSERT INTO book_status (user_id, book_id, status, finished_at, created_at, updated_at) " +
-                    "VALUES (?, ?, ?, ?, NOW(), NOW()) " +
-                    "ON CONFLICT (user_id, book_id) DO UPDATE SET status = EXCLUDED.status, " +
-                    "finished_at = COALESCE(EXCLUDED.finished_at, book_status.finished_at), updated_at = NOW()",
-                    userId, bookId, cleanStatus, finishedTs
+                    "INSERT INTO book_status (user_id, book_id, status, created_at, updated_at) " +
+                    "VALUES (?, ?, ?, NOW(), NOW()) " +
+                    "ON CONFLICT (user_id, book_id) DO UPDATE SET status = EXCLUDED.status, updated_at = NOW()",
+                    userId, bookId, cleanStatus
             );
         } catch (Exception ex) {
             log.warn("Failed to upsert book_status for user {} book {}: {}", userId, bookId, ex.getMessage());

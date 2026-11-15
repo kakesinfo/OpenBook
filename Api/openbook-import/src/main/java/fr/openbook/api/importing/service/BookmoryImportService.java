@@ -296,8 +296,7 @@ public class BookmoryImportService {
             dbService.upsertUserOwnsBook(job.getUserId(), bookId, b.getWishlist());
 
             String readingStatus = determineReadingStatus(b);
-            Instant finishedAt = "READ".equals(readingStatus) ? extractFinishedAt(b) : null;
-            dbService.upsertBookStatus(job.getUserId(), bookId, readingStatus, finishedAt);
+            dbService.upsertBookStatus(job.getUserId(), bookId, readingStatus);
         }
 
         // 11. Purchases
@@ -384,31 +383,6 @@ public class BookmoryImportService {
 
     private static boolean hasPurchaseData(BookmoryBook b) {
         return b.getPurchases() != null && !b.getPurchases().isEmpty();
-    }
-
-    private static Instant extractFinishedAt(BookmoryBook b) {
-        if (b == null || b.getReads() == null) {
-            return null;
-        }
-        Long latestEndMs = null;
-        for (BookmoryRead read : b.getReads()) {
-            if (read == null) continue;
-            boolean isDone = "DONE".equalsIgnoreCase(read.getStatus())
-                    || "READ".equalsIgnoreCase(read.getStatus())
-                    || (read.getEnd() != null && read.getEnd() > 0);
-            if (!isDone) continue;
-
-            Long candidate = (read.getEnd() != null && read.getEnd() > 0)
-                    ? read.getEnd()
-                    : (read.getUpdatedAt() != null && read.getUpdatedAt() > 0)
-                        ? read.getUpdatedAt()
-                        : (read.getCreatedAt() != null && read.getCreatedAt() > 0 ? read.getCreatedAt() : null);
-
-            if (candidate != null && (latestEndMs == null || candidate > latestEndMs)) {
-                latestEndMs = candidate;
-            }
-        }
-        return latestEndMs != null ? Instant.ofEpochMilli(latestEndMs) : null;
     }
 
     private static boolean hasReadingSessionData(BookmoryBook b) {
