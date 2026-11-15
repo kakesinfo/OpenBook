@@ -80,6 +80,7 @@ const DEFAULT_BOOK_TYPES = [
     "Broché",
     "Cartonné",
     "Comics",
+    "E-book",
     "Intégrale",
     "Manga",
     "Poche",
@@ -2590,7 +2591,9 @@ export default function BookPage() {
                                         { id: "2", label: "Bande dessinée" },
                                         { id: "4", label: "Manga" },
                                         { id: "5", label: "Roman Graphique" },
-                                        { id: "1", label: "Roman" }
+                                        { id: "1", label: "Roman" },
+                                        { id: "6", label: "Beau-livre" },
+                                        { id: "7", label: "E-book" }
                                     ]}
                                 />
                             </div>

@@ -85,6 +85,10 @@ export function translateCategoryName(name?: string | null, lang: LanguageId = c
             return "Comics";
         case "manga":
             return "Manga";
+        case "e-book":
+        case "ebook":
+        case "e book":
+            return "E-book";
         default:
             return name;
     }

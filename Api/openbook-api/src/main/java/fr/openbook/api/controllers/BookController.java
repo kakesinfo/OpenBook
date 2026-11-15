@@ -197,7 +197,7 @@ public class BookController {
                 .toList();
 
         Map<String, String> typesMap = new LinkedHashMap<>();
-        for (String defaultType : List.of("Bande dessinée", "Broché", "Cartonné", "Comics", "Intégrale", "Manga", "Poche", "Roman", "Roman Graphique", "Souple")) {
+        for (String defaultType : List.of("Bande dessinée", "Broché", "Cartonné", "Comics", "E-book", "Intégrale", "Manga", "Poche", "Roman", "Roman Graphique", "Souple")) {
             typesMap.put(defaultType.toLowerCase(Locale.ROOT), defaultType);
         }
         for (String dbType : repositoryService.getBookRepository().findDistinctTypes()) {

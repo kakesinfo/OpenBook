@@ -45,6 +45,7 @@ const DEFAULT_CATEGORIES: CategoryOption[] = [
     { id: 5, name: "Roman Graphique" },
     { id: 1, name: "Roman" },
     { id: 6, name: "Beau-livre" },
+    { id: 7, name: "E-book" },
 ];
 
 export default function SeriesPage() {

@@ -1287,7 +1287,7 @@
         />
     </changeSet>
 
-    <changeSet id="25" author="Antigravity">
+    <changeSet id="25" author="Axel">
         <preConditions onFail="MARK_RAN">
             <not>
                 <columnExists tableName="book" columnName="parent_book_id" />
@@ -1315,7 +1315,7 @@
     </changeSet>
 
 
-    <changeSet id="26" author="Antigravity">
+    <changeSet id="26" author="Axel">
         <dropForeignKeyConstraint
             baseTableName="book"
             constraintName="fk_book_series_id"
@@ -1363,7 +1363,7 @@
             DELETE FROM series;
         </sql>
     </changeSet>
-    <changeSet id="27" author="Antigravity">
+    <changeSet id="27" author="Axel">
         <createTable tableName="user_sells_book">
             <column name="id" type="integer" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false" />
@@ -1430,7 +1430,7 @@
             DELETE FROM user_owns_book WHERE UPPER(status) IN ('FOR_SALE', 'SOLD');
         </sql>
     </changeSet>
-    <changeSet id="28" author="Antigravity">
+    <changeSet id="28" author="Axel">
         <createTable tableName="user_book_transaction">
             <column name="id" type="integer" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false" />
@@ -1572,7 +1572,7 @@
         <dropIndex tableName="book" indexName="idx_book_parent_book_id" />
         <dropColumn tableName="book" columnName="parent_book_id" />
     </changeSet>
-    <changeSet id="40" author="Antigravity">
+    <changeSet id="40" author="Axel">
         <addColumn tableName="user">
             <column name="blocked" type="boolean" defaultValueBoolean="false">
                 <constraints nullable="false" />
@@ -1585,7 +1585,7 @@
             <column name="blocked" />
         </createIndex>
     </changeSet>
-    <changeSet id="41" author="Antigravity">
+    <changeSet id="41" author="Axel">
         <createTable tableName="configuration">
             <column name="id" type="integer" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false" />
@@ -1761,11 +1761,18 @@
             columnNames="book_id, word_id"
         />
     </changeSet>
-    <changeSet id="43" author="Antigravity">
+    <changeSet id="43" author="Axel">
         <addColumn tableName="user_book_transaction">
             <column name="date_precision" type="varchar(10)">
                 <constraints nullable="true" />
             </column>
         </addColumn>
+    </changeSet>
+    <changeSet id="44" author="Axel">
+        <insert tableName="category">
+            <column name="name" value="E-book" />
+            <column name="created_at" valueComputed="NOW()" />
+            <column name="updated_at" valueComputed="NOW()" />
+        </insert>
     </changeSet>
 </databaseChangeLog>

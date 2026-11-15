@@ -557,6 +557,7 @@ public class UserController {
     private String normalizeCategory(String category, String type) {
         String raw = ((category != null ? category : "") + " " + (type != null ? type : "")).toLowerCase();
         if (raw.contains("manga")) return "manga";
+        if (raw.contains("e-book") || raw.contains("ebook")) return "e-book";
         if (raw.contains("comic")) return "comics";
         if (raw.contains("bande") || raw.contains("bd") || raw.contains("roman") || raw.contains("cartonné") || raw.contains("cartonne")) return "bd";
         return "comics";
@@ -1635,7 +1636,8 @@ public class UserController {
             "Manga", "#f59e0b",
             "Roman", "#8b5cf6",
             "Roman Graphique", "#ec4899",
-            "Beau-livre", "#06b6d4"
+            "Beau-livre", "#06b6d4",
+            "E-book", "#6366f1"
         );
         for (var entry : categoryCounts.entrySet()) {
             double pct = Math.round((entry.getValue() * 100.0 / totalOwned) * 10.0) / 10.0;
@@ -1769,6 +1771,7 @@ public class UserController {
 
     private int getDefaultThicknessMm(String category) {
         String lower = category.toLowerCase();
+        if (lower.contains("e-book") || lower.contains("ebook")) return 0;
         if (lower.contains("manga")) return 15;
         if (lower.contains("comics")) return 14;
         if (lower.contains("bande") || lower.contains("bd")) return 11;
@@ -1778,6 +1781,7 @@ public class UserController {
 
     private int getDefaultWeightG(String category) {
         String lower = category.toLowerCase();
+        if (lower.contains("e-book") || lower.contains("ebook")) return 0;
         if (lower.contains("manga")) return 190;
         if (lower.contains("comics")) return 450;
         if (lower.contains("bande") || lower.contains("bd")) return 520;

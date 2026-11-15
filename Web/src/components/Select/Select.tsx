@@ -14,6 +14,7 @@ import {
     faBookOpen,
     faBookBookmark,
     faPalette,
+    faTabletScreenButton,
     type IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 import useLanguage from "../../hooks/UseLanguage.tsx";
@@ -37,7 +38,8 @@ export const DEFAULT_APP_CATEGORIES: CategoryOption[] = [
     { id: "Manga", label: "Manga", icon: faFire },
     { id: "Roman Graphique", label: "Roman Graphique", icon: faBookOpen },
     { id: "Roman", label: "Roman", icon: faBookBookmark },
-    { id: "Beau-livre", label: "Beau-livre", icon: faPalette }
+    { id: "Beau-livre", label: "Beau-livre", icon: faPalette },
+    { id: "E-book", label: "E-book", icon: faTabletScreenButton }
 ];
 
 export function bookMatchesCategories(
@@ -84,6 +86,16 @@ export function bookMatchesCategories(
                 bookCat.includes("beau livre") ||
                 bookType.includes("beau-livre") ||
                 bookType.includes("beau livre")
+            );
+        }
+        if (sel === "e-book" || sel === "ebook" || sel === "e book") {
+            return (
+                bookCat.includes("e-book") ||
+                bookCat.includes("ebook") ||
+                bookCat.includes("e book") ||
+                bookType.includes("e-book") ||
+                bookType.includes("ebook") ||
+                bookType.includes("e book")
             );
         }
 
