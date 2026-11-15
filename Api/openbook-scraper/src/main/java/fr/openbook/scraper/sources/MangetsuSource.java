@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 public class MangetsuSource extends AbstractHttpSource {
 
     private static final String BASE_URL = "https://mangetsu-manga.fr";
+    public static final String LESLIBRAIRES_URL = "https://www.leslibraires.fr/editeur/mangetsu/?tri=nouveautes";
     private static final Pattern RE_CAT_LINK = Pattern.compile("/catalogue/978\\d+");
     private static final Pattern RE_CAT_ISBN = Pattern.compile("/catalogue/(978\\d{10})");
     private static final Pattern RE_PAGE_PARAM = Pattern.compile("[?&]page=(\\d+)");
@@ -39,8 +40,21 @@ public class MangetsuSource extends AbstractHttpSource {
 
     private record CardHint(String dateStr, String title, String tome, String authorStr, String coverUrl) {}
 
+    private final LesLibrairesClient lesLibrairesClient;
+
     public MangetsuSource(ScraperProperties properties) {
         super(properties);
+        this.lesLibrairesClient = new LesLibrairesClient(
+                properties,
+                getId(),
+                getName(),
+                getDescription(),
+                getColor(),
+                LESLIBRAIRES_URL,
+                "Mangetsu",
+                "Manga",
+                true
+        );
     }
 
     @Override
@@ -72,6 +86,32 @@ public class MangetsuSource extends AbstractHttpSource {
         int maxItems = options.getMaxItems() > 0 ? options.getMaxItems() : properties.getMaxBooksPerSource();
         boolean fullScan = options.isFullScan();
         List<ScrapedBookDTO> books = new ArrayList<>();
+        Set<String> seenIsbns = new HashSet<>();
+        Set<String> seenTitles = new HashSet<>();
+
+        lesLibrairesClient.scrape(options, book -> {
+            if (isStopped != null && isStopped.getAsBoolean()) {
+                return;
+            }
+            if (!fullScan && books.size() >= maxItems) {
+                return;
+            }
+            if (book.getIsbn() != null && !book.getIsbn().isBlank()) {
+                seenIsbns.add(book.getIsbn().replaceAll("[^0-9Xx]", "").trim());
+            }
+            if (book.getTitle() != null) {
+                seenTitles.add(book.getTitle().trim().toLowerCase());
+            }
+            books.add(book);
+            if (onBookFound != null) {
+                onBookFound.accept(book);
+            }
+        }, isStopped);
+
+        if (!fullScan && books.size() >= maxItems) {
+            log.info("[Mangetsu] Scrape completed (from Leslibraires.fr): {} books", books.size());
+            return books;
+        }
 
         Set<String> seenLinks = new HashSet<>();
         List<String> productLinks = new ArrayList<>();
@@ -132,10 +172,22 @@ public class MangetsuSource extends AbstractHttpSource {
 
         for (String prodUrl : productLinks) {
             if (isStopped != null && isStopped.getAsBoolean()) break;
+            if (!fullScan && books.size() >= maxItems) break;
+
+            Matcher urlIsbnMatcher = RE_CAT_ISBN.matcher(prodUrl);
+            if (urlIsbnMatcher.find() && seenIsbns.contains(urlIsbnMatcher.group(1))) {
+                continue;
+            }
 
             CardHint hint = cardHints.get(prodUrl);
             ScrapedBookDTO book = scrapeBookPage(prodUrl, hint);
             if (book != null) {
+                String normIsbn = book.getIsbn() != null ? book.getIsbn().replaceAll("[^0-9Xx]", "").trim() : "";
+                String normTitle = book.getTitle() != null ? book.getTitle().trim().toLowerCase() : "";
+                if ((!normIsbn.isEmpty() && !seenIsbns.add(normIsbn))
+                        || (!normTitle.isEmpty() && !seenTitles.add(normTitle))) {
+                    continue;
+                }
                 books.add(book);
                 if (onBookFound != null) {
                     onBookFound.accept(book);

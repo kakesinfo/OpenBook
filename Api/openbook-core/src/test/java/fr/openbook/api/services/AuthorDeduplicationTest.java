@@ -52,6 +52,17 @@ public class AuthorDeduplicationTest {
     }
 
     @Test
+    void testComputeTokenKeyJapaneseMacrons() {
+        String keyMacron = AuthorDeduplicationService.computeTokenKey("Gō", "Tanabe");
+        String keyDigraph = AuthorDeduplicationService.computeTokenKey("Gou", "Tanabe");
+        String keyInverted = AuthorDeduplicationService.computeTokenKey("TANABE", "Gō");
+
+        assertEquals("gou tanabe", keyMacron);
+        assertEquals(keyMacron, keyDigraph);
+        assertEquals(keyMacron, keyInverted);
+    }
+
+    @Test
     void testCalculateNameQualityScore() {
         int scoreGood = AuthorDeduplicationService.calculateNameQualityScore("James", "Tynion IV");
         int scoreBad = AuthorDeduplicationService.calculateNameQualityScore("TYNION", "IV James");
@@ -95,5 +106,43 @@ public class AuthorDeduplicationTest {
         assertEquals("James", result.getFirstname());
         assertEquals("Tynion IV", result.getLastname());
         verify(authorRepository).save(existing);
+    }
+
+    @Test
+    void testFindExistingDuplicateMatchesUnambiguousSingleToken() {
+        AuthorEntity mathieuBablet = new AuthorEntity();
+        mathieuBablet.setId(10);
+        mathieuBablet.setFirstname("Mathieu");
+        mathieuBablet.setLastname("Bablet");
+
+        AuthorEntity georgeMartin = new AuthorEntity();
+        georgeMartin.setId(11);
+        georgeMartin.setFirstname("George");
+        georgeMartin.setLastname("Martin");
+
+        AuthorEntity jeanMartin = new AuthorEntity();
+        jeanMartin.setId(12);
+        jeanMartin.setFirstname("Jean");
+        jeanMartin.setLastname("Martin");
+
+        when(authorRepository.findAll()).thenReturn(List.of(mathieuBablet, georgeMartin, jeanMartin));
+
+        Optional<AuthorEntity> babletMatch = deduplicationService.findExistingDuplicate("", "Bablet");
+        assertTrue(babletMatch.isPresent());
+        assertEquals(10, babletMatch.get().getId());
+
+        Optional<AuthorEntity> martinMatch = deduplicationService.findExistingDuplicate("", "Martin");
+        assertTrue(martinMatch.isEmpty(), "Ambiguous surname 'Martin' should not auto-match");
+    }
+
+    @Test
+    void testComputeTokenKeyDotWithoutSpace() {
+        String keyNoSpace = AuthorDeduplicationService.computeTokenKey("Sarah", "J.Mass");
+        String keyWithSpace = AuthorDeduplicationService.computeTokenKey("Sarah J.", "Mass");
+        String keySingleField = AuthorDeduplicationService.computeTokenKey("", "Sarah J.Mass");
+
+        assertEquals("j mass sarah", keyNoSpace);
+        assertEquals(keyNoSpace, keyWithSpace);
+        assertEquals(keyNoSpace, keySingleField);
     }
 }

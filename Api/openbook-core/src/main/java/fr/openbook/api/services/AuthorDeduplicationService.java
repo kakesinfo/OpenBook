@@ -32,8 +32,14 @@ public class AuthorDeduplicationService {
             return "";
         }
 
+        // 0. Normalize Japanese long-vowel macrons to their romanized digraph equivalents
+        //    so "Gō Tanabe" and "Gou Tanabe" (or "Yū" and "Yuu") share the same token key.
+        String preNormalized = combined
+                .replace("\u014c", "ou").replace("\u014d", "ou") // Ō, ō
+                .replace("\u016a", "uu").replace("\u016b", "uu"); // Ū, ū
+
         // 1. Strip accents
-        String normalized = Normalizer.normalize(combined, Normalizer.Form.NFD)
+        String normalized = Normalizer.normalize(preNormalized, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "");
 
         // 2. Lowercase
@@ -181,6 +187,35 @@ public class AuthorDeduplicationService {
             }
         }
 
+        // 4. Unambiguous single-token match (e.g. "Bablet" <-> "Mathieu Bablet"):
+        //    Only matches when there is exactly one candidate in the DB.
+        String[] targetTokens = targetKey.split(" ");
+        if (targetTokens.length == 1) {
+            String singleToken = targetTokens[0];
+            List<AuthorEntity> candidates = new ArrayList<>();
+            for (AuthorEntity existing : allAuthors) {
+                String existingKey = computeTokenKey(existing.getFirstname(), existing.getLastname());
+                if (!existingKey.isEmpty() && Arrays.asList(existingKey.split(" ")).contains(singleToken)) {
+                    candidates.add(existing);
+                }
+            }
+            if (candidates.size() == 1) {
+                return Optional.of(candidates.get(0));
+            }
+        } else {
+            List<String> targetTokenList = Arrays.asList(targetTokens);
+            List<AuthorEntity> singleTokenCandidates = new ArrayList<>();
+            for (AuthorEntity existing : allAuthors) {
+                String existingKey = computeTokenKey(existing.getFirstname(), existing.getLastname());
+                if (!existingKey.isEmpty() && !existingKey.contains(" ") && targetTokenList.contains(existingKey)) {
+                    singleTokenCandidates.add(existing);
+                }
+            }
+            if (singleTokenCandidates.size() == 1) {
+                return Optional.of(singleTokenCandidates.get(0));
+            }
+        }
+
         return Optional.empty();
     }
 
@@ -242,6 +277,26 @@ public class AuthorDeduplicationService {
             String key = computeTokenKey(a.getFirstname(), a.getLastname());
             if (!key.isEmpty()) {
                 grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(a);
+            }
+        }
+
+        // Merge unambiguous single-token groups (e.g. "bablet") into their unique multi-token group (e.g. "bablet mathieu")
+        List<String> singleTokenKeys = grouped.keySet().stream()
+                .filter(k -> !k.contains(" "))
+                .toList();
+        for (String singleKey : singleTokenKeys) {
+            List<String> matchingMultiKeys = new ArrayList<>();
+            for (String candidateKey : grouped.keySet()) {
+                if (candidateKey.contains(" ") && Arrays.asList(candidateKey.split(" ")).contains(singleKey)) {
+                    matchingMultiKeys.add(candidateKey);
+                }
+            }
+            if (matchingMultiKeys.size() == 1) {
+                String targetMultiKey = matchingMultiKeys.get(0);
+                List<AuthorEntity> singleGroup = grouped.remove(singleKey);
+                if (singleGroup != null) {
+                    grouped.get(targetMultiKey).addAll(singleGroup);
+                }
             }
         }
 
