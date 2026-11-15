@@ -1810,7 +1810,7 @@
         </createIndex>
     </changeSet>
 
-    <changeSet id="33" author="Antigravity">
+    <changeSet id="33" author="Florence">
         <preConditions onFail="MARK_RAN">
             <not>
                 <columnExists tableName="book_status" columnName="finished_at" />
