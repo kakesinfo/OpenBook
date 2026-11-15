@@ -15,6 +15,7 @@ import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import ReadingSessionDTO from "../../dto/ReadingSession.dto.ts";
 import BookList from "../../components/BookList/BookList.tsx";
+import Pagination from "../../components/Pagination/Pagination.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import Select, {
@@ -42,6 +43,8 @@ export default function ReadingHistoryPage() {
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>(DEFAULT_APP_CATEGORIES);
     const [searchQuery, setSearchQuery] = useState<string>("");
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [pageSize, setPageSize] = useState<number>(20);
     const [yearMenuOpen, setYearMenuOpen] = useState<boolean>(false);
     const yearDropdownRef = useRef<HTMLDivElement | null>(null);
 
@@ -201,6 +204,31 @@ export default function ReadingHistoryPage() {
         );
     }, [booksByYear, selectedYear, selectedCategories, searchQuery]);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedYear, selectedCategories, searchQuery]);
+
+    const totalItems = readBooks.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+    const startIndex = (safeCurrentPage - 1) * pageSize;
+    const paginatedBooks = useMemo(
+        () => readBooks.slice(startIndex, startIndex + pageSize),
+        [readBooks, startIndex, pageSize]
+    );
+    const endIndex = Math.min(startIndex + paginatedBooks.length, totalItems);
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    const handlePageSizeChange = (newSize: number) => {
+        setPageSize(newSize);
+        setCurrentPage(1);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
     const formatFinishedDate = (finishedAt?: number | null) => {
         if (!finishedAt) return "—";
         const d = new Date(finishedAt);
@@ -337,62 +365,78 @@ export default function ReadingHistoryPage() {
                             )}
                         </p>
                     </div>
-                ) : displayMode === "grid" ? (
-                    <BookList books={readBooks} showFinishedDate={true} />
                 ) : (
-                    <div className="collection-list">
-                        <div className="collection-list__header">
-                            <span className="collection-list__th collection-list__th--title">{tr("Title", "Titre")}</span>
-                            <span className="collection-list__th collection-list__th--series">{tr("Series / Vol.", "Série / Tome")}</span>
-                            <span className="collection-list__th collection-list__th--author">{tr("Author", "Auteur")}</span>
-                            <span className="collection-list__th collection-list__th--category">{tr("Category", "Catégorie")}</span>
-                            <span className="collection-list__th collection-list__th--date">{tr("Finished on", "Lu le")}</span>
-                            <span className="collection-list__th collection-list__th--action"></span>
-                        </div>
+                    <>
+                        {displayMode === "grid" ? (
+                            <BookList books={paginatedBooks} showFinishedDate={true} />
+                        ) : (
+                            <div className="collection-list">
+                                <div className="collection-list__header">
+                                    <span className="collection-list__th collection-list__th--title">{tr("Title", "Titre")}</span>
+                                    <span className="collection-list__th collection-list__th--series">{tr("Series / Vol.", "Série / Tome")}</span>
+                                    <span className="collection-list__th collection-list__th--author">{tr("Author", "Auteur")}</span>
+                                    <span className="collection-list__th collection-list__th--category">{tr("Category", "Catégorie")}</span>
+                                    <span className="collection-list__th collection-list__th--date">{tr("Finished on", "Lu le")}</span>
+                                    <span className="collection-list__th collection-list__th--action"></span>
+                                </div>
 
-                        {readBooks.map((book) => {
-                            const cat = book.category || book.type;
-                            return (
-                                <Link to={`/app/book/${book.id}`} className="collection-row" key={book.id}>
-                                    <div className="collection-row__col collection-row__col--title">
-                                        <FontAwesomeIcon icon={faBook} className="collection-row__book-icon" />
-                                        <span className="collection-row__title" title={book.title}>
-                                            {book.title}
-                                        </span>
-                                    </div>
+                                {paginatedBooks.map((book) => {
+                                    const cat = book.category || book.type;
+                                    return (
+                                        <Link to={`/app/book/${book.id}`} className="collection-row" key={book.id}>
+                                            <div className="collection-row__col collection-row__col--title">
+                                                <FontAwesomeIcon icon={faBook} className="collection-row__book-icon" />
+                                                <span className="collection-row__title" title={book.title}>
+                                                    {book.title}
+                                                </span>
+                                            </div>
 
-                                    <div className="collection-row__col collection-row__col--series">
-                                        {book.seriesName && (
-                                            <span className="collection-row__series-name" title={book.seriesName}>
-                                                {book.seriesName}
-                                            </span>
-                                        )}
-                                        {book.volume > 0 && (
-                                            <span className="collection-row__volume-badge">
-                                                {tr(`Vol.${book.volume}`, `T.${book.volume}`)}
-                                            </span>
-                                        )}
-                                    </div>
+                                            <div className="collection-row__col collection-row__col--series">
+                                                {book.seriesName && (
+                                                    <span className="collection-row__series-name" title={book.seriesName}>
+                                                        {book.seriesName}
+                                                    </span>
+                                                )}
+                                                {book.volume > 0 && (
+                                                    <span className="collection-row__volume-badge">
+                                                        {tr(`Vol.${book.volume}`, `T.${book.volume}`)}
+                                                    </span>
+                                                )}
+                                            </div>
 
-                                    <div className="collection-row__col collection-row__col--author">
-                                        <span className="collection-row__author">{book.author || "—"}</span>
-                                    </div>
+                                            <div className="collection-row__col collection-row__col--author">
+                                                <span className="collection-row__author">{book.author || "—"}</span>
+                                            </div>
 
-                                    <div className="collection-row__col collection-row__col--category">
-                                        {cat ? <span className="collection-row__category-pill">{cat}</span> : "—"}
-                                    </div>
+                                            <div className="collection-row__col collection-row__col--category">
+                                                {cat ? <span className="collection-row__tag">{cat}</span> : "—"}
+                                            </div>
 
-                                    <div className="collection-row__col collection-row__col--date">
-                                        <span>{formatFinishedDate(book.finishedAt)}</span>
-                                    </div>
+                                            <div className="collection-row__col collection-row__col--date">
+                                                <span className="collection-row__date">{formatFinishedDate(book.finishedAt)}</span>
+                                            </div>
 
-                                    <div className="collection-row__col collection-row__col--action">
-                                        <FontAwesomeIcon icon={faChevronRight} />
-                                    </div>
-                                </Link>
-                            );
-                        })}
-                    </div>
+                                            <div className="collection-row__col collection-row__col--action">
+                                                <FontAwesomeIcon icon={faChevronRight} className="collection-row__chevron" />
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <Pagination
+                            currentPage={safeCurrentPage}
+                            totalPages={totalPages}
+                            onPageChange={handlePageChange}
+                            totalItems={totalItems}
+                            startIndex={startIndex}
+                            endIndex={endIndex}
+                            pageSize={pageSize}
+                            onPageSizeChange={handlePageSizeChange}
+                            pageSizeOptions={[20, 50, 100]}
+                        />
+                    </>
                 )}
             </div>
         </div>

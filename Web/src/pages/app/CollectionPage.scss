@@ -190,6 +190,7 @@
   &__header {
     display: flex;
     align-items: center;
+    gap: 12px;
     height: 32px;
     padding: 0 14px;
     background: var(--bg-elevated);
@@ -206,14 +207,14 @@
 
   &__th {
     &--title {
-      flex: 1;
+      flex: 2 1 0;
       min-width: 0;
-      padding-left: 24px;
+      text-indent: 24px;
     }
 
     &--series {
-      width: 180px;
-      flex-shrink: 0;
+      flex: 1.4 1 0;
+      min-width: 0;
 
       @media (max-width: 768px) {
         display: none;
@@ -221,8 +222,8 @@
     }
 
     &--author {
-      width: 160px;
-      flex-shrink: 0;
+      flex: 1.2 1 0;
+      min-width: 0;
 
       @media (max-width: 1024px) {
         display: none;
@@ -230,7 +231,7 @@
     }
 
     &--category {
-      width: 100px;
+      width: 110px;
       flex-shrink: 0;
 
       @media (max-width: 860px) {
@@ -244,9 +245,11 @@
     }
 
     &--date {
-      width: 55px;
+      width: auto;
+      min-width: 115px;
       flex-shrink: 0;
       text-align: right;
+      white-space: nowrap;
 
       @media (max-width: 640px) {
         display: none;
@@ -254,7 +257,7 @@
     }
 
     &--action {
-      width: 22px;
+      width: 20px;
       flex-shrink: 0;
     }
   }
@@ -264,6 +267,7 @@
 .collection-row {
   display: flex;
   align-items: center;
+  gap: 12px;
   height: 36px;
   min-height: 36px;
   margin: 0;
@@ -299,15 +303,15 @@
     align-items: center;
 
     &--title {
-      flex: 1;
+      flex: 2 1 0;
       min-width: 0;
       gap: 10px;
       cursor: pointer;
     }
 
     &--series {
-      width: 180px;
-      flex-shrink: 0;
+      flex: 1.4 1 0;
+      min-width: 0;
       gap: 6px;
 
       @media (max-width: 768px) {
@@ -316,9 +320,8 @@
     }
 
     &--author {
-      width: 160px;
-      flex-shrink: 0;
-      padding-right: 12px;
+      flex: 1.2 1 0;
+      min-width: 0;
 
       @media (max-width: 1024px) {
         display: none;
@@ -326,7 +329,7 @@
     }
 
     &--category {
-      width: 100px;
+      width: 110px;
       flex-shrink: 0;
 
       @media (max-width: 860px) {
@@ -340,9 +343,11 @@
     }
 
     &--date {
-      width: 55px;
+      width: auto;
+      min-width: 115px;
       flex-shrink: 0;
       justify-content: flex-end;
+      white-space: nowrap;
 
       @media (max-width: 640px) {
         display: none;
@@ -350,7 +355,7 @@
     }
 
     &--action {
-      width: 22px;
+      width: 20px;
       flex-shrink: 0;
       justify-content: flex-end;
     }
