@@ -1761,4 +1761,11 @@
             columnNames="book_id, word_id"
         />
     </changeSet>
+    <changeSet id="43" author="Antigravity">
+        <addColumn tableName="user_book_transaction">
+            <column name="date_precision" type="varchar(10)">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

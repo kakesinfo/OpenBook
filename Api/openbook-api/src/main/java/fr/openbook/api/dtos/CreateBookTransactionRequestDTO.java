@@ -9,7 +9,8 @@ import java.math.BigDecimal;
 @Setter
 public class CreateBookTransactionRequestDTO {
     private String type; // "BOUGHT", "GIFT", or "SOLD"
-    private String date; // YYYY-MM-DD
+    private String date; // YYYY-MM-DD, YYYY-MM, or YYYY
+    private String datePrecision; // "NONE", "YEAR", "MONTH", "DAY"
     private BigDecimal price;
     private String location;
     private String memo;

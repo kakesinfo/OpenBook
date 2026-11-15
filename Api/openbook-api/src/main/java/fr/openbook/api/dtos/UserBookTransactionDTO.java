@@ -13,7 +13,8 @@ public class UserBookTransactionDTO {
     private Long bookId;
     private Long userId;
     private String type; // "BOUGHT", "GIFT", "SOLD"
-    private String date; // YYYY-MM-DD
+    private String date; // YYYY-MM-DD, YYYY-MM, or YYYY
+    private String datePrecision; // "YEAR", "MONTH", "DAY"
     private BigDecimal price;
     private String location;
     private String memo;
@@ -26,7 +27,17 @@ public class UserBookTransactionDTO {
         dto.setUserId(entity.getUser() != null ? entity.getUser().getId() : null);
         dto.setType(entity.getType());
         if (entity.getTransactionDate() != null) {
-            dto.setDate(entity.getTransactionDate().toString());
+            String precision = entity.getDatePrecision();
+            if ("YEAR".equalsIgnoreCase(precision)) {
+                dto.setDate(String.format("%04d", entity.getTransactionDate().getYear()));
+                dto.setDatePrecision("YEAR");
+            } else if ("MONTH".equalsIgnoreCase(precision)) {
+                dto.setDate(String.format("%04d-%02d", entity.getTransactionDate().getYear(), entity.getTransactionDate().getMonthValue()));
+                dto.setDatePrecision("MONTH");
+            } else {
+                dto.setDate(entity.getTransactionDate().toString());
+                dto.setDatePrecision("DAY");
+            }
         }
         dto.setPrice(entity.getPrice());
         dto.setLocation(entity.getLocation());

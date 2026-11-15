@@ -45,6 +45,9 @@ public class UserBookTransactionEntity {
     @Column(name = "transaction_date")
     private LocalDate transactionDate;
 
+    @Column(name = "date_precision", length = 10)
+    private String datePrecision; // "YEAR", "MONTH", "DAY", or null
+
     @Column(name = "price")
     private BigDecimal price;
 

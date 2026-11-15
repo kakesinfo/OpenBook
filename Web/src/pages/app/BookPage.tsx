@@ -607,6 +607,9 @@ export default function BookPage() {
     // Buy / Gift modal form
     const [buyType, setBuyType] = useState<"BOUGHT" | "GIFT">("BOUGHT");
     const [buyDate, setBuyDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+    const [giftDatePrecision, setGiftDatePrecision] = useState<"NONE" | "YEAR" | "MONTH" | "DAY">("NONE");
+    const [giftYear, setGiftYear] = useState<string>(() => String(new Date().getFullYear()));
+    const [giftMonth, setGiftMonth] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
     const [buyPrice, setBuyPrice] = useState<string>("");
     const [buyLocation, setBuyLocation] = useState<string>("");
     const [buyMemo, setBuyMemo] = useState<string>("");
@@ -635,28 +638,85 @@ export default function BookPage() {
     };
 
     const handleOpenPurchaseModal = (initialType: "BOUGHT" | "GIFT" = "BOUGHT") => {
+        const now = new Date();
         setBuyType(initialType);
-        setBuyDate(new Date().toISOString().split("T")[0]);
+        setBuyDate(now.toISOString().split("T")[0]);
+        setGiftDatePrecision("NONE");
+        setGiftYear(String(now.getFullYear()));
+        setGiftMonth(String(now.getMonth() + 1).padStart(2, "0"));
         setBuyPrice(initialType === "GIFT" ? "" : (book?.price ? String(book.price) : ""));
         setBuyLocation("");
         setBuyMemo("");
         setPurchaseModalOpen(true);
     };
 
+    const formatTransactionDate = (tx: UserBookTransactionDTO): string => {
+        if (!tx.date) {
+            return tr("Date not specified", "Date non renseignée");
+        }
+        if (tx.datePrecision === "YEAR" || /^\d{4}$/.test(tx.date)) {
+            return tx.date.slice(0, 4);
+        }
+        if (tx.datePrecision === "MONTH" || /^\d{4}-\d{2}$/.test(tx.date)) {
+            const [y, m] = tx.date.split("-");
+            const d = new Date(Number(y), Number(m) - 1, 1);
+            if (!Number.isNaN(d.getTime())) {
+                return d.toLocaleDateString(locale, { month: "short", year: "numeric" });
+            }
+            return tx.date;
+        }
+        const d = new Date(tx.date + "T00:00:00");
+        if (!Number.isNaN(d.getTime())) {
+            return d.toLocaleDateString(locale, {
+                day: "numeric",
+                month: "short",
+                year: "numeric"
+            });
+        }
+        return tx.date;
+    };
+
     const handleSavePurchase = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!id || submittingTx) return;
 
+        const isGift = buyType === "GIFT";
+        let resolvedDate: string | null = buyDate;
+        let resolvedPrecision: "NONE" | "YEAR" | "MONTH" | "DAY" = "DAY";
+
+        if (isGift) {
+            resolvedPrecision = giftDatePrecision;
+            if (giftDatePrecision === "NONE") {
+                resolvedDate = null;
+            } else if (giftDatePrecision === "YEAR") {
+                const parsedYear = parseInt(giftYear, 10);
+                if (!Number.isFinite(parsedYear) || parsedYear < 1 || parsedYear > 9999) {
+                    enqueueSnackbar(tr("Please enter a valid year", "Veuillez saisir une année valide"), { variant: "error" });
+                    return;
+                }
+                resolvedDate = String(parsedYear).padStart(4, "0");
+            } else if (giftDatePrecision === "MONTH") {
+                const parsedYear = parseInt(giftYear, 10);
+                if (!Number.isFinite(parsedYear) || parsedYear < 1 || parsedYear > 9999 || !giftMonth) {
+                    enqueueSnackbar(tr("Please enter a valid month and year", "Veuillez saisir un mois et une année valides"), { variant: "error" });
+                    return;
+                }
+                resolvedDate = `${String(parsedYear).padStart(4, "0")}-${giftMonth}`;
+            } else {
+                resolvedDate = buyDate || null;
+            }
+        }
+
         setSubmittingTx(true);
         try {
-            const isGift = buyType === "GIFT";
             const parsedPrice = !isGift && buyPrice ? parseFloat(buyPrice) : null;
             const res = await session.customFetch(`/user/books/${encodeURIComponent(id)}/transactions`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     type: buyType,
-                    date: buyDate,
+                    date: resolvedDate,
+                    datePrecision: resolvedPrecision,
                     price: parsedPrice,
                     location: buyLocation.trim() || null,
                     memo: buyMemo.trim() || null
@@ -2822,13 +2882,7 @@ export default function BookPage() {
                                             <div className="book-page__tx-details">
                                                 <div className="book-page__tx-date-location">
                                                     <span>
-                                                        {tx.date
-                                                            ? new Date(tx.date + 'T00:00:00').toLocaleDateString(locale, {
-                                                                day: 'numeric',
-                                                                month: 'short',
-                                                                year: 'numeric'
-                                                            })
-                                                            : tr("Date not specified", "Date non renseignée")}
+                                                        {formatTransactionDate(tx)}
                                                     </span>
 
                                                     {tx.location && (
@@ -2849,9 +2903,11 @@ export default function BookPage() {
                                         </div>
 
                                         <div className="book-page__tx-right">
-                                            <span className={`book-page__tx-price ${isBuy ? 'book-page__tx-price--bought' : isGift ? 'book-page__tx-price--gift' : 'book-page__tx-price--sold'}`}>
-                                                {isGift ? tr("Gifted", "Offert") : tx.price != null ? `${Number(tx.price).toFixed(2).replace('.', ',')} €` : "- €"}
-                                            </span>
+                                            {!isGift && (
+                                                <span className={`book-page__tx-price ${isBuy ? 'book-page__tx-price--bought' : 'book-page__tx-price--sold'}`}>
+                                                    {tx.price != null ? `${Number(tx.price).toFixed(2).replace('.', ',')} €` : "- €"}
+                                                </span>
+                                            )}
 
                                             <button
                                                 type="button"
@@ -2935,7 +2991,7 @@ export default function BookPage() {
                     {book && (
                         <p style={{ margin: "0 0 4px", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
                             {buyType === "GIFT" ? (
-                                <>{tr("Enter gift details for", "Renseignez les détails du cadeau pour")} <strong>« {book.title} »</strong> :</>
+                                <>{tr("Enter gift details for", "Renseignez les détails du cadeau pour")}<br /><strong>« {book.title} »</strong> :</>
                             ) : (
                                 <>{tr("Enter purchase details for", "Renseignez les détails d'achat pour")} <strong>« {book.title} »</strong> :</>
                             )}
@@ -2977,14 +3033,97 @@ export default function BookPage() {
                             <div className="tx-dialog__field">
                                 <label>
                                     <FontAwesomeIcon icon={faCalendarDays} />
-                                    <span>{tr("Date received *", "Date de réception *")}</span>
+                                    <span>{tr("Date received (optional)", "Date de réception (optionnelle)")}</span>
                                 </label>
-                                <input
-                                    type="date"
-                                    required
-                                    value={buyDate}
-                                    onChange={(e) => setBuyDate(e.target.value)}
-                                />
+                                <div className="tx-dialog__precision-group" role="group" aria-label={tr("Date precision", "Précision de la date")}>
+                                    <button
+                                        type="button"
+                                        className={`tx-dialog__precision-btn ${giftDatePrecision === "NONE" ? "tx-dialog__precision-btn--active" : ""}`}
+                                        onClick={() => setGiftDatePrecision("NONE")}
+                                        disabled={submittingTx}
+                                    >
+                                        {tr("None", "Aucune")}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`tx-dialog__precision-btn ${giftDatePrecision === "YEAR" ? "tx-dialog__precision-btn--active" : ""}`}
+                                        onClick={() => setGiftDatePrecision("YEAR")}
+                                        disabled={submittingTx}
+                                    >
+                                        {tr("Year", "Année")}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`tx-dialog__precision-btn ${giftDatePrecision === "MONTH" ? "tx-dialog__precision-btn--active" : ""}`}
+                                        onClick={() => setGiftDatePrecision("MONTH")}
+                                        disabled={submittingTx}
+                                    >
+                                        {tr("Month + Year", "Mois + Année")}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`tx-dialog__precision-btn ${giftDatePrecision === "DAY" ? "tx-dialog__precision-btn--active" : ""}`}
+                                        onClick={() => setGiftDatePrecision("DAY")}
+                                        disabled={submittingTx}
+                                    >
+                                        {tr("Full date", "Date complète")}
+                                    </button>
+                                </div>
+
+                                {giftDatePrecision === "YEAR" && (
+                                    <input
+                                        type="number"
+                                        min={1900}
+                                        max={2100}
+                                        step={1}
+                                        required
+                                        placeholder={tr("e.g. 2024", "ex : 2024")}
+                                        value={giftYear}
+                                        onChange={(e) => setGiftYear(e.target.value)}
+                                        style={{ marginTop: "6px" }}
+                                    />
+                                )}
+
+                                {giftDatePrecision === "MONTH" && (
+                                    <div className="tx-dialog__grid" style={{ marginTop: "6px" }}>
+                                        <select
+                                            value={giftMonth}
+                                            onChange={(e) => setGiftMonth(e.target.value)}
+                                            aria-label={tr("Month", "Mois")}
+                                        >
+                                            {Array.from({ length: 12 }, (_, idx) => {
+                                                const mVal = String(idx + 1).padStart(2, "0");
+                                                const label = new Date(2000, idx, 1).toLocaleDateString(locale, { month: "long" });
+                                                return (
+                                                    <option key={mVal} value={mVal}>
+                                                        {label.charAt(0).toUpperCase() + label.slice(1)}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
+                                        <input
+                                            type="number"
+                                            min={1900}
+                                            max={2100}
+                                            step={1}
+                                            required
+                                            placeholder={tr("e.g. 2024", "ex : 2024")}
+                                            value={giftYear}
+                                            onChange={(e) => setGiftYear(e.target.value)}
+                                            aria-label={tr("Year", "Année")}
+                                        />
+                                    </div>
+                                )}
+
+                                {giftDatePrecision === "DAY" && (
+                                    <input
+                                        type="date"
+                                        required
+                                        value={buyDate}
+                                        onChange={(e) => setBuyDate(e.target.value)}
+                                        style={{ marginTop: "6px" }}
+                                    />
+                                )}
                             </div>
                         )}
 

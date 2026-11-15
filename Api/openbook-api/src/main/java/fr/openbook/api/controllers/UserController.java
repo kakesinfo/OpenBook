@@ -20,6 +20,8 @@ import fr.openbook.api.dtos.UserBookTransactionDTO;
 import fr.openbook.api.dtos.CreateBookTransactionRequestDTO;
 import fr.openbook.api.dtos.SaleStatusUpdateRequestDTO;
 import java.time.LocalDate;
+import java.time.Year;
+import java.time.YearMonth;
 
 import org.springframework.web.bind.annotation.RequestMethod;
 import fr.openbook.api.entities.UserOwnsBookStatus;
@@ -1143,14 +1145,31 @@ public class UserController {
         tx.setBook(book);
         tx.setType(type);
         LocalDate txDate = null;
-        if (req.getDate() != null && !req.getDate().trim().isEmpty()) {
-            try {
-                txDate = LocalDate.parse(req.getDate().trim());
-            } catch (Exception ignored) {}
-        } else if ("BOUGHT".equals(type) || "GIFT".equals(type)) {
-            txDate = LocalDate.now();
+        String datePrecision = null;
+        String rawDate = req.getDate() != null ? req.getDate().trim() : "";
+        String reqPrecision = req.getDatePrecision() != null ? req.getDatePrecision().trim().toUpperCase() : "";
+
+        if (!"NONE".equals(reqPrecision)) {
+            if (!rawDate.isEmpty()) {
+                try {
+                    if ("YEAR".equals(reqPrecision) || rawDate.matches("^\\d{4}$")) {
+                        txDate = Year.parse(rawDate.substring(0, 4)).atDay(1);
+                        datePrecision = "YEAR";
+                    } else if ("MONTH".equals(reqPrecision) || rawDate.matches("^\\d{4}-\\d{2}$")) {
+                        txDate = YearMonth.parse(rawDate.substring(0, 7)).atDay(1);
+                        datePrecision = "MONTH";
+                    } else {
+                        txDate = LocalDate.parse(rawDate);
+                        datePrecision = "DAY";
+                    }
+                } catch (Exception ignored) {}
+            } else if ("BOUGHT".equals(type)) {
+                txDate = LocalDate.now();
+                datePrecision = "DAY";
+            }
         }
         tx.setTransactionDate(txDate);
+        tx.setDatePrecision(datePrecision);
         tx.setPrice("GIFT".equals(type) ? null : req.getPrice());
         tx.setLocation(req.getLocation());
         tx.setMemo(req.getMemo());
