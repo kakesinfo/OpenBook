@@ -94,6 +94,8 @@ public interface BookRepository extends JpaRepository<BookEntity, Long> {
            "ORDER BY b.releaseDate ASC, b.id ASC")
     List<BookEntity> findAllByAuthorIdOrderByReleaseDateAsc(@Param("authorId") Integer authorId);
 
+    List<BookEntity> findAllByEditorIdOrderByReleaseDateDescIdAsc(Long editorId);
+
     long countByCoverUrlAndIdNot(String coverUrl, Long id);
 
     Optional<BookEntity> findByIsbnAndIdNot(String isbn, Long id);

@@ -1778,17 +1778,27 @@ export default function BookPage() {
                                                 <FontAwesomeIcon icon={faBuilding} className="book-page__spec-icon" /> {tr("Publisher", "Éditeur")}
                                             </span>
                                             <div className="book-page__spec-value">
-                                                <button
-                                                    type="button"
-                                                    className="book-page__spec-author-link"
-                                                    onClick={() => openFollowModal("editor", book.editor?.id, book.editor!.name)}
-                                                    title={tr(`Manage follow for publisher ${book.editor.name}`, `Gérer le suivi de l'éditeur ${book.editor.name}`)}
-                                                >
-                                                    <span>{book.editor.name}</span>
-                                                    {book.editor?.id && followStates[`editor_${book.editor.id}`] && (
-                                                        <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
-                                                    )}
-                                                </button>
+                                                {book.editor.id ? (
+                                                    <Link
+                                                        to={`/app/editor/${book.editor.id}`}
+                                                        className="book-page__spec-author-link"
+                                                        title={tr(`View books by ${book.editor.name}`, `Voir les livres de l'éditeur ${book.editor.name}`)}
+                                                    >
+                                                        <span>{book.editor.name}</span>
+                                                        {followStates[`editor_${book.editor.id}`] && (
+                                                            <FontAwesomeIcon icon={faBell} className="book-page__followed-icon" />
+                                                        )}
+                                                    </Link>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="book-page__spec-author-link"
+                                                        onClick={() => openFollowModal("editor", book.editor?.id, book.editor!.name)}
+                                                        title={tr(`Manage follow for publisher ${book.editor.name}`, `Gérer le suivi de l'éditeur ${book.editor.name}`)}
+                                                    >
+                                                        <span>{book.editor.name}</span>
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     )}
