@@ -13,6 +13,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
+import ReadingSessionDTO from "../../dto/ReadingSession.dto.ts";
 import BookList from "../../components/BookList/BookList.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
@@ -35,6 +36,7 @@ export default function ReadingHistoryPage() {
     const currentYear = new Date().getFullYear();
 
     const [collectionBooks, setCollectionBooks] = useState<BookSummaryDTO[]>([]);
+    const [readingSessions, setReadingSessions] = useState<ReadingSessionDTO[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [selectedYear, setSelectedYear] = useState<number>(currentYear);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -98,11 +100,17 @@ export default function ReadingHistoryPage() {
         let cancelled = false;
         setLoading(true);
 
-        session
-            .customFetch("/user/collection", { method: "GET" })
-            .then(async (res) => (res.ok ? await res.json() : []))
-            .catch(() => [])
-            .then((colData) => {
+        Promise.all([
+            session
+                .customFetch("/user/collection", { method: "GET" })
+                .then(async (res) => (res.ok ? await res.json() : []))
+                .catch(() => []),
+            session
+                .customFetch("/user/readingSessions", { method: "GET" })
+                .then(async (res) => (res.ok ? await res.json() : []))
+                .catch(() => [])
+        ])
+            .then(([colData, sessionsData]) => {
                 if (cancelled) return;
                 const booksList: BookSummaryDTO[] = Array.isArray(colData)
                     ? colData
@@ -110,6 +118,7 @@ export default function ReadingHistoryPage() {
                         ? colData.content
                         : [];
                 setCollectionBooks(booksList);
+                setReadingSessions(Array.isArray(sessionsData) ? sessionsData : []);
             })
             .finally(() => {
                 if (!cancelled) setLoading(false);
@@ -121,22 +130,48 @@ export default function ReadingHistoryPage() {
     }, [session]);
 
     const { availableYears, booksByYear } = useMemo(() => {
+        const latestEndByBookId = new Map<number, number>();
+        const latestAnyByBookId = new Map<number, number>();
+
+        for (const s of readingSessions) {
+            if (!s.createdAt) continue;
+            const prevAny = latestAnyByBookId.get(s.bookId) ?? 0;
+            if (s.createdAt > prevAny) {
+                latestAnyByBookId.set(s.bookId, s.createdAt);
+            }
+            if (s.sessionType === 2) {
+                const prevEnd = latestEndByBookId.get(s.bookId) ?? 0;
+                if (s.createdAt > prevEnd) {
+                    latestEndByBookId.set(s.bookId, s.createdAt);
+                }
+            }
+        }
+
         const yearsSet = new Set<number>([currentYear]);
         const mapByYear = new Map<number, BookSummaryDTO[]>();
 
         for (const book of collectionBooks) {
             if ((book.readingStatus || "").toUpperCase() !== "READ") continue;
 
-            const year = book.finishedAt
-                ? new Date(book.finishedAt).getFullYear()
+            const numericId = Number(book.id);
+            const sessionFinishedAt =
+                latestEndByBookId.get(numericId) ?? latestAnyByBookId.get(numericId);
+            const effectiveFinishedAt = sessionFinishedAt ?? book.finishedAt ?? null;
+            const bookWithFinishedAt: BookSummaryDTO =
+                effectiveFinishedAt !== book.finishedAt
+                    ? { ...book, finishedAt: effectiveFinishedAt }
+                    : book;
+
+            const year = effectiveFinishedAt
+                ? new Date(effectiveFinishedAt).getFullYear()
                 : currentYear;
             yearsSet.add(year);
 
             const list = mapByYear.get(year);
             if (list) {
-                list.push(book);
+                list.push(bookWithFinishedAt);
             } else {
-                mapByYear.set(year, [book]);
+                mapByYear.set(year, [bookWithFinishedAt]);
             }
         }
 
@@ -146,7 +181,7 @@ export default function ReadingHistoryPage() {
         }
 
         return { availableYears: years, booksByYear: mapByYear };
-    }, [collectionBooks, currentYear]);
+    }, [collectionBooks, readingSessions, currentYear]);
 
     const readBooks = useMemo(() => {
         let list = booksByYear.get(selectedYear) || [];
