@@ -452,8 +452,8 @@ export default function SeriesDetailPage() {
     return (
         <div className="series-detail-page">
             <WrapperHeader>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div className="series-detail-header-bar">
+                    <div className="series-detail-header-bar__left">
                         <button
                             type="button"
                             className="series-detail-page__back-btn"
@@ -465,7 +465,7 @@ export default function SeriesDetailPage() {
                         </button>
                     </div>
 
-                    <div>
+                    <div className="series-detail-header-bar__center">
                         <HeaderFilterTabs
                             tabs={[
                                 { id: "all", label: tr("All", "Tous"), count: totalCount },
@@ -479,7 +479,7 @@ export default function SeriesDetailPage() {
                         />
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                    <div className="series-detail-header-bar__right">
                         <button
                             type="button"
                             className={`series-detail-page__follow-btn ${series.isFollowed ? "is-followed" : ""}`}

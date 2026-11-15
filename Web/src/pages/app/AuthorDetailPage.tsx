@@ -217,8 +217,8 @@ export default function AuthorDetailPage() {
     return (
         <div className="author-detail-page">
             <WrapperHeader>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", flexWrap: "wrap", gap: "12px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div className="author-detail-header-bar">
+                    <div className="author-detail-header-bar__left">
                         <button
                             type="button"
                             className="author-detail-page__back-btn"
@@ -230,7 +230,7 @@ export default function AuthorDetailPage() {
                         </button>
                     </div>
 
-                    <div>
+                    <div className="author-detail-header-bar__center">
                         <HeaderFilterTabs
                             tabs={[
                                 { id: "all", label: tr("All", "Tous"), count: totalBooks },
@@ -244,7 +244,7 @@ export default function AuthorDetailPage() {
                         />
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                    <div className="author-detail-header-bar__right">
                         <button
                             type="button"
                             className={`author-detail-page__follow-btn ${author.isFollowed ? "is-followed" : ""}`}

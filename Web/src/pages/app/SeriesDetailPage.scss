@@ -575,6 +575,44 @@
   }
 }
 
+.series-detail-header-bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+
+  &__left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-self: start;
+  }
+
+  &__center {
+    justify-self: center;
+    max-width: 100%;
+  }
+
+  &__right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-self: end;
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: auto 1fr;
+
+    &__center {
+      grid-column: 1 / -1;
+      order: 3;
+      width: 100%;
+    }
+  }
+}
+
 .series-detail-page .booklist {
   padding: 0;
 }
