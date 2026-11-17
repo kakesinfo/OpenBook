@@ -1023,6 +1023,143 @@ export default function BookPage() {
         }
     };
 
+    // Authors Edit Modal states
+    const [authorsModalOpen, setAuthorsModalOpen] = useState(false);
+    const [savingAuthors, setSavingAuthors] = useState(false);
+    const [authorOptions, setAuthorOptions] = useState<{ id?: number; firstname: string; lastname: string }[]>([]);
+    const [editableAuthors, setEditableAuthors] = useState<{ firstname: string; lastname: string; type: "Writer" | "Illustrator" | "Colorist" }[]>([]);
+    const [quickAddAuthorName, setQuickAddAuthorName] = useState("");
+
+    const normalizeAuthorRole = (rawType?: string): "Writer" | "Illustrator" | "Colorist" => {
+        const lower = (rawType || "").toLowerCase();
+        if (lower.includes("illustrator") || lower.includes("dessin") || lower.includes("pencil") || lower.includes("artist")) {
+            return "Illustrator";
+        }
+        if (lower.includes("color") || lower.includes("couleur")) {
+            return "Colorist";
+        }
+        return "Writer";
+    };
+
+    const handleOpenAuthorsModal = async () => {
+        if (!book) return;
+        const initial = (book.authors || []).map((a) => ({
+            firstname: a.firstname || "",
+            lastname: a.lastname || "",
+            type: normalizeAuthorRole(a.type)
+        }));
+        setEditableAuthors(initial);
+        setQuickAddAuthorName("");
+        setAuthorsModalOpen(true);
+
+        if (authorOptions.length === 0) {
+            try {
+                const res = await session.customFetch("/books/metadata-options", { method: "GET" });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data.authors)) {
+                        setAuthorOptions(data.authors);
+                    }
+                }
+            } catch (err) {
+                console.error("Error loading author options:", err);
+            }
+        }
+    };
+
+    const handleAddAuthorFromQuickInput = () => {
+        const trimmed = quickAddAuthorName.trim();
+        if (!trimmed) {
+            setEditableAuthors((prev) => [...prev, { firstname: "", lastname: "", type: "Writer" }]);
+            return;
+        }
+        const match = authorOptions.find(
+            (a) => `${a.firstname || ""} ${a.lastname || ""}`.trim().toLowerCase() === trimmed.toLowerCase()
+        );
+        if (match) {
+            setEditableAuthors((prev) => [
+                ...prev,
+                { firstname: match.firstname || "", lastname: match.lastname || "", type: "Writer" }
+            ]);
+        } else {
+            const lastSpace = trimmed.lastIndexOf(" ");
+            const firstname = lastSpace > 0 ? trimmed.substring(0, lastSpace).trim() : "";
+            const lastname = lastSpace > 0 ? trimmed.substring(lastSpace + 1).trim() : trimmed;
+            setEditableAuthors((prev) => [...prev, { firstname, lastname, type: "Writer" }]);
+        }
+        setQuickAddAuthorName("");
+    };
+
+    const handleUpdateAuthorRow = (
+        index: number,
+        field: "firstname" | "lastname" | "type",
+        value: string
+    ) => {
+        setEditableAuthors((prev) =>
+            prev.map((row, idx) => (idx === index ? { ...row, [field]: value } : row))
+        );
+    };
+
+    const handleRemoveAuthorRow = (index: number) => {
+        setEditableAuthors((prev) => prev.filter((_, idx) => idx !== index));
+    };
+
+    const handleSaveAuthors = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!id || !book || savingAuthors) return;
+
+        const cleanedAuthors = editableAuthors
+            .map((a) => ({
+                firstname: a.firstname.trim(),
+                lastname: a.lastname.trim(),
+                type: a.type
+            }))
+            .filter((a) => a.firstname !== "" || a.lastname !== "");
+
+        setSavingAuthors(true);
+        try {
+            const payload = {
+                pageCount: book.pageCount || 0,
+                weight: book.weight || 0,
+                height: book.height || 0,
+                length: book.length || 0,
+                thickness: book.thickness || 0,
+                price: book.price ?? 0,
+                authors: cleanedAuthors
+            };
+
+            const res = await session.customFetch(`/books/${encodeURIComponent(id)}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                const updated: BookDTO = await res.json();
+                setBook(updated);
+                setAuthorsModalOpen(false);
+                enqueueSnackbar(
+                    tr("Authors updated successfully!", "Auteurs mis à jour avec succès !"),
+                    { variant: "success" }
+                );
+            } else {
+                let errMsg = tr("Unable to update authors", "Impossible de mettre à jour les auteurs");
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.message || errData.error || errMsg;
+                } catch {
+                    const text = await res.text().catch(() => "");
+                    if (text) errMsg = text;
+                }
+                enqueueSnackbar(`Erreur : ${errMsg}`, { variant: "error" });
+            }
+        } catch (err: any) {
+            enqueueSnackbar(`Erreur réseau : ${err.message}`, { variant: "error" });
+        } finally {
+            setSavingAuthors(false);
+        }
+    };
+
     const handleOpenCoverModal = () => {
         setCoverMode("file");
         setCoverFile(null);
@@ -1580,6 +1717,17 @@ export default function BookPage() {
                                         >
                                             <FontAwesomeIcon icon={faPen} />
                                             <span>{tr("Edit", "Modifier")}</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="book-page__dropdown-item"
+                                            onClick={() => {
+                                                setDetailsMenuOpen(false);
+                                                handleOpenAuthorsModal();
+                                            }}
+                                        >
+                                            <FontAwesomeIcon icon={faPenNib} />
+                                            <span>{tr("Edit authors", "Modifier les auteurs")}</span>
                                         </button>
                                         <button
                                             type="button"
@@ -3515,6 +3663,157 @@ export default function BookPage() {
                             <span>{relisting ? tr("Relisting...", "Mise en vente...") : tr("Confirm", "Valider")}</span>
                         </button>
                     </div>
+                </div>
+            </Dialog>
+
+            {/* Authors & Creators Management Dialog */}
+            <Dialog
+                open={authorsModalOpen}
+                onClose={() => !savingAuthors && setAuthorsModalOpen(false)}
+                PaperProps={{
+                    style: {
+                        backgroundColor: "var(--bg-surface, #1e1e24)",
+                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                        borderRadius: "16px",
+                        maxWidth: "660px",
+                        width: "100%",
+                        padding: "18px 20px",
+                        color: "var(--text-primary)",
+                        overflow: "visible"
+                    }
+                }}
+            >
+                <div className="book-edit-dialog">
+                    <div className="book-edit-dialog__header">
+                        <div className="book-edit-dialog__header-title">
+                            <FontAwesomeIcon icon={faPenNib} />
+                            <h3>{tr("Edit authors", "Modifier les auteurs")}</h3>
+                        </div>
+                        <button
+                            type="button"
+                            className="book-edit-dialog__close-btn"
+                            onClick={() => setAuthorsModalOpen(false)}
+                            disabled={savingAuthors}
+                            aria-label={tr("Close", "Fermer")}
+                        >
+                            <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center", paddingBottom: "10px", borderBottom: "1px solid var(--border-subtle)" }}>
+                        <div className="tx-dialog__field" style={{ flex: 1 }}>
+                            <SearchableSelect
+                                value={quickAddAuthorName}
+                                onChange={setQuickAddAuthorName}
+                                options={authorOptions
+                                    .map((a) => `${a.firstname || ""} ${a.lastname || ""}`.trim())
+                                    .filter(Boolean)}
+                                placeholder={tr("Search an existing author...", "Rechercher un auteur existant...")}
+                                emptyLabel={tr("-- Clear --", "-- Effacer --")}
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            className="book-edit-dialog__series-btn"
+                            onClick={handleAddAuthorFromQuickInput}
+                            disabled={!quickAddAuthorName.trim()}
+                            style={{ whiteSpace: "nowrap", opacity: quickAddAuthorName.trim() ? 1 : 0.5 }}
+                        >
+                            <FontAwesomeIcon icon={faPlus} />
+                            <span>{tr("Add", "Ajouter")}</span>
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleSaveAuthors} className="book-edit-dialog__form">
+                        {editableAuthors.length === 0 ? (
+                            <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "20px 0", margin: 0, fontSize: "0.9rem" }}>
+                                {tr("No authors linked to this book.", "Aucun auteur associé à ce livre.")}
+                            </p>
+                        ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                {editableAuthors.map((author, idx) => (
+                                    <div
+                                        key={idx}
+                                        style={{
+                                            display: "grid",
+                                            gridTemplateColumns: "1fr 1fr 165px auto",
+                                            gap: "8px",
+                                            alignItems: "center"
+                                        }}
+                                    >
+                                        <div className="tx-dialog__field">
+                                            <input
+                                                type="text"
+                                                value={author.firstname}
+                                                onChange={(e) => handleUpdateAuthorRow(idx, "firstname", e.target.value)}
+                                                placeholder={tr("First name", "Prénom")}
+                                            />
+                                        </div>
+                                        <div className="tx-dialog__field">
+                                            <input
+                                                type="text"
+                                                value={author.lastname}
+                                                onChange={(e) => handleUpdateAuthorRow(idx, "lastname", e.target.value)}
+                                                placeholder={tr("Last name", "Nom")}
+                                            />
+                                        </div>
+                                        <Select
+                                            multiple={false}
+                                            value={author.type}
+                                            onChange={(val) => {
+                                                if (val) handleUpdateAuthorRow(idx, "type", val);
+                                            }}
+                                            options={[
+                                                { id: "Writer", label: tr("Writer", "Scénariste / Auteur") },
+                                                { id: "Illustrator", label: tr("Illustrator", "Dessinateur") },
+                                                { id: "Colorist", label: tr("Colorist", "Coloriste") }
+                                            ]}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="book-page__tx-delete"
+                                            onClick={() => handleRemoveAuthorRow(idx)}
+                                            title={tr("Remove", "Supprimer")}
+                                            aria-label={tr("Remove", "Supprimer")}
+                                        >
+                                            <FontAwesomeIcon icon={faTrash} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                            <button
+                                type="button"
+                                className="book-edit-dialog__series-btn"
+                                onClick={() => setEditableAuthors((prev) => [...prev, { firstname: "", lastname: "", type: "Writer" }])}
+                                style={{ whiteSpace: "nowrap" }}
+                            >
+                                <FontAwesomeIcon icon={faPlus} />
+                                <span>{tr("New row", "Nouvelle ligne")}</span>
+                            </button>
+                        </div>
+
+                        <div className="tx-dialog__actions">
+                            <button
+                                type="button"
+                                className="tx-dialog__btn-cancel"
+                                onClick={() => setAuthorsModalOpen(false)}
+                                disabled={savingAuthors}
+                            >
+                                {tr("Cancel", "Annuler")}
+                            </button>
+                            <button
+                                type="submit"
+                                className="tx-dialog__btn-submit"
+                                disabled={savingAuthors}
+                            >
+                                <FontAwesomeIcon icon={faCheck} />
+                                <span>{savingAuthors ? tr("Saving...", "Enregistrement...") : tr("Save", "Enregistrer")}</span>
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </Dialog>
         </div>
