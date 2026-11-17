@@ -8,15 +8,22 @@ It helps you track your books, mangas, comics and graphic novels without the ove
 Built by readers, for readers, who also happen to write code at 2 AM.  
 
 ### 🚀 Features  
-- Add, edit, and browse your collection  
-- Filter by type, title, or author  
-- Track owned vs wanted volumes
-- Manage the books you are selling
-- Take notes and write down lexical discoveries
-- Follow the series, authors and editors you love
-- Find their upcoming books in a provided Schedule
-- Discover a lot of statistics
-- Clean, minimal interface that *mostly works*  
+
+#### 🌐 Web
+- Browse, search, and filter your collection, wishlist, and sales (gallery/list views, edition badges)
+- Manage series, volume links, and follow series, authors, and publishers
+- Quick-add or create books via global search and BnF lookup, and import from Bookmory
+- Edit metadata/covers, reading statuses, and purchase, gift, or sale transactions
+- Track reading streaks, yearly reading history, per-book notes, and an A–Z glossary
+- Explore new, recent, and upcoming releases with `.ics` calendar sync and detailed statistics
+- Multilingual (EN/FR), Dark/Beige themes, and full admin panel (scrapers, maintenance, backups, users, CRON config, logs)
+
+#### 📱 Mobile
+- Connect to your self-hosted server (JWT auth) with a home dashboard, reading carousel, and streak tracker
+- Search and filter library, wishlist, to-read, sold, paused, and abandoned books
+- Scan ISBN/EAN barcodes or search BnF to add, quick-create, and edit books with cover upload
+- Live reading timer, session logger, monthly reading calendar, purchase/gift history, notes, and glossary
+- Android home-screen reading widget and Dark/Beige Material 3 themes
 
 ### 🧠 Roadmap  
 
@@ -34,5 +41,4 @@ So here’s yet another one, built with just enough irony to justify its existen
 
 ### 🧩 Contributing
 
-Issues, PRs, and unsolicited feature requests are welcome.
-Just remember: if it works on your machine, it’s probably fine.
+Issues are welcome, but PRs and unsolicited feature requests are not welcome yet.
