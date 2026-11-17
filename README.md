@@ -31,7 +31,6 @@ I've created a Trello board to provide some insight on what I have planned for t
 
 You can find the board [here](https://trello.com/b/rYIRIKxi/yet-another-library-road-map).
 
-
 ### 💡 Philosophy
 
 There are already too many collection managers.
@@ -42,3 +41,7 @@ So here’s yet another one, built with just enough irony to justify its existen
 ### 🧩 Contributing
 
 Issues are welcome, but PRs and unsolicited feature requests are not welcome yet.
+
+### 📜 Licence
+
+This project is under the GNU General Public License v3.0 license - see the [LICENSE](LICENSE.md) file for details.
