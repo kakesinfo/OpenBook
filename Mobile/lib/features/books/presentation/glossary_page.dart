@@ -175,12 +175,14 @@ class _GlossaryPageState extends ConsumerState<GlossaryPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: null,
-        onPressed: () => _openWordEditorSheet(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Nouveau terme'),
-      ),
+      floatingActionButton: allWords.isEmpty
+          ? null
+          : FloatingActionButton.extended(
+              heroTag: null,
+              onPressed: () => _openWordEditorSheet(context),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Nouveau terme'),
+            ),
       body: RefreshIndicator(
         color: AppTheme.accentPrimary,
         onRefresh: () => ref.read(wordsControllerProvider.notifier).reload(),

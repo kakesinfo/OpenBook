@@ -26,7 +26,18 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  static bool _hasPlayedInitialEntrance = false;
+  late final bool _animateOnEntry;
   int _currentCarouselIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _animateOnEntry = !_hasPlayedInitialEntrance;
+    if (_animateOnEntry) {
+      _hasPlayedInitialEntrance = true;
+    }
+  }
 
   Future<void> _refreshAll(WidgetRef ref) async {
     ref.invalidate(allReadingSessionsProvider);
@@ -73,61 +84,68 @@ class _HomePageState extends ConsumerState<HomePage> {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               sliver: SliverToBoxAdapter(
-                child: booksAsync.when(
-                  loading: () => const _LoadingHero(),
-                  error: (error, _) => _EmptyHero(
-                    title: 'Impossible de charger les données',
-                    subtitle: error.toString(),
-                  ),
-                  data: (books) {
-                    final totalBooks = books.where((book) => book.isOwned).length;
-                    final unreadBooks =
-                        books.where((book) => book.isOwned && book.isUnread).length;
+                child: _HomeSectionReveal(
+                  animate: _animateOnEntry,
+                  delayMs: 0,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: booksAsync.when(
+                      loading: () => const _LoadingHero(),
+                      error: (error, _) => _EmptyHero(
+                        title: 'Impossible de charger les données',
+                        subtitle: error.toString(),
+                      ),
+                      data: (books) {
+                        final totalBooks = books.where((book) => book.isOwned).length;
+                        final unreadBooks =
+                            books.where((book) => book.isOwned && book.isUnread).length;
 
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Collection',
-                            value: totalBooks.toString(),
-                            icon: Icons.collections_bookmark_rounded,
-                            accentColor: AppTheme.accentPrimary,
-                            lightBg: AppTheme.accentPrimaryLight,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _StatCard(
-                            label: 'PAL',
-                            value: unreadBooks.toString(),
-                            icon: Icons.menu_book_rounded,
-                            accentColor: AppTheme.accentSecondary,
-                            lightBg: AppTheme.accentSecondaryLight,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _StatCard(
-                            label: 'En cours',
-                            value: readingBooks.length.toString(),
-                            icon: Icons.auto_stories_rounded,
-                            accentColor: AppTheme.accentAmber,
-                            lightBg: AppTheme.accentAmberLight,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _StatCard(
-                            label: 'Souhaits',
-                            value: wishlistBooks.length.toString(),
-                            icon: Icons.favorite_rounded,
-                            accentColor: AppTheme.accentRose,
-                            lightBg: AppTheme.accentRoseLight,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _StatCard(
+                                label: 'Collection',
+                                value: totalBooks.toString(),
+                                icon: Icons.collections_bookmark_rounded,
+                                accentColor: AppTheme.accentPrimary,
+                                lightBg: AppTheme.accentPrimaryLight,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _StatCard(
+                                label: 'PAL',
+                                value: unreadBooks.toString(),
+                                icon: Icons.menu_book_rounded,
+                                accentColor: AppTheme.accentSecondary,
+                                lightBg: AppTheme.accentSecondaryLight,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _StatCard(
+                                label: 'En cours',
+                                value: readingBooks.length.toString(),
+                                icon: Icons.auto_stories_rounded,
+                                accentColor: AppTheme.accentAmber,
+                                lightBg: AppTheme.accentAmberLight,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _StatCard(
+                                label: 'Souhaits',
+                                value: wishlistBooks.length.toString(),
+                                icon: Icons.favorite_rounded,
+                                accentColor: AppTheme.accentRose,
+                                lightBg: AppTheme.accentRoseLight,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -136,9 +154,13 @@ class _HomePageState extends ConsumerState<HomePage> {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(18, 22, 18, 10),
               sliver: SliverToBoxAdapter(
-                child: _SectionHeader(
-                  title: 'Lectures en cours',
-                  badgeText: readingBooks.isNotEmpty ? '${readingBooks.length}' : null,
+                child: _HomeSectionReveal(
+                  animate: _animateOnEntry,
+                  delayMs: 70,
+                  child: _SectionHeader(
+                    title: 'Lectures en cours',
+                    badgeText: readingBooks.isNotEmpty ? '${readingBooks.length}' : null,
+                  ),
                 ),
               ),
             ),
@@ -147,13 +169,20 @@ class _HomePageState extends ConsumerState<HomePage> {
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverToBoxAdapter(
-                child: readingBooks.isEmpty
-                    ? const _EmptyHero(
-                        title: 'Aucune lecture en cours',
-                        subtitle:
-                            'Ajoute un livre et passe-le en statut « En cours » pour suivre tes progrès.',
-                      )
-                    : CarouselSlider(
+                child: _HomeSectionReveal(
+                  animate: _animateOnEntry,
+                  delayMs: 110,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: booksAsync.isLoading && readingBooks.isEmpty
+                        ? const _LoadingHero()
+                        : readingBooks.isEmpty
+                            ? const _EmptyHero(
+                                title: 'Aucune lecture en cours',
+                                subtitle:
+                                    'Ajoute un livre et passe-le en statut « En cours » pour suivre tes progrès.',
+                              )
+                            : CarouselSlider(
                         options: CarouselOptions(
                           height: carouselHeight,
                           viewportFraction: 1.0,
@@ -208,22 +237,31 @@ class _HomePageState extends ConsumerState<HomePage> {
                           );
                         }).toList(),
                       ),
+                  ),
+                ),
               ),
             ),
 
             // 3. Carnet & Références (Notes & Glossaire Bento Grid)
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(18, 20, 18, 10),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
               sliver: SliverToBoxAdapter(
-                child: _SectionHeader(
-                  title: 'Carnet & Lexique',
+                child: _HomeSectionReveal(
+                  animate: _animateOnEntry,
+                  delayMs: 160,
+                  child: const _SectionHeader(
+                    title: 'Carnet & Lexique',
+                  ),
                 ),
               ),
             ),
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverToBoxAdapter(
-                child: Row(
+                child: _HomeSectionReveal(
+                  animate: _animateOnEntry,
+                  delayMs: 190,
+                  child: Row(
                   children: [
                     Expanded(
                       child: _FeatureBentoCard(
@@ -278,22 +316,31 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                   ],
                 ),
+                ),
               ),
             ),
 
             // 4. Rythme & Suivi (Série de lecture + Accès rapide Calendrier / Listes)
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(18, 22, 18, 10),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 22, 18, 10),
               sliver: SliverToBoxAdapter(
-                child: _SectionHeader(
-                  title: 'Activité & Suivi',
+                child: _HomeSectionReveal(
+                  animate: _animateOnEntry,
+                  delayMs: 240,
+                  child: const _SectionHeader(
+                    title: 'Activité & Suivi',
+                  ),
                 ),
               ),
             ),
-            const SliverPadding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverToBoxAdapter(
-                child: ReadingStreakCard(),
+                child: _HomeSectionReveal(
+                  animate: _animateOnEntry,
+                  delayMs: 270,
+                  child: const ReadingStreakCard(),
+                ),
               ),
             ),
 
@@ -384,6 +431,41 @@ class _HomePageState extends ConsumerState<HomePage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _HomeSectionReveal extends StatelessWidget {
+  const _HomeSectionReveal({
+    required this.animate,
+    required this.delayMs,
+    required this.child,
+  });
+
+  final bool animate;
+  final int delayMs;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!animate) return child;
+    final totalMs = 380 + delayMs;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: totalMs),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        final start = delayMs / totalMs;
+        final t = ((value - start) / (1.0 - start)).clamp(0.0, 1.0);
+        return Opacity(
+          opacity: t,
+          child: Transform.translate(
+            offset: Offset(0, (1.0 - t) * 14),
+            child: child,
+          ),
+        );
+      },
+      child: child,
     );
   }
 }
