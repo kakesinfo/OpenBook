@@ -50,6 +50,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     final notes = notesAsync.value ?? const [];
     final words = wordsAsync.value ?? const [];
+    final retroYears = ref.watch(retrospectiveYearsProvider).value ?? const <int>[];
 
     final viewportHeight = MediaQuery.of(context).size.height;
     final carouselHeight = (viewportHeight * 0.32).clamp(240.0, 280.0);
@@ -128,22 +129,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                     );
                   },
                 ),
-              ),
-            ),
-
-            // 1.5 Rétrospective (Stories par année)
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(18, 20, 18, 10),
-              sliver: SliverToBoxAdapter(
-                child: _SectionHeader(
-                  title: 'Rétrospective',
-                ),
-              ),
-            ),
-            const SliverPadding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverToBoxAdapter(
-                child: RetrospectiveStoriesSection(),
               ),
             ),
 
@@ -376,6 +361,24 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
               ),
             ),
+
+            // 6. Rétrospective (Stories par année)
+            if (retroYears.isNotEmpty) ...[
+              const SliverPadding(
+                padding: EdgeInsets.fromLTRB(18, 22, 18, 10),
+                sliver: SliverToBoxAdapter(
+                  child: _SectionHeader(
+                    title: 'Rétrospective',
+                  ),
+                ),
+              ),
+              const SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverToBoxAdapter(
+                  child: RetrospectiveStoriesSection(),
+                ),
+              ),
+            ],
 
             const SliverToBoxAdapter(child: SizedBox(height: 80)),
           ],

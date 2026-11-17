@@ -342,28 +342,6 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
               ),
             ),
 
-            // Editorial watermark number
-            Positioned(
-              right: -12,
-              top: screenHeight * 0.14,
-              child: IgnorePointer(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 400),
-                  child: Text(
-                    '${_currentIndex + 1}'.padLeft(2, '0'),
-                    key: ValueKey('wm_$_currentIndex'),
-                    style: TextStyle(
-                      fontSize: 160,
-                      fontWeight: FontWeight.w900,
-                      height: 0.9,
-                      letterSpacing: -8,
-                      color: Colors.white.withValues(alpha: 0.045),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
             // Foreground SafeArea UI
             SafeArea(
               child: Column(

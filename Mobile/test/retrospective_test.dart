@@ -147,6 +147,27 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets('hides stories when there are no reading years', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            retrospectiveYearsProvider.overrideWith((ref) async => const <int>[]),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: RetrospectiveStoriesSection(
+                referenceDate: DateTime(2026, 11, 17),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('2026'), findsNothing);
+      expect(find.byType(ListView), findsNothing);
+    });
   });
 
   group('RetrospectiveStoryPage', () {

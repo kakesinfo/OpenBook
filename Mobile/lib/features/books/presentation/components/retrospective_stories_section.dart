@@ -50,9 +50,9 @@ class _RetrospectiveStoriesSectionState
     final now = widget.referenceDate ?? DateTime.now();
 
     final years = yearsAsync.when(
-      data: (list) => _mergeWithCurrentYear(list, now.year),
-      loading: () => <int>[now.year],
-      error: (_, _) => <int>[now.year],
+      data: (list) => [...list]..sort((a, b) => b.compareTo(a)),
+      loading: () => const <int>[],
+      error: (_, _) => const <int>[],
     );
 
     if (yearsAsync.hasValue) {
@@ -123,12 +123,6 @@ class _RetrospectiveStoriesSectionState
         },
       ),
     );
-  }
-
-  static List<int> _mergeWithCurrentYear(List<int> apiYears, int currentYear) {
-    final set = <int>{...apiYears, currentYear};
-    final sorted = set.toList()..sort((a, b) => b.compareTo(a));
-    return sorted;
   }
 }
 

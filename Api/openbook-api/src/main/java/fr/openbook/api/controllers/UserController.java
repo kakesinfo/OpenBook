@@ -1811,33 +1811,20 @@ public class UserController {
     public List<Integer> getRetrospectiveYears(HttpSession session) {
         UserEntity user = getAuthenticatedUser(session);
         Set<Integer> years = new TreeSet<>(Comparator.reverseOrder());
+        ZoneId parisZone = ZoneId.of("Europe/Paris");
 
         List<ReadingSessionEntity> allSessions = repositoryService.getReadingSessionRepository()
                 .findAllByUserIdOrderByCreatedAtAsc(user.getId());
         for (ReadingSessionEntity rs : allSessions) {
-            if (rs.getBook() != null && !Boolean.TRUE.equals(rs.getBook().getDeleted()) && rs.getCreatedAt() != null) {
-                years.add(rs.getCreatedAt().atZone(ZoneId.of("UTC")).getYear());
+            if (rs.getBook() == null || Boolean.TRUE.equals(rs.getBook().getDeleted()) || rs.getCreatedAt() == null) {
+                continue;
             }
-        }
-
-        List<UserBookTransactionEntity> allTransactions = repositoryService.getUserBookTransactionRepository()
-                .findAllByUserIdOrderByTransactionDateDescCreatedAtDesc(user.getId());
-        for (UserBookTransactionEntity tx : allTransactions) {
-            if (tx.getBook() != null && !Boolean.TRUE.equals(tx.getBook().getDeleted())) {
-                Integer txYear = extractTransactionYear(tx);
-                if (txYear != null) {
-                    years.add(txYear);
-                }
-            }
-        }
-
-        List<BookStatusEntity> statuses = repositoryService.getBookStatusRepository().findAllByUserId(user.getId());
-        for (BookStatusEntity bse : statuses) {
-            if (bse.getBook() != null && !Boolean.TRUE.equals(bse.getBook().getDeleted()) && bse.getUpdatedAt() != null) {
-                String st = bse.getStatus() != null ? bse.getStatus().toUpperCase() : "";
-                if ("READ".equals(st) || "LU".equals(st)) {
-                    years.add(bse.getUpdatedAt().atZone(ZoneId.of("UTC")).getYear());
-                }
+            boolean hasReading = (rs.getMinutesRead() != null && rs.getMinutesRead() > 0)
+                    || (rs.getSecondsRead() != null && rs.getSecondsRead() > 0)
+                    || (rs.getCurrentPage() != null && rs.getCurrentPage() > 0)
+                    || (rs.getSessionType() != null && rs.getSessionType() != 0);
+            if (hasReading) {
+                years.add(rs.getCreatedAt().atZone(parisZone).getYear());
             }
         }
 
