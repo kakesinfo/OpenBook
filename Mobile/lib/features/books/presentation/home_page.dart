@@ -12,6 +12,7 @@ import 'components/app_header.dart';
 import 'components/book_card.dart';
 import 'components/reading_streak_card.dart';
 import 'components/reading_timer_modal.dart';
+import 'components/retrospective_stories_section.dart';
 import 'glossary_page.dart';
 import 'notes_page.dart';
 import 'paused_books_page.dart';
@@ -29,6 +30,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   Future<void> _refreshAll(WidgetRef ref) async {
     ref.invalidate(allReadingSessionsProvider);
+    ref.invalidate(retrospectiveYearsProvider);
     await Future.wait([
       ref.read(booksControllerProvider.notifier).reload(),
       ref.read(notesControllerProvider.notifier).reload(),
@@ -126,6 +128,22 @@ class _HomePageState extends ConsumerState<HomePage> {
                     );
                   },
                 ),
+              ),
+            ),
+
+            // 1.5 Rétrospective (Stories par année)
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(18, 20, 18, 10),
+              sliver: SliverToBoxAdapter(
+                child: _SectionHeader(
+                  title: 'Rétrospective',
+                ),
+              ),
+            ),
+            const SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: RetrospectiveStoriesSection(),
               ),
             ),
 

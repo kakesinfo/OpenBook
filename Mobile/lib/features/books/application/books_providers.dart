@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/network/api_client.dart';
 import '../data/bnf_service.dart';
@@ -11,6 +12,7 @@ import '../data/books_repository.dart';
 import '../data/cover_image_service.dart';
 import '../data/glossary_word.dart';
 import '../data/reading_session.dart';
+import '../data/retrospective.dart';
 
 final bnfServiceProvider = Provider<BnfService>((ref) {
   final clientNotifier = ref.watch(apiClientProvider.notifier);
@@ -629,5 +631,55 @@ class WordsController extends AsyncNotifier<List<GlossaryWord>> {
   Future<void> deleteWord(int id) async {
     await _repository.deleteWord(id);
     await reload();
+  }
+}
+
+final retrospectiveYearsProvider = FutureProvider<List<int>>((ref) async {
+  final client = ref.watch(apiClientProvider);
+  if (!client.isInitialized || !client.isAuthenticated) {
+    return const <int>[];
+  }
+  final repository = ref.watch(booksRepositoryProvider);
+  return repository.getRetrospectiveYears();
+});
+
+final retrospectiveByYearProvider =
+    FutureProvider.autoDispose.family<YearlyRetrospective, int>((ref, year) async {
+  final repository = ref.watch(booksRepositoryProvider);
+  return repository.getRetrospective(year);
+});
+
+final seenRetrospectiveYearsProvider =
+    NotifierProvider<SeenRetrospectiveYearsNotifier, Set<int>>(
+  SeenRetrospectiveYearsNotifier.new,
+);
+
+class SeenRetrospectiveYearsNotifier extends Notifier<Set<int>> {
+  static const _prefsKey = 'seen_retrospective_years';
+
+  @override
+  Set<int> build() {
+    _load();
+    return <int>{};
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getStringList(_prefsKey) ?? const <String>[];
+    final parsed = raw.map(int.tryParse).whereType<int>().toSet();
+    if (parsed.isNotEmpty) {
+      state = parsed;
+    }
+  }
+
+  Future<void> markSeen(int year) async {
+    if (state.contains(year)) return;
+    final next = {...state, year};
+    state = next;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _prefsKey,
+      next.map((e) => e.toString()).toList(),
+    );
   }
 }

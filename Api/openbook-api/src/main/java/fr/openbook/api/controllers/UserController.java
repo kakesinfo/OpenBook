@@ -36,7 +36,9 @@ import java.util.Comparator;
 import java.util.Set;
 import fr.openbook.api.dtos.UserOwnsBookDTO;
 import fr.openbook.api.dtos.UserProfileDTO;
+import fr.openbook.api.dtos.UserRetrospectiveDTO;
 import fr.openbook.api.dtos.UserStatisticsDTO;
+import org.springframework.http.HttpStatus;
 import fr.openbook.api.dtos.stats.AuthorHighlightDTO;
 import fr.openbook.api.dtos.stats.BookHighlightDTO;
 import fr.openbook.api.dtos.stats.CategoryStatDTO;
@@ -1803,5 +1805,421 @@ public class UserController {
         } else {
             return String.format("Votre collection pèse %.1f kg : plus lourde qu'un éléphant d'Afrique ! Vos étagères supplient pitié !", kg);
         }
+    }
+
+    @GetMapping("/retrospective/years")
+    public List<Integer> getRetrospectiveYears(HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+        Set<Integer> years = new TreeSet<>(Comparator.reverseOrder());
+
+        List<ReadingSessionEntity> allSessions = repositoryService.getReadingSessionRepository()
+                .findAllByUserIdOrderByCreatedAtAsc(user.getId());
+        for (ReadingSessionEntity rs : allSessions) {
+            if (rs.getBook() != null && !Boolean.TRUE.equals(rs.getBook().getDeleted()) && rs.getCreatedAt() != null) {
+                years.add(rs.getCreatedAt().atZone(ZoneId.of("UTC")).getYear());
+            }
+        }
+
+        List<UserBookTransactionEntity> allTransactions = repositoryService.getUserBookTransactionRepository()
+                .findAllByUserIdOrderByTransactionDateDescCreatedAtDesc(user.getId());
+        for (UserBookTransactionEntity tx : allTransactions) {
+            if (tx.getBook() != null && !Boolean.TRUE.equals(tx.getBook().getDeleted())) {
+                Integer txYear = extractTransactionYear(tx);
+                if (txYear != null) {
+                    years.add(txYear);
+                }
+            }
+        }
+
+        List<BookStatusEntity> statuses = repositoryService.getBookStatusRepository().findAllByUserId(user.getId());
+        for (BookStatusEntity bse : statuses) {
+            if (bse.getBook() != null && !Boolean.TRUE.equals(bse.getBook().getDeleted()) && bse.getUpdatedAt() != null) {
+                String st = bse.getStatus() != null ? bse.getStatus().toUpperCase() : "";
+                if ("READ".equals(st) || "LU".equals(st)) {
+                    years.add(bse.getUpdatedAt().atZone(ZoneId.of("UTC")).getYear());
+                }
+            }
+        }
+
+        return new ArrayList<>(years);
+    }
+
+    @GetMapping("/retrospective")
+    @Cacheable(cacheNames = "user-statistics", key = "'retro:' + #session.id + ':' + #year", sync = true)
+    public UserRetrospectiveDTO getRetrospective(
+            HttpSession session,
+            @RequestParam int year
+    ) {
+        int currentYear = LocalDate.now(ZoneId.of("UTC")).getYear();
+        if (year >= currentYear) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "La rétrospective " + year + " sera disponible à partir du 1er janvier " + (year + 1)
+            );
+        }
+
+        UserEntity user = getAuthenticatedUser(session);
+        ZoneId utc = ZoneId.of("UTC");
+
+        List<ReadingSessionEntity> allSessions = repositoryService.getReadingSessionRepository()
+                .findAllByUserIdOrderByCreatedAtAsc(user.getId())
+                .stream()
+                .filter(rs -> rs.getBook() != null && !Boolean.TRUE.equals(rs.getBook().getDeleted()))
+                .toList();
+
+        List<UserBookTransactionEntity> allTransactions = repositoryService.getUserBookTransactionRepository()
+                .findAllByUserIdOrderByTransactionDateDescCreatedAtDesc(user.getId())
+                .stream()
+                .filter(tx -> tx.getBook() != null && !Boolean.TRUE.equals(tx.getBook().getDeleted()))
+                .toList();
+
+        List<BookStatusEntity> allStatuses = repositoryService.getBookStatusRepository().findAllByUserId(user.getId())
+                .stream()
+                .filter(bse -> bse.getBook() != null && !Boolean.TRUE.equals(bse.getBook().getDeleted()))
+                .toList();
+
+        Set<Integer> yearsSet = new TreeSet<>(Comparator.reverseOrder());
+        for (ReadingSessionEntity rs : allSessions) {
+            if (rs.getCreatedAt() != null) {
+                yearsSet.add(rs.getCreatedAt().atZone(utc).getYear());
+            }
+        }
+        for (UserBookTransactionEntity tx : allTransactions) {
+            Integer txYear = extractTransactionYear(tx);
+            if (txYear != null) {
+                yearsSet.add(txYear);
+            }
+        }
+        for (BookStatusEntity bse : allStatuses) {
+            if (bse.getUpdatedAt() != null) {
+                String st = bse.getStatus() != null ? bse.getStatus().toUpperCase() : "";
+                if ("READ".equals(st) || "LU".equals(st)) {
+                    yearsSet.add(bse.getUpdatedAt().atZone(utc).getYear());
+                }
+            }
+        }
+
+        // Per-book session tracking across all years to compute accurate page deltas in `year`
+        Map<Long, BookEntity> bookMap = new LinkedHashMap<>();
+        Map<Long, Integer> lastPageByBook = new HashMap<>();
+        Map<Long, Integer> pagesReadInYearByBook = new HashMap<>();
+        Map<Long, Long> secondsInYearByBook = new HashMap<>();
+        Map<Long, Integer> sessionsCountInYearByBook = new HashMap<>();
+        Map<Long, Integer> finishedMonthByBook = new HashMap<>();
+        Set<LocalDate> readingDatesInYear = new TreeSet<>();
+
+        long totalReadingSeconds = 0L;
+        int pagesReadCount = 0;
+
+        for (ReadingSessionEntity rs : allSessions) {
+            if (rs.getCreatedAt() == null || rs.getBook() == null) continue;
+            BookEntity book = rs.getBook();
+            Long bookId = book.getId();
+            int sessionYear = rs.getCreatedAt().atZone(utc).getYear();
+            int sessionType = rs.getSessionType() != null ? rs.getSessionType() : 1;
+            int currentPage = rs.getCurrentPage() != null ? rs.getCurrentPage() : 0;
+
+            int prevPage = lastPageByBook.getOrDefault(bookId, 0);
+            int delta = 0;
+            if (sessionType == 0) {
+                lastPageByBook.put(bookId, currentPage);
+            } else {
+                if (currentPage > prevPage) {
+                    delta = currentPage - prevPage;
+                }
+                if (sessionType == 2) {
+                    lastPageByBook.put(bookId, 0);
+                } else {
+                    lastPageByBook.put(bookId, currentPage);
+                }
+            }
+
+            if (sessionYear == year) {
+                bookMap.putIfAbsent(bookId, book);
+                long sec = (rs.getMinutesRead() != null ? rs.getMinutesRead() * 60L : 0L)
+                        + (rs.getSecondsRead() != null ? rs.getSecondsRead() : 0L);
+                totalReadingSeconds += sec;
+                secondsInYearByBook.put(bookId, secondsInYearByBook.getOrDefault(bookId, 0L) + sec);
+                sessionsCountInYearByBook.put(bookId, sessionsCountInYearByBook.getOrDefault(bookId, 0) + 1);
+
+                if (delta > 0) {
+                    pagesReadCount += delta;
+                    pagesReadInYearByBook.put(bookId, pagesReadInYearByBook.getOrDefault(bookId, 0) + delta);
+                }
+
+                LocalDate sessionDate = rs.getCreatedAt().atZone(utc).toLocalDate();
+                readingDatesInYear.add(sessionDate);
+
+                if (sessionType == 2) {
+                    finishedMonthByBook.putIfAbsent(bookId, sessionDate.getMonthValue());
+                }
+            }
+        }
+
+        // Also include books marked READ/LU in `year` without an END session
+        for (BookStatusEntity bse : allStatuses) {
+            if (bse.getUpdatedAt() == null || bse.getBook() == null) continue;
+            String st = bse.getStatus() != null ? bse.getStatus().toUpperCase() : "";
+            if (!"READ".equals(st) && !"LU".equals(st)) continue;
+            int statusYear = bse.getUpdatedAt().atZone(utc).getYear();
+            if (statusYear == year) {
+                BookEntity book = bse.getBook();
+                Long bookId = book.getId();
+                bookMap.putIfAbsent(bookId, book);
+                if (!finishedMonthByBook.containsKey(bookId)) {
+                    int month = bse.getUpdatedAt().atZone(utc).getMonthValue();
+                    finishedMonthByBook.put(bookId, month);
+                    if (!pagesReadInYearByBook.containsKey(bookId) && book.getPageCount() != null && book.getPageCount() > 0) {
+                        pagesReadCount += book.getPageCount();
+                    }
+                }
+            }
+        }
+
+        // Books considered "read" in `year`
+        List<BookEntity> finishedBooks = new ArrayList<>();
+        for (Long bookId : finishedMonthByBook.keySet()) {
+            BookEntity b = bookMap.get(bookId);
+            if (b != null) {
+                finishedBooks.add(b);
+            }
+        }
+        // Fallback to active books with reading sessions if no book was explicitly finished
+        List<BookEntity> analysisBooks = finishedBooks.isEmpty()
+                ? new ArrayList<>(bookMap.values())
+                : finishedBooks;
+
+        // Best month
+        int[] monthCounts = new int[13];
+        for (Integer m : finishedMonthByBook.values()) {
+            if (m != null && m >= 1 && m <= 12) {
+                monthCounts[m]++;
+            }
+        }
+        String[] frenchMonths = {
+                "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+                "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+        };
+        UserRetrospectiveDTO.BestMonthDTO bestMonth = null;
+        int bestMonthNum = 0;
+        int bestMonthCount = 0;
+        for (int m = 1; m <= 12; m++) {
+            if (monthCounts[m] > bestMonthCount) {
+                bestMonthCount = monthCounts[m];
+                bestMonthNum = m;
+            }
+        }
+        if (bestMonthNum > 0) {
+            bestMonth = new UserRetrospectiveDTO.BestMonthDTO(bestMonthNum, frenchMonths[bestMonthNum], bestMonthCount);
+        }
+
+        // Category, Author, Publisher, Thickest book among analysisBooks
+        Map<String, Integer> categoryCounts = new HashMap<>();
+        Map<String, Integer> authorCounts = new HashMap<>();
+        Map<String, Integer> publisherCounts = new HashMap<>();
+        BookEntity thickestEntity = null;
+        int maxPages = 0;
+
+        for (BookEntity book : analysisBooks) {
+            String cat = null;
+            if (book.getSeries() != null && book.getSeries().getCategory() != null) {
+                cat = book.getSeries().getCategory().getName();
+            } else if (book.getType() != null && !book.getType().isBlank()) {
+                cat = book.getType();
+            }
+            if (cat != null && !cat.isBlank()) {
+                categoryCounts.put(cat, categoryCounts.getOrDefault(cat, 0) + 1);
+            }
+
+            if (book.getEditor() != null && book.getEditor().getName() != null && !book.getEditor().getName().isBlank()) {
+                String ed = book.getEditor().getName().trim();
+                publisherCounts.put(ed, publisherCounts.getOrDefault(ed, 0) + 1);
+            }
+
+            if (book.getBookHasAuthors() != null) {
+                for (BookHasAuthorEntity bha : book.getBookHasAuthors()) {
+                    if (bha.getAuthor() != null && !bha.getAuthor().isCollectif()) {
+                        String name = (bha.getAuthor().getFirstname() + " " + bha.getAuthor().getLastname()).trim();
+                        if (!name.isBlank()) {
+                            authorCounts.put(name, authorCounts.getOrDefault(name, 0) + 1);
+                        }
+                    }
+                }
+            }
+
+            if (book.getPageCount() != null && book.getPageCount() > maxPages) {
+                maxPages = book.getPageCount();
+                thickestEntity = book;
+            }
+        }
+
+        // Longest read book, fastest book, slowest book (across all books with sessions in `year`)
+        BookEntity longestReadEntity = null;
+        long maxBookSeconds = 0L;
+        BookEntity fastestEntity = null;
+        double maxSpeed = -1.0;
+        BookEntity slowestEntity = null;
+        double minSpeed = Double.MAX_VALUE;
+
+        for (Map.Entry<Long, Long> entry : secondsInYearByBook.entrySet()) {
+            Long bookId = entry.getKey();
+            long secs = entry.getValue();
+            BookEntity book = bookMap.get(bookId);
+            if (book == null) continue;
+
+            if (secs > maxBookSeconds) {
+                maxBookSeconds = secs;
+                longestReadEntity = book;
+            }
+
+            int pages = pagesReadInYearByBook.getOrDefault(bookId, 0);
+            if (pages > 0 && secs >= 60) {
+                double speed = pages / (secs / 3600.0);
+                if (speed > maxSpeed) {
+                    maxSpeed = speed;
+                    fastestEntity = book;
+                }
+                if (speed < minSpeed) {
+                    minSpeed = speed;
+                    slowestEntity = book;
+                }
+            }
+        }
+
+        // Transactions in `year`
+        double totalSpent = 0.0;
+        int boughtCount = 0;
+        BookEntity mostExpensiveEntity = null;
+        double maxTxPrice = 0.0;
+
+        for (UserBookTransactionEntity tx : allTransactions) {
+            Integer txYear = extractTransactionYear(tx);
+            if (!Objects.equals(txYear, year)) continue;
+            String type = tx.getType() != null ? tx.getType().toUpperCase() : "";
+            if ("BOUGHT".equals(type)) {
+                boughtCount++;
+                double p = tx.getPrice() != null ? tx.getPrice().doubleValue() : 0.0;
+                totalSpent += p;
+                if (p > maxTxPrice) {
+                    maxTxPrice = p;
+                    mostExpensiveEntity = tx.getBook();
+                }
+            }
+        }
+
+        // Longest streak in `year`
+        int readingDaysCount = readingDatesInYear.size();
+        int longestStreak = 0;
+        LocalDate bestStreakStart = null;
+        LocalDate bestStreakEnd = null;
+        LocalDate curStart = null;
+        LocalDate prevDate = null;
+        int curStreak = 0;
+
+        for (LocalDate d : readingDatesInYear) {
+            if (prevDate != null && d.equals(prevDate.plusDays(1))) {
+                curStreak++;
+            } else {
+                curStreak = 1;
+                curStart = d;
+            }
+            if (curStreak > longestStreak) {
+                longestStreak = curStreak;
+                bestStreakStart = curStart;
+                bestStreakEnd = d;
+            }
+            prevDate = d;
+        }
+
+        UserRetrospectiveDTO dto = new UserRetrospectiveDTO();
+        dto.setYear(year);
+        dto.setAvailableYears(new ArrayList<>(yearsSet));
+        dto.setBooksReadCount(finishedBooks.size());
+        dto.setPagesReadCount(pagesReadCount);
+        dto.setThickestBook(toRetroBook(thickestEntity, null, null, null, null, null));
+        dto.setTotalReadingSeconds(totalReadingSeconds);
+        dto.setLongestReadBook(longestReadEntity != null
+                ? toRetroBook(longestReadEntity, null, maxBookSeconds, sessionsCountInYearByBook.get(longestReadEntity.getId()), null, null)
+                : null);
+        dto.setBestMonth(bestMonth);
+        dto.setTopCategory(topEntry(categoryCounts, analysisBooks.size()));
+        dto.setTopAuthor(topEntry(authorCounts, analysisBooks.size()));
+        dto.setTopPublisher(topEntry(publisherCounts, analysisBooks.size()));
+        dto.setTotalSpentAmount(Math.round(totalSpent * 100.0) / 100.0);
+        dto.setBoughtBooksCount(boughtCount);
+        dto.setMostExpensiveBook(mostExpensiveEntity != null
+                ? toRetroBook(mostExpensiveEntity, Math.round(maxTxPrice * 100.0) / 100.0, null, null, null, null)
+                : null);
+        dto.setFastestBook(fastestEntity != null
+                ? toRetroBook(
+                        fastestEntity,
+                        null,
+                        secondsInYearByBook.get(fastestEntity.getId()),
+                        null,
+                        Math.round(maxSpeed * 10.0) / 10.0,
+                        pagesReadInYearByBook.get(fastestEntity.getId())
+                )
+                : null);
+        dto.setSlowestBook(slowestEntity != null
+                ? toRetroBook(
+                        slowestEntity,
+                        null,
+                        secondsInYearByBook.get(slowestEntity.getId()),
+                        null,
+                        Math.round(minSpeed * 10.0) / 10.0,
+                        pagesReadInYearByBook.get(slowestEntity.getId())
+                )
+                : null);
+        dto.setLongestStreakDays(longestStreak);
+        dto.setLongestStreakStart(bestStreakStart != null ? bestStreakStart.toString() : null);
+        dto.setLongestStreakEnd(bestStreakEnd != null ? bestStreakEnd.toString() : null);
+        dto.setReadingDaysCount(readingDaysCount);
+
+        return dto;
+    }
+
+    private UserRetrospectiveDTO.RetrospectiveBookDTO toRetroBook(
+            BookEntity book,
+            Double overridePrice,
+            Long readingSeconds,
+            Integer sessionsCount,
+            Double pagesPerHour,
+            Integer pagesRead
+    ) {
+        if (book == null) return null;
+        String authorName = "";
+        if (book.getBookHasAuthors() != null) {
+            authorName = book.getBookHasAuthors().stream()
+                    .filter(bha -> bha.getAuthor() != null && !bha.getAuthor().isCollectif())
+                    .map(bha -> (bha.getAuthor().getFirstname() + " " + bha.getAuthor().getLastname()).trim())
+                    .filter(s -> !s.isBlank())
+                    .findFirst()
+                    .orElse("");
+        }
+        Double price = overridePrice != null
+                ? overridePrice
+                : (book.getPrice() != null ? book.getPrice().doubleValue() : null);
+        return new UserRetrospectiveDTO.RetrospectiveBookDTO(
+                book.getId(),
+                book.getTitle(),
+                authorName,
+                book.getCoverUrl(),
+                book.getPageCount(),
+                price,
+                readingSeconds,
+                sessionsCount,
+                pagesPerHour,
+                pagesRead
+        );
+    }
+
+    private UserRetrospectiveDTO.TopStatDTO topEntry(Map<String, Integer> counts, int total) {
+        if (counts.isEmpty()) return null;
+        var best = counts.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .orElse(null);
+        if (best == null) return null;
+        double pct = total > 0 ? Math.round((best.getValue() * 100.0 / total) * 10.0) / 10.0 : 0.0;
+        return new UserRetrospectiveDTO.TopStatDTO(best.getKey(), best.getValue(), pct);
     }
 }
