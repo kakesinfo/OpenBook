@@ -9,7 +9,7 @@ Built by readers, for readers, who also happen to write code at 2 AM.
 
 ### 🚀 Features  
 
-#### 🌐 Web
+#### Web
 - Browse, search, and filter your collection, wishlist, and sales (gallery/list views, edition badges)
 - Manage series, volume links, and follow series, authors, and publishers
 - Quick-add or create books via global search and BnF lookup, and import from Bookmory
@@ -18,7 +18,7 @@ Built by readers, for readers, who also happen to write code at 2 AM.
 - Explore new, recent, and upcoming releases with `.ics` calendar sync and detailed statistics
 - Multilingual (EN/FR), Dark/Beige themes, and full admin panel (scrapers, maintenance, backups, users, CRON config, logs)
 
-#### 📱 Mobile
+#### Mobile
 - Connect to your self-hosted server (JWT auth) with a home dashboard, reading carousel, and streak tracker
 - Search and filter library, wishlist, to-read, sold, paused, and abandoned books
 - Scan ISBN/EAN barcodes or search BnF to add, quick-create, and edit books with cover upload
