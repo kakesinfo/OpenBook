@@ -57,7 +57,7 @@ export default function SeriesDetailPage() {
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"all" | "owned" | "wishlisted">("all");
+    const [statusFilter, setStatusFilter] = useState<"all" | "owned" | "missing" | "wishlisted">("all");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(24);
 
@@ -353,6 +353,8 @@ export default function SeriesDetailPage() {
         let list = series.books;
         if (statusFilter === "owned") {
             list = list.filter((b) => b.status === "OWNED");
+        } else if (statusFilter === "missing") {
+            list = list.filter((b) => b.status !== "OWNED");
         } else if (statusFilter === "wishlisted") {
             list = list.filter((b) => b.status === "WISHLISTED");
         }
@@ -447,6 +449,7 @@ export default function SeriesDetailPage() {
 
     const ownedCount = series.ownedCount || 0;
     const totalCount = series.books?.length || 0;
+    const missingCount = (series.books || []).filter((b) => b.status !== "OWNED").length;
     const wishlistedCount = (series.books || []).filter((b) => b.status === "WISHLISTED").length;
 
     return (
@@ -470,6 +473,7 @@ export default function SeriesDetailPage() {
                             tabs={[
                                 { id: "all", label: tr("All", "Tous"), count: totalCount },
                                 { id: "owned", label: tr("Owned", "Possédés"), count: ownedCount },
+                                { id: "missing", label: tr("Missing", "Manquants"), count: missingCount },
                                 ...(wishlistedCount > 0
                                     ? [{ id: "wishlisted" as const, label: tr("Wishlist", "Souhaits"), count: wishlistedCount }]
                                     : [])
@@ -582,29 +586,39 @@ export default function SeriesDetailPage() {
 
                 {/* Albums content */}
                 {filteredBooks.length === 0 ? (
-                    <div className="series-detail-page__empty">
-                        <FontAwesomeIcon icon={faBook} className="series-detail-page__empty-icon" />
-                        <h3>
-                            {searchQuery
-                                ? tr("No books match your search", "Aucun album ne correspond à votre recherche")
-                                : tr("No books are linked to this series yet", "Aucun album n'est encore associé à cette série")}
-                        </h3>
-                        <p>
-                            {searchQuery
-                                ? tr("Try other keywords to find the book.", "Essayez d'autres mots-clés pour retrouver l'album.")
-                                : tr("Link your first book to this series to start the collection!", "Associez votre premier album à cette série pour commencer la collection !")}
+                    statusFilter !== "all" && !searchQuery ? (
+                        <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "32px 0", margin: 0 }}>
+                            {statusFilter === "missing"
+                                ? tr("You already own all the books", "Vous possédez déjà tous les livres")
+                                : statusFilter === "owned"
+                                ? tr("You don't own any of the books", "Vous ne possédez aucun des livres")
+                                : tr("No books in your wishlist", "Aucun livre dans votre liste de souhaits")}
                         </p>
-                        {!searchQuery && (
-                            <button
-                                type="button"
-                                className="series-detail-page__btn series-detail-page__btn--primary"
-                                onClick={handleOpenAddBook}
-                            >
-                                <FontAwesomeIcon icon={faPlus} />
-                                <span>{tr("Link a book", "Associer un album")}</span>
-                            </button>
-                        )}
-                    </div>
+                    ) : (
+                        <div className="series-detail-page__empty">
+                            <FontAwesomeIcon icon={faBook} className="series-detail-page__empty-icon" />
+                            <h3>
+                                {searchQuery
+                                    ? tr("No books match your search", "Aucun album ne correspond à votre recherche")
+                                    : tr("No books are linked to this series yet", "Aucun album n'est encore associé à cette série")}
+                            </h3>
+                            <p>
+                                {searchQuery
+                                    ? tr("Try other keywords to find the book.", "Essayez d'autres mots-clés pour retrouver l'album.")
+                                    : tr("Link your first book to this series to start the collection!", "Associez votre premier album à cette série pour commencer la collection !")}
+                            </p>
+                            {!searchQuery && (
+                                <button
+                                    type="button"
+                                    className="series-detail-page__btn series-detail-page__btn--primary"
+                                    onClick={handleOpenAddBook}
+                                >
+                                    <FontAwesomeIcon icon={faPlus} />
+                                    <span>{tr("Link a book", "Associer un album")}</span>
+                                </button>
+                            )}
+                        </div>
+                    )
                 ) : (
                     <>
                         {viewMode === "grid" ? (
