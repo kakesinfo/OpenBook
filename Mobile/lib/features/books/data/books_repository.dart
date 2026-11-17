@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
+import 'bnf_service.dart';
 import 'book.dart';
 import 'book_note.dart';
 import 'book_transaction.dart';
@@ -204,6 +205,7 @@ class BooksRepository {
     String? coverUrl,
     String? localCoverPath,
     BookStatus status = BookStatus.unread,
+    BnfBookResult? bnf,
   }) async {
     final cleanTitle = title.trim();
     if (cleanTitle.isEmpty) {
@@ -213,11 +215,18 @@ class BooksRepository {
     final cleanIsbn = isbn?.trim();
     final cleanCoverUrl = coverUrl?.trim();
 
+    final effectivePrice = price ?? bnf?.price;
+    final effectiveCoverUrl = (cleanCoverUrl != null && cleanCoverUrl.isNotEmpty)
+        ? cleanCoverUrl
+        : (bnf != null && bnf.coverUrl.isNotEmpty ? bnf.coverUrl : null);
+
     final payload = <String, dynamic>{
+      // Métadonnées BnF (auteur, éditeur, collection, dimensions, etc.) comme sur le Web
+      if (bnf != null) ...bnf.toBookFields(),
       'title': cleanTitle,
       if (cleanIsbn != null && cleanIsbn.isNotEmpty) 'isbn': cleanIsbn,
-      if (price != null && price >= 0) 'price': price,
-      if (cleanCoverUrl != null && cleanCoverUrl.isNotEmpty) 'coverUrl': cleanCoverUrl,
+      if (effectivePrice != null && effectivePrice >= 0) 'price': effectivePrice,
+      if (effectiveCoverUrl != null && effectiveCoverUrl.isNotEmpty) 'coverUrl': effectiveCoverUrl,
       'addToLibrary': status != BookStatus.wishlist,
     };
 

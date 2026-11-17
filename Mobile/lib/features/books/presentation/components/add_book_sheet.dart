@@ -138,6 +138,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
           initialIsbn: bnf.isbn.isNotEmpty ? bnf.isbn : null,
           initialPrice: bnf.price,
           initialCoverUrl: bnf.coverUrl.isNotEmpty ? bnf.coverUrl : null,
+          initialBnf: bnf,
         );
         return;
       }
@@ -215,6 +216,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                 initialIsbn: bnf.isbn,
                 initialPrice: bnf.price,
                 initialCoverUrl: bnf.coverUrl,
+                initialBnf: bnf,
               );
               return;
             } else {
@@ -251,6 +253,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
     String? initialIsbn,
     int? initialPrice,
     String? initialCoverUrl,
+    BnfBookResult? initialBnf,
   }) async {
     Navigator.of(context).pop();
     await showQuickCreateBookSheet(
@@ -260,6 +263,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
       initialPrice: initialPrice,
       initialCoverUrl: initialCoverUrl,
       initialStatus: widget.initialStatus,
+      initialBnf: initialBnf,
     );
   }
 
@@ -756,6 +760,7 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                   initialIsbn: bnf.isbn.isNotEmpty ? bnf.isbn : null,
                   initialPrice: bnf.price,
                   initialCoverUrl: bnf.coverUrl.isNotEmpty ? bnf.coverUrl : null,
+                  initialBnf: bnf,
                 );
               },
               icon: const Icon(Icons.add_rounded, size: 20),

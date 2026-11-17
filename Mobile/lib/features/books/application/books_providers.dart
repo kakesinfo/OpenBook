@@ -259,6 +259,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
     String? coverUrl,
     String? localCoverPath,
     BookStatus status = BookStatus.unread,
+    BnfBookResult? bnf,
   }) async {
     final created = await _repository.quickCreateBook(
       title: title,
@@ -267,6 +268,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
       coverUrl: coverUrl,
       localCoverPath: localCoverPath,
       status: status,
+      bnf: bnf,
     );
     await reload();
     return created;
