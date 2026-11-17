@@ -1113,6 +1113,57 @@ export default function BookPage() {
         return "Writer";
     };
 
+    const pendingChangesCount = (() => {
+        if (!book) return 0;
+        let count = 0;
+
+        // Tab 1: Info fields
+        if (editTitle.trim() !== (book.title || "").trim()) count++;
+        if ((editReleaseDate || "") !== (book.releaseDate ? book.releaseDate.substring(0, 10) : "")) count++;
+        if (editIsbn.trim() !== (book.isbn || "").trim()) count++;
+        if (editEditorName.trim() !== (book.editor?.name || "").trim()) count++;
+        if (editCollectionName.trim() !== (book.collection?.name || "").trim()) count++;
+        if ((editPageCount.trim() !== "" ? parseInt(editPageCount, 10) : 0) !== (book.pageCount || 0)) count++;
+        if ((editWeight.trim() !== "" ? parseInt(editWeight, 10) : 0) !== (book.weight || 0)) count++;
+        if ((editLength.trim() !== "" ? parseInt(editLength, 10) : 0) !== (book.length || 0)) count++;
+        if ((editHeight.trim() !== "" ? parseInt(editHeight, 10) : 0) !== (book.height || 0)) count++;
+        if ((editThickness.trim() !== "" ? parseInt(editThickness, 10) : 0) !== (book.thickness || 0)) count++;
+        if ((editPrice.trim() !== "" ? parseFloat(editPrice) : 0) !== (book.price ?? 0)) count++;
+        if (editType.trim() !== (book.type || "").trim()) count++;
+
+        // Tab 2: Series & Volume
+        const initialSeriesId = book.series?.id ? Number(book.series.id) : null;
+        const initialVolume = book.series && book.volume != null ? book.volume : 1;
+        if (seriesModalMode === "create") {
+            if (newSeriesName.trim() !== "") count++;
+        } else {
+            if (selectedSeriesId !== initialSeriesId) {
+                count++;
+            } else if (selectedSeriesId != null && selectedVolume !== initialVolume) {
+                count++;
+            }
+        }
+
+        // Tab 3: Authors
+        const initialAuthors = (book.authors || []).map((a) => ({
+            firstname: (a.firstname || "").trim(),
+            lastname: (a.lastname || "").trim(),
+            type: normalizeAuthorRole(a.type)
+        }));
+        const currentAuthors = editableAuthors
+            .map((a) => ({
+                firstname: a.firstname.trim(),
+                lastname: a.lastname.trim(),
+                type: a.type
+            }))
+            .filter((a) => a.firstname !== "" || a.lastname !== "");
+        if (JSON.stringify(currentAuthors) !== JSON.stringify(initialAuthors)) {
+            count++;
+        }
+
+        return count;
+    })();
+
     const handleAddAuthorFromQuickInput = () => {
         const trimmed = quickAddAuthorName.trim();
         if (!trimmed) {
@@ -2538,18 +2589,12 @@ export default function BookPage() {
                     {editDialogTab === "series" && (
                         <div className="book-edit-dialog__form" style={{ flex: 1 }}>
                             {seriesModalMode === "select" ? (
-                                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                                    <div
-                                        style={{
-                                            display: "grid",
-                                            gridTemplateColumns: selectedSeriesId ? "1fr 130px" : "1fr",
-                                            gap: "10px",
-                                            alignItems: "start"
-                                        }}
-                                    >
+                                <>
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: "12px", alignItems: "start" }}>
                                         <div className="tx-dialog__field">
                                             <label>
-                                                <span>{tr("Select a series", "Sélectionner une série")}</span>
+                                                <FontAwesomeIcon icon={faLayerGroup} />
+                                                <span>{tr("Series", "Série")}</span>
                                             </label>
                                             <SeriesSearchableSelect
                                                 selectedId={selectedSeriesId}
@@ -2562,26 +2607,26 @@ export default function BookPage() {
                                             />
                                         </div>
 
-                                        {selectedSeriesId && (
-                                            <div className="tx-dialog__field">
-                                                <label>
-                                                    <span>{tr("Volume #", "Tome n°")}</span>
-                                                </label>
-                                                <input
-                                                    type="number"
-                                                    min={1}
-                                                    value={selectedVolume}
-                                                    onChange={(e) => setSelectedVolume(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                                                />
-                                            </div>
-                                        )}
+                                        <div className="tx-dialog__field" style={{ opacity: selectedSeriesId ? 1 : 0.45 }}>
+                                            <label>
+                                                <span>{tr("Volume #", "Tome n°")}</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                disabled={!selectedSeriesId}
+                                                value={selectedSeriesId ? selectedVolume : ""}
+                                                placeholder="—"
+                                                onChange={(e) => setSelectedVolume(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                            />
+                                        </div>
                                     </div>
 
-                                    {!selectedSeriesId && (
-                                        <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)", fontStyle: "italic" }}>
-                                            {tr("Without a linked series, this book will not have a volume number.", "Sans série associée, cet album n'aura pas de tomaison.")}
-                                        </p>
-                                    )}
+                                    <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                                        {selectedSeriesId
+                                            ? tr("Use the × button or select \"No series\" to unlink this book.", "Utilisez le bouton × ou « Aucune série » pour dissocier l'album.")
+                                            : tr("Type a series name to search, or create a new one.", "Saisissez un nom pour rechercher une série, ou créez-en une nouvelle.")}
+                                    </p>
 
                                     <div style={{ display: "flex", justifyContent: "flex-start" }}>
                                         <button
@@ -2590,47 +2635,23 @@ export default function BookPage() {
                                             onClick={() => setSeriesModalMode("create")}
                                         >
                                             <FontAwesomeIcon icon={faPlus} />
-                                            <span>{tr("New series", "Nouvelle série")}</span>
+                                            <span>{tr("Create a new series", "Créer une nouvelle série")}</span>
                                         </button>
                                     </div>
-                                </div>
+                                </>
                             ) : (
-                                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                                    <div className="tx-dialog__field">
-                                        <label>
-                                            <span>{tr("New series name *", "Nom de la nouvelle série *")}</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder={tr("e.g. Batman Rebirth, Blackwater...", "ex: Batman Rebirth, Blackwater...")}
-                                            value={newSeriesName}
-                                            onChange={(e) => setNewSeriesName(e.target.value)}
-                                        />
-                                    </div>
-
-                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 130px", gap: "10px", alignItems: "end" }}>
+                                <>
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: "12px", alignItems: "start" }}>
                                         <div className="tx-dialog__field">
                                             <label>
-                                                <span>{tr("Category", "Catégorie")}</span>
+                                                <FontAwesomeIcon icon={faLayerGroup} />
+                                                <span>{tr("New series name *", "Nom de la nouvelle série *")}</span>
                                             </label>
-                                            <Select
-                                                multiple={false}
-                                                translateOptions
-                                                className="yal-select--block"
-                                                placeholder={tr("Category", "Catégorie")}
-                                                value={String(newSeriesCategory)}
-                                                onChange={(val) => {
-                                                    if (val) setNewSeriesCategory(Number(val));
-                                                }}
-                                                options={[
-                                                    { id: "3", label: "Comics" },
-                                                    { id: "2", label: "Bande dessinée" },
-                                                    { id: "4", label: "Manga" },
-                                                    { id: "5", label: "Roman Graphique" },
-                                                    { id: "1", label: "Roman" },
-                                                    { id: "6", label: "Beau-livre" },
-                                                    { id: "7", label: "E-book" }
-                                                ]}
+                                            <input
+                                                type="text"
+                                                placeholder={tr("e.g. Batman Rebirth, Blackwater...", "ex: Batman Rebirth, Blackwater...")}
+                                                value={newSeriesName}
+                                                onChange={(e) => setNewSeriesName(e.target.value)}
                                             />
                                         </div>
 
@@ -2647,6 +2668,32 @@ export default function BookPage() {
                                         </div>
                                     </div>
 
+                                    <div className="tx-dialog__field">
+                                        <label>
+                                            <FontAwesomeIcon icon={faBookBookmark} />
+                                            <span>{tr("Category", "Catégorie")}</span>
+                                        </label>
+                                        <Select
+                                            multiple={false}
+                                            translateOptions
+                                            className="yal-select--block"
+                                            placeholder={tr("Category", "Catégorie")}
+                                            value={String(newSeriesCategory)}
+                                            onChange={(val) => {
+                                                if (val) setNewSeriesCategory(Number(val));
+                                            }}
+                                            options={[
+                                                { id: "3", label: "Comics" },
+                                                { id: "2", label: "Bande dessinée" },
+                                                { id: "4", label: "Manga" },
+                                                { id: "5", label: "Roman Graphique" },
+                                                { id: "1", label: "Roman" },
+                                                { id: "6", label: "Beau-livre" },
+                                                { id: "7", label: "E-book" }
+                                            ]}
+                                        />
+                                    </div>
+
                                     <div style={{ display: "flex", justifyContent: "flex-start" }}>
                                         <button
                                             type="button"
@@ -2654,35 +2701,10 @@ export default function BookPage() {
                                             onClick={() => setSeriesModalMode("select")}
                                         >
                                             <FontAwesomeIcon icon={faArrowLeft} />
-                                            <span>{tr("Existing series", "Série existante")}</span>
+                                            <span>{tr("Choose an existing series", "Choisir une série existante")}</span>
                                         </button>
                                     </div>
-                                </div>
-                            )}
-
-                            {selectedSeriesId != null && seriesModalMode === "select" && (
-                                <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSelectedSeriesId(null)}
-                                        style={{
-                                            padding: "8px 14px",
-                                            background: "rgba(239, 68, 68, 0.15)",
-                                            border: "1px solid rgba(239, 68, 68, 0.3)",
-                                            color: "#dc2626",
-                                            borderRadius: "8px",
-                                            cursor: "pointer",
-                                            fontWeight: 600,
-                                            fontSize: "0.8rem",
-                                            display: "inline-flex",
-                                            alignItems: "center",
-                                            gap: "6px"
-                                        }}
-                                    >
-                                        <FontAwesomeIcon icon={faTrash} />
-                                        <span>{tr("Remove from series", "Retirer de la série")}</span>
-                                    </button>
-                                </div>
+                                </>
                             )}
                         </div>
                     )}
@@ -2796,26 +2818,44 @@ export default function BookPage() {
                             backgroundColor: "var(--bg-surface, #1e1e24)",
                             paddingTop: "12px",
                             borderTop: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
-                            zIndex: 5
+                            zIndex: 5,
+                            justifyContent: "space-between",
+                            alignItems: "center"
                         }}
                     >
-                        <button
-                            type="button"
-                            className="tx-dialog__btn-cancel"
-                            onClick={() => setEditModalOpen(false)}
-                            disabled={savingBookInfo}
+                        <span
+                            style={{
+                                fontSize: "0.85rem",
+                                fontWeight: 600,
+                                color: pendingChangesCount > 0 ? "var(--accent-primary)" : "var(--text-muted)"
+                            }}
                         >
-                            {tr("Cancel", "Annuler")}
-                        </button>
-                        <button
-                            type="button"
-                            className="tx-dialog__btn-submit tx-dialog__btn-submit--bought"
-                            disabled={savingBookInfo}
-                            onClick={() => handleSaveBookInfo()}
-                        >
-                            <FontAwesomeIcon icon={faCheck} />
-                            <span>{savingBookInfo ? tr("Saving...", "Enregistrement...") : tr("Save", "Enregistrer")}</span>
-                        </button>
+                            {pendingChangesCount === 0
+                                ? tr("No changes", "Aucune modification")
+                                : pendingChangesCount === 1
+                                ? tr("1 change", "1 modification")
+                                : tr(`${pendingChangesCount} changes`, `${pendingChangesCount} modifications`)}
+                        </span>
+
+                        <div style={{ display: "flex", gap: "10px" }}>
+                            <button
+                                type="button"
+                                className="tx-dialog__btn-cancel"
+                                onClick={() => setEditModalOpen(false)}
+                                disabled={savingBookInfo}
+                            >
+                                {tr("Cancel", "Annuler")}
+                            </button>
+                            <button
+                                type="button"
+                                className="tx-dialog__btn-submit tx-dialog__btn-submit--bought"
+                                disabled={savingBookInfo}
+                                onClick={() => handleSaveBookInfo()}
+                            >
+                                <FontAwesomeIcon icon={faCheck} />
+                                <span>{savingBookInfo ? tr("Saving...", "Enregistrement...") : tr("Save", "Enregistrer")}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </Dialog>
