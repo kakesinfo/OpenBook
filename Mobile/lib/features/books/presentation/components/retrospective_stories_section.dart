@@ -6,7 +6,7 @@ import '../../application/books_providers.dart';
 import '../../data/retrospective.dart';
 import '../retrospective_story_page.dart';
 
-class RetrospectiveStoriesSection extends ConsumerWidget {
+class RetrospectiveStoriesSection extends ConsumerStatefulWidget {
   const RetrospectiveStoriesSection({
     super.key,
     this.referenceDate,
@@ -16,16 +16,51 @@ class RetrospectiveStoriesSection extends ConsumerWidget {
   final DateTime? referenceDate;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RetrospectiveStoriesSection> createState() =>
+      _RetrospectiveStoriesSectionState();
+}
+
+class _RetrospectiveStoriesSectionState
+    extends ConsumerState<RetrospectiveStoriesSection> {
+  String? _lastPrefetchSignature;
+
+  void _scheduleSequentialPrefetch(List<int> accessibleYears) {
+    if (accessibleYears.isEmpty) return;
+    final signature = accessibleYears.join(',');
+    if (_lastPrefetchSignature == signature) return;
+    _lastPrefetchSignature = signature;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Load the first accessible story first, then load the following ones sequentially.
+      for (final year in accessibleYears) {
+        if (!mounted) return;
+        try {
+          await ref.read(retrospectiveByYearProvider(year).future);
+        } catch (_) {
+          // Ignore prefetch errors; tapping the story will show/retry on demand.
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final yearsAsync = ref.watch(retrospectiveYearsProvider);
     final seenYears = ref.watch(seenRetrospectiveYearsProvider);
-    final now = referenceDate ?? DateTime.now();
+    final now = widget.referenceDate ?? DateTime.now();
 
     final years = yearsAsync.when(
       data: (list) => _mergeWithCurrentYear(list, now.year),
       loading: () => <int>[now.year],
       error: (_, _) => <int>[now.year],
     );
+
+    if (yearsAsync.hasValue) {
+      final accessibleYears = years
+          .where((y) => YearlyRetrospective.isYearAccessible(y, now))
+          .toList();
+      _scheduleSequentialPrefetch(accessibleYears);
+    }
 
     if (years.isEmpty) {
       return const SizedBox.shrink();

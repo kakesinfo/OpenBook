@@ -645,8 +645,14 @@ final retrospectiveYearsProvider = FutureProvider<List<int>>((ref) async {
 
 final retrospectiveByYearProvider =
     FutureProvider.autoDispose.family<YearlyRetrospective, int>((ref, year) async {
-  final repository = ref.watch(booksRepositoryProvider);
-  return repository.getRetrospective(year);
+  final link = ref.keepAlive();
+  try {
+    final repository = ref.watch(booksRepositoryProvider);
+    return await repository.getRetrospective(year);
+  } catch (_) {
+    link.close();
+    rethrow;
+  }
 });
 
 final seenRetrospectiveYearsProvider =

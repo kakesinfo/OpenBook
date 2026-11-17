@@ -36,6 +36,7 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
   bool _isPaused = false;
   bool _markedSeen = false;
   bool _timerStarted = false;
+  bool _coversPrefetched = false;
 
   @override
   void initState() {
@@ -63,7 +64,7 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
     super.dispose();
   }
 
-  void _onDataReady() {
+  void _onDataReady([YearlyRetrospective? retro]) {
     if (!_markedSeen) {
       _markedSeen = true;
       unawaited(
@@ -73,6 +74,32 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
     if (!_timerStarted) {
       _timerStarted = true;
       _progressController.forward(from: 0.0);
+    }
+    if (retro != null && !_coversPrefetched) {
+      _coversPrefetched = true;
+      unawaited(_precacheCoversSequentially(retro));
+    }
+  }
+
+  Future<void> _precacheCoversSequentially(YearlyRetrospective retro) async {
+    final urls = <String>[
+      if (retro.thickestBook != null) retro.thickestBook!.coverUrl,
+      if (retro.longestReadBook != null) retro.longestReadBook!.coverUrl,
+      if (retro.mostExpensiveBook != null) retro.mostExpensiveBook!.coverUrl,
+      if (retro.fastestBook != null) retro.fastestBook!.coverUrl,
+      if (retro.slowestBook != null) retro.slowestBook!.coverUrl,
+    ];
+
+    for (final rawUrl in urls) {
+      if (!mounted) return;
+      final url = rawUrl.trim();
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        try {
+          await precacheImage(NetworkImage(url), context);
+        } catch (_) {
+          // Ignore image precache errors.
+        }
+      }
     }
   }
 
@@ -143,7 +170,7 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
         error: (error, _) => _buildErrorState(error.toString()),
         data: (retro) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _onDataReady();
+            if (mounted) _onDataReady(retro);
           });
           return _buildStoryContent(context, retro);
         },
