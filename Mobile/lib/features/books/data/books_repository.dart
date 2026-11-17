@@ -6,6 +6,7 @@ import 'book_note.dart';
 import 'book_transaction.dart';
 import 'glossary_word.dart';
 import 'reading_session.dart';
+import 'retrospective.dart';
 
 class BooksRepository {
   BooksRepository(this._apiClient);
@@ -714,5 +715,59 @@ class BooksRepository {
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Impossible de supprimer le mot (${response.statusCode})');
     }
+  }
+
+  Future<List<int>> getRetrospectiveYears() async {
+    final response = await _apiClient
+        .get('/user/retrospective/years')
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode == 200) {
+      final list = jsonDecode(response.body) as List<dynamic>;
+      return list.map((e) => (e as num).toInt()).toList()
+        ..sort((a, b) => b.compareTo(a));
+    }
+
+    // Fallback to /user/statistics if backend hasn't been updated yet
+    if (response.statusCode == 404) {
+      final statsResponse = await _apiClient
+          .get('/user/statistics')
+          .timeout(const Duration(seconds: 15));
+      if (statsResponse.statusCode == 200) {
+        final data = jsonDecode(statsResponse.body) as Map<String, dynamic>;
+        final years = (data['availableYears'] as List<dynamic>?)
+                ?.map((e) => (e as num).toInt())
+                .toList() ??
+            <int>[];
+        return years..sort((a, b) => b.compareTo(a));
+      }
+    }
+
+    throw Exception('Impossible de charger les années de rétrospective (${response.statusCode})');
+  }
+
+  Future<YearlyRetrospective> getRetrospective(int year) async {
+    if (!YearlyRetrospective.isYearAccessible(year)) {
+      throw Exception(
+        'La rétrospective $year sera accessible à partir du 1er janvier ${year + 1}.',
+      );
+    }
+
+    final response = await _apiClient
+        .get('/user/retrospective?year=$year')
+        .timeout(const Duration(seconds: 20));
+    if (response.statusCode == 403) {
+      throw Exception(
+        'La rétrospective $year sera accessible à partir du 1er janvier ${year + 1}.',
+      );
+    }
+    if (response.statusCode != 200) {
+      throw Exception('Impossible de charger la rétrospective $year (${response.statusCode})');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return YearlyRetrospective.fromJson(
+      data,
+      resolveCover: (raw) => resolveCoverUrl(raw, _apiClient.baseUrl),
+    );
   }
 }
