@@ -247,6 +247,17 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
     final priceStr = _priceController.text.trim();
     final price = int.tryParse(priceStr);
 
+    // Si aucun résultat BnF n'est encore associé (ISBN saisi à la main par ex.),
+    // on tente un lookup pour remplir les métadonnées (auteur, éditeur, etc.).
+    if (_bnfResult == null && isbn.isNotEmpty) {
+      final cleanIsbn = _cleanBarcode(isbn);
+      if (cleanIsbn.length == 10 || cleanIsbn.length == 13) {
+        try {
+          _bnfResult = await ref.read(bnfServiceProvider).lookupByIsbn(cleanIsbn);
+        } catch (_) {}
+      }
+    }
+
     String? coverUrl;
     String? localCoverPath;
 
