@@ -383,6 +383,20 @@ export default function SeriesDetailPage() {
     const endIndex = isAll ? totalItems : Math.min(startIndex + pageSize, totalItems);
     const paginatedBooks = isAll ? filteredBooks : filteredBooks.slice(startIndex, endIndex);
 
+    const handleBookStatusChange = (bookId: string, newStatus: string | null) => {
+        setSeries((prev) => {
+            if (!prev || !prev.books) return prev;
+            const updatedBooks = prev.books.map((b) =>
+                String(b.id) === String(bookId) ? { ...b, status: newStatus } : b
+            );
+            return {
+                ...prev,
+                books: updatedBooks,
+                ownedCount: updatedBooks.filter((b) => b.status === "OWNED").length
+            };
+        });
+    };
+
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -474,9 +488,7 @@ export default function SeriesDetailPage() {
                                 { id: "all", label: tr("All", "Tous"), count: totalCount },
                                 { id: "owned", label: tr("Owned", "Possédés"), count: ownedCount },
                                 { id: "missing", label: tr("Missing", "Manquants"), count: missingCount },
-                                ...(wishlistedCount > 0
-                                    ? [{ id: "wishlisted" as const, label: tr("Wishlist", "Souhaits"), count: wishlistedCount }]
-                                    : [])
+                                { id: "wishlisted", label: tr("Wishlist", "Souhaits"), count: wishlistedCount }
                             ]}
                             selectedId={statusFilter}
                             onChange={setStatusFilter}
@@ -622,7 +634,7 @@ export default function SeriesDetailPage() {
                 ) : (
                     <>
                         {viewMode === "grid" ? (
-                            <BookList books={paginatedBooks} />
+                            <BookList books={paginatedBooks} onBookStatusChange={handleBookStatusChange} />
                         ) : (
                             <div className="series-detail-list">
                                 {paginatedBooks.map((b) => (

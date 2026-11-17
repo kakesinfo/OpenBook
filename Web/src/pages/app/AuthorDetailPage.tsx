@@ -146,6 +146,18 @@ export default function AuthorDetailPage() {
     const endIndex = isAll ? totalItems : Math.min(startIndex + pageSize, totalItems);
     const paginatedBooks = isAll ? filteredBooks : filteredBooks.slice(startIndex, endIndex);
 
+    const handleBookStatusChange = (bookId: string, newStatus: string | null) => {
+        setAuthor((prev) => {
+            if (!prev || !prev.books) return prev;
+            return {
+                ...prev,
+                books: prev.books.map((b) =>
+                    String(b.id) === String(bookId) ? { ...b, status: newStatus } : b
+                )
+            };
+        });
+    };
+
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -245,9 +257,7 @@ export default function AuthorDetailPage() {
                                 { id: "all", label: tr("All", "Tous"), count: totalBooks },
                                 { id: "owned", label: tr("Owned", "Possédés"), count: ownedBooks },
                                 { id: "missing", label: tr("Missing", "Manquants"), count: missingBooks },
-                                ...(wishlistedBooks > 0
-                                    ? [{ id: "wishlisted" as const, label: tr("Wishlist", "Souhaits"), count: wishlistedBooks }]
-                                    : [])
+                                { id: "wishlisted", label: tr("Wishlist", "Souhaits"), count: wishlistedBooks }
                             ]}
                             selectedId={statusFilter}
                             onChange={setStatusFilter}
@@ -350,7 +360,7 @@ export default function AuthorDetailPage() {
                 ) : (
                     <>
                         {viewMode === "grid" ? (
-                            <BookList books={paginatedBooks} />
+                            <BookList books={paginatedBooks} onBookStatusChange={handleBookStatusChange} />
                         ) : (
                             <div className="author-detail-list">
                                 {paginatedBooks.map((b) => (
