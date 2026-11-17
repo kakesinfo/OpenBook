@@ -891,8 +891,9 @@ export default function BookPage() {
     const [isDraggingCover, setIsDraggingCover] = useState(false);
     const coverInputRef = useRef<HTMLInputElement | null>(null);
 
-    // Book Info Edit Modal states
+    // Book Info Edit Modal states (unified 3-tab dialog: info | series | authors)
     const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editDialogTab, setEditDialogTab] = useState<"info" | "series" | "authors">("info");
     const [savingBookInfo, setSavingBookInfo] = useState(false);
     const [editTitle, setEditTitle] = useState("");
     const [editReleaseDate, setEditReleaseDate] = useState<string>("");
@@ -912,8 +913,7 @@ export default function BookPage() {
     const [collectionOptions, setCollectionOptions] = useState<MetadataNamedOption[]>([]);
     const [typeOptions, setTypeOptions] = useState<string[]>(DEFAULT_BOOK_TYPES);
 
-    // Series Association Dialog state
-    const [seriesModalOpen, setSeriesModalOpen] = useState(false);
+    // Series Association state
     const [seriesListOptions, setSeriesListOptions] = useState<SeriesDTO[]>([]);
     const [selectedSeriesId, setSelectedSeriesId] = useState<number | null>(null);
     const [selectedVolume, setSelectedVolume] = useState<number>(1);
@@ -931,7 +931,7 @@ export default function BookPage() {
         };
     }, [coverPreviewUrl]);
 
-    const handleOpenEditModal = async () => {
+    const handleOpenEditModal = async (initialTab: "info" | "series" | "authors" = "info") => {
         if (!book) return;
         setEditTitle(book.title || "");
         setEditReleaseDate(book.releaseDate ? book.releaseDate.substring(0, 10) : "");
@@ -945,17 +945,39 @@ export default function BookPage() {
         setEditType(book.type || "");
         setEditEditorName(book.editor?.name || "");
         setEditCollectionName(book.collection?.name || "");
+
+        // Series tab state
+        setSelectedSeriesId(book.series?.id ? Number(book.series.id) : null);
+        setSelectedVolume(book.series && book.volume != null ? book.volume : 1);
+        setSeriesModalMode("select");
+        setNewSeriesName("");
+        setNewSeriesCategory(3);
+        setNewSeriesStatus("ON_GOING");
+
+        // Authors tab state
+        setEditableAuthors(
+            (book.authors || []).map((a) => ({
+                firstname: a.firstname || "",
+                lastname: a.lastname || "",
+                type: normalizeAuthorRole(a.type)
+            }))
+        );
+        setQuickAddAuthorName("");
+
+        setEditDialogTab(initialTab);
         setEditModalOpen(true);
 
         try {
-            const [res, catRes] = await Promise.all([
+            const [res, catRes, seriesRes] = await Promise.all([
                 session.customFetch("/books/metadata-options", { method: "GET" }),
                 session.customFetch("/series/categories", { method: "GET" }),
+                session.customFetch("/series", { method: "GET" })
             ]);
             if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data.editors)) setEditorOptions(data.editors);
                 if (Array.isArray(data.collections)) setCollectionOptions(data.collections);
+                if (Array.isArray(data.authors)) setAuthorOptions(data.authors);
             }
             if (catRes.ok) {
                 const cats = await catRes.json();
@@ -963,23 +985,70 @@ export default function BookPage() {
                     setTypeOptions(cats.map((c: { name: string }) => c.name));
                 }
             }
+            if (seriesRes.ok) {
+                const list: SeriesDTO[] = await seriesRes.json();
+                setSeriesListOptions(list);
+            }
         } catch (err) {
             console.error("Error loading metadata options:", err);
         }
     };
 
-    const handleSaveBookInfo = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSaveBookInfo = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         if (!id || savingBookInfo) return;
 
         if (!editTitle.trim()) {
+            setEditDialogTab("info");
             enqueueSnackbar(tr("Book title is required", "Le titre de l'album est obligatoire"), { variant: "warning" });
+            return;
+        }
+
+        if (seriesModalMode === "create" && !newSeriesName.trim()) {
+            setEditDialogTab("series");
+            enqueueSnackbar(tr("Please enter the series name", "Veuillez renseigner le nom de la série"), { variant: "warning" });
             return;
         }
 
         setSavingBookInfo(true);
         try {
-            const payload = {
+            let targetSeriesId: number | null = selectedSeriesId;
+            let clearSeries = false;
+
+            if (seriesModalMode === "create") {
+                const createRes = await session.customFetch("/series", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: newSeriesName.trim(),
+                        categoryId: newSeriesCategory,
+                        status: newSeriesStatus,
+                        bookIds: [Number(id)]
+                    })
+                });
+
+                if (!createRes.ok) {
+                    const errText = await createRes.text().catch(() => "");
+                    enqueueSnackbar(`Erreur : ${errText}`, { variant: "error" });
+                    setSavingBookInfo(false);
+                    return;
+                }
+
+                const createdSeries: SeriesDTO = await createRes.json();
+                targetSeriesId = Number(createdSeries.id);
+            } else if (selectedSeriesId == null) {
+                clearSeries = true;
+            }
+
+            const cleanedAuthors = editableAuthors
+                .map((a) => ({
+                    firstname: a.firstname.trim(),
+                    lastname: a.lastname.trim(),
+                    type: a.type
+                }))
+                .filter((a) => a.firstname !== "" || a.lastname !== "");
+
+            const payload: Record<string, unknown> = {
                 title: editTitle.trim(),
                 isbn: editIsbn.trim(),
                 releaseDate: editReleaseDate || "",
@@ -991,7 +1060,11 @@ export default function BookPage() {
                 thickness: editThickness.trim() !== "" ? parseInt(editThickness, 10) : 0,
                 type: editType.trim(),
                 editorName: editEditorName.trim(),
-                collectionName: editCollectionName.trim()
+                collectionName: editCollectionName.trim(),
+                authors: cleanedAuthors,
+                ...(clearSeries
+                    ? { clearSeries: true }
+                    : { seriesId: targetSeriesId, volume: selectedVolume })
             };
 
             const res = await session.customFetch(`/books/${encodeURIComponent(id)}`, {
@@ -1004,7 +1077,7 @@ export default function BookPage() {
                 const updated: BookDTO = await res.json();
                 setBook(updated);
                 setEditModalOpen(false);
-                enqueueSnackbar(tr("Book information updated successfully!", "Informations de l'album mises à jour avec succès !"), { variant: "success" });
+                enqueueSnackbar(tr("Book updated successfully!", "Album mis à jour avec succès !"), { variant: "success" });
             } else {
                 let errMsg = tr("Unable to update book information", "Impossible de mettre à jour les informations de l'album");
                 try {
@@ -1023,8 +1096,7 @@ export default function BookPage() {
         }
     };
 
-    // Authors Edit Modal states
-    const [authorsModalOpen, setAuthorsModalOpen] = useState(false);
+    // Authors Edit states
     const [savingAuthors, setSavingAuthors] = useState(false);
     const [authorOptions, setAuthorOptions] = useState<{ id?: number; firstname: string; lastname: string }[]>([]);
     const [editableAuthors, setEditableAuthors] = useState<{ firstname: string; lastname: string; type: "Writer" | "Illustrator" | "Colorist" }[]>([]);
@@ -1039,32 +1111,6 @@ export default function BookPage() {
             return "Colorist";
         }
         return "Writer";
-    };
-
-    const handleOpenAuthorsModal = async () => {
-        if (!book) return;
-        const initial = (book.authors || []).map((a) => ({
-            firstname: a.firstname || "",
-            lastname: a.lastname || "",
-            type: normalizeAuthorRole(a.type)
-        }));
-        setEditableAuthors(initial);
-        setQuickAddAuthorName("");
-        setAuthorsModalOpen(true);
-
-        if (authorOptions.length === 0) {
-            try {
-                const res = await session.customFetch("/books/metadata-options", { method: "GET" });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (Array.isArray(data.authors)) {
-                        setAuthorOptions(data.authors);
-                    }
-                }
-            } catch (err) {
-                console.error("Error loading author options:", err);
-            }
-        }
     };
 
     const handleAddAuthorFromQuickInput = () => {
@@ -1137,7 +1183,7 @@ export default function BookPage() {
             if (res.ok) {
                 const updated: BookDTO = await res.json();
                 setBook(updated);
-                setAuthorsModalOpen(false);
+                setEditModalOpen(false);
                 enqueueSnackbar(
                     tr("Authors updated successfully!", "Auteurs mis à jour avec succès !"),
                     { variant: "success" }
@@ -1323,26 +1369,6 @@ export default function BookPage() {
         });
     }, [id, session]);
 
-    const handleOpenSeriesModal = async () => {
-        setSelectedSeriesId(book?.series?.id ? Number(book.series.id) : null);
-        setSelectedVolume(book?.series && book?.volume != null ? book.volume : 1);
-        setSeriesModalMode("select");
-        setNewSeriesName("");
-        setNewSeriesCategory(3);
-        setNewSeriesStatus("ON_GOING");
-        setSeriesModalOpen(true);
-
-        try {
-            const res = await session.customFetch("/series", { method: "GET" });
-            if (res.ok) {
-                const list: SeriesDTO[] = await res.json();
-                setSeriesListOptions(list);
-            }
-        } catch (err) {
-            console.error("Error fetching series list:", err);
-        }
-    };
-
     const handleSaveSeriesAssociation = async () => {
         if (!id || savingSeries) return;
         setSavingSeries(true);
@@ -1413,7 +1439,7 @@ export default function BookPage() {
                 const refreshedBook: BookDTO = await refreshRes.json();
                 setBook(refreshedBook);
             }
-            setSeriesModalOpen(false);
+            setEditModalOpen(false);
         } catch (err: any) {
             enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
         } finally {
@@ -1473,7 +1499,7 @@ export default function BookPage() {
                     const refreshedBook: BookDTO = await refreshRes.json();
                     setBook(refreshedBook);
                 }
-                setSeriesModalOpen(false);
+                setEditModalOpen(false);
             }
         } catch (err: any) {
             enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
@@ -1717,17 +1743,6 @@ export default function BookPage() {
                                         >
                                             <FontAwesomeIcon icon={faPen} />
                                             <span>{tr("Edit", "Modifier")}</span>
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="book-page__dropdown-item"
-                                            onClick={() => {
-                                                setDetailsMenuOpen(false);
-                                                handleOpenAuthorsModal();
-                                            }}
-                                        >
-                                            <FontAwesomeIcon icon={faPenNib} />
-                                            <span>{tr("Edit authors", "Modifier les auteurs")}</span>
                                         </button>
                                         <button
                                             type="button"
@@ -2225,15 +2240,22 @@ export default function BookPage() {
             </div>
 
             {/* Book Information Edit Modal */}
+            {/* Unified Book Edit Modal (Info / Series / Authors) */}
             <Dialog
                 open={editModalOpen}
-                onClose={() => !savingBookInfo && setEditModalOpen(false)}
+                onClose={() => !(savingBookInfo || savingSeries || savingAuthors) && setEditModalOpen(false)}
+                sx={{
+                    "& .MuiDialog-container": {
+                        alignItems: "flex-start",
+                        paddingTop: "8vh"
+                    }
+                }}
                 PaperProps={{
                     style: {
                         backgroundColor: "var(--bg-surface, #1e1e24)",
                         border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
                         borderRadius: "16px",
-                        maxWidth: "600px",
+                        maxWidth: "660px",
                         width: "100%",
                         padding: "18px 20px",
                         color: "var(--text-primary)",
@@ -2241,48 +2263,95 @@ export default function BookPage() {
                     }
                 }}
             >
-                <div className="book-edit-dialog">
+                <div className="book-edit-dialog" style={{ minHeight: "520px" }}>
                     <div className="book-edit-dialog__header">
                         <div className="book-edit-dialog__header-title">
                             <FontAwesomeIcon icon={faPen} />
-                            <h3>{tr("Edit book information", "Modifier les informations du livre")}</h3>
+                            <h3>{tr("Edit information", "Modifier les informations")}</h3>
                         </div>
                         <button
                             type="button"
                             className="book-edit-dialog__close-btn"
                             onClick={() => setEditModalOpen(false)}
-                            disabled={savingBookInfo}
-                            aria-label="Fermer"
+                            disabled={savingBookInfo || savingSeries || savingAuthors}
+                            aria-label={tr("Close", "Fermer")}
                         >
                             <FontAwesomeIcon icon={faXmark} />
                         </button>
                     </div>
 
-                    {/* Section Série & Tomaison */}
-                    <div className="book-edit-dialog__series-bar">
-                        <div className="book-edit-dialog__series-info">
-                            <span className="book-edit-dialog__series-label">
-                                <FontAwesomeIcon icon={faLayerGroup} /> {tr("Series & Volume", "Série & Tomaison")}
-                            </span>
-                            {book?.series?.name ? (
-                                <strong className="book-edit-dialog__series-name">
-                                    {book.series.name}{book.volume != null ? ` — ${tr(`Volume ${book.volume}`, `Tome ${book.volume}`)}` : ""}
-                                </strong>
-                            ) : (
-                                <span className="book-edit-dialog__series-empty">{tr("No linked series (no volume)", "Aucune série associée (pas de tomaison)")}</span>
-                            )}
-                        </div>
+                    {/* 3 Tabs: Information / Series / Authors */}
+                    <div style={{ display: "flex", gap: "8px", background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)", padding: "4px", borderRadius: "8px" }}>
                         <button
                             type="button"
-                            className="book-edit-dialog__series-btn"
-                            onClick={handleOpenSeriesModal}
+                            onClick={() => setEditDialogTab("info")}
+                            style={{
+                                flex: 1,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "6px",
+                                padding: "7px 12px",
+                                background: editDialogTab === "info" ? "var(--accent-primary)" : "transparent",
+                                color: editDialogTab === "info" ? "#fff" : "var(--text-primary)",
+                                border: "none",
+                                borderRadius: "6px",
+                                fontWeight: 600,
+                                fontSize: "0.85rem",
+                                cursor: "pointer"
+                            }}
                         >
-                            <FontAwesomeIcon icon={book?.series?.name ? faPen : faPlus} />
-                            <span>{book?.series?.name ? tr("Edit series / volume", "Modifier la série / tome") : tr("Link to a series", "Associer à une série")}</span>
+                            <FontAwesomeIcon icon={faBook} />
+                            <span>{tr("Information", "Informations")}</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setEditDialogTab("series")}
+                            style={{
+                                flex: 1,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "6px",
+                                padding: "7px 12px",
+                                background: editDialogTab === "series" ? "var(--accent-primary)" : "transparent",
+                                color: editDialogTab === "series" ? "#fff" : "var(--text-primary)",
+                                border: "none",
+                                borderRadius: "6px",
+                                fontWeight: 600,
+                                fontSize: "0.85rem",
+                                cursor: "pointer"
+                            }}
+                        >
+                            <FontAwesomeIcon icon={faLayerGroup} />
+                            <span>{tr("Series", "Série")}</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setEditDialogTab("authors")}
+                            style={{
+                                flex: 1,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "6px",
+                                padding: "7px 12px",
+                                background: editDialogTab === "authors" ? "var(--accent-primary)" : "transparent",
+                                color: editDialogTab === "authors" ? "#fff" : "var(--text-primary)",
+                                border: "none",
+                                borderRadius: "6px",
+                                fontWeight: 600,
+                                fontSize: "0.85rem",
+                                cursor: "pointer"
+                            }}
+                        >
+                            <FontAwesomeIcon icon={faPenNib} />
+                            <span>{tr("Authors", "Auteurs")}</span>
                         </button>
                     </div>
 
-                    <form className="book-edit-dialog__form" onSubmit={handleSaveBookInfo}>
+                    {editDialogTab === "info" && (
+                    <form className="book-edit-dialog__form" style={{ flex: 1 }} onSubmit={handleSaveBookInfo}>
                         {/* Titre de l'album */}
                         <div className="tx-dialog__field">
                             <label>
@@ -2463,26 +2532,291 @@ export default function BookPage() {
                                 />
                             </div>
                         </div>
-
-                        <div className="tx-dialog__actions">
-                            <button
-                                type="button"
-                                className="tx-dialog__btn-cancel"
-                                onClick={() => setEditModalOpen(false)}
-                                disabled={savingBookInfo}
-                            >
-                                {tr("Cancel", "Annuler")}
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={savingBookInfo}
-                                className="tx-dialog__btn-submit tx-dialog__btn-submit--bought"
-                            >
-                                <FontAwesomeIcon icon={faCheck} />
-                                <span>{savingBookInfo ? tr("Saving...", "Enregistrement...") : tr("Save changes", "Enregistrer les modifications")}</span>
-                            </button>
-                        </div>
                     </form>
+                    )}
+
+                    {editDialogTab === "series" && (
+                        <div className="book-edit-dialog__form" style={{ flex: 1 }}>
+                            {seriesModalMode === "select" ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                    <div
+                                        style={{
+                                            display: "grid",
+                                            gridTemplateColumns: selectedSeriesId ? "1fr 130px" : "1fr",
+                                            gap: "10px",
+                                            alignItems: "start"
+                                        }}
+                                    >
+                                        <div className="tx-dialog__field">
+                                            <label>
+                                                <span>{tr("Select a series", "Sélectionner une série")}</span>
+                                            </label>
+                                            <SeriesSearchableSelect
+                                                selectedId={selectedSeriesId}
+                                                onSelectId={setSelectedSeriesId}
+                                                seriesList={seriesListOptions}
+                                                onCreateNew={(initialName) => {
+                                                    setNewSeriesName(initialName);
+                                                    setSeriesModalMode("create");
+                                                }}
+                                            />
+                                        </div>
+
+                                        {selectedSeriesId && (
+                                            <div className="tx-dialog__field">
+                                                <label>
+                                                    <span>{tr("Volume #", "Tome n°")}</span>
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    min={1}
+                                                    value={selectedVolume}
+                                                    onChange={(e) => setSelectedVolume(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {!selectedSeriesId && (
+                                        <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)", fontStyle: "italic" }}>
+                                            {tr("Without a linked series, this book will not have a volume number.", "Sans série associée, cet album n'aura pas de tomaison.")}
+                                        </p>
+                                    )}
+
+                                    <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                                        <button
+                                            type="button"
+                                            className="book-edit-dialog__series-btn"
+                                            onClick={() => setSeriesModalMode("create")}
+                                        >
+                                            <FontAwesomeIcon icon={faPlus} />
+                                            <span>{tr("New series", "Nouvelle série")}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                    <div className="tx-dialog__field">
+                                        <label>
+                                            <span>{tr("New series name *", "Nom de la nouvelle série *")}</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder={tr("e.g. Batman Rebirth, Blackwater...", "ex: Batman Rebirth, Blackwater...")}
+                                            value={newSeriesName}
+                                            onChange={(e) => setNewSeriesName(e.target.value)}
+                                        />
+                                    </div>
+
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 130px", gap: "10px", alignItems: "end" }}>
+                                        <div className="tx-dialog__field">
+                                            <label>
+                                                <span>{tr("Category", "Catégorie")}</span>
+                                            </label>
+                                            <Select
+                                                multiple={false}
+                                                translateOptions
+                                                className="yal-select--block"
+                                                placeholder={tr("Category", "Catégorie")}
+                                                value={String(newSeriesCategory)}
+                                                onChange={(val) => {
+                                                    if (val) setNewSeriesCategory(Number(val));
+                                                }}
+                                                options={[
+                                                    { id: "3", label: "Comics" },
+                                                    { id: "2", label: "Bande dessinée" },
+                                                    { id: "4", label: "Manga" },
+                                                    { id: "5", label: "Roman Graphique" },
+                                                    { id: "1", label: "Roman" },
+                                                    { id: "6", label: "Beau-livre" },
+                                                    { id: "7", label: "E-book" }
+                                                ]}
+                                            />
+                                        </div>
+
+                                        <div className="tx-dialog__field">
+                                            <label>
+                                                <span>{tr("Volume #", "Tome n°")}</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                value={selectedVolume}
+                                                onChange={(e) => setSelectedVolume(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                                        <button
+                                            type="button"
+                                            className="book-edit-dialog__series-btn"
+                                            onClick={() => setSeriesModalMode("select")}
+                                        >
+                                            <FontAwesomeIcon icon={faArrowLeft} />
+                                            <span>{tr("Existing series", "Série existante")}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedSeriesId != null && seriesModalMode === "select" && (
+                                <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedSeriesId(null)}
+                                        style={{
+                                            padding: "8px 14px",
+                                            background: "rgba(239, 68, 68, 0.15)",
+                                            border: "1px solid rgba(239, 68, 68, 0.3)",
+                                            color: "#dc2626",
+                                            borderRadius: "8px",
+                                            cursor: "pointer",
+                                            fontWeight: 600,
+                                            fontSize: "0.8rem",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: "6px"
+                                        }}
+                                    >
+                                        <FontAwesomeIcon icon={faTrash} />
+                                        <span>{tr("Remove from series", "Retirer de la série")}</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {editDialogTab === "authors" && (
+                        <>
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center", paddingBottom: "10px", borderBottom: "1px solid var(--border-subtle)" }}>
+                                <div className="tx-dialog__field" style={{ flex: 1 }}>
+                                    <SearchableSelect
+                                        value={quickAddAuthorName}
+                                        onChange={setQuickAddAuthorName}
+                                        options={authorOptions
+                                            .map((a) => `${a.firstname || ""} ${a.lastname || ""}`.trim())
+                                            .filter(Boolean)}
+                                        placeholder={tr("Search an existing author...", "Rechercher un auteur existant...")}
+                                        emptyLabel={tr("-- Clear --", "-- Effacer --")}
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    className="book-edit-dialog__series-btn"
+                                    onClick={handleAddAuthorFromQuickInput}
+                                    disabled={!quickAddAuthorName.trim()}
+                                    style={{ whiteSpace: "nowrap", opacity: quickAddAuthorName.trim() ? 1 : 0.5 }}
+                                >
+                                    <FontAwesomeIcon icon={faPlus} />
+                                    <span>{tr("Add", "Ajouter")}</span>
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleSaveBookInfo} className="book-edit-dialog__form" style={{ flex: 1 }}>
+                                {editableAuthors.length === 0 ? (
+                                    <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "20px 0", margin: 0, fontSize: "0.9rem" }}>
+                                        {tr("No authors linked to this book.", "Aucun auteur associé à ce livre.")}
+                                    </p>
+                                ) : (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                        {editableAuthors.map((author, idx) => (
+                                            <div
+                                                key={idx}
+                                                style={{
+                                                    display: "grid",
+                                                    gridTemplateColumns: "1fr 1fr 165px auto",
+                                                    gap: "8px",
+                                                    alignItems: "center"
+                                                }}
+                                            >
+                                                <div className="tx-dialog__field">
+                                                    <input
+                                                        type="text"
+                                                        value={author.firstname}
+                                                        onChange={(e) => handleUpdateAuthorRow(idx, "firstname", e.target.value)}
+                                                        placeholder={tr("First name", "Prénom")}
+                                                    />
+                                                </div>
+                                                <div className="tx-dialog__field">
+                                                    <input
+                                                        type="text"
+                                                        value={author.lastname}
+                                                        onChange={(e) => handleUpdateAuthorRow(idx, "lastname", e.target.value)}
+                                                        placeholder={tr("Last name", "Nom")}
+                                                    />
+                                                </div>
+                                                <Select
+                                                    multiple={false}
+                                                    value={author.type}
+                                                    onChange={(val) => {
+                                                        if (val) handleUpdateAuthorRow(idx, "type", val);
+                                                    }}
+                                                    options={[
+                                                        { id: "Writer", label: tr("Writer", "Scénariste / Auteur") },
+                                                        { id: "Illustrator", label: tr("Illustrator", "Dessinateur") },
+                                                        { id: "Colorist", label: tr("Colorist", "Coloriste") }
+                                                    ]}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="book-page__tx-delete"
+                                                    onClick={() => handleRemoveAuthorRow(idx)}
+                                                    title={tr("Remove", "Supprimer")}
+                                                    aria-label={tr("Remove", "Supprimer")}
+                                                >
+                                                    <FontAwesomeIcon icon={faTrash} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                                    <button
+                                        type="button"
+                                        className="book-edit-dialog__series-btn"
+                                        onClick={() => setEditableAuthors((prev) => [...prev, { firstname: "", lastname: "", type: "Writer" }])}
+                                        style={{ whiteSpace: "nowrap" }}
+                                    >
+                                        <FontAwesomeIcon icon={faPlus} />
+                                        <span>{tr("New row", "Nouvelle ligne")}</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </>
+                    )}
+
+                    <div
+                        className="tx-dialog__actions"
+                        style={{
+                            marginTop: "auto",
+                            position: "sticky",
+                            bottom: 0,
+                            backgroundColor: "var(--bg-surface, #1e1e24)",
+                            paddingTop: "12px",
+                            borderTop: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                            zIndex: 5
+                        }}
+                    >
+                        <button
+                            type="button"
+                            className="tx-dialog__btn-cancel"
+                            onClick={() => setEditModalOpen(false)}
+                            disabled={savingBookInfo}
+                        >
+                            {tr("Cancel", "Annuler")}
+                        </button>
+                        <button
+                            type="button"
+                            className="tx-dialog__btn-submit tx-dialog__btn-submit--bought"
+                            disabled={savingBookInfo}
+                            onClick={() => handleSaveBookInfo()}
+                        >
+                            <FontAwesomeIcon icon={faCheck} />
+                            <span>{savingBookInfo ? tr("Saving...", "Enregistrement...") : tr("Save", "Enregistrer")}</span>
+                        </button>
+                    </div>
                 </div>
             </Dialog>
 
@@ -2644,258 +2978,6 @@ export default function BookPage() {
                             </button>
                         </div>
                     </form>
-                </div>
-            </Dialog>
-
-            {/* Series Association Modal */}
-            <Dialog
-                open={seriesModalOpen}
-                onClose={() => setSeriesModalOpen(false)}
-                PaperProps={{
-                    style: {
-                        backgroundColor: "var(--bg-surface, #1e1e24)",
-                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
-                        borderRadius: "16px",
-                        maxWidth: "500px",
-                        width: "100%",
-                        padding: "24px",
-                        color: "var(--text-primary)",
-                        overflow: "visible"
-                    }
-                }}
-            >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <FontAwesomeIcon icon={faLayerGroup} style={{ color: "var(--accent-primary)" }} />
-                        <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>
-                            {book?.series ? tr("Manage this book's series", "Gérer la série de cet album") : tr("Link to a series", "Associer à une série")}
-                        </h3>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => setSeriesModalOpen(false)}
-                        style={{ background: "transparent", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: "1.1rem" }}
-                    >
-                        <FontAwesomeIcon icon={faXmark} />
-                    </button>
-                </div>
-
-                {/* Tabs: Choose existing vs Create new */}
-                <div style={{ display: "flex", gap: "8px", background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)", padding: "4px", borderRadius: "8px", marginBottom: "16px" }}>
-                    <button
-                        type="button"
-                        onClick={() => setSeriesModalMode("select")}
-                        style={{
-                            flex: 1,
-                            padding: "6px 12px",
-                            background: seriesModalMode === "select" ? "var(--accent-primary)" : "transparent",
-                            color: seriesModalMode === "select" ? "#fff" : "var(--text-primary)",
-                            border: "none",
-                            borderRadius: "6px",
-                            fontWeight: 600,
-                            fontSize: "0.85rem",
-                            cursor: "pointer"
-                        }}
-                    >
-                        {tr("Existing series", "Série existante")}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setSeriesModalMode("create")}
-                        style={{
-                            flex: 1,
-                            padding: "6px 12px",
-                            background: seriesModalMode === "create" ? "var(--accent-primary)" : "transparent",
-                            color: seriesModalMode === "create" ? "#fff" : "var(--text-primary)",
-                            border: "none",
-                            borderRadius: "6px",
-                            fontWeight: 600,
-                            fontSize: "0.85rem",
-                            cursor: "pointer"
-                        }}
-                    >
-                        {tr("+ New series", "+ Nouvelle série")}
-                    </button>
-                </div>
-
-                {seriesModalMode === "select" ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                        <div className="tx-dialog__field">
-                            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                {tr("Select a series", "Sélectionner une série")}
-                            </label>
-                            <SeriesSearchableSelect
-                                selectedId={selectedSeriesId}
-                                onSelectId={setSelectedSeriesId}
-                                seriesList={seriesListOptions}
-                                onCreateNew={(initialName) => {
-                                    setNewSeriesName(initialName);
-                                    setSeriesModalMode("create");
-                                }}
-                            />
-                        </div>
-
-                        {selectedSeriesId ? (
-                            <div>
-                                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                    {tr("Position in series (Volume #)", "Position dans la série (Tome n°)")}
-                                </label>
-                                <input
-                                    type="number"
-                                    min={1}
-                                    value={selectedVolume}
-                                    onChange={(e) => setSelectedVolume(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                                    style={{
-                                        width: "100%",
-                                        height: "40px",
-                                        boxSizing: "border-box",
-                                        padding: "0 14px",
-                                        background: "var(--input-bg, #ffffff)",
-                                        border: "1px solid var(--border-subtle)",
-                                        borderRadius: "8px",
-                                        color: "var(--text-primary)",
-                                        outline: "none"
-                                    }}
-                                />
-                            </div>
-                        ) : (
-                            <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)", fontStyle: "italic" }}>
-                                {tr("Without a linked series, this book will not have a volume number.", "Sans série associée, cet album n'aura pas de tomaison.")}
-                            </p>
-                        )}
-                    </div>
-                ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                        <div>
-                            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                {tr("New series name *", "Nom de la nouvelle série *")}
-                            </label>
-                            <input
-                                type="text"
-                                placeholder={tr("e.g. Batman Rebirth, Blackwater...", "ex: Batman Rebirth, Blackwater...")}
-                                value={newSeriesName}
-                                onChange={(e) => setNewSeriesName(e.target.value)}
-                                style={{
-                                    width: "100%",
-                                    padding: "10px 14px",
-                                        background: "var(--input-bg, #ffffff)",
-                                    border: "1px solid var(--border-subtle)",
-                                    borderRadius: "8px",
-                                    color: "var(--text-primary)",
-                                    outline: "none"
-                                }}
-                            />
-                        </div>
-
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                            <div>
-                                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                    {tr("Category", "Catégorie")}
-                                </label>
-                                <Select
-                                    multiple={false}
-                                    translateOptions
-                                    className="book-dialog-select"
-                                    placeholder={tr("Category", "Catégorie")}
-                                    value={String(newSeriesCategory)}
-                                    onChange={(val) => {
-                                        if (val) setNewSeriesCategory(Number(val));
-                                    }}
-                                    options={[
-                                        { id: "3", label: "Comics" },
-                                        { id: "2", label: "Bande dessinée" },
-                                        { id: "4", label: "Manga" },
-                                        { id: "5", label: "Roman Graphique" },
-                                        { id: "1", label: "Roman" },
-                                        { id: "6", label: "Beau-livre" },
-                                        { id: "7", label: "E-book" }
-                                    ]}
-                                />
-                            </div>
-
-                            <div>
-                                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: "6px" }}>
-                                    {tr("Position in series (Volume #)", "Position dans la série (Tome n°)")}
-                                </label>
-                                <input
-                                    type="number"
-                                    min={1}
-                                    value={selectedVolume}
-                                    onChange={(e) => setSelectedVolume(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                                    style={{
-                                        width: "100%",
-                                        height: "40px",
-                                        boxSizing: "border-box",
-                                        padding: "0 14px",
-                                        background: "var(--input-bg, #ffffff)",
-                                        border: "1px solid var(--border-subtle)",
-                                        borderRadius: "8px",
-                                        color: "var(--text-primary)",
-                                        outline: "none"
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "24px" }}>
-                    {book?.series ? (
-                        <button
-                            type="button"
-                            onClick={handleRemoveFromSeries}
-                            style={{
-                                padding: "8px 14px",
-                                background: "rgba(239, 68, 68, 0.15)",
-                                border: "1px solid rgba(239, 68, 68, 0.3)",
-                                color: "#dc2626",
-                                borderRadius: "8px",
-                                cursor: "pointer",
-                                fontWeight: 600,
-                                fontSize: "0.8rem",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "6px"
-                            }}
-                        >
-                            <FontAwesomeIcon icon={faTrash} />
-                            <span>{tr("Remove from series", "Retirer de la série")}</span>
-                        </button>
-                    ) : <div />}
-
-                    <div style={{ display: "flex", gap: "10px" }}>
-                        <button
-                            type="button"
-                            onClick={() => setSeriesModalOpen(false)}
-                            style={{
-                                padding: "8px 16px",
-                                background: "var(--bg-card)",
-                                border: "1px solid var(--border-subtle)",
-                                color: "var(--text-secondary)",
-                                borderRadius: "8px",
-                                cursor: "pointer",
-                                fontWeight: 600
-                            }}
-                        >
-                            {tr("Cancel", "Annuler")}
-                        </button>
-                        <button
-                            type="button"
-                            disabled={savingSeries}
-                            onClick={handleSaveSeriesAssociation}
-                            style={{
-                                padding: "8px 18px",
-                                background: "var(--accent-primary)",
-                                border: "none",
-                                color: "#fff",
-                                borderRadius: "8px",
-                                cursor: "pointer",
-                                fontWeight: 600
-                            }}
-                        >
-                            {savingSeries ? tr("Saving...", "Enregistrement...") : tr("Confirm", "Valider")}
-                        </button>
-                    </div>
                 </div>
             </Dialog>
 
@@ -3663,157 +3745,6 @@ export default function BookPage() {
                             <span>{relisting ? tr("Relisting...", "Mise en vente...") : tr("Confirm", "Valider")}</span>
                         </button>
                     </div>
-                </div>
-            </Dialog>
-
-            {/* Authors & Creators Management Dialog */}
-            <Dialog
-                open={authorsModalOpen}
-                onClose={() => !savingAuthors && setAuthorsModalOpen(false)}
-                PaperProps={{
-                    style: {
-                        backgroundColor: "var(--bg-surface, #1e1e24)",
-                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
-                        borderRadius: "16px",
-                        maxWidth: "660px",
-                        width: "100%",
-                        padding: "18px 20px",
-                        color: "var(--text-primary)",
-                        overflow: "visible"
-                    }
-                }}
-            >
-                <div className="book-edit-dialog">
-                    <div className="book-edit-dialog__header">
-                        <div className="book-edit-dialog__header-title">
-                            <FontAwesomeIcon icon={faPenNib} />
-                            <h3>{tr("Edit authors", "Modifier les auteurs")}</h3>
-                        </div>
-                        <button
-                            type="button"
-                            className="book-edit-dialog__close-btn"
-                            onClick={() => setAuthorsModalOpen(false)}
-                            disabled={savingAuthors}
-                            aria-label={tr("Close", "Fermer")}
-                        >
-                            <FontAwesomeIcon icon={faXmark} />
-                        </button>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "8px", alignItems: "center", paddingBottom: "10px", borderBottom: "1px solid var(--border-subtle)" }}>
-                        <div className="tx-dialog__field" style={{ flex: 1 }}>
-                            <SearchableSelect
-                                value={quickAddAuthorName}
-                                onChange={setQuickAddAuthorName}
-                                options={authorOptions
-                                    .map((a) => `${a.firstname || ""} ${a.lastname || ""}`.trim())
-                                    .filter(Boolean)}
-                                placeholder={tr("Search an existing author...", "Rechercher un auteur existant...")}
-                                emptyLabel={tr("-- Clear --", "-- Effacer --")}
-                            />
-                        </div>
-                        <button
-                            type="button"
-                            className="book-edit-dialog__series-btn"
-                            onClick={handleAddAuthorFromQuickInput}
-                            disabled={!quickAddAuthorName.trim()}
-                            style={{ whiteSpace: "nowrap", opacity: quickAddAuthorName.trim() ? 1 : 0.5 }}
-                        >
-                            <FontAwesomeIcon icon={faPlus} />
-                            <span>{tr("Add", "Ajouter")}</span>
-                        </button>
-                    </div>
-
-                    <form onSubmit={handleSaveAuthors} className="book-edit-dialog__form">
-                        {editableAuthors.length === 0 ? (
-                            <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "20px 0", margin: 0, fontSize: "0.9rem" }}>
-                                {tr("No authors linked to this book.", "Aucun auteur associé à ce livre.")}
-                            </p>
-                        ) : (
-                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                {editableAuthors.map((author, idx) => (
-                                    <div
-                                        key={idx}
-                                        style={{
-                                            display: "grid",
-                                            gridTemplateColumns: "1fr 1fr 165px auto",
-                                            gap: "8px",
-                                            alignItems: "center"
-                                        }}
-                                    >
-                                        <div className="tx-dialog__field">
-                                            <input
-                                                type="text"
-                                                value={author.firstname}
-                                                onChange={(e) => handleUpdateAuthorRow(idx, "firstname", e.target.value)}
-                                                placeholder={tr("First name", "Prénom")}
-                                            />
-                                        </div>
-                                        <div className="tx-dialog__field">
-                                            <input
-                                                type="text"
-                                                value={author.lastname}
-                                                onChange={(e) => handleUpdateAuthorRow(idx, "lastname", e.target.value)}
-                                                placeholder={tr("Last name", "Nom")}
-                                            />
-                                        </div>
-                                        <Select
-                                            multiple={false}
-                                            value={author.type}
-                                            onChange={(val) => {
-                                                if (val) handleUpdateAuthorRow(idx, "type", val);
-                                            }}
-                                            options={[
-                                                { id: "Writer", label: tr("Writer", "Scénariste / Auteur") },
-                                                { id: "Illustrator", label: tr("Illustrator", "Dessinateur") },
-                                                { id: "Colorist", label: tr("Colorist", "Coloriste") }
-                                            ]}
-                                        />
-                                        <button
-                                            type="button"
-                                            className="book-page__tx-delete"
-                                            onClick={() => handleRemoveAuthorRow(idx)}
-                                            title={tr("Remove", "Supprimer")}
-                                            aria-label={tr("Remove", "Supprimer")}
-                                        >
-                                            <FontAwesomeIcon icon={faTrash} />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                            <button
-                                type="button"
-                                className="book-edit-dialog__series-btn"
-                                onClick={() => setEditableAuthors((prev) => [...prev, { firstname: "", lastname: "", type: "Writer" }])}
-                                style={{ whiteSpace: "nowrap" }}
-                            >
-                                <FontAwesomeIcon icon={faPlus} />
-                                <span>{tr("New row", "Nouvelle ligne")}</span>
-                            </button>
-                        </div>
-
-                        <div className="tx-dialog__actions">
-                            <button
-                                type="button"
-                                className="tx-dialog__btn-cancel"
-                                onClick={() => setAuthorsModalOpen(false)}
-                                disabled={savingAuthors}
-                            >
-                                {tr("Cancel", "Annuler")}
-                            </button>
-                            <button
-                                type="submit"
-                                className="tx-dialog__btn-submit"
-                                disabled={savingAuthors}
-                            >
-                                <FontAwesomeIcon icon={faCheck} />
-                                <span>{savingAuthors ? tr("Saving...", "Enregistrement...") : tr("Save", "Enregistrer")}</span>
-                            </button>
-                        </div>
-                    </form>
                 </div>
             </Dialog>
         </div>
