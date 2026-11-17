@@ -225,21 +225,21 @@ void main() {
       await tester.pump();
 
       final expectedTitles = [
-        'Nombre de livres lus',
+        'Livres dévorés',
         'Pages tournées',
-        'Le plus gros livre',
+        'Ton plus gros livre',
         'Temps passé à lire',
-        'Livre lu le plus longtemps',
-        'Le mois le plus productif',
-        'Catégorie la plus lue',
-        'Auteur le plus lu',
-        'Éditeur le plus lu',
-        'Prix total des livres achetés',
+        'Squatteur de table de nuit',
+        'Ton mois le plus chaud',
+        'Ton genre fétiche',
+        'Ta plume préférée',
+        'Ton éditeur star',
+        'Budget bibliothèque',
         'Le livre le plus cher',
-        'Le livre le plus rapide',
-        'Le livre le plus lent',
-        'Plus longue série de lecture',
-        'Jours de lecture en 2025',
+        'Lu à toute vitesse',
+        'Savouré page par page',
+        'Ta plus longue série',
+        'Jours avec un livre en 2025',
       ];
 
       final size = tester.getSize(find.byType(RetrospectiveStoryPage));

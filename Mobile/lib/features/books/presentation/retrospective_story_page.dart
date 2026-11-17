@@ -559,19 +559,19 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
         accentColor: const Color(0xFF34D399),
         secondaryGlow: const Color(0xFF0EA5E9),
         builder: (_) => _HeroCountSlide(
-          badge: 'BILAN DE LECTURE',
+          badge: 'BILAN LECTURE',
           icon: Icons.menu_book_rounded,
           accentColor: const Color(0xFF34D399),
-          title: 'Nombre de livres lus',
+          title: 'Livres dévorés',
           targetValue: retro.booksReadCount.toDouble(),
           valueFormatter: (v) => '${v.round()}',
-          unit: retro.booksReadCount > 1 ? 'livres terminés' : 'livre terminé',
+          unit: null,
           insightTitle: retro.booksReadCount > 0
-              ? 'Rythme annuel'
-              : 'Nouvelle page',
+              ? 'Appétit littéraire'
+              : 'Mode sieste',
           insightText: retro.booksReadCount > 0
-              ? 'Environ ${(retro.booksReadCount / 12).toStringAsFixed(1)} livre(s) par mois tout au long de ${retro.year}.'
-              : 'Aucun livre terminé enregistré en ${retro.year}.',
+              ? 'Environ ${(retro.booksReadCount / 12).toStringAsFixed(1)} livre(s)/mois. Ton canapé s\'en souvient.'
+              : 'Zéro livre fini, mais on parie que ta PAL a grandi.',
         ),
       ),
 
@@ -587,11 +587,11 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
           title: 'Pages tournées',
           targetValue: retro.pagesReadCount.toDouble(),
           valueFormatter: (v) => _formatInt(v.round()),
-          unit: retro.pagesReadCount > 1 ? 'pages lues' : 'page lue',
-          insightTitle: 'Distance littéraire',
+          unit: null,
+          insightTitle: 'Muscle du pouce',
           insightText: retro.pagesReadCount > 0
-              ? 'Chaque page compte dans ton voyage de ${retro.year}.'
-              : 'Aucune page enregistrée sur tes sessions de ${retro.year}.',
+              ? 'À ce rythme, tu mérites une médaille de tournage de pages.'
+              : 'Tes doigts ont pris des vacances cette année.',
         ),
       ),
 
@@ -601,15 +601,15 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
         accentColor: const Color(0xFFA78BFA),
         secondaryGlow: const Color(0xFFEC4899),
         builder: (_) => _BookShowcaseSlide(
-          badge: 'LE PAVÉ DE L\'ANNÉE',
+          badge: 'LE GROS PAVÉ',
           icon: Icons.layers_rounded,
           accentColor: const Color(0xFFA78BFA),
-          title: 'Le plus gros livre',
+          title: 'Ton plus gros livre',
           book: retro.thickestBook,
           highlightValue: retro.thickestBook?.pageCount != null
               ? '${_formatInt(retro.thickestBook!.pageCount!)} pages'
               : null,
-          emptyMessage: 'Aucun livre avec nombre de pages renseigné en ${retro.year}.',
+          emptyMessage: 'Pas de pavé repéré cette année (tes poignets te remercient).',
         ),
       ),
 
@@ -619,17 +619,17 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
         accentColor: const Color(0xFFFBBF24),
         secondaryGlow: const Color(0xFFF97316),
         builder: (_) => _HeroCountSlide(
-          badge: 'CHRONO LECTURE',
+          badge: 'CHRONO',
           icon: Icons.schedule_rounded,
           accentColor: const Color(0xFFFBBF24),
           title: 'Temps passé à lire',
           targetValue: retro.totalReadingSeconds.toDouble(),
           valueFormatter: (v) => _formatDurationCompact(v.round()),
-          unit: 'au total en ${retro.year}',
-          insightTitle: 'Immersion totale',
+          unit: 'en ${retro.year}',
+          insightTitle: 'En mode bulle',
           insightText: retro.totalReadingSeconds > 0
-              ? 'Soit ${(retro.totalReadingSeconds / 3600).toStringAsFixed(1)} heures plongé dans tes livres.'
-              : 'Aucune session chronométrée enregistrée en ${retro.year}.',
+              ? '${(retro.totalReadingSeconds / 3600).toStringAsFixed(1)}h sans scroller. Un exploit rare.'
+              : 'Aucun chrono lancé en ${retro.year}, lecture ninja.',
         ),
       ),
 
@@ -639,18 +639,18 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
         accentColor: const Color(0xFFE879F9),
         secondaryGlow: const Color(0xFF6366F1),
         builder: (_) => _BookShowcaseSlide(
-          badge: 'COMPAGNON AU LONG COURS',
+          badge: 'LONG COURS',
           icon: Icons.hourglass_bottom_rounded,
           accentColor: const Color(0xFFE879F9),
-          title: 'Livre lu le plus longtemps',
+          title: 'Squatteur de table de nuit',
           book: retro.longestReadBook,
           highlightValue: retro.longestReadBook?.readingSeconds != null
               ? _formatDurationCompact(retro.longestReadBook!.readingSeconds!)
               : null,
           secondaryText: retro.longestReadBook?.sessionsCount != null
-              ? '${retro.longestReadBook!.sessionsCount} session${retro.longestReadBook!.sessionsCount! > 1 ? 's' : ''} de lecture'
+              ? '${retro.longestReadBook!.sessionsCount} session${retro.longestReadBook!.sessionsCount! > 1 ? 's' : ''} ensemble'
               : null,
-          emptyMessage: 'Aucune session de lecture enregistrée en ${retro.year}.',
+          emptyMessage: 'Aucune session enregistrée en ${retro.year}.',
         ),
       ),
 
@@ -672,12 +672,12 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
         accentColor: const Color(0xFFF472B6),
         secondaryGlow: const Color(0xFFFB7185),
         builder: (_) => _SpotlightRankSlide(
-          badge: 'GENRE PRÉFÉRÉ',
+          badge: 'OBSESSION',
           icon: Icons.category_rounded,
           accentColor: const Color(0xFFF472B6),
-          title: 'Catégorie la plus lue',
+          title: 'Ton genre fétiche',
           stat: retro.topCategory,
-          emptyMessage: 'Aucune catégorie identifiée pour ${retro.year}.',
+          emptyMessage: 'Tu es un lecteur mystérieux, inclassable.',
         ),
       ),
 
@@ -687,12 +687,12 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
         accentColor: const Color(0xFF38BDF8),
         secondaryGlow: const Color(0xFF6366F1),
         builder: (_) => _SpotlightRankSlide(
-          badge: 'PLUME FAVORITE',
+          badge: 'FAN CLUB',
           icon: Icons.person_rounded,
           accentColor: const Color(0xFF38BDF8),
-          title: 'Auteur le plus lu',
+          title: 'Ta plume préférée',
           stat: retro.topAuthor,
-          emptyMessage: 'Aucun auteur identifié pour ${retro.year}.',
+          emptyMessage: 'Aucun auteur ne s\'est démarqué cette année.',
         ),
       ),
 
@@ -702,12 +702,12 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
         accentColor: const Color(0xFF4ADE80),
         secondaryGlow: const Color(0xFF14B8A6),
         builder: (_) => _SpotlightRankSlide(
-          badge: 'MAISON D\'ÉDITION',
+          badge: 'FOURNISSEUR OFFICIEL',
           icon: Icons.apartment_rounded,
           accentColor: const Color(0xFF4ADE80),
-          title: 'Éditeur le plus lu',
+          title: 'Ton éditeur star',
           stat: retro.topPublisher,
-          emptyMessage: 'Aucun éditeur renseigné pour ${retro.year}.',
+          emptyMessage: 'Aucun éditeur renseigné cette année.',
         ),
       ),
 
@@ -717,18 +717,20 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
         accentColor: const Color(0xFFFBBF24),
         secondaryGlow: const Color(0xFFF59E0B),
         builder: (_) => _HeroCountSlide(
-          badge: 'BUDGET BIBLIOTHÈQUE',
+          badge: 'TICKET DE CAISSE',
           icon: Icons.shopping_bag_rounded,
           accentColor: const Color(0xFFFBBF24),
-          title: 'Prix total des livres achetés',
+          title: 'Budget bibliothèque',
           targetValue: retro.totalSpentAmount,
           valueFormatter: _formatPrice,
           unit:
-              'pour ${retro.boughtBooksCount} achat${retro.boughtBooksCount > 1 ? 's' : ''} en ${retro.year}',
-          insightTitle: 'Collection enrichie',
+              'pour ${retro.boughtBooksCount} achat${retro.boughtBooksCount > 1 ? 's' : ''}',
+          insightTitle: retro.boughtBooksCount > 0
+              ? 'Aïe le portefeuille'
+              : 'Mode économe',
           insightText: retro.boughtBooksCount > 0
-              ? 'Soit ${(retro.totalSpentAmount / retro.boughtBooksCount).toStringAsFixed(2).replaceAll('.', ',')} € en moyenne par livre.'
-              : 'Aucun achat enregistré en ${retro.year}.',
+              ? '${(retro.totalSpentAmount / retro.boughtBooksCount).toStringAsFixed(2).replaceAll('.', ',')} €/livre en moyenne. C\'est de la culture, ça compte pas.'
+              : 'Zéro euro dépensé ! Ton banquier t\'applaudit.',
         ),
       ),
 
@@ -738,7 +740,7 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
         accentColor: const Color(0xFFFCA5A5),
         secondaryGlow: const Color(0xFFEF4444),
         builder: (_) => _BookShowcaseSlide(
-          badge: 'BELLE PIÈCE',
+          badge: 'PIÈCE DE LUXE',
           icon: Icons.workspace_premium_rounded,
           accentColor: const Color(0xFFFCA5A5),
           title: 'Le livre le plus cher',
@@ -746,7 +748,7 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
           highlightValue: retro.mostExpensiveBook?.price != null
               ? _formatPrice(retro.mostExpensiveBook!.price!)
               : null,
-          emptyMessage: 'Aucun achat avec prix renseigné en ${retro.year}.',
+          emptyMessage: 'Aucun achat avec prix noté (bien caché).',
         ),
       ),
 
@@ -756,16 +758,16 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
         accentColor: const Color(0xFF34D399),
         secondaryGlow: const Color(0xFF22D3EE),
         builder: (_) => _BookShowcaseSlide(
-          badge: 'VITESSE ÉCLAIR',
+          badge: 'MODE TGV',
           icon: Icons.bolt_rounded,
           accentColor: const Color(0xFF34D399),
-          title: 'Le livre le plus rapide',
+          title: 'Lu à toute vitesse',
           book: retro.fastestBook,
           highlightValue: retro.fastestBook?.pagesPerHour != null
               ? '${retro.fastestBook!.pagesPerHour!.toStringAsFixed(1)} pages/h'
               : null,
           secondaryText: _formatSpeedSubtitle(retro.fastestBook),
-          emptyMessage: 'Pas assez de sessions chronométrées avec pages pour calculer la vitesse.',
+          emptyMessage: 'Pas assez de chronos pour mesurer ta vitesse de pointe.',
         ),
       ),
 
@@ -775,16 +777,16 @@ class _RetrospectiveStoryPageState extends ConsumerState<RetrospectiveStoryPage>
         accentColor: const Color(0xFF818CF8),
         secondaryGlow: const Color(0xFF38BDF8),
         builder: (_) => _BookShowcaseSlide(
-          badge: 'LECTURE SAVOURÉE',
+          badge: 'MODE TORTUE',
           icon: Icons.spa_rounded,
           accentColor: const Color(0xFF818CF8),
-          title: 'Le livre le plus lent',
+          title: 'Savouré page par page',
           book: retro.slowestBook,
           highlightValue: retro.slowestBook?.pagesPerHour != null
               ? '${retro.slowestBook!.pagesPerHour!.toStringAsFixed(1)} pages/h'
               : null,
           secondaryText: _formatSpeedSubtitle(retro.slowestBook),
-          emptyMessage: 'Pas assez de sessions chronométrées avec pages pour calculer la vitesse.',
+          emptyMessage: 'Pas assez de chronos pour trouver ta lecture la plus zen.',
         ),
       ),
 
@@ -991,7 +993,7 @@ class _HeroCountSlide extends StatelessWidget {
   final String title;
   final double targetValue;
   final String Function(double) valueFormatter;
-  final String unit;
+  final String? unit;
   final String insightTitle;
   final String insightText;
 
@@ -1048,16 +1050,18 @@ class _HeroCountSlide extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    unit,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
+                  if (unit != null && unit!.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      unit!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               );
             },
@@ -1321,7 +1325,7 @@ class _MonthRecordSlide extends StatelessWidget {
           delayMs: 0,
           offsetY: -14,
           child: _SlideBadge(
-            label: 'PIC DE LECTURE',
+            label: 'MOIS RECORD',
             icon: Icons.calendar_month_rounded,
             accentColor: accentColor,
           ),
@@ -1330,7 +1334,7 @@ class _MonthRecordSlide extends StatelessWidget {
         const _StaggeredEntrance(
           delayMs: 80,
           child: Text(
-            'Le mois le plus productif',
+            'Ton mois le plus chaud',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
@@ -1414,8 +1418,8 @@ class _MonthRecordSlide extends StatelessWidget {
           delayMs: 280,
           child: Text(
             month != null
-                ? 'C\'est en ${month.monthName.toLowerCase()} que tu as dévoré le plus de livres.'
-                : 'Termine des livres pour découvrir ton mois record.',
+                ? 'En ${month.monthName.toLowerCase()}, tu ne t\'es littéralement pas arrêté.'
+                : 'Pas encore de mois record cette année.',
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white70,
@@ -1571,7 +1575,7 @@ class _StreakSlide extends StatelessWidget {
           delayMs: 0,
           offsetY: -14,
           child: _SlideBadge(
-            label: 'RÉGULARITÉ',
+            label: 'EN FEU',
             icon: Icons.local_fire_department_rounded,
             accentColor: accentColor,
           ),
@@ -1580,7 +1584,7 @@ class _StreakSlide extends StatelessWidget {
         const _StaggeredEntrance(
           delayMs: 80,
           child: Text(
-            'Plus longue série de lecture',
+            'Ta plus longue série',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
@@ -1658,8 +1662,8 @@ class _StreakSlide extends StatelessWidget {
                 Flexible(
                   child: Text(
                     (startIso != null && endIso != null)
-                        ? 'Du ${_formatIsoDateFr(startIso!)} au ${_formatIsoDateFr(endIso!)}'
-                        : 'Aucune série enregistrée en $year.',
+                        ? 'Du ${_formatIsoDateFr(startIso!)} au ${_formatIsoDateFr(endIso!)} · Impossible de te décrocher !'
+                        : 'Pas de série enregistrée en $year.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
@@ -1713,7 +1717,7 @@ class _ReadingDaysRingSlide extends StatelessWidget {
         _StaggeredEntrance(
           delayMs: 80,
           child: Text(
-            'Jours de lecture en $year',
+            'Jours avec un livre en $year',
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
@@ -1783,7 +1787,7 @@ class _ReadingDaysRingSlide extends StatelessWidget {
             borderColor: accentColor.withValues(alpha: 0.3),
             child: Text(
               readingDaysCount > 0
-                  ? 'Soit ${(ratio * 100).toStringAsFixed(0)}% de l\'année passée en compagnie d\'un livre.'
+                  ? '${(ratio * 100).toStringAsFixed(0)}% de l\'année avec un livre. Pas mal du tout !'
                   : 'Aucun jour de lecture enregistré en $year.',
               textAlign: TextAlign.center,
               style: const TextStyle(
