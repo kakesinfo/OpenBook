@@ -306,7 +306,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   lightBg: AppTheme.accentPrimaryLight,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const ReadingCalendarPage(),
+                      builder: (_) => const ReadingCalendarPage(mode: ReadingCalendarMode.covers),
                     ),
                   ),
                 ),

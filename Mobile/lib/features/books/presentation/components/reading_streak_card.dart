@@ -24,7 +24,7 @@ class ReadingStreakCard extends ConsumerWidget {
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => const ReadingCalendarPage(),
+              builder: (_) => const ReadingCalendarPage(mode: ReadingCalendarMode.streak),
             ),
           ),
           child: Padding(
