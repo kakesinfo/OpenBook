@@ -55,7 +55,10 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
     const inputRef = useRef<HTMLInputElement | null>(null);
     const searchRequestIdRef = useRef(0);
 
-    useEffect(() => {
+    // Reset the modal contents when it opens (adjust state during render instead of in an effect)
+    const [prevOpen, setPrevOpen] = useState(open);
+    if (open !== prevOpen) {
+        setPrevOpen(open);
         if (open) {
             setQuery("");
             setBooks([]);
@@ -67,6 +70,11 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
             setListingPrice("");
             setListingUrl("");
             setSubmittingListing(false);
+        }
+    }
+
+    useEffect(() => {
+        if (open) {
             setTimeout(() => {
                 inputRef.current?.focus();
             }, 100);

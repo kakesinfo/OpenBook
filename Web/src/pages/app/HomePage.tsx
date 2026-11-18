@@ -35,7 +35,9 @@ export default function HomePage() {
 
     useEffect(() => {
         let cancelled = false;
-        setLoading(true);
+        Promise.resolve().then(() => {
+            if (!cancelled) setLoading(true);
+        });
 
         Promise.all([
             session.customFetch("/user/collection", { method: "GET" })

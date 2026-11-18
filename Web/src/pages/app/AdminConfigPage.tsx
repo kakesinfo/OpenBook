@@ -151,7 +151,9 @@ export default function AdminConfigPage() {
     }, [session, tr]);
 
     useEffect(() => {
-        fetchConfigs();
+        void (async () => {
+            await fetchConfigs();
+        })();
     }, [fetchConfigs]);
 
     const parseCronIntoBuilder = (cronStr: string) => {

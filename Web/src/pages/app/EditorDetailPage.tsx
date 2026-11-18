@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
@@ -39,7 +39,7 @@ export default function EditorDetailPage() {
     const [pageSize, setPageSize] = useState(24);
 
     // Fetch editor data
-    const fetchEditor = async () => {
+    const fetchEditor = useCallback(async () => {
         if (!id) return;
         setLoading(true);
         try {
@@ -56,15 +56,21 @@ export default function EditorDetailPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, session, tr, enqueueSnackbar]);
 
     useEffect(() => {
-        fetchEditor();
-    }, [id, session]);
+        Promise.resolve().then(() => {
+            fetchEditor();
+        });
+    }, [fetchEditor]);
 
-    useEffect(() => {
+    // Reset to the first page when the editor, search query or status filter changes
+    const filterKey = `${id ?? ""}|${searchQuery}|${statusFilter}`;
+    const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+    if (prevFilterKey !== filterKey) {
+        setPrevFilterKey(filterKey);
         setCurrentPage(1);
-    }, [id, searchQuery, statusFilter]);
+    }
 
     // Toggle follow
     const handleToggleFollow = async () => {

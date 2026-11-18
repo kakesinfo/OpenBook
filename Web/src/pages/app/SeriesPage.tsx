@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
@@ -11,7 +11,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	faLayerGroup,
 	faPlus,
-	faMagnifyingGlass,
 	faXmark,
 	faBell,
 	faBook,
@@ -168,7 +167,7 @@ export default function SeriesPage() {
     }, [session]);
 
     // Fetch user series
-    const fetchUserSeries = async () => {
+    const fetchUserSeries = useCallback(async () => {
         setLoading(true);
         try {
             const res = await session.customFetch("/user/series", { method: "GET" });
@@ -181,11 +180,13 @@ export default function SeriesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [session]);
 
     useEffect(() => {
-        fetchUserSeries();
-    }, [session]);
+        queueMicrotask(() => {
+            void fetchUserSeries();
+        });
+    }, [fetchUserSeries]);
 
     // Debounced book search in Add Book Dialog
     useDebounce(bookSearchQuery, 300, (value) => {
@@ -287,8 +288,9 @@ export default function SeriesPage() {
                 const errData = await res.text();
                 enqueueSnackbar(`${tr("Error", "Erreur")}: ${errData}`, { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setCreating(false);
         }
@@ -332,8 +334,9 @@ export default function SeriesPage() {
                 const errData = await res.text();
                 enqueueSnackbar(`${tr("Error", "Erreur")}: ${errData}`, { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setEditing(false);
         }
@@ -412,8 +415,9 @@ export default function SeriesPage() {
             } else {
                 enqueueSnackbar(tr("Error adding book", "Erreur lors de l'ajout de l'album"), { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setAddingBook(false);
         }
@@ -497,9 +501,12 @@ export default function SeriesPage() {
     }, [mySeries, statusFilter, selectedCategories, searchQuery]);
 
     // Reset page to 1 whenever filters change
-    useEffect(() => {
+    const filtersKey = `${statusFilter}|${selectedCategories.join(",")}|${searchQuery}`;
+    const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+    if (prevFiltersKey !== filtersKey) {
+        setPrevFiltersKey(filtersKey);
         setCurrentPage(1);
-    }, [statusFilter, selectedCategories, searchQuery]);
+    }
 
     // Pagination calculations
     const totalFiltered = displayedSeries.length;

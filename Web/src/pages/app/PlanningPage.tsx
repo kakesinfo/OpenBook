@@ -1,12 +1,10 @@
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCalendarDays,
     faClockRotateLeft,
     faCalendarPlus,
-    faMagnifyingGlass,
-    faXmark,
     faBook
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
@@ -86,7 +84,7 @@ export default function PlanningPage() {
             .catch(() => {});
     }, [session]);
 
-    const fetchUpcomingBooks = async () => {
+    const fetchUpcomingBooks = useCallback(async () => {
         setLoadingUpcoming(true);
         try {
             const response = await session.customFetch("/books/upcoming", { method: "GET" });
@@ -99,9 +97,9 @@ export default function PlanningPage() {
         } finally {
             setLoadingUpcoming(false);
         }
-    };
+    }, [session]);
 
-    const fetchRecentBooks = async () => {
+    const fetchRecentBooks = useCallback(async () => {
         setLoadingRecent(true);
         try {
             const response = await session.customFetch("/books/recent", { method: "GET" });
@@ -114,14 +112,16 @@ export default function PlanningPage() {
         } finally {
             setLoadingRecent(false);
         }
-    };
+    }, [session]);
 
     useEffect(() => {
-        // Load upcoming releases first for immediate navigation in "À venir"
-        fetchUpcomingBooks();
-        // Load recent releases in parallel in the background
-        fetchRecentBooks();
-    }, [session]);
+        Promise.resolve().then(() => {
+            // Load upcoming releases first for immediate navigation in "À venir"
+            fetchUpcomingBooks();
+            // Load recent releases in parallel in the background
+            fetchRecentBooks();
+        });
+    }, [fetchUpcomingBooks, fetchRecentBooks]);
 
     // Reference dates for time windows
     const { endOfToday, startOfTomorrow, twoMonthsAgo, sixMonthsAhead } = useMemo(() => {

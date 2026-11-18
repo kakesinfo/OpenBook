@@ -54,39 +54,44 @@ export default function CreateMissingBookModal({ open, onClose, initialData, ini
     // Submitting state
     const [submitting, setSubmitting] = useState(false);
 
-    // Reset when modal opens
+    // Reset when modal opens or initial data changes (adjust state during render instead of in an effect)
+    const [prevInit, setPrevInit] = useState({ open, initialData, initialTitle });
+    if (open !== prevInit.open || initialData !== prevInit.initialData || initialTitle !== prevInit.initialTitle) {
+        setPrevInit({ open, initialData, initialTitle });
+        if (open) {
+            let resolvedTitle = initialTitle || "";
+            let resolvedIsbn = "";
+            let resolvedPrice = "";
+            let resolvedCoverUrl = "";
+
+            if (initialData) {
+                if (typeof initialData === "string") {
+                    resolvedTitle = initialData;
+                } else {
+                    resolvedTitle = initialData.title || "";
+                    resolvedIsbn = initialData.isbn || "";
+                    resolvedPrice = initialData.price != null ? String(initialData.price) : "";
+                    resolvedCoverUrl = initialData.coverUrl || "";
+                }
+            }
+
+            setTitle(resolvedTitle);
+            setIsbn(resolvedIsbn);
+            setPrice(resolvedPrice);
+            setCoverMode("url");
+            setCoverUrl(resolvedCoverUrl);
+            setCoverFile(null);
+            setFilePreview(null);
+            setSubmitting(false);
+        }
+    }
+
     useEffect(() => {
         if (!open) return;
-
-        let resolvedTitle = initialTitle || "";
-        let resolvedIsbn = "";
-        let resolvedPrice = "";
-        let resolvedCoverUrl = "";
-
-        if (initialData) {
-            if (typeof initialData === "string") {
-                resolvedTitle = initialData;
-            } else {
-                resolvedTitle = initialData.title || "";
-                resolvedIsbn = initialData.isbn || "";
-                resolvedPrice = initialData.price != null ? String(initialData.price) : "";
-                resolvedCoverUrl = initialData.coverUrl || "";
-            }
-        }
-
-        setTitle(resolvedTitle);
-        setIsbn(resolvedIsbn);
-        setPrice(resolvedPrice);
-        setCoverMode("url");
-        setCoverUrl(resolvedCoverUrl);
-        setCoverFile(null);
-        setFilePreview(null);
-        setSubmitting(false);
-
         setTimeout(() => {
             titleInputRef.current?.focus();
         }, 120);
-    }, [open, initialData, initialTitle]);
+    }, [open]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

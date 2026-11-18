@@ -103,8 +103,11 @@ export default function SettingsPage() {
     // Fetch initial profile
     useEffect(() => {
         if (session.user) {
-            setUsername(session.user.username || "");
-            setAvatar(session.user.avatar || "");
+            const user = session.user;
+            queueMicrotask(() => {
+                setUsername(user.username || "");
+                setAvatar(user.avatar || "");
+            });
         }
 
         session.customFetch("/user/profile", { method: "GET" })

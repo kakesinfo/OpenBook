@@ -102,7 +102,9 @@ export default function AdminUsersPage() {
     }, [session, tr]);
 
     useEffect(() => {
-        fetchUsers();
+        void (async () => {
+            await fetchUsers();
+        })();
     }, [fetchUsers]);
 
     // Open create modal with pre-generated password

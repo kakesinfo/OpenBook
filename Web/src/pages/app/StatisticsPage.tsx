@@ -1,6 +1,6 @@
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import { isCollectifAuthor } from "../../utils/authorUtils.ts";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faBook,
@@ -66,7 +66,9 @@ export default function StatisticsPage() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const fetchStatistics = async (yearParam: number | null = selectedYear) => {
+    const fetchStatisticsRef = useRef<((yearParam: number | null) => Promise<void>) | null>(null);
+
+    const fetchStatistics = useCallback(async (yearParam: number | null = selectedYear) => {
         setLoading(true);
         setVisibleSections(0);
         setErrorType(null);
@@ -83,6 +85,13 @@ export default function StatisticsPage() {
                 [2, 3, 4, 5, 6, 7].forEach((section, index) => {
                     window.setTimeout(() => setVisibleSections(section), (index + 1) * 150);
                 });
+                if (!Array.isArray(data.availableYears)) {
+                    // Payload sans liste d'années : on relance la requête directement
+                    // (remplace l'ancien effect qui surveillait stats)
+                    queueMicrotask(() => {
+                        void fetchStatisticsRef.current?.(yearParam);
+                    });
+                }
             } else {
                 setErrorType("load");
             }
@@ -91,17 +100,17 @@ export default function StatisticsPage() {
         } finally {
             setLoading(false);
         }
-    };
-
-    useEffect(() => {
-        fetchStatistics(selectedYear);
     }, [session, selectedYear]);
 
     useEffect(() => {
-        if (stats && !Array.isArray(stats.availableYears) && !loading) {
-            fetchStatistics(selectedYear);
-        }
-    }, [stats]);
+        fetchStatisticsRef.current = fetchStatistics;
+    }, [fetchStatistics]);
+
+    useEffect(() => {
+        queueMicrotask(() => {
+            void fetchStatistics(selectedYear);
+        });
+    }, [fetchStatistics, selectedYear]);
 
     const error =
         errorType === "load"

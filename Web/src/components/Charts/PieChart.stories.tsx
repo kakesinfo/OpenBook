@@ -15,10 +15,10 @@ export const Default: Story = {
         title: "Répartition par genre",
         totalCount: 120,
         data: [
-            { category: "Manga", count: 65, percentage: 54.2 },
-            { category: "Bande dessinée", count: 30, percentage: 25.0 },
-            { category: "Comics", count: 15, percentage: 12.5 },
-            { category: "Roman", count: 10, percentage: 8.3 }
+            { name: "Manga", count: 65, percentage: 54.2, color: "#f97316" },
+            { name: "Bande dessinée", count: 30, percentage: 25.0, color: "#3b82f6" },
+            { name: "Comics", count: 15, percentage: 12.5, color: "#a855f7" },
+            { name: "Roman", count: 10, percentage: 8.3, color: "#22c55e" }
         ]
     }
 };

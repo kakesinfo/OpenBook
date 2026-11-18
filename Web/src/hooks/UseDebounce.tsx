@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 
 export function useDebounce<T>(
     value: T,
@@ -6,12 +6,17 @@ export function useDebounce<T>(
     callback?: (debouncedValue: T) => void
 ): T {
     const [debouncedValue, setDebouncedValue] = useState(value);
+    const callbackRef = useRef(callback);
+
+    useEffect(() => {
+        callbackRef.current = callback;
+    }, [callback]);
 
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedValue(value);
-            if (callback) {
-                callback(value);
+            if (callbackRef.current) {
+                callbackRef.current(value);
             }
         }, delay);
 

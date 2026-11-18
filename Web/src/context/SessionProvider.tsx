@@ -66,8 +66,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }, []);
 
     useEffect(() => {
-        checkSetupStatus();
-    }, [checkSetupStatus]);
+        fetch(`${API_URL}/setup/status`)
+            .then(async (res) => {
+                if (!res.ok) return;
+                const data = await res.json();
+                setSetupRequired(Boolean(data.setupRequired));
+            })
+            .catch((err) => {
+                console.error("Failed to check setup status:", err);
+            });
+    }, []);
 
     // Role recovery if token exists but claims lack role
     useEffect(() => {

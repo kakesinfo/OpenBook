@@ -9,6 +9,7 @@ export interface ThemeContextType {
     availableThemes: ThemeOption[];
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -45,6 +46,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme(): ThemeContextType {
     const context = useContext(ThemeContext);
     if (!context) {

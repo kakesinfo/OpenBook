@@ -12,7 +12,6 @@ import {
     faBook,
     faCompass,
     faLayerGroup,
-    faMagnifyingGlass,
     faBookBookmark,
     faCheck,
     faBookOpen,
@@ -22,8 +21,7 @@ import {
     faList,
     faChevronRight,
     faStar,
-    faGem,
-    faXmark
+    faGem
 } from "@fortawesome/free-solid-svg-icons";
 import Select, {
     type CategoryOption,
@@ -242,7 +240,7 @@ export default function CollectionPage() {
         handlePageChange(1);
         try {
             localStorage.setItem("collection_display_mode", mode);
-        } catch (_) {}
+        } catch { /* localStorage unavailable */ }
     };
 
     const handleStatusChange = (status: TomeStatusFilter) => {
@@ -271,12 +269,12 @@ export default function CollectionPage() {
             setGridPageSize(size);
             try {
                 localStorage.setItem("collection_grid_page_size", String(size));
-            } catch (_) {}
+            } catch { /* localStorage unavailable */ }
         } else {
             setListPageSize(size);
             try {
                 localStorage.setItem("collection_list_page_size", String(size));
-            } catch (_) {}
+            } catch { /* localStorage unavailable */ }
         }
         handlePageChange(1);
     };
@@ -284,7 +282,9 @@ export default function CollectionPage() {
     // Fetch collection slice from backend whenever page, size, filters or debounced search change
     useEffect(() => {
         let isCancelled = false;
-        setLoading(true);
+        Promise.resolve().then(() => {
+            if (!isCancelled) setLoading(true);
+        });
 
         const params = new URLSearchParams();
         params.set("page", String(currentPage));

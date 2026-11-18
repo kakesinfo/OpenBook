@@ -32,6 +32,7 @@ export type SelectOption =
 
 export type SearchableSelectOption = SelectOption;
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const DEFAULT_APP_CATEGORIES: CategoryOption[] = [
     { id: "Comics", label: "Comics", icon: faBolt },
     { id: "Bande dessinée", label: "Bande dessinée", icon: faBook },
@@ -42,6 +43,7 @@ export const DEFAULT_APP_CATEGORIES: CategoryOption[] = [
     { id: "E-book", label: "E-book", icon: faTabletScreenButton }
 ];
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function bookMatchesCategories(
     book: { category?: string | null; type?: string | null },
     selectedCategories: string[]
@@ -125,7 +127,9 @@ export interface SelectProps {
     multiple?: boolean;
     value?: string;
     selected?: string[];
-    onChange: (value: any) => void;
+    // Select emits a single id (string) or a list of ids (string[]) depending on `multiple`.
+    // A `never` parameter accepts both `(value: string) => void` and `(value: string[]) => void` handlers.
+    onChange: (value: never) => void;
     allLabel?: string;
     placeholder?: string;
     emptyLabel?: string;
@@ -158,6 +162,7 @@ export default function Select({
     className = ""
 }: SelectProps) {
     const { tr, translateCategory } = useLanguage();
+    const emitChange = onChange as (value: string | string[]) => void;
     const isMultiple = multiple ?? Array.isArray(selected);
     const selectedList = isMultiple
         ? (selected ?? [])
@@ -216,29 +221,29 @@ export default function Select({
 
     const handleToggle = (optId: string) => {
         if (!isMultiple) {
-            onChange(optId);
+            emitChange(optId);
             setIsOpen(false);
             setSearchQuery("");
             return;
         }
         if (isAllSelected) {
-            onChange([optId]);
+            emitChange([optId]);
         } else if (selectedList.includes(optId)) {
             const next = selectedList.filter((item) => item !== optId);
-            onChange(next.length === 0 ? [] : next);
+            emitChange(next.length === 0 ? [] : next);
         } else {
             const next = [...selectedList, optId];
-            onChange(next.length === normalizedOptions.length ? [] : next);
+            emitChange(next.length === normalizedOptions.length ? [] : next);
         }
     };
 
     const handleSelectAll = () => {
-        onChange([]);
+        emitChange([]);
     };
 
     const handleClearSingle = (e: React.MouseEvent) => {
         e.stopPropagation();
-        onChange("");
+        emitChange("");
     };
 
     const getTriggerLabel = () => {

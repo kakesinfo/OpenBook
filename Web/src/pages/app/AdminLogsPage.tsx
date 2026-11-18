@@ -35,7 +35,7 @@ function formatDateTime(iso: string, locale: string): string {
 
 export default function AdminLogsPage() {
     const session = useSession();
-    const { language, locale, tr } = useLanguage();
+    const { locale, tr } = useLanguage();
 
     const [logs, setLogs] = useState<AdminAuditLogDTO[]>([]);
     const [loading, setLoading] = useState(true);
@@ -84,10 +84,12 @@ export default function AdminLogsPage() {
         } finally {
             setLoading(false);
         }
-    }, [session.token, page, category, status, debouncedSearch, language]);
+    }, [session, tr, page, category, status, debouncedSearch]);
 
     useEffect(() => {
-        fetchLogs();
+        void (async () => {
+            await fetchLogs();
+        })();
     }, [fetchLogs]);
 
     const categoryLabel = (cat: string) => {

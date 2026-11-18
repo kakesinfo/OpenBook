@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router";
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import BookDTO from "../../dto/Book.dto";
 import SeriesDTO from "../../dto/Series.dto.ts";
 import UserBookTransactionDTO from "../../dto/UserBookTransaction.dto.ts";
@@ -614,7 +614,7 @@ export default function BookPage() {
     const [listingPrice, setListingPrice] = useState<string>("");
     const [listingUrl, setListingUrl] = useState<string>("");
 
-    const fetchTransactions = (bookId: string) => {
+    const fetchTransactions = useCallback((bookId: string) => {
         setLoadingTransactions(true);
         session.customFetch(`/user/books/${encodeURIComponent(bookId)}/transactions`, { method: "GET" })
             .then(async (res) => {
@@ -627,7 +627,7 @@ export default function BookPage() {
             })
             .catch(() => setTransactions([]))
             .finally(() => setLoadingTransactions(false));
-    };
+    }, [session]);
 
     const handleOpenPurchaseModal = (initialType: "BOUGHT" | "GIFT" = "BOUGHT") => {
         const now = new Date();
@@ -725,8 +725,8 @@ export default function BookPage() {
             } else {
                 enqueueSnackbar(isGift ? tr("Error saving gift", "Erreur lors de l'enregistrement du cadeau") : tr("Error saving purchase", "Erreur lors de l'enregistrement de l'achat"), { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } catch (err: unknown) {
+            enqueueSnackbar(`Erreur: ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
         } finally {
             setSubmittingTx(false);
         }
@@ -777,8 +777,8 @@ export default function BookPage() {
                 }
                 enqueueSnackbar(errMsg, { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } catch (err: unknown) {
+            enqueueSnackbar(`Erreur: ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
         } finally {
             setSubmittingListing(false);
         }
@@ -819,8 +819,8 @@ export default function BookPage() {
                 }
                 enqueueSnackbar(errMsg, { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } catch (err: unknown) {
+            enqueueSnackbar(`Erreur: ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
         } finally {
             setSubmittingTx(false);
         }
@@ -851,8 +851,8 @@ export default function BookPage() {
                 }
                 enqueueSnackbar(errMsg, { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } catch (err: unknown) {
+            enqueueSnackbar(`Erreur: ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
         } finally {
             setRelisting(false);
         }
@@ -870,8 +870,8 @@ export default function BookPage() {
             } else {
                 enqueueSnackbar(tr("Error deleting entry", "Erreur lors de la suppression"), { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
+        } catch (err: unknown) {
+            enqueueSnackbar(`Erreur: ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
         }
     };
 
@@ -921,7 +921,7 @@ export default function BookPage() {
     const [newSeriesName, setNewSeriesName] = useState("");
     const [newSeriesCategory, setNewSeriesCategory] = useState<number>(3);
     const [newSeriesStatus, setNewSeriesStatus] = useState("ON_GOING");
-    const [savingSeries, setSavingSeries] = useState(false);
+    const [savingSeries] = useState(false);
 
     useEffect(() => {
         return () => {
@@ -1089,15 +1089,15 @@ export default function BookPage() {
                 }
                 enqueueSnackbar(`Erreur : ${errMsg}`, { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`Erreur réseau : ${err.message}`, { variant: "error" });
+        } catch (err: unknown) {
+            enqueueSnackbar(`Erreur réseau : ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
         } finally {
             setSavingBookInfo(false);
         }
     };
 
     // Authors Edit states
-    const [savingAuthors, setSavingAuthors] = useState(false);
+    const [savingAuthors] = useState(false);
     const [authorOptions, setAuthorOptions] = useState<{ id?: number; firstname: string; lastname: string }[]>([]);
     const [editableAuthors, setEditableAuthors] = useState<{ firstname: string; lastname: string; type: "Writer" | "Illustrator" | "Colorist" }[]>([]);
     const [quickAddAuthorName, setQuickAddAuthorName] = useState("");
@@ -1201,62 +1201,6 @@ export default function BookPage() {
         setEditableAuthors((prev) => prev.filter((_, idx) => idx !== index));
     };
 
-    const handleSaveAuthors = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!id || !book || savingAuthors) return;
-
-        const cleanedAuthors = editableAuthors
-            .map((a) => ({
-                firstname: a.firstname.trim(),
-                lastname: a.lastname.trim(),
-                type: a.type
-            }))
-            .filter((a) => a.firstname !== "" || a.lastname !== "");
-
-        setSavingAuthors(true);
-        try {
-            const payload = {
-                pageCount: book.pageCount || 0,
-                weight: book.weight || 0,
-                height: book.height || 0,
-                length: book.length || 0,
-                thickness: book.thickness || 0,
-                price: book.price ?? 0,
-                authors: cleanedAuthors
-            };
-
-            const res = await session.customFetch(`/books/${encodeURIComponent(id)}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                const updated: BookDTO = await res.json();
-                setBook(updated);
-                setEditModalOpen(false);
-                enqueueSnackbar(
-                    tr("Authors updated successfully!", "Auteurs mis à jour avec succès !"),
-                    { variant: "success" }
-                );
-            } else {
-                let errMsg = tr("Unable to update authors", "Impossible de mettre à jour les auteurs");
-                try {
-                    const errData = await res.json();
-                    errMsg = errData.message || errData.error || errMsg;
-                } catch {
-                    const text = await res.text().catch(() => "");
-                    if (text) errMsg = text;
-                }
-                enqueueSnackbar(`Erreur : ${errMsg}`, { variant: "error" });
-            }
-        } catch (err: any) {
-            enqueueSnackbar(`Erreur réseau : ${err.message}`, { variant: "error" });
-        } finally {
-            setSavingAuthors(false);
-        }
-    };
-
     const handleOpenCoverModal = () => {
         setCoverMode("file");
         setCoverFile(null);
@@ -1346,8 +1290,8 @@ export default function BookPage() {
                 }
                 enqueueSnackbar(`Erreur : ${errMsg}`, { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`Erreur réseau : ${err.message}`, { variant: "error" });
+        } catch (err: unknown) {
+            enqueueSnackbar(`Erreur réseau : ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
         } finally {
             setUploadingCover(false);
         }
@@ -1357,12 +1301,14 @@ export default function BookPage() {
         window.scrollTo({ top: 0, behavior: "smooth" });
         if (!id) return;
 
-        setLoading(true);
-        setError(null);
-        setBook(null);
-        setBookStatus(null);
-        setReadingStatus("UNREAD");
-        fetchTransactions(id);
+        void (async () => {
+            setLoading(true);
+            setError(null);
+            setBook(null);
+            setBookStatus(null);
+            setReadingStatus("UNREAD");
+            fetchTransactions(id);
+        })();
 
         const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1&withSeries=1`;
         session.customFetch(fetchUrl, {
@@ -1418,85 +1364,7 @@ export default function BookPage() {
         }).finally(() => {
             setLoading(false);
         });
-    }, [id, session]);
-
-    const handleSaveSeriesAssociation = async () => {
-        if (!id || savingSeries) return;
-        setSavingSeries(true);
-
-        try {
-            if (seriesModalMode === "create") {
-                if (!newSeriesName.trim()) {
-                    enqueueSnackbar(tr("Please enter the series name", "Veuillez renseigner le nom de la série"), { variant: "warning" });
-                    setSavingSeries(false);
-                    return;
-                }
-
-                // 1. Create series
-                const createRes = await session.customFetch("/series", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        name: newSeriesName.trim(),
-                        categoryId: newSeriesCategory,
-                        status: newSeriesStatus,
-                        bookIds: [Number(id)]
-                    })
-                });
-
-                if (!createRes.ok) {
-                    const errText = await createRes.text();
-                    enqueueSnackbar(`Erreur: ${errText}`, { variant: "error" });
-                    setSavingSeries(false);
-                    return;
-                }
-
-                const createdSeries: SeriesDTO = await createRes.json();
-
-                // 2. Set volume in the new series
-                if (selectedVolume != null) {
-                    await session.customFetch(`/books/${encodeURIComponent(id)}/series`, {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ seriesId: createdSeries.id, volume: selectedVolume })
-                    });
-                }
-
-                enqueueSnackbar(tr(`New series "${createdSeries.name}" created and linked`, `Nouvelle série « ${createdSeries.name} » créée et associée`), { variant: "success" });
-            } else {
-                // Link to existing series (or unlink if selectedSeriesId is null)
-                const updateRes = await session.customFetch(`/books/${encodeURIComponent(id)}/series`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        seriesId: selectedSeriesId,
-                        volume: selectedSeriesId ? selectedVolume : null
-                    })
-                });
-
-                if (!updateRes.ok) {
-                    enqueueSnackbar(tr("Error linking to series", "Erreur lors de l'association à la série"), { variant: "error" });
-                    setSavingSeries(false);
-                    return;
-                }
-
-                enqueueSnackbar(selectedSeriesId ? tr("Series and volume linked successfully", "Série et tomaison associées avec succès") : tr("Series unlinked", "Série dissociée"), { variant: "success" });
-            }
-
-            // Reload book
-            const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1&withSeries=1`;
-            const refreshRes = await session.customFetch(fetchUrl, { method: "GET" });
-            if (refreshRes.ok) {
-                const refreshedBook: BookDTO = await refreshRes.json();
-                setBook(refreshedBook);
-            }
-            setEditModalOpen(false);
-        } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
-        } finally {
-            setSavingSeries(false);
-        }
-    };
+    }, [id, session, fetchTransactions]);
 
     const [deletingBook, setDeletingBook] = useState(false);
 
@@ -1526,36 +1394,6 @@ export default function BookPage() {
             enqueueSnackbar(tr("Network error while deleting book", "Erreur réseau lors de la suppression de l'album"), { variant: "error" });
         } finally {
             setDeletingBook(false);
-        }
-    };
-
-    const handleRemoveFromSeries = async () => {
-        if (!id || savingSeries) return;
-        const confirm = window.confirm(tr("Remove this book from its series?", "Retirer cet album de sa série ?"));
-        if (!confirm) return;
-
-        setSavingSeries(true);
-        try {
-            const updateRes = await session.customFetch(`/books/${encodeURIComponent(id)}/series`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ seriesId: null, volume: null })
-            });
-
-            if (updateRes.ok) {
-                enqueueSnackbar(tr("Book removed from series", "Album retiré de la série"), { variant: "info" });
-                const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1&withSeries=1`;
-                const refreshRes = await session.customFetch(fetchUrl, { method: "GET" });
-                if (refreshRes.ok) {
-                    const refreshedBook: BookDTO = await refreshRes.json();
-                    setBook(refreshedBook);
-                }
-                setEditModalOpen(false);
-            }
-        } catch (err: any) {
-            enqueueSnackbar(`Erreur: ${err.message}`, { variant: "error" });
-        } finally {
-            setSavingSeries(false);
         }
     };
 

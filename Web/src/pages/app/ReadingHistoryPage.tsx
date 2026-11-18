@@ -101,7 +101,9 @@ export default function ReadingHistoryPage() {
 
     useEffect(() => {
         let cancelled = false;
-        setLoading(true);
+        queueMicrotask(() => {
+            if (!cancelled) setLoading(true);
+        });
 
         Promise.all([
             session
@@ -193,9 +195,12 @@ export default function ReadingHistoryPage() {
         );
     }, [booksByYear, selectedYear, selectedCategories, searchQuery]);
 
-    useEffect(() => {
+    const filtersKey = `${selectedYear}|${selectedCategories.join(",")}|${searchQuery}`;
+    const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+    if (prevFiltersKey !== filtersKey) {
+        setPrevFiltersKey(filtersKey);
         setCurrentPage(1);
-    }, [selectedYear, selectedCategories, searchQuery]);
+    }
 
     const totalItems = readBooks.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));

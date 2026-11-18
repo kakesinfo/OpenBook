@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
@@ -40,7 +40,7 @@ export default function AuthorDetailPage() {
     const [pageSize, setPageSize] = useState(24);
 
     // Fetch author data
-    const fetchAuthor = async () => {
+    const fetchAuthor = useCallback(async () => {
         if (!id) return;
         setLoading(true);
         try {
@@ -62,14 +62,18 @@ export default function AuthorDetailPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, session, tr, enqueueSnackbar]);
 
     useEffect(() => {
-        fetchAuthor();
-    }, [id, session]);
+        void (async () => {
+            await fetchAuthor();
+        })();
+    }, [fetchAuthor]);
 
     useEffect(() => {
-        setCurrentPage(1);
+        void (async () => {
+            setCurrentPage(1);
+        })();
     }, [id, searchQuery, statusFilter]);
 
     // Toggle follow

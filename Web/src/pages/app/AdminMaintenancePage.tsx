@@ -194,8 +194,8 @@ export default function AdminMaintenancePage() {
                 }
             }));
             return { ok: true, message: msg };
-        } catch (err: any) {
-            const errorMsg = err?.message || tr(`Error while running ${taskName}.`, `Erreur lors de l'exécution de ${taskName}.`);
+        } catch (err: unknown) {
+            const errorMsg = (err instanceof Error && err.message) || tr(`Error while running ${taskName}.`, `Erreur lors de l'exécution de ${taskName}.`);
             setTaskStatuses(prev => ({
                 ...prev,
                 [taskId]: {

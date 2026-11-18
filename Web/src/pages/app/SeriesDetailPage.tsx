@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
@@ -25,8 +25,7 @@ import {
     faPlus,
     faXmark,
     faBorderAll,
-    faList,
-    faMagnifyingGlass
+    faList
 } from "@fortawesome/free-solid-svg-icons";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import "./SeriesDetailPage.scss";
@@ -80,7 +79,7 @@ export default function SeriesDetailPage() {
     const [addingBook, setAddingBook] = useState(false);
 
     // Fetch Series data
-    const fetchSeries = async () => {
+    const fetchSeries = useCallback(async () => {
         if (!id) return;
         setLoading(true);
         try {
@@ -97,15 +96,20 @@ export default function SeriesDetailPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, session, enqueueSnackbar, tr]);
 
     useEffect(() => {
-        fetchSeries();
-    }, [id, session]);
+        queueMicrotask(() => {
+            void fetchSeries();
+        });
+    }, [fetchSeries]);
 
-    useEffect(() => {
+    const filtersKey = `${id}|${searchQuery}|${statusFilter}`;
+    const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+    if (prevFiltersKey !== filtersKey) {
+        setPrevFiltersKey(filtersKey);
         setCurrentPage(1);
-    }, [id, searchQuery, statusFilter]);
+    }
 
     // Fetch categories for edit dialog
     useEffect(() => {
@@ -208,8 +212,9 @@ export default function SeriesDetailPage() {
                 const errData = await res.text();
                 enqueueSnackbar(`${tr("Error", "Erreur")}: ${errData}`, { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setEditing(false);
         }
@@ -285,8 +290,9 @@ export default function SeriesDetailPage() {
             } else {
                 enqueueSnackbar(tr("Error adding book", "Erreur lors de l'ajout de l'album"), { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setAddingBook(false);
         }

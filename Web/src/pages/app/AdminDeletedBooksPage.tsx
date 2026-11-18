@@ -68,7 +68,9 @@ export default function AdminDeletedBooksPage() {
     }, [session, tr]);
 
     useEffect(() => {
-        fetchDeletedBooks();
+        void (async () => {
+            await fetchDeletedBooks();
+        })();
     }, [fetchDeletedBooks]);
 
     // Handle single restore
@@ -159,6 +161,20 @@ export default function AdminDeletedBooksPage() {
         }
     };
 
+    // Client-side instant filter on top of loaded list
+    const filteredBooks = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return books;
+        return books.filter(b => {
+            const titleMatch = b.title.toLowerCase().includes(q);
+            const seriesMatch = b.seriesName ? b.seriesName.toLowerCase().includes(q) : false;
+            const editorMatch = b.editorName ? b.editorName.toLowerCase().includes(q) : false;
+            const authorMatch = b.authors ? b.authors.toLowerCase().includes(q) : false;
+            const isbnMatch = b.isbn ? b.isbn.toLowerCase().includes(q) : false;
+            return titleMatch || seriesMatch || editorMatch || authorMatch || isbnMatch;
+        });
+    }, [books, search]);
+
     // Selection management
     const handleToggleSelectAll = () => {
         if (selectedIds.length === filteredBooks.length) {
@@ -173,20 +189,6 @@ export default function AdminDeletedBooksPage() {
             prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
         );
     };
-
-    // Client-side instant filter on top of loaded list
-    const filteredBooks = useMemo(() => {
-        const q = search.trim().toLowerCase();
-        if (!q) return books;
-        return books.filter(b => {
-            const titleMatch = b.title.toLowerCase().includes(q);
-            const seriesMatch = b.seriesName ? b.seriesName.toLowerCase().includes(q) : false;
-            const editorMatch = b.editorName ? b.editorName.toLowerCase().includes(q) : false;
-            const authorMatch = b.authors ? b.authors.toLowerCase().includes(q) : false;
-            const isbnMatch = b.isbn ? b.isbn.toLowerCase().includes(q) : false;
-            return titleMatch || seriesMatch || editorMatch || authorMatch || isbnMatch;
-        });
-    }, [books, search]);
 
     const formatDeletedDate = (dateStr?: string | null) => {
         if (!dateStr) return tr("Unknown date", "Date inconnue");

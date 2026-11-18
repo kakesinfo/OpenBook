@@ -22,25 +22,27 @@ export default function AsyncCoverImage({
     const [hasError, setHasError] = useState<boolean>(Boolean(src && asyncImageLoader.isError(src)));
     const elementRef = useRef<HTMLDivElement | null>(null);
 
-    useEffect(() => {
+    // Sync load/error state when src changes (adjust state during render instead of in an effect)
+    const [prevSrc, setPrevSrc] = useState(src);
+    if (src !== prevSrc) {
+        setPrevSrc(src);
         if (!src) {
             setHasError(true);
-            return;
-        }
-
-        if (asyncImageLoader.isLoaded(src)) {
+        } else if (asyncImageLoader.isLoaded(src)) {
             setIsLoaded(true);
             setHasError(false);
-            return;
-        }
-
-        if (asyncImageLoader.isError(src)) {
+        } else if (asyncImageLoader.isError(src)) {
             setHasError(true);
+        } else {
+            setIsLoaded(false);
+            setHasError(false);
+        }
+    }
+
+    useEffect(() => {
+        if (!src || asyncImageLoader.isLoaded(src) || asyncImageLoader.isError(src)) {
             return;
         }
-
-        setIsLoaded(false);
-        setHasError(false);
 
         let unsubscribeQueue: (() => void) | null = null;
 
