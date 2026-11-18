@@ -39,15 +39,15 @@
     "@types/lodash": "^4.17.16",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.3.0",
     "eslint": "^10.15.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.8",
     "globals": "^17.14.0",
     "storybook": "^10.6.7",
-    "typescript": "~5.6.2",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.18.2",
-    "vite": "^6.0.5"
+    "vite": "^8.3.8"
   },
   "overrides": {
     "uuid": "^11.0.0",
