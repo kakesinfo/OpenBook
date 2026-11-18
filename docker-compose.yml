@@ -43,10 +43,10 @@ services:
     working_dir: /usr/src/app
     entrypoint: ["sh", "-c", "/usr/local/bin/ensure-pg-client.sh 2>/dev/null || true; mvn install -DskipTests && mvn -f openbook-api/pom.xml spring-boot:run"]
 
-  # Run frontend using node 22
+  # Run frontend using node 26
   openbook-web:
     container_name: openbook-web
-    image: node:22-alpine
+    image: node:26-alpine
     restart: unless-stopped
     depends_on:
       openbook-api:
