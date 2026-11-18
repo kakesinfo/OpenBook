@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/network/api_client.dart';
@@ -132,9 +132,9 @@ class AppLoadingScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppTheme.accentPrimary.withOpacity(0.15),
+                          color: AppTheme.accentPrimary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: AppTheme.accentPrimary.withOpacity(0.4)),
+                          border: Border.all(color: AppTheme.accentPrimary.withValues(alpha: 0.4)),
                         ),
                         child: Text(
                           'Beta',

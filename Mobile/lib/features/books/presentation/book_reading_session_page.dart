@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -149,9 +149,11 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
       Navigator.of(context).pop();
 
       if (completed) {
+        if (!context.mounted) {
+          return;
+        }
         // Afficher la célébration de complétion si le contexte est toujours disponible
-        final currentContext = Navigator.of(context).context;
-        await BookCompletionDialog.show(currentContext, book);
+        await BookCompletionDialog.show(context, book);
       }
     } finally {
       if (mounted) {

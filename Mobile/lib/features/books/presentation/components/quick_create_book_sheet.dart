@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -672,7 +672,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
         width: width,
         height: height,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildPlaceholder(width, height),
+        errorBuilder: (_, _, _) => _buildPlaceholder(width, height),
       );
     }
 
@@ -733,7 +733,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
                   ),
                 );
               },
-              errorBuilder: (_, __, ___) => _buildPlaceholder(width, height),
+              errorBuilder: (_, _, _) => _buildPlaceholder(width, height),
             );
           }
           return _buildPlaceholder(width, height);

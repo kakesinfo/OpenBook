@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_application_1/features/books/data/book_transaction.dart';
 
@@ -179,7 +179,7 @@ class _AddBookPurchaseSheetState extends State<AddBookPurchaseSheet> {
                   color: AppTheme.bgSurface,
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                   border: Border.all(
-                    color: _isGift ? AppTheme.accentSecondary.withOpacity(0.5) : AppTheme.borderMedium,
+                    color: _isGift ? AppTheme.accentSecondary.withValues(alpha: 0.5) : AppTheme.borderMedium,
                   ),
                 ),
                 child: SwitchListTile(
@@ -196,7 +196,7 @@ class _AddBookPurchaseSheetState extends State<AddBookPurchaseSheet> {
                     style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
                   ),
                   value: _isGift,
-                  activeColor: AppTheme.accentSecondary,
+                  activeThumbColor: AppTheme.accentSecondary,
                   onChanged: (val) {
                     setState(() {
                       _isGift = val;

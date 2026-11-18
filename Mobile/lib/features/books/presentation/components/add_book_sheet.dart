@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -769,71 +769,6 @@ class _AddBookSheetState extends ConsumerState<_AddBookSheet> {
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickCreateFooterTile(String query) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.bgElevated,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.borderSubtle, width: 1),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppTheme.accentPrimaryLight,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(Icons.bolt_rounded, color: AppTheme.accentPrimary, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Livre manquant dans le catalogue ?',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Ajoutez-le directement avec la création rapide',
-                  style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.accentPrimary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            onPressed: () {
-              final isIsbn = RegExp(r'^[0-9Xx\-]+$').hasMatch(query) &&
-                  query.replaceAll(RegExp(r'[^0-9Xx]'), '').length >= 10;
-              _openQuickCreate(
-                initialTitle: isIsbn ? null : query,
-                initialIsbn: isIsbn ? _cleanBarcode(query) : null,
-              );
-            },
-            child: const Text('Créer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
