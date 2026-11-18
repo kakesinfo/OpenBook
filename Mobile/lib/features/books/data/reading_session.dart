@@ -26,6 +26,7 @@ class ReadingSession {
     this.secondsRead = 0,
     required this.createdAt,
     this.type = ReadingSessionType.progress,
+    this.isCommon = false,
   });
 
   final int? id;
@@ -35,6 +36,7 @@ class ReadingSession {
   final int secondsRead;
   final DateTime createdAt;
   final ReadingSessionType type;
+  final bool isCommon;
 
   factory ReadingSession.fromMap(Map<String, Object?> map) {
     return ReadingSession(
@@ -45,6 +47,7 @@ class ReadingSession {
       secondsRead: map['secondsRead'] as int? ?? 0,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
       type: ReadingSessionType.values[(map['sessionType'] as int?) ?? ReadingSessionType.progress.index],
+      isCommon: map['isCommon'] as bool? ?? false,
     );
   }
 
@@ -57,6 +60,7 @@ class ReadingSession {
       'secondsRead': secondsRead,
       'createdAt': createdAt.millisecondsSinceEpoch,
       'sessionType': type.index,
+      'isCommon': isCommon,
     };
   }
 

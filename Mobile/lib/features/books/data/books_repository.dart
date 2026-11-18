@@ -471,6 +471,7 @@ class BooksRepository {
           ? DateTime.fromMillisecondsSinceEpoch((map['createdAt'] as num).toInt())
           : DateTime.now(),
       type: ReadingSessionType.values[(map['sessionType'] as int?) ?? ReadingSessionType.progress.index],
+      isCommon: map['isCommon'] == true,
     );
   }
 
@@ -481,6 +482,7 @@ class BooksRepository {
       'minutesRead': session.minutesRead,
       'secondsRead': session.secondsRead,
       'sessionType': session.type.index,
+      'isCommon': session.isCommon,
       'createdAt': session.createdAt.millisecondsSinceEpoch,
     };
 

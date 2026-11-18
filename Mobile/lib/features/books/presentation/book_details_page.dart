@@ -14,6 +14,7 @@ import 'components/book_completion_dialog.dart';
 import 'components/book_cover.dart';
 import 'components/edit_book_sheet.dart';
 import 'components/reading_timer_modal.dart';
+import 'components/start_reading_sheet.dart';
 
 class BookDetailsPage extends ConsumerWidget {
   const BookDetailsPage({
@@ -462,9 +463,17 @@ class BookDetailsPage extends ConsumerWidget {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(AppTheme.radiusFull),
                   onTap: () async {
+                    final result = await StartReadingSheet.show(context);
+                    if (result == null || !context.mounted) {
+                      return;
+                    }
                     await ref
                         .read(booksControllerProvider.notifier)
-                        .startReadingSession(book: activeBook);
+                        .startReadingSession(
+                          book: activeBook,
+                          startedAt: result.startedAt,
+                          isCommon: result.isCommon,
+                        );
                   },
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,

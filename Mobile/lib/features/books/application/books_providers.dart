@@ -379,6 +379,8 @@ class BooksController extends AsyncNotifier<List<Book>> {
 
   Future<void> startReadingSession({
     required Book book,
+    DateTime? startedAt,
+    bool isCommon = false,
   }) async {
     if (book.status == BookStatus.sold || book.status == BookStatus.lent || book.status == BookStatus.wishlist) {
       return;
@@ -395,8 +397,9 @@ class BooksController extends AsyncNotifier<List<Book>> {
         currentPage: 0,
         minutesRead: 0,
         secondsRead: 0,
-        createdAt: DateTime.now(),
+        createdAt: startedAt ?? DateTime.now(),
         type: ReadingSessionType.start,
+        isCommon: isCommon,
       ),
     );
 

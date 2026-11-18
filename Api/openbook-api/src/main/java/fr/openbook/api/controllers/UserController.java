@@ -1226,6 +1226,7 @@ public class UserController {
         entity.setMinutesRead(dto.getMinutesRead() != null ? dto.getMinutesRead() : 0);
         entity.setSecondsRead(dto.getSecondsRead() != null ? dto.getSecondsRead() : 0);
         entity.setSessionType(dto.getSessionType() != null ? dto.getSessionType() : 1);
+        entity.setIsCommon(dto.getIsCommon() != null ? dto.getIsCommon() : false);
         if (dto.getCreatedAt() != null) {
             entity.setCreatedAt(Instant.ofEpochMilli(dto.getCreatedAt()));
         } else {
