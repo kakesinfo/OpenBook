@@ -391,7 +391,7 @@ export default function AdminBackupsPage() {
             <Dialog
                 open={backupToRestore !== null}
                 onClose={() => !restoring && setBackupToRestore(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -401,7 +401,7 @@ export default function AdminBackupsPage() {
                         width: "100%",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div className="admin-backups__dialog-content">
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "var(--accent-primary)" }}>
@@ -444,7 +444,7 @@ export default function AdminBackupsPage() {
             <Dialog
                 open={backupToDelete !== null}
                 onClose={() => !deleting && setBackupToDelete(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -454,7 +454,7 @@ export default function AdminBackupsPage() {
                         width: "100%",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div className="admin-backups__dialog-content">
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "#ef4444" }}>

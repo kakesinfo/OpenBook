@@ -160,7 +160,7 @@ export default function CreateMissingBookModal({ open, onClose, initialData, ini
         <Dialog
             open={open}
             onClose={() => !submitting && onClose()}
-            PaperProps={{
+            slotProps={{ paper: {
                 style: {
                     backgroundColor: "var(--bg-surface)",
                     border: "1px solid var(--border-subtle)",
@@ -172,7 +172,7 @@ export default function CreateMissingBookModal({ open, onClose, initialData, ini
                     margin: "16px",
                     boxShadow: "var(--shadow-lg)"
                 }
-            }}
+            }}}
         >
             <div className="fab-modal">
                 <div className="fab-modal__header">

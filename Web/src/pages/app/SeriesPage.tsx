@@ -728,7 +728,7 @@ export default function SeriesPage() {
             <Dialog
                 open={createDialogOpen}
                 onClose={() => setCreateDialogOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -738,7 +738,7 @@ export default function SeriesPage() {
                         padding: "24px",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -881,7 +881,7 @@ export default function SeriesPage() {
             <Dialog
                 open={editDialogOpen}
                 onClose={() => setEditDialogOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -891,7 +891,7 @@ export default function SeriesPage() {
                         padding: "24px",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -1034,14 +1034,14 @@ export default function SeriesPage() {
                 onClose={() => setActiveSeries(null)}
                 maxWidth="md"
                 fullWidth
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         borderRadius: "16px",
                         border: "1px solid var(--border-subtle)",
                         padding: 0
                     }
-                }}
+                }}}
             >
                 {activeSeries && (
                     <div className="series-page__modal">
@@ -1219,7 +1219,7 @@ export default function SeriesPage() {
             <Dialog
                 open={addBookDialogOpen}
                 onClose={() => setAddBookDialogOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -1229,7 +1229,7 @@ export default function SeriesPage() {
                         padding: "24px",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>

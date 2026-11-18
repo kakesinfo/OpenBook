@@ -2301,7 +2301,7 @@ export default function BookPage() {
                         paddingTop: "8vh"
                     }
                 }}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface, #1e1e24)",
                         border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
@@ -2312,7 +2312,7 @@ export default function BookPage() {
                         color: "var(--text-primary)",
                         overflow: "visible"
                     }
-                }}
+                }}}
             >
                 <div className="book-edit-dialog" style={{ minHeight: "520px" }}>
                     <div className="book-edit-dialog__header">
@@ -2864,7 +2864,7 @@ export default function BookPage() {
             <Dialog
                 open={coverModalOpen}
                 onClose={handleCloseCoverModal}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface, #1e1e24)",
                         border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
@@ -2875,7 +2875,7 @@ export default function BookPage() {
                         color: "var(--text-primary)",
                         overflow: "visible"
                     }
-                }}
+                }}}
             >
                 <div className="cover-dialog">
                     <div className="cover-dialog__header">
@@ -3025,7 +3025,7 @@ export default function BookPage() {
             <Dialog
                 open={Boolean(followModalTarget)}
                 onClose={() => setFollowModalTarget(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface, #1e1e24)",
                         border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
@@ -3036,7 +3036,7 @@ export default function BookPage() {
                         margin: "16px",
                         padding: "24px"
                     }
-                }}
+                }}}
             >
                 {followModalTarget && (() => {
                     const key = `${followModalTarget.type}_${followModalTarget.id}`;
@@ -3094,7 +3094,7 @@ export default function BookPage() {
             <Dialog
                 open={historyModalOpen}
                 onClose={() => setHistoryModalOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface, #1e1e24)",
                         border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
@@ -3104,7 +3104,7 @@ export default function BookPage() {
                         padding: "20px 22px",
                         color: "var(--text-primary)"
                     }
-                }}
+                }}}
             >
                 <div className="book-page__transactions-dialog">
                     <div className="book-page__transactions-header">
@@ -3270,7 +3270,7 @@ export default function BookPage() {
             <Dialog
                 open={purchaseModalOpen}
                 onClose={() => setPurchaseModalOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface, #1e1e24)",
                         border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
@@ -3281,7 +3281,7 @@ export default function BookPage() {
                         color: "var(--text-primary)",
                         overflow: "visible"
                     }
-                }}
+                }}}
             >
                 <div className="tx-dialog">
                     <div className="tx-dialog__header">
@@ -3523,7 +3523,7 @@ export default function BookPage() {
             <Dialog
                 open={listingModalOpen}
                 onClose={() => setListingModalOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface, #1e1e24)",
                         border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
@@ -3534,7 +3534,7 @@ export default function BookPage() {
                         color: "var(--text-primary)",
                         overflow: "visible"
                     }
-                }}
+                }}}
             >
                 <div className="tx-dialog">
                     <div className="tx-dialog__header">
@@ -3614,7 +3614,7 @@ export default function BookPage() {
             <Dialog
                 open={saleModalOpen}
                 onClose={() => setSaleModalOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface, #1e1e24)",
                         border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
@@ -3625,7 +3625,7 @@ export default function BookPage() {
                         color: "var(--text-primary)",
                         overflow: "visible"
                     }
-                }}
+                }}}
             >
                 <div className="tx-dialog">
                     <div className="tx-dialog__header">
@@ -3730,7 +3730,7 @@ export default function BookPage() {
             <Dialog
                 open={relistModalOpen}
                 onClose={() => !relisting && setRelistModalOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface, #1e1e24)",
                         border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
@@ -3741,7 +3741,7 @@ export default function BookPage() {
                         color: "var(--text-primary)",
                         overflow: "visible"
                     }
-                }}
+                }}}
             >
                 <div className="tx-dialog">
                     <div className="tx-dialog__header">

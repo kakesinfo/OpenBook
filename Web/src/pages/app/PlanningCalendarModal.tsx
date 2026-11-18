@@ -156,7 +156,7 @@ export default function PlanningCalendarModal({ open, onClose }: Props) {
         <Dialog
             open={open}
             onClose={onClose}
-            PaperProps={{
+            slotProps={{ paper: {
                 style: {
                     backgroundColor: "var(--bg-surface)",
                     border: "1px solid var(--border-subtle)",
@@ -168,7 +168,7 @@ export default function PlanningCalendarModal({ open, onClose }: Props) {
                     padding: "24px",
                     margin: "16px"
                 }
-            }}
+            }}}
         >
             <div className="planning-calendar-modal">
                 <div className="planning-calendar-modal__header">

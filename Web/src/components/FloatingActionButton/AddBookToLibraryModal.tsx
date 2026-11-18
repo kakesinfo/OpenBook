@@ -291,7 +291,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
         <Dialog
             open={open}
             onClose={onClose}
-            PaperProps={{
+            slotProps={{ paper: {
                 style: {
                     backgroundColor: "var(--bg-surface)",
                     border: "1px solid var(--border-subtle)",
@@ -303,7 +303,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                     padding: "20px 24px",
                     margin: "16px"
                 }
-            }}
+            }}}
         >
             <div className={`fab-modal ${isSaleMode ? "fab-modal--sale" : ""}`}>
                 <div className="fab-modal__header">

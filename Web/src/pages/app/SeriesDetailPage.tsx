@@ -716,7 +716,7 @@ export default function SeriesDetailPage() {
             <Dialog
                 open={editDialogOpen}
                 onClose={() => setEditDialogOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -726,7 +726,7 @@ export default function SeriesDetailPage() {
                         padding: "24px",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -889,7 +889,7 @@ export default function SeriesDetailPage() {
             <Dialog
                 open={addBookDialogOpen}
                 onClose={() => setAddBookDialogOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -899,7 +899,7 @@ export default function SeriesDetailPage() {
                         padding: "24px",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>

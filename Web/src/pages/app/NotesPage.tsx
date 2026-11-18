@@ -392,7 +392,7 @@ export default function NotesPage() {
             <Dialog
                 open={isCreateOpen}
                 onClose={() => !submitting && setIsCreateOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -401,7 +401,7 @@ export default function NotesPage() {
                         width: "100%",
                         margin: "16px"
                     }
-                }}
+                }}}
             >
                 <div className="note-modal">
                     <div className="note-modal__header">
@@ -492,7 +492,7 @@ export default function NotesPage() {
             <Dialog
                 open={isEditOpen}
                 onClose={() => !submitting && setIsEditOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -501,7 +501,7 @@ export default function NotesPage() {
                         width: "100%",
                         margin: "16px"
                     }
-                }}
+                }}}
             >
                 {editingNote && (
                     <div className="note-modal">
@@ -575,7 +575,7 @@ export default function NotesPage() {
             <Dialog
                 open={Boolean(deleteConfirmNote)}
                 onClose={() => !submitting && setDeleteConfirmNote(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -584,7 +584,7 @@ export default function NotesPage() {
                         width: "100%",
                         margin: "16px"
                     }
-                }}
+                }}}
             >
                 {deleteConfirmNote && (
                     <div className="note-modal">

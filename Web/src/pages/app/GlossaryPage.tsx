@@ -471,7 +471,7 @@ export default function GlossaryPage() {
             <Dialog
                 open={isCreateOpen}
                 onClose={() => !submitting && setIsCreateOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -480,7 +480,7 @@ export default function GlossaryPage() {
                         width: "100%",
                         margin: "16px"
                     }
-                }}
+                }}}
             >
                 <div className="word-modal">
                     <div className="word-modal__header">
@@ -587,7 +587,7 @@ export default function GlossaryPage() {
             <Dialog
                 open={isEditOpen}
                 onClose={() => !submitting && setIsEditOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -596,7 +596,7 @@ export default function GlossaryPage() {
                         width: "100%",
                         margin: "16px"
                     }
-                }}
+                }}}
             >
                 {editingWord && (
                     <div className="word-modal">
@@ -705,7 +705,7 @@ export default function GlossaryPage() {
             <Dialog
                 open={Boolean(deleteConfirmWord)}
                 onClose={() => !submitting && setDeleteConfirmWord(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -714,7 +714,7 @@ export default function GlossaryPage() {
                         width: "100%",
                         margin: "16px"
                     }
-                }}
+                }}}
             >
                 {deleteConfirmWord && (
                     <div className="word-modal">

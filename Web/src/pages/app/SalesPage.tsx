@@ -764,7 +764,7 @@ export default function SalesPage() {
             <Dialog
                 open={saleModalOpen}
                 onClose={() => setSaleModalOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface, #1e1e24)",
                         border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
@@ -774,7 +774,7 @@ export default function SalesPage() {
                         padding: "24px",
                         color: "var(--text-primary)"
                     }
-                }}
+                }}}
             >
                 <div className="tx-dialog">
                     <div className="tx-dialog__header">
