@@ -12,6 +12,7 @@ import 'book_reading_session_page.dart';
 import 'components/app_header.dart';
 import 'components/book_completion_dialog.dart';
 import 'components/book_cover.dart';
+import 'components/book_status_badge.dart';
 import 'components/common_reading_ribbon.dart';
 import 'components/edit_book_sheet.dart';
 import 'components/reading_timer_modal.dart';
@@ -268,12 +269,55 @@ class BookDetailsPage extends ConsumerWidget {
                     height: 250,
                     borderRadius: AppTheme.radiusLg,
                   ),
-                  if (isCommonReading)
-                    const Positioned(
+                  if (BookStatusBadge.shouldShow(activeBook.status) || isCommonReading) ...[
+                    Positioned(
                       top: 0,
-                      left: 8,
-                      child: CommonReadingRibbon(),
+                      left: 0,
+                      right: 0,
+                      height: 52,
+                      child: IgnorePointer(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(AppTheme.radiusLg),
+                          ),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.42),
+                                  Colors.black.withValues(alpha: 0.12),
+                                  Colors.transparent,
+                                ],
+                                stops: const [0.0, 0.6, 1.0],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (BookStatusBadge.shouldShow(activeBook.status))
+                            BookStatusBadge(
+                              status: activeBook.status,
+                              compact: false,
+                            ),
+                          if (isCommonReading) ...[
+                            if (BookStatusBadge.shouldShow(activeBook.status))
+                              const SizedBox(height: 6),
+                            const CommonReadingRibbon(size: 26),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
               if (showPrevious || showNext) ...[

@@ -125,6 +125,14 @@ final allReadingSessionsProvider = FutureProvider<List<ReadingSession>>((ref) as
   return repository.getAllReadingSessions();
 });
 
+final commonReadingBookIdsProvider = Provider<Set<int>>((ref) {
+  final sessions = ref.watch(allReadingSessionsProvider).value ?? const <ReadingSession>[];
+  return {
+    for (final session in sessions)
+      if (session.isCommon) session.bookId,
+  };
+});
+
 final upcomingPlanningBooksProvider = FutureProvider<List<Book>>((ref) async {
   final client = ref.watch(apiClientProvider);
   if (!client.isInitialized || !client.isAuthenticated) {

@@ -315,9 +315,9 @@ class _BookCardState extends ConsumerState<BookCard>
                               ),
                               if (progress.isCommon)
                                 const Positioned(
-                                  top: 0,
+                                  top: 6,
                                   left: 6,
-                                  child: CommonReadingRibbon(),
+                                  child: CommonReadingRibbon(size: 22),
                                 ),
                             ],
                           ),

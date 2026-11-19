@@ -2,48 +2,47 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:flutter_application_1/app/theme.dart';
 
-/// Marque-page (ruban à encoche) affiché en haut à gauche d'une couverture
-/// quand la lecture en cours est une lecture commune.
+/// Pastille ronde de lecture commune affichée sur la couverture,
+/// harmonisée avec les badges pilules du client Web.
 class CommonReadingRibbon extends StatelessWidget {
-  const CommonReadingRibbon({super.key, this.tooltip = 'Lecture commune'});
+  const CommonReadingRibbon({
+    super.key,
+    this.tooltip = 'Lecture commune',
+    this.size = 22,
+  });
 
   final String tooltip;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: ClipPath(
-        clipper: _RibbonClipper(),
-        child: Container(
-          width: 22,
-          height: 30,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
           color: AppTheme.accentSecondary,
-          alignment: Alignment.topCenter,
-          padding: const EdgeInsets.only(top: 5),
-          child: const Icon(
-            Icons.groups_rounded,
-            size: 12,
-            color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.26),
+            width: 1,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          Icons.groups_rounded,
+          size: size * 0.54,
+          color: Colors.white,
         ),
       ),
     );
   }
-}
-
-class _RibbonClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    return Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width, size.height)
-      ..lineTo(size.width / 2, size.height - 7)
-      ..lineTo(0, size.height)
-      ..close();
-  }
-
-  @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
