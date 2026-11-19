@@ -18,280 +18,38 @@
   }
 }
 
-.booklist-card {
+/* Fallback cover placeholder used by AsyncCoverImage */
+.booklist-card__cover-fallback {
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  text-decoration: none;
-  border-radius: var(--radius-md);
-  transition: transform var(--transition-fast);
-  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  background: linear-gradient(145deg, #161d2e, #0e1320);
 
-  &:hover {
-    transform: translateY(-4px);
-
-    .booklist-card__cover,
-    .async-cover__img {
-      transform: scale(1.04);
-    }
-
-    .booklist-card__cover-wrapper {
-      box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-focus);
-    }
-
-    .booklist-card__title {
-      color: var(--accent-primary);
-    }
-
-    .booklist-card__quick-actions {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
+  [data-theme="beige"] & {
+    background: linear-gradient(145deg, #ebe3d5, #dfd5c4);
   }
 
-  &__cover-wrapper {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 0.67;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    background-color: var(--bg-surface);
-    border: 1px solid var(--border-subtle);
-    box-shadow: var(--shadow-md);
-    transition: all var(--transition-normal);
+  svg {
+    font-size: 2rem;
+    color: var(--accent-primary);
+    opacity: 0.7;
   }
 
-  &__cover {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  &__cover-fallback {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 16px;
-    text-align: center;
-    color: var(--text-muted);
-    background: linear-gradient(145deg, #161d2e, #0e1320);
-
-    svg {
-      font-size: 2rem;
-      color: var(--accent-primary);
-      opacity: 0.7;
-    }
-
-    span {
-      font-size: 0.8125rem;
-      font-weight: 600;
-      color: var(--text-secondary);
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-  }
-
-  /* Status badge on top-left */
-  &__status-badge {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    padding: 2px 7px;
-    border-radius: 4px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    backdrop-filter: blur(6px);
-    z-index: 2;
-
-    &.is-for-sale {
-      background: var(--accent-primary);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-    }
-
-    &.is-toread {
-      background: rgba(59, 130, 246, 0.9);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-    }
-
-    &.is-reading {
-      background: rgba(168, 85, 247, 0.9);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-    }
-
-    &.is-paused {
-      background: rgba(100, 116, 139, 0.9);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-    }
-
-    &.is-read {
-      background: var(--accent-primary);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-    }
-
-    &.is-abandoned {
-      background: rgba(239, 68, 68, 0.9);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-    }
-  }
-
-  /* Volume badge on top-right */
-  &__badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    padding: 3px 8px;
-    border-radius: var(--radius-full);
-    background: var(--badge-volume-bg, var(--bg-surface));
-    backdrop-filter: blur(8px);
-    border: 1px solid var(--badge-volume-border, var(--border-subtle));
-    color: var(--badge-volume-text, var(--text-primary));
-    font-size: 0.6875rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    box-shadow: var(--shadow-sm);
-    z-index: 2;
-  }
-
-  /* Quick action buttons overlaid at bottom-right on hover */
-  &__quick-actions {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    z-index: 3;
-    opacity: 0;
-    transform: translateY(6px);
-    pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease;
-
-    @media (hover: none) {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
-  }
-
-  &__action-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-card);
-    backdrop-filter: blur(8px);
-    border: 1px solid var(--border-subtle);
-    color: var(--text-primary);
-    font-size: 0.85rem;
-    cursor: pointer;
-    box-shadow: var(--shadow-md);
-    transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-
-    &:hover:not(:disabled) {
-      transform: scale(1.1);
-    }
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: wait;
-    }
-
-    &--wishlist {
-      &:hover:not(:disabled) {
-        background: rgba(244, 63, 94, 0.9);
-        border-color: rgba(255, 255, 255, 0.35);
-        color: #fff;
-      }
-
-      &.is-active {
-        background: #f43f5e;
-        border-color: rgba(255, 255, 255, 0.4);
-        color: #fff;
-        box-shadow: 0 4px 14px rgba(244, 63, 94, 0.5);
-      }
-    }
-
-    &--library {
-      &:hover:not(:disabled) {
-        background: var(--accent-primary);
-        border-color: rgba(255, 255, 255, 0.35);
-        color: #fff;
-      }
-
-      &.is-active {
-        background: var(--accent-primary);
-        border-color: rgba(255, 255, 255, 0.4);
-        color: #fff;
-        box-shadow: 0 4px 14px var(--accent-primary-glow);
-      }
-    }
-  }
-
-  &__info {
-    padding: 8px 4px 2px 4px;
-    display: flex;
-    flex-direction: column;
-  }
-
-  &__title {
-    color: var(--text-primary);
-    font-size: 0.9375rem;
+  span {
+    font-size: 0.8125rem;
     font-weight: 600;
-    line-height: 1.35;
-    margin: 0;
+    color: var(--text-secondary);
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    text-overflow: ellipsis;
-    transition: color var(--transition-fast);
-
-    @media (max-width: 600px) {
-      font-size: 0.875rem;
-    }
-  }
-
-  &__release-date {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.8125rem;
-    color: var(--text-muted, #9ca3af);
-    margin-top: 6px;
-    line-height: 1.25;
-
-    svg {
-      font-size: 0.75rem;
-      color: var(--accent-secondary, #818cf8);
-      flex-shrink: 0;
-    }
-
-    @media (max-width: 600px) {
-      font-size: 0.75rem;
-      gap: 4px;
-
-      svg {
-        font-size: 0.7rem;
-      }
-    }
   }
 }
 

@@ -48,6 +48,9 @@ public class ReadingSessionEntity {
     @Column(name = "session_type", nullable = false)
     private Integer sessionType = 1;
 
+    @Column(name = "is_common", nullable = false)
+    private Boolean isCommon = false;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

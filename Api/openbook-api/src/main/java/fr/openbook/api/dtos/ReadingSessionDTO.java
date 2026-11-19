@@ -13,6 +13,7 @@ public class ReadingSessionDTO {
     private Integer minutesRead;
     private Integer secondsRead;
     private Integer sessionType;
+    private Boolean isCommon;
     private Long createdAt;
 
     public static ReadingSessionDTO from(ReadingSessionEntity entity) {
@@ -23,6 +24,7 @@ public class ReadingSessionDTO {
         dto.setMinutesRead(entity.getMinutesRead());
         dto.setSecondsRead(entity.getSecondsRead());
         dto.setSessionType(entity.getSessionType());
+        dto.setIsCommon(Boolean.TRUE.equals(entity.getIsCommon()));
         if (entity.getCreatedAt() != null) {
             dto.setCreatedAt(entity.getCreatedAt().toEpochMilli());
         }

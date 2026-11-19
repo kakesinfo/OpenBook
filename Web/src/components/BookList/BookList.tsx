@@ -2,29 +2,56 @@ import { useState } from "react";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import "./BookList.scss";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBook, faHeart, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faBook, faHeart, faCheck, faBookOpen, faPause, faBan, faTag } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
+import useCommonReadingBookIds from "../../hooks/UseCommonReadingBookIds.ts";
+import { isCommonBook } from "../HomeWidgets/readingUtils.ts";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useSnackbar } from "notistack";
 import BookCard from "../BookCard/BookCard.tsx";
 
 function getStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string) => string) {
     if (book.status === "FOR_SALE") {
-        return <span className="booklist-card__status-badge is-for-sale">{tr("For sale", "À vendre")}</span>;
+        return (
+            <span className="book-card__status-badge is-for-sale">
+                <FontAwesomeIcon icon={faTag} />
+                <span>{tr("For sale", "À vendre")}</span>
+            </span>
+        );
     }
     const rStatus = (book.readingStatus || "").toUpperCase();
     if (rStatus === "READ" || rStatus === "LU") {
-        return <span className="booklist-card__status-badge is-read">{tr("Read", "Lu")}</span>;
+        return (
+            <span className="book-card__status-badge is-read">
+                <FontAwesomeIcon icon={faCheck} />
+                <span>{tr("Read", "Lu")}</span>
+            </span>
+        );
     }
 
     if (rStatus === "READING" || rStatus === "EN_COURS") {
-        return <span className="booklist-card__status-badge is-reading">{tr("Reading", "En cours")}</span>;
+        return (
+            <span className="book-card__status-badge is-reading">
+                <FontAwesomeIcon icon={faBookOpen} />
+                <span>{tr("Reading", "En cours")}</span>
+            </span>
+        );
     }
     if (rStatus === "PAUSED" || rStatus === "EN_PAUSE" || rStatus === "PAUSE") {
-        return <span className="booklist-card__status-badge is-paused">{tr("Paused", "En pause")}</span>;
+        return (
+            <span className="book-card__status-badge is-paused">
+                <FontAwesomeIcon icon={faPause} />
+                <span>{tr("Paused", "En pause")}</span>
+            </span>
+        );
     }
     if (rStatus === "ABANDONED" || rStatus === "ABANDONNE") {
-        return <span className="booklist-card__status-badge is-abandoned">{tr("Abandoned", "Abandonné")}</span>;
+        return (
+            <span className="book-card__status-badge is-abandoned">
+                <FontAwesomeIcon icon={faBan} />
+                <span>{tr("Abandoned", "Abandonné")}</span>
+            </span>
+        );
     }
     return null;
 }
@@ -43,6 +70,7 @@ export default function BookList({
     showFinishedDate = false
 }: BookListProps) {
     const session = useSession();
+    const commonBookIds = useCommonReadingBookIds();
     const { tr } = useLanguage();
     const { enqueueSnackbar } = useSnackbar();
     const [statusOverrides, setStatusOverrides] = useState<Record<string, string | null>>({});
@@ -140,6 +168,7 @@ export default function BookList({
                         book={book}
                         statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" }, tr)}
                         badgeText={book.volume > 0 ? `Vol. ${book.volume}` : tr("One-shot", "Unique")}
+                        isCommon={isCommonBook(commonBookIds, book.id)}
                         showReleaseDate={showReleaseDate}
                         showFinishedDate={showFinishedDate}
                         actions={

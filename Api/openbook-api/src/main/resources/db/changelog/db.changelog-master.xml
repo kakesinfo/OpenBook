@@ -1809,4 +1809,11 @@
             <column name="category" />
         </createIndex>
     </changeSet>
+    <changeSet id="46" author="Axel">
+        <addColumn tableName="reading_session">
+            <column name="is_common" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

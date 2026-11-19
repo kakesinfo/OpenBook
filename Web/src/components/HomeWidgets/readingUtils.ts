@@ -82,3 +82,44 @@ export function formatDurationSeconds(totalSeconds: number): string {
     }
     return `${seconds}s`;
 }
+
+/**
+ * Tells whether the current reading cycle of a book is a common (group) reading.
+ * Mirrors Mobile's ReadingProgress logic: the active cycle starts at the last
+ * "start" session (sessionType 0); if there is none, the first session is used.
+ */
+export function isCommonReadingSession(sessions: ReadingSessionDTO[], bookId: number): boolean {
+    let start: ReadingSessionDTO | undefined;
+    for (const s of sessions) {
+        if (s.bookId !== bookId) continue;
+        if (start === undefined) start = s;
+        if (s.sessionType === 0) start = s;
+    }
+    return Boolean(start?.isCommon);
+}
+
+/**
+ * Returns the set of book ids (as strings, matching BookSummaryDTO.id) whose
+ * current reading cycle is a common reading.
+ */
+export function computeCommonReadingBookIds(sessions: ReadingSessionDTO[]): Set<string> {
+    const byBook = new Map<number, ReadingSessionDTO[]>();
+    for (const s of sessions) {
+        const arr = byBook.get(s.bookId);
+        if (arr) arr.push(s);
+        else byBook.set(s.bookId, [s]);
+    }
+    const ids = new Set<string>();
+    for (const [bookId, arr] of byBook) {
+        if (isCommonReadingSession(arr, bookId)) ids.add(String(bookId));
+    }
+    return ids;
+}
+
+/**
+ * Safe membership test: the backend serializes book ids as JSON numbers while
+ * the set stores strings, so the id is normalized before lookup.
+ */
+export function isCommonBook(commonBookIds: Set<string>, bookId: string | number): boolean {
+    return commonBookIds.has(String(bookId));
+}

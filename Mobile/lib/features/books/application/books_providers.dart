@@ -102,6 +102,7 @@ final readingProgressByBookProvider = FutureProvider.family<ReadingProgress, Boo
     progress: progress,
     sessionsCount: activeCycleSessions.length,
     startedAt: startedAt,
+    isCommon: startSession?.isCommon ?? false,
   );
 });
 
@@ -122,6 +123,14 @@ final allReadingSessionsProvider = FutureProvider<List<ReadingSession>>((ref) as
   }
   final repository = ref.watch(booksRepositoryProvider);
   return repository.getAllReadingSessions();
+});
+
+final commonReadingBookIdsProvider = Provider<Set<int>>((ref) {
+  final sessions = ref.watch(allReadingSessionsProvider).value ?? const <ReadingSession>[];
+  return {
+    for (final session in sessions)
+      if (session.isCommon) session.bookId,
+  };
 });
 
 final upcomingPlanningBooksProvider = FutureProvider<List<Book>>((ref) async {
@@ -192,6 +201,7 @@ class ReadingProgress {
     required this.progress,
     required this.sessionsCount,
     this.startedAt,
+    this.isCommon = false,
   });
 
   final int currentPage;
@@ -200,6 +210,7 @@ class ReadingProgress {
   final double progress;
   final int sessionsCount;
   final DateTime? startedAt;
+  final bool isCommon;
 
   int get totalMinutesRead => totalSecondsRead ~/ 60;
 
@@ -379,6 +390,8 @@ class BooksController extends AsyncNotifier<List<Book>> {
 
   Future<void> startReadingSession({
     required Book book,
+    DateTime? startedAt,
+    bool isCommon = false,
   }) async {
     if (book.status == BookStatus.sold || book.status == BookStatus.lent || book.status == BookStatus.wishlist) {
       return;
@@ -395,8 +408,9 @@ class BooksController extends AsyncNotifier<List<Book>> {
         currentPage: 0,
         minutesRead: 0,
         secondsRead: 0,
-        createdAt: DateTime.now(),
+        createdAt: startedAt ?? DateTime.now(),
         type: ReadingSessionType.start,
+        isCommon: isCommon,
       ),
     );
 

@@ -3,6 +3,8 @@ import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import BookDTO from "../../dto/Book.dto";
 import SeriesDTO from "../../dto/Series.dto.ts";
 import UserBookTransactionDTO from "../../dto/UserBookTransaction.dto.ts";
+import ReadingSessionDTO from "../../dto/ReadingSession.dto.ts";
+import { isCommonReadingSession } from "../../components/HomeWidgets/readingUtils.ts";
 import { useSnackbar } from "notistack";
 import useSession, { SessionContextType } from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
@@ -31,6 +33,8 @@ import {
     faChevronRight,
     faChevronDown,
     faBookOpen,
+    faPause,
+    faBan,
     faBuilding,
     faLayerGroup,
     faBell,
@@ -38,6 +42,7 @@ import {
     faXmark,
     faStar,
     faGem,
+    faUsers,
     faPen,
     faTrash,
     faTrashCan,
@@ -554,8 +559,10 @@ export default function BookPage() {
 
     const [book, setBook] = useState<BookDTO | null>(null);
     const editionBadge = detectEditionBadge(book);
+    const hasSeriesBadges = Boolean(book?.series?.status || (book?.series && book.volume != null) || book?.series?.category || editionBadge);
     const [bookStatus, setBookStatus] = useState<string | null>(null);
     const [readingStatus, setReadingStatus] = useState<string>("UNREAD");
+    const [isCommonReading, setIsCommonReading] = useState<boolean>(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -1307,7 +1314,16 @@ export default function BookPage() {
             setBook(null);
             setBookStatus(null);
             setReadingStatus("UNREAD");
+            setIsCommonReading(false);
             fetchTransactions(id);
+
+            session.customFetch(`/user/readingSessions/${encodeURIComponent(id)}`, { method: "GET" })
+                .then(async (res) => {
+                    if (!res.ok) return;
+                    const data: ReadingSessionDTO[] = await res.json();
+                    if (Array.isArray(data)) setIsCommonReading(isCommonReadingSession(data, Number(id)));
+                })
+                .catch(() => {});
         })();
 
         const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1&withSeries=1`;
@@ -1497,6 +1513,69 @@ export default function BookPage() {
         ? coverPreviewUrl
         : (coverRemoteUrl.trim().startsWith("http") ? coverRemoteUrl.trim() : null);
 
+    const renderCoverStatusBadge = () => {
+        if (bookStatus === "FOR_SALE") {
+            return (
+                <span className="book-page__cover-status-badge is-for-sale">
+                    <FontAwesomeIcon icon={faTag} />
+                    <span>{tr("For sale", "À vendre")}</span>
+                </span>
+            );
+        }
+        if (bookStatus === "SOLD") {
+            return (
+                <span className="book-page__cover-status-badge is-sold">
+                    <FontAwesomeIcon icon={faCheck} />
+                    <span>{tr("Sold", "Vendu")}</span>
+                </span>
+            );
+        }
+        const rStatus = (readingStatus || "").toUpperCase();
+        if (rStatus === "READ" || rStatus === "LU") {
+            return (
+                <span className="book-page__cover-status-badge is-read">
+                    <FontAwesomeIcon icon={faCheck} />
+                    <span>{tr("Read", "Lu")}</span>
+                </span>
+            );
+        }
+        if (rStatus === "READING" || rStatus === "EN_COURS") {
+            return (
+                <span className="book-page__cover-status-badge is-reading">
+                    <FontAwesomeIcon icon={faBookOpen} />
+                    <span>{tr("Reading", "En cours")}</span>
+                </span>
+            );
+        }
+        if (rStatus === "PAUSED" || rStatus === "EN_PAUSE" || rStatus === "PAUSE") {
+            return (
+                <span className="book-page__cover-status-badge is-paused">
+                    <FontAwesomeIcon icon={faPause} />
+                    <span>{tr("Paused", "En pause")}</span>
+                </span>
+            );
+        }
+        if (rStatus === "ABANDONED" || rStatus === "ABANDONNE") {
+            return (
+                <span className="book-page__cover-status-badge is-abandoned">
+                    <FontAwesomeIcon icon={faBan} />
+                    <span>{tr("Abandoned", "Abandonné")}</span>
+                </span>
+            );
+        }
+        if (bookStatus === "WISHLISTED") {
+            return (
+                <span className="book-page__cover-status-badge is-wishlisted">
+                    <FontAwesomeIcon icon={faHeart} />
+                    <span>{tr("Wishlisted", "Souhaité")}</span>
+                </span>
+            );
+        }
+        return null;
+    };
+
+    const coverStatusBadge = renderCoverStatusBadge();
+
     return (
         <div className="book-page">
             <WrapperHeader>
@@ -1542,6 +1621,23 @@ export default function BookPage() {
                                         <FontAwesomeIcon icon={faBook} />
                                         <span>{book.title}</span>
                                     </div>
+                                )}
+                                {(coverStatusBadge || isCommonReading) && (
+                                    <>
+                                        <div className="book-page__cover-scrim" aria-hidden="true" />
+                                        <div className="book-page__cover-top-badges">
+                                            {coverStatusBadge}
+                                            {isCommonReading && (
+                                                <span
+                                                    className="book-page__cover-common-badge"
+                                                    title={tr("Common reading", "Lecture commune")}
+                                                    aria-label={tr("Common reading", "Lecture commune")}
+                                                >
+                                                    <FontAwesomeIcon icon={faUsers} />
+                                                </span>
+                                            )}
+                                        </div>
+                                    </>
                                 )}
                                 <button
                                     type="button"
@@ -1662,7 +1758,7 @@ export default function BookPage() {
                             </div>
 
                             {/* Badges */}
-                            {(book.series?.status || (book.series && book.volume != null) || book.series?.category || editionBadge) && (
+                            {hasSeriesBadges && (
                                 <div className="book-page__tags">
                                     {book.series?.status && (
                                         <span className="book-page__tag book-page__tag--status">
