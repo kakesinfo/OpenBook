@@ -155,7 +155,9 @@ class _StartReadingSheetState extends State<StartReadingSheet> {
             const SizedBox(height: 16),
 
             // Lecture commune
-            Container(
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
               decoration: BoxDecoration(
                 color: AppTheme.bgCard,
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -164,6 +166,9 @@ class _StartReadingSheetState extends State<StartReadingSheet> {
                 ),
               ),
               child: CheckboxListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                ),
                 title: Text(
                   'Lecture commune',
                   style: TextStyle(
