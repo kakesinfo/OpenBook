@@ -13,7 +13,6 @@ import 'components/app_header.dart';
 import 'components/book_completion_dialog.dart';
 import 'components/book_cover.dart';
 import 'components/book_status_badge.dart';
-import 'components/common_reading_ribbon.dart';
 import 'components/edit_book_sheet.dart';
 import 'components/reading_timer_modal.dart';
 import 'components/start_reading_sheet.dart';
@@ -73,9 +72,6 @@ class BookDetailsPage extends ConsumerWidget {
         ? ref.watch(bookDetailsProvider(activeBook.id!))
         : const AsyncValue<Map<String, dynamic>>.data({});
     final bookDetails = bookDetailsAsync.value;
-
-    final progressAsync = ref.watch(readingProgressByBookProvider(activeBook));
-    final isCommonReading = progressAsync.value?.isCommon ?? false;
 
     int? prevId = (bookDetails?['previousBookId'] as num?)?.toInt();
     Map<String, dynamic>? prevBook = bookDetails?['previousBook'] as Map<String, dynamic>?;
@@ -269,7 +265,7 @@ class BookDetailsPage extends ConsumerWidget {
                     height: 250,
                     borderRadius: AppTheme.radiusLg,
                   ),
-                  if (BookStatusBadge.shouldShow(activeBook.status) || isCommonReading) ...[
+                  if (BookStatusBadge.shouldShow(activeBook.status)) ...[
                     Positioned(
                       top: 0,
                       left: 0,
@@ -300,21 +296,9 @@ class BookDetailsPage extends ConsumerWidget {
                     Positioned(
                       top: 10,
                       left: 10,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (BookStatusBadge.shouldShow(activeBook.status))
-                            BookStatusBadge(
-                              status: activeBook.status,
-                              compact: false,
-                            ),
-                          if (isCommonReading) ...[
-                            if (BookStatusBadge.shouldShow(activeBook.status))
-                              const SizedBox(height: 6),
-                            const CommonReadingRibbon(size: 26),
-                          ],
-                        ],
+                      child: BookStatusBadge(
+                        status: activeBook.status,
+                        compact: false,
                       ),
                     ),
                   ],

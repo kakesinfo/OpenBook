@@ -1,14 +1,11 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_application_1/app/theme.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../application/books_providers.dart';
 import '../../data/book.dart';
 import 'book_cover.dart';
 import 'book_status_badge.dart';
-import 'common_reading_ribbon.dart';
 
-class BookGridCard extends ConsumerWidget {
+class BookGridCard extends StatelessWidget {
   const BookGridCard({
     super.key,
     required this.book,
@@ -19,9 +16,7 @@ class BookGridCard extends ConsumerWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final commonBookIds = ref.watch(commonReadingBookIdsProvider);
-    final isCommon = book.id != null && commonBookIds.contains(book.id);
+  Widget build(BuildContext context) {
     final showStatus = BookStatusBadge.shouldShow(book.status);
 
     final subtitle = book.series.isNotEmpty
@@ -94,21 +89,12 @@ class BookGridCard extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Flexible(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (showStatus)
-                              BookStatusBadge(
+                        child: showStatus
+                            ? BookStatusBadge(
                                 status: book.status,
                                 compact: true,
-                              ),
-                            if (isCommon) ...[
-                              if (showStatus) const SizedBox(height: 4),
-                              const CommonReadingRibbon(size: 20),
-                            ],
-                          ],
-                        ),
+                              )
+                            : const SizedBox.shrink(),
                       ),
                       const SizedBox(width: 4),
                       Container(
