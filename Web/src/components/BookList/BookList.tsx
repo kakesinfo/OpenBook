@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBook, faHeart, faCheck } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
 import useCommonReadingBookIds from "../../hooks/UseCommonReadingBookIds.ts";
+import { isCommonBook } from "../HomeWidgets/readingUtils.ts";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useSnackbar } from "notistack";
 import BookCard from "../BookCard/BookCard.tsx";
@@ -141,9 +142,9 @@ export default function BookList({
                     <BookCard
                         key={book.id}
                         book={book}
-                        statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" }, tr, commonBookIds.has(book.id))}
+                        statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" }, tr, isCommonBook(commonBookIds, book.id))}
                         badgeText={book.volume > 0 ? `Vol. ${book.volume}` : tr("One-shot", "Unique")}
-                        isCommon={commonBookIds.has(book.id)}
+                        isCommon={isCommonBook(commonBookIds, book.id)}
                         showReleaseDate={showReleaseDate}
                         showFinishedDate={showFinishedDate}
                         actions={

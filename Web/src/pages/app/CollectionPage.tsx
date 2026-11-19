@@ -6,6 +6,7 @@ import Pagination from "../../components/Pagination/Pagination.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import CollectionPageDTO from "../../dto/CollectionPage.dto.ts";
 import useCommonReadingBookIds from "../../hooks/UseCommonReadingBookIds.ts";
+import { isCommonBook } from "../../components/HomeWidgets/readingUtils.ts";
 import { Link, useSearchParams } from "react-router";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -601,7 +602,7 @@ export default function CollectionPage() {
                                                         </span>
                                                     );
                                                 })()}
-                                                {commonBookIds.has(book.id) && (
+                                                {isCommonBook(commonBookIds, book.id) && (
                                                     <span className="collection-row__common-badge" title={tr("Common reading", "Lecture commune")}>
                                                         <FontAwesomeIcon icon={faUsers} />
                                                     </span>

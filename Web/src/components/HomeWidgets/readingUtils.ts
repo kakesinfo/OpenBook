@@ -115,3 +115,11 @@ export function computeCommonReadingBookIds(sessions: ReadingSessionDTO[]): Set<
     }
     return ids;
 }
+
+/**
+ * Safe membership test: the backend serializes book ids as JSON numbers while
+ * the set stores strings, so the id is normalized before lookup.
+ */
+export function isCommonBook(commonBookIds: Set<string>, bookId: string | number): boolean {
+    return commonBookIds.has(String(bookId));
+}

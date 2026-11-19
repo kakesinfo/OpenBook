@@ -2,6 +2,7 @@ import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import useSession from "../../hooks/UseSession.tsx";
 import useCommonReadingBookIds from "../../hooks/UseCommonReadingBookIds.ts";
+import { isCommonBook } from "../../components/HomeWidgets/readingUtils.ts";
 import Pagination from "../../components/Pagination/Pagination.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import { Dialog } from "@mui/material";
@@ -543,7 +544,7 @@ export default function SalesPage() {
                                             book={book}
                                             className={`sales-card ${isSold ? "is-sold" : ""}`}
                                             badgeText={book.volume > 0 ? tr(`Vol.${book.volume}`, `T.${book.volume}`) : undefined}
-                                            isCommon={commonBookIds.has(book.id)}
+                                            isCommon={isCommonBook(commonBookIds, book.id)}
                                             actions={
                                                 <>
                                                     {isSold ? (
