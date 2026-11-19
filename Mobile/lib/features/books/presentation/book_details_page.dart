@@ -130,7 +130,7 @@ class BookDetailsPage extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            tooltip: 'Historique des sessions',
+            tooltip: 'Historique des lectures',
             icon: Icon(Icons.history_rounded, color: AppTheme.textPrimary),
             onPressed: () {
               Navigator.of(context).push(
