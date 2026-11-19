@@ -3,6 +3,7 @@ import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/books_providers.dart';
+import '../../application/streak_utils.dart';
 import '../reading_calendar_page.dart';
 
 class ReadingStreakCard extends ConsumerWidget {
@@ -83,7 +84,7 @@ class ReadingStreakCard extends ConsumerWidget {
                                 ),
                               ),
                               data: (sessions) {
-                                final count = _calculateStreakDays(sessions);
+                                final count = calculateReadingStreakDays(sessions);
                                 final label = '$count jour${count > 1 ? 's' : ''}';
                                 return Text(
                                   label,
@@ -124,22 +125,14 @@ class ReadingStreakCard extends ConsumerWidget {
                   error: (_, _) => _buildWeekRow(activeDayIndices: const {}),
                   data: (sessions) {
                     final now = DateTime.now();
-                    final today = DateTime(now.year, now.month, now.day);
-                    // Monday is weekday 1
-                    final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
-
-                    final readDayIndices = <int>{};
-                    for (final s in sessions) {
-                      final sDate = DateTime(s.createdAt.year, s.createdAt.month, s.createdAt.day);
-                      final diffDays = sDate.difference(startOfWeek).inDays;
-                      if (diffDays >= 0 && diffDays < 7) {
-                        readDayIndices.add(diffDays);
-                      }
-                    }
+                    final readDayIndices = currentWeekReadDayIndices(
+                      sessions,
+                      referenceNow: now,
+                    );
 
                     return _buildWeekRow(
                       activeDayIndices: readDayIndices,
-                      currentDayIndex: today.weekday - 1,
+                      currentDayIndex: now.weekday - 1,
                     );
                   },
                 ),
@@ -149,46 +142,6 @@ class ReadingStreakCard extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  int _calculateStreakDays(List<dynamic> sessions) {
-    if (sessions.isEmpty) return 0;
-
-    final readDays = <String>{};
-    for (final s in sessions) {
-      final d = s.createdAt as DateTime;
-      readDays.add('${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}');
-    }
-
-    final now = DateTime.now();
-    var checkDate = DateTime(now.year, now.month, now.day);
-
-    String key(DateTime d) =>
-        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-    int streak = 0;
-
-    // If read today, streak starts from today
-    if (readDays.contains(key(checkDate))) {
-      while (readDays.contains(key(checkDate))) {
-        streak++;
-        checkDate = checkDate.subtract(const Duration(days: 1));
-      }
-      return streak;
-    }
-
-    // If not read today, check if yesterday was read (ongoing streak waiting for today's session)
-    final yesterday = checkDate.subtract(const Duration(days: 1));
-    if (readDays.contains(key(yesterday))) {
-      checkDate = yesterday;
-      while (readDays.contains(key(checkDate))) {
-        streak++;
-        checkDate = checkDate.subtract(const Duration(days: 1));
-      }
-      return streak;
-    }
-
-    return 0;
   }
 
   Widget _buildWeekRow({

@@ -9,6 +9,7 @@ import '../data/books_repository.dart';
 import 'book_purchase_history_page.dart';
 import 'book_reading_history_page.dart';
 import 'book_reading_session_page.dart';
+import 'streak_celebration_page.dart';
 import 'components/app_header.dart';
 import 'components/book_completion_dialog.dart';
 import 'components/book_cover.dart';
@@ -509,13 +510,16 @@ class BookDetailsPage extends ConsumerWidget {
                     if (result == null || !context.mounted) {
                       return;
                     }
-                    await ref
+                    final streakData = await ref
                         .read(booksControllerProvider.notifier)
                         .startReadingSession(
                           book: activeBook,
                           startedAt: result.startedAt,
                           isCommon: result.isCommon,
                         );
+                    if (streakData != null && context.mounted) {
+                      await StreakCelebrationPage.show(context, data: streakData);
+                    }
                   },
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,

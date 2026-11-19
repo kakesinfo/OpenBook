@@ -13,6 +13,7 @@ import '../data/cover_image_service.dart';
 import '../data/glossary_word.dart';
 import '../data/reading_session.dart';
 import '../data/retrospective.dart';
+import 'streak_utils.dart';
 
 final bnfServiceProvider = Provider<BnfService>((ref) {
   final clientNotifier = ref.watch(apiClientProvider.notifier);
@@ -393,7 +394,19 @@ class BooksController extends AsyncNotifier<List<Book>> {
     ref.invalidate(readingProgressByBookProvider);
   }
 
-  Future<void> logReadingSession({
+  Future<List<ReadingSession>> _loadSessionsSnapshot() async {
+    final cached = ref.read(allReadingSessionsProvider).value;
+    if (cached != null) {
+      return cached;
+    }
+    try {
+      return await _repository.getAllReadingSessions();
+    } catch (_) {
+      return const <ReadingSession>[];
+    }
+  }
+
+  Future<StreakCelebrationData?> logReadingSession({
     required Book book,
     required int currentPage,
     required Duration sessionDuration,
@@ -403,8 +416,15 @@ class BooksController extends AsyncNotifier<List<Book>> {
     final sanitizedDuration = sessionDuration.isNegative ? Duration.zero : sessionDuration;
     final bookId = book.id;
     if (bookId == null) {
-      return;
+      return null;
     }
+
+    final effectiveOccurredAt = occurredAt ?? DateTime.now();
+    final sessionsBefore = await _loadSessionsSnapshot();
+    final streakCelebration = evaluateFirstReadingOfDayStreak(
+      sessionsBeforeSave: sessionsBefore,
+      sessionDate: effectiveOccurredAt,
+    );
 
     final totalPages = book.totalPages;
     final completedBook = totalPages != null && totalPages > 0 && sanitizedCurrentPage >= totalPages;
@@ -415,7 +435,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
         currentPage: sanitizedCurrentPage,
         minutesRead: sanitizedDuration.inMinutes,
         secondsRead: sanitizedDuration.inSeconds.remainder(60),
-        createdAt: occurredAt ?? DateTime.now(),
+        createdAt: effectiveOccurredAt,
         type: completedBook ? ReadingSessionType.end : ReadingSessionType.progress,
       ),
     );
@@ -425,21 +445,29 @@ class BooksController extends AsyncNotifier<List<Book>> {
     ref.invalidate(readingSessionsForBookProvider);
     ref.invalidate(allReadingSessionsProvider);
     await reload();
+    return streakCelebration;
   }
 
-  Future<void> startReadingSession({
+  Future<StreakCelebrationData?> startReadingSession({
     required Book book,
     DateTime? startedAt,
     bool isCommon = false,
   }) async {
     if (book.status == BookStatus.sold || book.status == BookStatus.lent || book.status == BookStatus.wishlist) {
-      return;
+      return null;
     }
 
     final bookId = book.id;
     if (bookId == null) {
-      return;
+      return null;
     }
+
+    final effectiveStartedAt = startedAt ?? DateTime.now();
+    final sessionsBefore = await _loadSessionsSnapshot();
+    final streakCelebration = evaluateFirstReadingOfDayStreak(
+      sessionsBeforeSave: sessionsBefore,
+      sessionDate: effectiveStartedAt,
+    );
 
     await _repository.addReadingSession(
       ReadingSession(
@@ -447,7 +475,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
         currentPage: 0,
         minutesRead: 0,
         secondsRead: 0,
-        createdAt: startedAt ?? DateTime.now(),
+        createdAt: effectiveStartedAt,
         type: ReadingSessionType.start,
         isCommon: isCommon,
       ),
@@ -459,6 +487,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
     ref.invalidate(readingSessionsForBookProvider);
     ref.invalidate(allReadingSessionsProvider);
     await reload();
+    return streakCelebration;
   }
 
   Future<void> deleteReadingSession({
