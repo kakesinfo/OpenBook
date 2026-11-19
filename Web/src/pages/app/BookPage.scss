@@ -138,6 +138,27 @@
     display: block;
   }
 
+  &__cover-common-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-full);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-secondary);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: var(--shadow-md);
+    z-index: 2;
+
+    svg {
+      font-size: 0.85rem;
+    }
+  }
+
   &__cover-edit-btn {
     position: absolute;
     bottom: 12px;
@@ -381,22 +402,11 @@
     margin: 4px 0;
   }
 
-  &__tags-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    padding-right: 44px;
-  }
-
   &__tags {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-
-    &--user {
-      margin-left: auto;
-    }
+    padding-right: 44px;
   }
 
   &__tag {
@@ -418,17 +428,6 @@
       background: var(--accent-secondary-light);
       border: 1px solid var(--border-subtle);
       color: var(--accent-secondary);
-    }
-
-    &--common {
-      background: var(--accent-secondary-light);
-      border: 1px solid var(--accent-secondary);
-      color: var(--accent-secondary);
-      gap: 6px;
-
-      svg {
-        font-size: 0.7rem;
-      }
     }
 
     &--category {

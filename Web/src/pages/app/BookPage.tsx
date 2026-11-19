@@ -1557,6 +1557,14 @@ export default function BookPage() {
                                         <span>{book.title}</span>
                                     </div>
                                 )}
+                                {isCommonReading && (
+                                    <span
+                                        className="book-page__cover-common-badge"
+                                        title={tr("Common reading", "Lecture commune")}
+                                    >
+                                        <FontAwesomeIcon icon={faUsers} />
+                                    </span>
+                                )}
                                 <button
                                     type="button"
                                     className="book-page__cover-edit-btn"
@@ -1676,42 +1684,30 @@ export default function BookPage() {
                             </div>
 
                             {/* Badges */}
-                            {(hasSeriesBadges || isCommonReading) && (
-                                <div className="book-page__tags-row">
-                                    {hasSeriesBadges && (
-                                        <div className="book-page__tags book-page__tags--meta">
-                                            {book.series?.status && (
-                                                <span className="book-page__tag book-page__tag--status">
-                                                    {getSeriesStatusLabel(book.series.status)}
-                                                </span>
-                                            )}
-                                            {book.series && book.volume != null && (
-                                                <span className="book-page__tag book-page__tag--volume">
-                                                    {book.series?.totalVolumes && book.series.totalVolumes > 1
-                                                        ? tr(`Volume ${book.volume} of ${Math.max(book.volume, book.series.totalVolumes)}`, `Tome ${book.volume} sur ${Math.max(book.volume, book.series.totalVolumes)}`)
-                                                        : tr(`Volume ${book.volume}`, `Tome ${book.volume}`)}
-                                                </span>
-                                            )}
-                                            {book.series?.category && (
-                                                <span className="book-page__tag book-page__tag--category">
-                                                    {translateCategory(book.series.category)}
-                                                </span>
-                                            )}
-                                            {editionBadge && (
-                                                <span className={`book-page__tag book-page__tag--${editionBadge.type}`}>
-                                                    <FontAwesomeIcon icon={editionBadge.type === "limited" ? faGem : faStar} />
-                                                    <span>{editionBadge.label}</span>
-                                                </span>
-                                            )}
-                                        </div>
+                            {hasSeriesBadges && (
+                                <div className="book-page__tags">
+                                    {book.series?.status && (
+                                        <span className="book-page__tag book-page__tag--status">
+                                            {getSeriesStatusLabel(book.series.status)}
+                                        </span>
                                     )}
-                                    {isCommonReading && (
-                                        <div className="book-page__tags book-page__tags--user">
-                                            <span className="book-page__tag book-page__tag--common">
-                                                <FontAwesomeIcon icon={faUsers} />
-                                                <span>{tr("Common reading", "Lecture commune")}</span>
-                                            </span>
-                                        </div>
+                                    {book.series && book.volume != null && (
+                                        <span className="book-page__tag book-page__tag--volume">
+                                            {book.series?.totalVolumes && book.series.totalVolumes > 1
+                                                ? tr(`Volume ${book.volume} of ${Math.max(book.volume, book.series.totalVolumes)}`, `Tome ${book.volume} sur ${Math.max(book.volume, book.series.totalVolumes)}`)
+                                                : tr(`Volume ${book.volume}`, `Tome ${book.volume}`)}
+                                        </span>
+                                    )}
+                                    {book.series?.category && (
+                                        <span className="book-page__tag book-page__tag--category">
+                                            {translateCategory(book.series.category)}
+                                        </span>
+                                    )}
+                                    {editionBadge && (
+                                        <span className={`book-page__tag book-page__tag--${editionBadge.type}`}>
+                                            <FontAwesomeIcon icon={editionBadge.type === "limited" ? faGem : faStar} />
+                                            <span>{editionBadge.label}</span>
+                                        </span>
                                     )}
                                 </div>
                             )}

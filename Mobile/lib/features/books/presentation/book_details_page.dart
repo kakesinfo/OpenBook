@@ -259,11 +259,41 @@ class BookDetailsPage extends ConsumerWidget {
                 ),
                 const SizedBox(width: 12),
               ],
-              BookCover(
-                book: activeBook,
-                width: 170,
-                height: 250,
-                borderRadius: AppTheme.radiusLg,
+              Stack(
+                children: [
+                  BookCover(
+                    book: activeBook,
+                    width: 170,
+                    height: 250,
+                    borderRadius: AppTheme.radiusLg,
+                  ),
+                  if (isCommonReading)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Tooltip(
+                        message: 'Lecture commune',
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentSecondary,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                            boxShadow: AppTheme.cardShadow,
+                          ),
+                          child: const Icon(
+                            Icons.groups_rounded,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               if (showPrevious || showNext) ...[
                 const SizedBox(width: 12),
@@ -294,27 +324,6 @@ class BookDetailsPage extends ConsumerWidget {
               runSpacing: 8,
               alignment: WrapAlignment.center,
               children: [
-                // Badges liés à l'ouvrage (série / tome)
-                if (activeBook.volume != null && activeBook.volume! > 0)
-                  _TagPill(
-                    label: 'Tome ${activeBook.volume}',
-                    color: AppTheme.accentSecondary,
-                    bgColor: AppTheme.accentSecondaryLight,
-                  ),
-                if (activeBook.series.isNotEmpty)
-                  _TagPill(
-                    label: activeBook.series,
-                    color: AppTheme.textSecondary,
-                    bgColor: AppTheme.bgElevated,
-                  ),
-                // Séparateur entre badges de l'ouvrage et badges utilisateur
-                if ((activeBook.volume != null && activeBook.volume! > 0) || activeBook.series.isNotEmpty)
-                  Container(
-                    width: 1,
-                    height: 16,
-                    color: AppTheme.borderSubtle,
-                  ),
-                // Badges liés à l'utilisateur (statut de lecture, lecture commune)
                 _TagPill(
                   label: activeBook.status.label,
                   color: isWishlisted
@@ -336,12 +345,17 @@ class BookDetailsPage extends ConsumerWidget {
                                   ? AppTheme.accentRedLight
                                   : AppTheme.accentPrimaryLight))),
                 ),
-                if (isCommonReading)
+                if (activeBook.volume != null && activeBook.volume! > 0)
                   _TagPill(
-                    label: 'Lecture commune',
-                    icon: Icons.groups_rounded,
+                    label: 'Tome ${activeBook.volume}',
                     color: AppTheme.accentSecondary,
                     bgColor: AppTheme.accentSecondaryLight,
+                  ),
+                if (activeBook.series.isNotEmpty)
+                  _TagPill(
+                    label: activeBook.series,
+                    color: AppTheme.textSecondary,
+                    bgColor: AppTheme.bgElevated,
                   ),
               ],
             ),
@@ -609,13 +623,11 @@ class _TagPill extends StatelessWidget {
     required this.label,
     required this.color,
     required this.bgColor,
-    this.icon,
   });
 
   final String label;
   final Color color;
   final Color bgColor;
-  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -626,22 +638,13 @@ class _TagPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTheme.radiusFull),
         border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
