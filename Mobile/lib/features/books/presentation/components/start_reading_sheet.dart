@@ -71,8 +71,14 @@ class _StartReadingSheetState extends State<StartReadingSheet> {
     );
 
     if (picked != null) {
+      final now = DateTime.now();
+      final isToday = picked.year == now.year &&
+          picked.month == now.month &&
+          picked.day == now.day;
       setState(() {
-        _selectedDate = DateTime(picked.year, picked.month, picked.day);
+        _selectedDate = isToday
+            ? now
+            : DateTime(picked.year, picked.month, picked.day, 12, 0);
         _dateController.text = _formatDate(_selectedDate);
       });
     }

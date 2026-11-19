@@ -29,6 +29,7 @@ extension ReadingCycleStatusX on ReadingCycleStatus {
 
 class ReadingCycle {
   const ReadingCycle({
+    this.cycleId,
     required this.readingNumber,
     required this.sessions,
     required this.status,
@@ -40,6 +41,7 @@ class ReadingCycle {
     required this.maxPage,
   });
 
+  final int? cycleId;
   final int readingNumber;
   final List<ReadingSession> sessions;
   final ReadingCycleStatus status;
@@ -52,6 +54,18 @@ class ReadingCycle {
 
   bool get isInProgress => status == ReadingCycleStatus.inProgress;
   bool get isCompleted => status == ReadingCycleStatus.completed;
+
+  List<ReadingSession> get sessionsChronological {
+    final sorted = [...sessions]
+      ..sort((a, b) {
+        final typeCmp = a.type.index.compareTo(b.type.index);
+        if (typeCmp != 0) return typeCmp;
+        final cmp = a.createdAt.compareTo(b.createdAt);
+        if (cmp != 0) return cmp;
+        return (a.id ?? 0).compareTo(b.id ?? 0);
+      });
+    return sorted;
+  }
 
   List<ReadingSession> get sessionsDescending {
     final sorted = [...sessions]
@@ -67,8 +81,8 @@ class ReadingCycle {
 }
 
 /// Regroupe les sessions chronologiques d'un livre en lectures successives
-/// (début -> sessions de progression -> fin), retournées de la plus récente
-/// à la plus ancienne.
+/// (en priorité via readingCycleId issu de la BDD, ou par découpage
+/// début -> sessions -> fin en repli), retournées de la plus récente à la plus ancienne.
 List<ReadingCycle> groupSessionsIntoReadingCycles(
   List<ReadingSession> sessions, {
   BookStatus? bookStatus,
@@ -86,27 +100,39 @@ List<ReadingCycle> groupSessionsIntoReadingCycles(
       return (a.id ?? 0).compareTo(b.id ?? 0);
     });
 
+  final allHaveCycleId = ascending.every((s) => s.readingCycleId != null);
   final rawGroups = <List<ReadingSession>>[];
-  var current = <ReadingSession>[];
 
-  for (final session in ascending) {
-    if (session.type == ReadingSessionType.start) {
-      if (current.isNotEmpty) {
+  if (allHaveCycleId) {
+    final byCycleId = <int, List<ReadingSession>>{};
+    for (final session in ascending) {
+      byCycleId
+          .putIfAbsent(session.readingCycleId!, () => <ReadingSession>[])
+          .add(session);
+    }
+    rawGroups.addAll(byCycleId.values);
+    rawGroups.sort((a, b) =>
+        (a.first.readingCycleId ?? 0).compareTo(b.first.readingCycleId ?? 0));
+  } else {
+    var current = <ReadingSession>[];
+    for (final session in ascending) {
+      if (session.type == ReadingSessionType.start) {
+        if (current.isNotEmpty) {
+          rawGroups.add(current);
+          current = <ReadingSession>[];
+        }
+        current.add(session);
+      } else if (session.type == ReadingSessionType.end) {
+        current.add(session);
         rawGroups.add(current);
         current = <ReadingSession>[];
+      } else {
+        current.add(session);
       }
-      current.add(session);
-    } else if (session.type == ReadingSessionType.end) {
-      current.add(session);
-      rawGroups.add(current);
-      current = <ReadingSession>[];
-    } else {
-      current.add(session);
     }
-  }
-
-  if (current.isNotEmpty) {
-    rawGroups.add(current);
+    if (current.isNotEmpty) {
+      rawGroups.add(current);
+    }
   }
 
   final cycles = <ReadingCycle>[];
@@ -119,8 +145,10 @@ List<ReadingCycle> groupSessionsIntoReadingCycles(
     var totalSeconds = 0;
     var maxPage = 0;
     var isCommon = false;
+    int? cycleId;
 
     for (final session in group) {
+      cycleId ??= session.readingCycleId;
       if (session.type == ReadingSessionType.start && startSession == null) {
         startSession = session;
       }
@@ -153,6 +181,7 @@ List<ReadingCycle> groupSessionsIntoReadingCycles(
 
     cycles.add(
       ReadingCycle(
+        cycleId: cycleId,
         readingNumber: i + 1,
         sessions: List<ReadingSession>.unmodifiable(group),
         status: status,
@@ -513,18 +542,29 @@ class BookReadingCycleSessionsPage extends ConsumerWidget {
     super.key,
     required this.book,
     required ReadingCycle initialCycle,
-  })  : initialReadingNumber = initialCycle.readingNumber,
+  })  : initialCycleId = initialCycle.cycleId,
+        initialReadingNumber = initialCycle.readingNumber,
         initialSessionIds = {
           for (final s in initialCycle.sessions)
             if (s.id != null) s.id!,
         };
 
   final Book book;
+  final int? initialCycleId;
   final int initialReadingNumber;
   final Set<int> initialSessionIds;
 
   ReadingCycle? _resolveCycle(List<ReadingCycle> cycles) {
     if (cycles.isEmpty) return null;
+
+    if (initialCycleId != null) {
+      for (final cycle in cycles) {
+        if (cycle.cycleId == initialCycleId) {
+          return cycle;
+        }
+      }
+      return null;
+    }
 
     if (initialSessionIds.isNotEmpty) {
       ReadingCycle? bestMatch;
@@ -631,7 +671,7 @@ class BookReadingCycleSessionsPage extends ConsumerWidget {
             );
           }
 
-          final orderedSessions = cycle.sessionsDescending;
+          final orderedSessions = cycle.sessionsChronological;
           final statusColor = cycle.isInProgress || cycle.isCompleted
               ? AppTheme.accentPrimary
               : AppTheme.textSecondary;

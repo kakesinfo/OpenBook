@@ -21,6 +21,7 @@ class ReadingSession {
   const ReadingSession({
     this.id,
     required this.bookId,
+    this.readingCycleId,
     required this.currentPage,
     required this.minutesRead,
     this.secondsRead = 0,
@@ -31,6 +32,7 @@ class ReadingSession {
 
   final int? id;
   final int bookId;
+  final int? readingCycleId;
   final int currentPage;
   final int minutesRead;
   final int secondsRead;
@@ -42,6 +44,7 @@ class ReadingSession {
     return ReadingSession(
       id: map['id'] as int?,
       bookId: map['bookId'] as int,
+      readingCycleId: map['readingCycleId'] as int?,
       currentPage: map['currentPage'] as int,
       minutesRead: map['minutesRead'] as int,
       secondsRead: map['secondsRead'] as int? ?? 0,
@@ -55,6 +58,7 @@ class ReadingSession {
     return {
       'id': id,
       'bookId': bookId,
+      'readingCycleId': readingCycleId,
       'currentPage': currentPage,
       'minutesRead': minutesRead,
       'secondsRead': secondsRead,

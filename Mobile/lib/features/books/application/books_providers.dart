@@ -66,6 +66,34 @@ class BookSearchQueryNotifier extends Notifier<String> {
 final booksControllerProvider =
     AsyncNotifierProvider<BooksController, List<Book>>(BooksController.new);
 
+/// Sélectionne les sessions appartenant au cycle de lecture actif d'un livre.
+/// Quand readingCycleId est renseigné, privilégie le cycle ouvert (sans session
+/// de fin) ayant l'id le plus élevé, sinon le cycle d'id le plus élevé.
+List<ReadingSession> activeCycleSessionsFor(List<ReadingSession> sessions) {
+  if (sessions.isEmpty) return const <ReadingSession>[];
+
+  final hasCycleIds = sessions.every((s) => s.readingCycleId != null);
+  if (hasCycleIds) {
+    final byCycle = <int, List<ReadingSession>>{};
+    for (final s in sessions) {
+      byCycle.putIfAbsent(s.readingCycleId!, () => <ReadingSession>[]).add(s);
+    }
+    final sortedIds = byCycle.keys.toList()..sort();
+    for (final cycleId in sortedIds.reversed) {
+      final group = byCycle[cycleId]!;
+      final hasEnd = group.any((s) => s.type == ReadingSessionType.end);
+      if (!hasEnd) {
+        return group;
+      }
+    }
+    return byCycle[sortedIds.last]!;
+  }
+
+  final lastStartIndex =
+      sessions.lastIndexWhere((session) => session.type == ReadingSessionType.start);
+  return lastStartIndex == -1 ? sessions : sessions.sublist(lastStartIndex);
+}
+
 final readingProgressByBookProvider = FutureProvider.family<ReadingProgress, Book>((ref, book) async {
   final id = book.id;
   if (id == null) {
@@ -78,8 +106,8 @@ final readingProgressByBookProvider = FutureProvider.family<ReadingProgress, Boo
     return ReadingProgress.empty(totalPages: book.totalPages);
   }
 
-  final lastStartIndex = sessions.lastIndexWhere((session) => session.type == ReadingSessionType.start);
-  final activeCycleSessions = lastStartIndex == -1 ? sessions : sessions.sublist(lastStartIndex);
+  final activeCycleSessions = activeCycleSessionsFor(sessions);
+
   final lastProgressSession = activeCycleSessions.lastWhere(
     (session) => session.type != ReadingSessionType.start,
     orElse: () => activeCycleSessions.last,
@@ -90,10 +118,12 @@ final readingProgressByBookProvider = FutureProvider.family<ReadingProgress, Boo
       ? 0.0
       : (lastProgressSession.currentPage / totalPages).clamp(0.0, 1.0);
 
-  final startSession = lastStartIndex != -1
-      ? sessions[lastStartIndex]
-      : (sessions.isNotEmpty ? sessions.first : null);
-  final startedAt = book.startedAt ?? startSession?.createdAt;
+  final startSession = activeCycleSessions.firstWhere(
+    (session) => session.type == ReadingSessionType.start,
+    orElse: () => activeCycleSessions.first,
+  );
+  final startedAt = book.startedAt ?? startSession.createdAt;
+  final isCommon = activeCycleSessions.any((session) => session.isCommon);
 
   return ReadingProgress(
     currentPage: lastProgressSession.currentPage,
@@ -102,7 +132,7 @@ final readingProgressByBookProvider = FutureProvider.family<ReadingProgress, Boo
     progress: progress,
     sessionsCount: activeCycleSessions.length,
     startedAt: startedAt,
-    isCommon: startSession?.isCommon ?? false,
+    isCommon: isCommon,
   );
 });
 
@@ -127,10 +157,19 @@ final allReadingSessionsProvider = FutureProvider<List<ReadingSession>>((ref) as
 
 final commonReadingBookIdsProvider = Provider<Set<int>>((ref) {
   final sessions = ref.watch(allReadingSessionsProvider).value ?? const <ReadingSession>[];
-  return {
-    for (final session in sessions)
-      if (session.isCommon) session.bookId,
-  };
+  final byBook = <int, List<ReadingSession>>{};
+  for (final session in sessions) {
+    byBook.putIfAbsent(session.bookId, () => <ReadingSession>[]).add(session);
+  }
+
+  final ids = <int>{};
+  for (final entry in byBook.entries) {
+    final activeCycle = activeCycleSessionsFor(entry.value);
+    if (activeCycle.any((s) => s.isCommon)) {
+      ids.add(entry.key);
+    }
+  }
+  return ids;
 });
 
 final upcomingPlanningBooksProvider = FutureProvider<List<Book>>((ref) async {

@@ -3,12 +3,14 @@ import java.util.Objects;
 import java.util.Collections;
 
 import fr.openbook.api.dtos.BookStatusDTO;
+import fr.openbook.api.dtos.ReadingCycleDTO;
 import fr.openbook.api.dtos.ReadingSessionDTO;
 import fr.openbook.api.entities.BookEntity;
 import fr.openbook.api.entities.BookHasAuthorEntity;
 import fr.openbook.api.entities.BookReadingStatus;
 import fr.openbook.api.entities.BookStatusEntity;
 import fr.openbook.api.entities.CategoryEntity;
+import fr.openbook.api.entities.ReadingCycleEntity;
 import fr.openbook.api.entities.ReadingSessionEntity;
 import fr.openbook.api.entities.SeriesEntity;
 import fr.openbook.api.entities.SeriesStatus;
@@ -57,6 +59,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -1199,7 +1202,126 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    // --- Reading Sessions Endpoints ---
+    // --- Reading Cycles & Reading Sessions Endpoints ---
+
+    @GetMapping("/readingCycles/{bookId}")
+    public List<ReadingCycleDTO> getReadingCyclesForBook(HttpSession session, @PathVariable Long bookId) {
+        UserEntity user = getAuthenticatedUser(session);
+        List<ReadingCycleEntity> cycles = repositoryService.getReadingCycleRepository()
+                .findAllByUserIdAndBookIdOrderByIdAsc(user.getId(), bookId);
+        List<ReadingSessionEntity> sessions = repositoryService.getReadingSessionRepository()
+                .findAllByUserIdAndBookIdOrderByCreatedAtAsc(user.getId(), bookId);
+
+        Map<Integer, List<ReadingSessionEntity>> sessionsByCycle = new HashMap<>();
+        for (ReadingSessionEntity rs : sessions) {
+            if (rs.getReadingCycle() != null && rs.getReadingCycle().getId() != null) {
+                sessionsByCycle.computeIfAbsent(rs.getReadingCycle().getId(), k -> new ArrayList<>()).add(rs);
+            }
+        }
+
+        return cycles.stream()
+                .map(c -> ReadingCycleDTO.from(c, sessionsByCycle.getOrDefault(c.getId(), Collections.emptyList())))
+                .toList();
+    }
+
+    @GetMapping("/readingCycles")
+    public List<ReadingCycleDTO> getAllReadingCycles(HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+        List<ReadingCycleEntity> cycles = repositoryService.getReadingCycleRepository()
+                .findAllByUserIdOrderByIdAsc(user.getId());
+        List<ReadingSessionEntity> sessions = repositoryService.getReadingSessionRepository()
+                .findAllByUserIdOrderByCreatedAtAsc(user.getId());
+
+        Map<Integer, List<ReadingSessionEntity>> sessionsByCycle = new HashMap<>();
+        for (ReadingSessionEntity rs : sessions) {
+            if (rs.getReadingCycle() != null && rs.getReadingCycle().getId() != null) {
+                sessionsByCycle.computeIfAbsent(rs.getReadingCycle().getId(), k -> new ArrayList<>()).add(rs);
+            }
+        }
+
+        return cycles.stream()
+                .map(c -> ReadingCycleDTO.from(c, sessionsByCycle.getOrDefault(c.getId(), Collections.emptyList())))
+                .toList();
+    }
+
+    @PostMapping("/readingCycles")
+    @Transactional
+    @CacheEvict(cacheNames = "user-statistics", allEntries = true)
+    public ReadingCycleDTO createReadingCycle(HttpSession session, @RequestBody ReadingCycleDTO dto) {
+        UserEntity user = getAuthenticatedUser(session);
+        if (dto.getBookId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "bookId is required");
+        }
+        BookEntity book = repositoryService.getBookRepository().findById(dto.getBookId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found"));
+
+        Instant startedAt = dto.getStartedAt() != null ? Instant.ofEpochMilli(dto.getStartedAt()) : Instant.now();
+        Instant endedAt = dto.getEndedAt() != null ? Instant.ofEpochMilli(dto.getEndedAt()) : null;
+
+        ReadingCycleEntity cycle = new ReadingCycleEntity();
+        cycle.setUser(user);
+        cycle.setBook(book);
+        cycle.setIsCommon(Boolean.TRUE.equals(dto.getIsCommon()));
+        cycle.setStartedAt(startedAt);
+        cycle.setEndedAt(endedAt);
+        cycle = repositoryService.getReadingCycleRepository().save(cycle);
+
+        ReadingSessionEntity startSession = new ReadingSessionEntity();
+        startSession.setUser(user);
+        startSession.setBook(book);
+        startSession.setReadingCycle(cycle);
+        startSession.setCurrentPage(0);
+        startSession.setMinutesRead(0);
+        startSession.setSecondsRead(0);
+        startSession.setSessionType(0);
+        startSession.setCreatedAt(startedAt);
+        startSession = repositoryService.getReadingSessionRepository().save(startSession);
+
+        return ReadingCycleDTO.from(cycle, List.of(startSession));
+    }
+
+    @PutMapping("/readingCycles/{id}")
+    @Transactional
+    @CacheEvict(cacheNames = "user-statistics", allEntries = true)
+    public ResponseEntity<ReadingCycleDTO> updateReadingCycle(
+            HttpSession session,
+            @PathVariable Integer id,
+            @RequestBody ReadingCycleDTO dto
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        return repositoryService.getReadingCycleRepository().findById(id).map(cycle -> {
+            if (!cycle.getUser().getId().equals(user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).<ReadingCycleDTO>build();
+            }
+            if (dto.getIsCommon() != null) {
+                cycle.setIsCommon(dto.getIsCommon());
+            }
+            if (dto.getStartedAt() != null) {
+                cycle.setStartedAt(Instant.ofEpochMilli(dto.getStartedAt()));
+            }
+            if (dto.getEndedAt() != null) {
+                cycle.setEndedAt(Instant.ofEpochMilli(dto.getEndedAt()));
+            }
+            ReadingCycleEntity saved = repositoryService.getReadingCycleRepository().save(cycle);
+            List<ReadingSessionEntity> cycleSessions = repositoryService.getReadingSessionRepository()
+                    .findAllByReadingCycleIdOrderByCreatedAtAscIdAsc(saved.getId());
+            return ResponseEntity.ok(ReadingCycleDTO.from(saved, cycleSessions));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/readingCycles/{id}")
+    @Transactional
+    @CacheEvict(cacheNames = "user-statistics", allEntries = true)
+    public ResponseEntity<?> deleteReadingCycle(HttpSession session, @PathVariable Integer id) {
+        UserEntity user = getAuthenticatedUser(session);
+        return repositoryService.getReadingCycleRepository().findById(id).map(cycle -> {
+            if (!cycle.getUser().getId().equals(user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            repositoryService.getReadingCycleRepository().delete(cycle);
+            return ResponseEntity.ok().build();
+        }).orElse(ResponseEntity.notFound().build());
+    }
 
     @GetMapping("/readingSessions/{bookId}")
     public List<ReadingSessionDTO> getReadingSessions(HttpSession session, @PathVariable Long bookId) {
@@ -1222,30 +1344,81 @@ public class UserController {
     }
 
     @PostMapping("/readingSessions")
+    @Transactional
     @CacheEvict(cacheNames = "user-statistics", allEntries = true)
     public ReadingSessionDTO addReadingSession(HttpSession session, @RequestBody ReadingSessionDTO dto) {
         UserEntity user = getAuthenticatedUser(session);
         BookEntity book = repositoryService.getBookRepository().findById(dto.getBookId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found"));
 
+        int sessionType = dto.getSessionType() != null ? dto.getSessionType() : 1;
+        Instant createdAt = dto.getCreatedAt() != null
+                ? Instant.ofEpochMilli(dto.getCreatedAt())
+                : Instant.now();
+
+        ReadingCycleEntity cycle;
+        if (sessionType == 0) {
+            // Starting or restarting a reading always creates a new reading_cycle
+            cycle = new ReadingCycleEntity();
+            cycle.setUser(user);
+            cycle.setBook(book);
+            cycle.setIsCommon(Boolean.TRUE.equals(dto.getIsCommon()));
+            cycle.setStartedAt(createdAt);
+            cycle.setEndedAt(null);
+            cycle = repositoryService.getReadingCycleRepository().save(cycle);
+        } else {
+            cycle = resolveCycleForSession(user, book, dto, createdAt);
+            if (sessionType == 2) {
+                cycle.setEndedAt(createdAt);
+                cycle = repositoryService.getReadingCycleRepository().save(cycle);
+            }
+        }
+
         ReadingSessionEntity entity = new ReadingSessionEntity();
         entity.setUser(user);
         entity.setBook(book);
+        entity.setReadingCycle(cycle);
         entity.setCurrentPage(dto.getCurrentPage() != null ? dto.getCurrentPage() : 0);
         entity.setMinutesRead(dto.getMinutesRead() != null ? dto.getMinutesRead() : 0);
         entity.setSecondsRead(dto.getSecondsRead() != null ? dto.getSecondsRead() : 0);
-        entity.setSessionType(dto.getSessionType() != null ? dto.getSessionType() : 1);
-        entity.setIsCommon(dto.getIsCommon() != null ? dto.getIsCommon() : false);
-        if (dto.getCreatedAt() != null) {
-            entity.setCreatedAt(Instant.ofEpochMilli(dto.getCreatedAt()));
-        } else {
-            entity.setCreatedAt(Instant.now());
-        }
+        entity.setSessionType(sessionType);
+        entity.setCreatedAt(createdAt);
 
         return ReadingSessionDTO.from(repositoryService.getReadingSessionRepository().save(entity));
     }
 
+    private ReadingCycleEntity resolveCycleForSession(
+            UserEntity user,
+            BookEntity book,
+            ReadingSessionDTO dto,
+            Instant sessionCreatedAt
+    ) {
+        if (dto.getReadingCycleId() != null) {
+            ReadingCycleEntity requested = repositoryService.getReadingCycleRepository()
+                    .findById(dto.getReadingCycleId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reading cycle not found"));
+            if (!requested.getUser().getId().equals(user.getId())
+                    || !requested.getBook().getId().equals(book.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Reading cycle does not belong to user/book");
+            }
+            return requested;
+        }
+
+        return repositoryService.getReadingCycleRepository()
+                .findFirstByUserIdAndBookIdAndEndedAtIsNullOrderByIdDesc(user.getId(), book.getId())
+                .orElseGet(() -> {
+                    ReadingCycleEntity newCycle = new ReadingCycleEntity();
+                    newCycle.setUser(user);
+                    newCycle.setBook(book);
+                    newCycle.setIsCommon(Boolean.TRUE.equals(dto.getIsCommon()));
+                    newCycle.setStartedAt(sessionCreatedAt);
+                    newCycle.setEndedAt(null);
+                    return repositoryService.getReadingCycleRepository().save(newCycle);
+                });
+    }
+
     @DeleteMapping("/readingSessions/{id}")
+    @Transactional
     @CacheEvict(cacheNames = "user-statistics", allEntries = true)
     public ResponseEntity<?> deleteReadingSession(HttpSession session, @PathVariable Long id) {
         UserEntity user = getAuthenticatedUser(session);
@@ -1253,7 +1426,34 @@ public class UserController {
             if (!entity.getUser().getId().equals(user.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+            ReadingCycleEntity cycle = entity.getReadingCycle();
             repositoryService.getReadingSessionRepository().delete(entity);
+            repositoryService.getReadingSessionRepository().flush();
+
+            if (cycle != null && cycle.getId() != null) {
+                List<ReadingSessionEntity> remaining = repositoryService.getReadingSessionRepository()
+                        .findAllByReadingCycleIdOrderByCreatedAtAscIdAsc(cycle.getId());
+                if (remaining.isEmpty()) {
+                    repositoryService.getReadingCycleRepository().delete(cycle);
+                } else {
+                    Instant startedAt = null;
+                    Instant endedAt = null;
+                    for (ReadingSessionEntity rs : remaining) {
+                        if (Integer.valueOf(0).equals(rs.getSessionType()) && startedAt == null) {
+                            startedAt = rs.getCreatedAt();
+                        }
+                        if (Integer.valueOf(2).equals(rs.getSessionType())) {
+                            endedAt = rs.getCreatedAt();
+                        }
+                    }
+                    if (startedAt == null) {
+                        startedAt = remaining.get(0).getCreatedAt();
+                    }
+                    cycle.setStartedAt(startedAt);
+                    cycle.setEndedAt(endedAt);
+                    repositoryService.getReadingCycleRepository().save(cycle);
+                }
+            }
             return ResponseEntity.ok().build();
         }).orElse(ResponseEntity.notFound().build());
     }

@@ -464,6 +464,7 @@ class BooksRepository {
     return ReadingSession(
       id: (map['id'] as num?)?.toInt(),
       bookId: (map['bookId'] as num).toInt(),
+      readingCycleId: (map['readingCycleId'] as num?)?.toInt(),
       currentPage: (map['currentPage'] as num?)?.toInt() ?? 0,
       minutesRead: (map['minutesRead'] as num?)?.toInt() ?? 0,
       secondsRead: (map['secondsRead'] as num?)?.toInt() ?? 0,
@@ -478,6 +479,7 @@ class BooksRepository {
   Future<void> addReadingSession(ReadingSession session) async {
     final payload = <String, dynamic>{
       'bookId': session.bookId,
+      if (session.readingCycleId != null) 'readingCycleId': session.readingCycleId,
       'currentPage': session.currentPage,
       'minutesRead': session.minutesRead,
       'secondsRead': session.secondsRead,

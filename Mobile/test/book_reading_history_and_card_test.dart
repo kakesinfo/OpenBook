@@ -178,6 +178,115 @@ void main() {
         [ReadingSessionType.end, ReadingSessionType.progress, ReadingSessionType.start],
       );
     });
+
+    test('groups directly by readingCycleId when present on sessions', () {
+      final sessions = [
+        ReadingSession(
+          id: 1,
+          bookId: 10,
+          readingCycleId: 100,
+          currentPage: 50,
+          minutesRead: 20,
+          createdAt: DateTime(2026, 1, 10, 10, 0),
+          type: ReadingSessionType.progress,
+          isCommon: true,
+        ),
+        ReadingSession(
+          id: 2,
+          bookId: 10,
+          readingCycleId: 100,
+          currentPage: 120,
+          minutesRead: 30,
+          createdAt: DateTime(2026, 1, 12, 10, 0),
+          type: ReadingSessionType.progress,
+          isCommon: true,
+        ),
+        ReadingSession(
+          id: 3,
+          bookId: 10,
+          readingCycleId: 200,
+          currentPage: 30,
+          minutesRead: 15,
+          createdAt: DateTime(2026, 11, 1, 10, 0),
+          type: ReadingSessionType.progress,
+          isCommon: false,
+        ),
+      ];
+
+      final cycles = groupSessionsIntoReadingCycles(sessions);
+      expect(cycles.length, 2);
+
+      expect(cycles[0].cycleId, 200);
+      expect(cycles[0].readingNumber, 2);
+      expect(cycles[0].isCommon, isFalse);
+      expect(cycles[0].status, ReadingCycleStatus.inProgress);
+      expect(cycles[0].sessions.length, 1);
+
+      expect(cycles[1].cycleId, 100);
+      expect(cycles[1].readingNumber, 1);
+      expect(cycles[1].isCommon, isTrue);
+      expect(cycles[1].status, ReadingCycleStatus.unfinished);
+      expect(cycles[1].sessions.length, 2);
+    });
+
+    test('orders cycles by cycleId even when a newer open cycle has a backdated start', () {
+      final sessions = [
+        ReadingSession(
+          id: 1494,
+          bookId: 2449,
+          readingCycleId: 218,
+          currentPage: 0,
+          minutesRead: 0,
+          createdAt: DateTime.utc(2026, 11, 18, 23, 0),
+          type: ReadingSessionType.start,
+          isCommon: true,
+        ),
+        ReadingSession(
+          id: 1492,
+          bookId: 2449,
+          readingCycleId: 215,
+          currentPage: 0,
+          minutesRead: 0,
+          createdAt: DateTime.utc(2026, 11, 19, 19, 32),
+          type: ReadingSessionType.start,
+          isCommon: true,
+        ),
+        ReadingSession(
+          id: 1493,
+          bookId: 2449,
+          readingCycleId: 215,
+          currentPage: 320,
+          minutesRead: 0,
+          createdAt: DateTime.utc(2026, 11, 19, 20, 49),
+          type: ReadingSessionType.end,
+          isCommon: true,
+        ),
+      ];
+
+      final cycles = groupSessionsIntoReadingCycles(
+        sessions,
+        bookStatus: BookStatus.reading,
+      );
+      expect(cycles.length, 2);
+
+      // Newest reading (cycle 218) is Lecture #2 (En cours)
+      expect(cycles[0].cycleId, 218);
+      expect(cycles[0].readingNumber, 2);
+      expect(cycles[0].status, ReadingCycleStatus.inProgress);
+      expect(cycles[0].sessions.map((s) => s.id).toList(), [1494]);
+
+      // First reading (cycle 215) is Lecture #1 (Terminée) with Start + End
+      expect(cycles[1].cycleId, 215);
+      expect(cycles[1].readingNumber, 1);
+      expect(cycles[1].status, ReadingCycleStatus.completed);
+      expect(cycles[1].sessions.map((s) => s.id).toList(), [1492, 1493]);
+
+      // Active cycle for Home card must be cycle 218 (page 0), NOT finished cycle 215 (page 320)
+      final active = activeCycleSessionsFor(sessions);
+      expect(active.length, 1);
+      expect(active.first.readingCycleId, 218);
+      expect(active.first.currentPage, 0);
+    });
   });
 
   group('BookReadingHistoryPage widget', () {
@@ -279,6 +388,13 @@ void main() {
       expect(find.text('Page 150'), findsOneWidget);
       expect(find.text('Page 75'), findsNothing);
       expect(find.byType(CommonReadingBadge), findsOneWidget);
+
+      // Verify chronological top-to-bottom order: Start -> Progress -> End
+      final startY = tester.getTopLeft(find.text('Start')).dy;
+      final progressY = tester.getTopLeft(find.text('Progress')).dy;
+      final endY = tester.getTopLeft(find.text('End')).dy;
+      expect(startY, lessThan(progressY));
+      expect(progressY, lessThan(endY));
     });
   });
 
