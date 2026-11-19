@@ -33,6 +33,8 @@ import {
     faChevronRight,
     faChevronDown,
     faBookOpen,
+    faPause,
+    faBan,
     faBuilding,
     faLayerGroup,
     faBell,
@@ -1511,6 +1513,69 @@ export default function BookPage() {
         ? coverPreviewUrl
         : (coverRemoteUrl.trim().startsWith("http") ? coverRemoteUrl.trim() : null);
 
+    const renderCoverStatusBadge = () => {
+        if (bookStatus === "FOR_SALE") {
+            return (
+                <span className="book-page__cover-status-badge is-for-sale">
+                    <FontAwesomeIcon icon={faTag} />
+                    <span>{tr("For sale", "À vendre")}</span>
+                </span>
+            );
+        }
+        if (bookStatus === "SOLD") {
+            return (
+                <span className="book-page__cover-status-badge is-sold">
+                    <FontAwesomeIcon icon={faCheck} />
+                    <span>{tr("Sold", "Vendu")}</span>
+                </span>
+            );
+        }
+        const rStatus = (readingStatus || "").toUpperCase();
+        if (rStatus === "READ" || rStatus === "LU") {
+            return (
+                <span className="book-page__cover-status-badge is-read">
+                    <FontAwesomeIcon icon={faCheck} />
+                    <span>{tr("Read", "Lu")}</span>
+                </span>
+            );
+        }
+        if (rStatus === "READING" || rStatus === "EN_COURS") {
+            return (
+                <span className="book-page__cover-status-badge is-reading">
+                    <FontAwesomeIcon icon={faBookOpen} />
+                    <span>{tr("Reading", "En cours")}</span>
+                </span>
+            );
+        }
+        if (rStatus === "PAUSED" || rStatus === "EN_PAUSE" || rStatus === "PAUSE") {
+            return (
+                <span className="book-page__cover-status-badge is-paused">
+                    <FontAwesomeIcon icon={faPause} />
+                    <span>{tr("Paused", "En pause")}</span>
+                </span>
+            );
+        }
+        if (rStatus === "ABANDONED" || rStatus === "ABANDONNE") {
+            return (
+                <span className="book-page__cover-status-badge is-abandoned">
+                    <FontAwesomeIcon icon={faBan} />
+                    <span>{tr("Abandoned", "Abandonné")}</span>
+                </span>
+            );
+        }
+        if (bookStatus === "WISHLISTED") {
+            return (
+                <span className="book-page__cover-status-badge is-wishlisted">
+                    <FontAwesomeIcon icon={faHeart} />
+                    <span>{tr("Wishlisted", "Souhaité")}</span>
+                </span>
+            );
+        }
+        return null;
+    };
+
+    const coverStatusBadge = renderCoverStatusBadge();
+
     return (
         <div className="book-page">
             <WrapperHeader>
@@ -1557,13 +1622,22 @@ export default function BookPage() {
                                         <span>{book.title}</span>
                                     </div>
                                 )}
-                                {isCommonReading && (
-                                    <span
-                                        className="book-page__cover-common-ribbon"
-                                        title={tr("Common reading", "Lecture commune")}
-                                    >
-                                        <FontAwesomeIcon icon={faUsers} />
-                                    </span>
+                                {(coverStatusBadge || isCommonReading) && (
+                                    <>
+                                        <div className="book-page__cover-scrim" aria-hidden="true" />
+                                        <div className="book-page__cover-top-badges">
+                                            {coverStatusBadge}
+                                            {isCommonReading && (
+                                                <span
+                                                    className="book-page__cover-common-badge"
+                                                    title={tr("Common reading", "Lecture commune")}
+                                                    aria-label={tr("Common reading", "Lecture commune")}
+                                                >
+                                                    <FontAwesomeIcon icon={faUsers} />
+                                                </span>
+                                            )}
+                                        </div>
+                                    </>
                                 )}
                                 <button
                                     type="button"

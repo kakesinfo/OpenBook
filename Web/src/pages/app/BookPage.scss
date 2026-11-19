@@ -138,23 +138,118 @@
     display: block;
   }
 
-  &__cover-common-ribbon {
+  &__cover-scrim {
     position: absolute;
     top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.42) 0%, rgba(0, 0, 0, 0.12) 60%, transparent 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  &__cover-top-badges {
+    position: absolute;
+    top: 12px;
     left: 12px;
-    width: 30px;
-    height: 42px;
-    background: var(--accent-secondary);
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 10px), 0 100%);
     display: flex;
-    justify-content: center;
-    padding-top: 8px;
-    color: #fff;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    pointer-events: none;
     z-index: 3;
-    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5));
+  }
+
+  &__cover-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    white-space: nowrap;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    pointer-events: auto;
 
     svg {
-      font-size: 1rem;
+      font-size: 0.68rem;
+      flex-shrink: 0;
+    }
+
+    &.is-read {
+      background: rgba(16, 185, 129, 0.9);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+
+      [data-theme="beige"] & {
+        background: rgba(21, 128, 61, 0.92);
+      }
+    }
+
+    &.is-reading {
+      background: rgba(139, 92, 246, 0.9);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+
+      [data-theme="beige"] & {
+        background: rgba(124, 58, 237, 0.92);
+      }
+    }
+
+    &.is-paused {
+      background: rgba(71, 85, 105, 0.9);
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    &.is-abandoned {
+      background: rgba(225, 29, 72, 0.9);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+    }
+
+    &.is-for-sale {
+      background: rgba(217, 119, 6, 0.92);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.26);
+    }
+
+    &.is-sold {
+      background: rgba(51, 65, 85, 0.9);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    &.is-wishlisted {
+      background: rgba(244, 63, 94, 0.9);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.26);
+    }
+  }
+
+  &__cover-common-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-full);
+    background: var(--accent-secondary);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.32);
+    pointer-events: auto;
+    flex-shrink: 0;
+
+    svg {
+      font-size: 0.72rem;
     }
   }
 
