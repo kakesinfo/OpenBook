@@ -65,13 +65,27 @@ export default function BookCard({
                     />
                 </Link>
 
-                {statusBadge}
-                {isCommon && (
-                    <span className="book-card__common-ribbon" title={tr("Common reading", "Lecture commune")}>
-                        <FontAwesomeIcon icon={faUsers} />
-                    </span>
+                <div className="book-card__scrim book-card__scrim--top" aria-hidden="true" />
+                {actions && <div className="book-card__scrim book-card__scrim--bottom" aria-hidden="true" />}
+
+                {(statusBadge || isCommon || badgeText) && (
+                    <div className="book-card__top-bar">
+                        <div className="book-card__top-left">
+                            {statusBadge}
+                            {isCommon && (
+                                <span
+                                    className="book-card__common-badge"
+                                    title={tr("Common reading", "Lecture commune")}
+                                    aria-label={tr("Common reading", "Lecture commune")}
+                                >
+                                    <FontAwesomeIcon icon={faUsers} />
+                                </span>
+                            )}
+                        </div>
+                        {badgeText && <span className="book-card__badge">{badgeText}</span>}
+                    </div>
                 )}
-                {badgeText && <span className="book-card__badge">{badgeText}</span>}
+
                 {actions && <div className="book-card__actions">{actions}</div>}
             </div>
 
