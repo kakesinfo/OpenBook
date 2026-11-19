@@ -32,6 +32,7 @@ function getStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string) => st
 interface BookListProps {
     books: BookSummaryDTO[];
     onBookStatusChange?: (bookId: string, newStatus: string | null) => void;
+    commonBookIds?: Set<string>;
     showReleaseDate?: boolean;
     showFinishedDate?: boolean;
 }
@@ -39,6 +40,7 @@ interface BookListProps {
 export default function BookList({
     books,
     onBookStatusChange,
+    commonBookIds,
     showReleaseDate = false,
     showFinishedDate = false
 }: BookListProps) {
@@ -140,6 +142,7 @@ export default function BookList({
                         book={book}
                         statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" }, tr)}
                         badgeText={book.volume > 0 ? `Vol. ${book.volume}` : tr("One-shot", "Unique")}
+                        isCommon={commonBookIds?.has(book.id) ?? false}
                         showReleaseDate={showReleaseDate}
                         showFinishedDate={showFinishedDate}
                         actions={

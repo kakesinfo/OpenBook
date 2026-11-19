@@ -555,7 +555,11 @@ public class UserController {
         }
         String rStatus = (readingStatus != null ? readingStatus : "UNREAD").toUpperCase();
         if (filter.equalsIgnoreCase("toread")) {
-            return !rStatus.equals("READ") && !rStatus.equals("LU") && !rStatus.equals("ABANDONED") && !rStatus.equals("ABANDONNE");
+            return !rStatus.equals("READ") && !rStatus.equals("LU") && !rStatus.equals("ABANDONED") && !rStatus.equals("ABANDONNE")
+                    && !rStatus.equals("READING") && !rStatus.equals("EN_COURS");
+        }
+        if (filter.equalsIgnoreCase("reading")) {
+            return rStatus.equals("READING") || rStatus.equals("EN_COURS");
         }
         if (filter.equalsIgnoreCase("read")) {
             return rStatus.equals("READ") || rStatus.equals("LU");
@@ -609,6 +613,7 @@ public class UserController {
             Map<String, Long> emptyCounts = new HashMap<>();
             emptyCounts.put("all", 0L);
             emptyCounts.put("toread", 0L);
+            emptyCounts.put("reading", 0L);
             emptyCounts.put("read", 0L);
             emptyCounts.put("abandoned", 0L);
             return ResponseEntity.ok(new CollectionPageDTO(Collections.emptyList(), 0L, 1, 1, size != null ? size : 24, emptyCounts, 0L));
@@ -654,6 +659,7 @@ public class UserController {
         long allCount = ownedEntries.size();
         long readCount = 0;
         long abandonedCount = 0;
+        long readingCount = 0;
         long toReadCount = 0;
 
         for (UserOwnsBookEntity uob : ownedEntries) {
@@ -663,6 +669,8 @@ public class UserController {
                 readCount++;
             } else if ("ABANDONED".equals(rStatus) || "ABANDONNE".equals(rStatus)) {
                 abandonedCount++;
+            } else if ("READING".equals(rStatus) || "EN_COURS".equals(rStatus)) {
+                readingCount++;
             } else {
                 toReadCount++;
             }
@@ -671,6 +679,7 @@ public class UserController {
         statusCounts.put("all", allCount);
         statusCounts.put("read", readCount);
         statusCounts.put("abandoned", abandonedCount);
+        statusCounts.put("reading", readingCount);
         statusCounts.put("toread", toReadCount);
 
         // Filter by status, category, search

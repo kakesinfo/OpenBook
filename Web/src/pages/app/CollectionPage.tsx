@@ -5,6 +5,8 @@ import BookList from "../../components/BookList/BookList.tsx";
 import Pagination from "../../components/Pagination/Pagination.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import CollectionPageDTO from "../../dto/CollectionPage.dto.ts";
+import ReadingSessionDTO from "../../dto/ReadingSession.dto.ts";
+import { computeCommonReadingBookIds } from "../../components/HomeWidgets/readingUtils.ts";
 import { Link, useSearchParams } from "react-router";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -35,7 +37,7 @@ import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
 import HeaderFilterTabs from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
 
-type TomeStatusFilter = "all" | "toread" | "read" | "abandoned";
+type TomeStatusFilter = "all" | "toread" | "reading" | "read" | "abandoned";
 type DisplayMode = "grid" | "list";
 
 interface StatusTab {
@@ -55,6 +57,7 @@ interface HoveredCoverState {
 const STATUS_TABS: StatusTab[] = [
     { id: "all", labelEn: "All", labelFr: "Tous", icon: faLayerGroup },
     { id: "toread", labelEn: "To read", labelFr: "Pile à lire", icon: faBookBookmark },
+    { id: "reading", labelEn: "Reading", labelFr: "En cours", icon: faBookOpen },
     { id: "read", labelEn: "Read", labelFr: "Lu", icon: faCheck },
     { id: "abandoned", labelEn: "Abandoned", labelFr: "Abandonné", icon: faBan }
 ];
@@ -65,7 +68,11 @@ function matchesTomeStatus(book: BookSummaryDTO, filter: TomeStatusFilter): bool
     const rStatus = (book.readingStatus || "").toUpperCase();
 
     if (filter === "toread") {
-        return rStatus !== "READ" && rStatus !== "LU" && rStatus !== "ABANDONED" && rStatus !== "ABANDONNE";
+        return rStatus !== "READ" && rStatus !== "LU" && rStatus !== "ABANDONED" && rStatus !== "ABANDONNE"
+            && rStatus !== "READING" && rStatus !== "EN_COURS";
+    }
+    if (filter === "reading") {
+        return rStatus === "READING" || rStatus === "EN_COURS";
     }
     if (filter === "read") {
         return rStatus === "READ" || rStatus === "LU";
@@ -134,10 +141,12 @@ export default function CollectionPage() {
     const [totalPages, setTotalPages] = useState<number>(1);
     const [totalOwned, setTotalOwned] = useState<number>(0);
     const [refreshKey, setRefreshKey] = useState<number>(0);
+    const [commonBookIds, setCommonBookIds] = useState<Set<string>>(new Set());
 
     const [statusCounts, setStatusCounts] = useState<Record<TomeStatusFilter, number>>({
         all: 0,
         toread: 0,
+        reading: 0,
         read: 0,
         abandoned: 0
     });
@@ -145,6 +154,22 @@ export default function CollectionPage() {
     const [selectedStatus, setSelectedStatus] = useState<TomeStatusFilter>("all");
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>(DEFAULT_APP_CATEGORIES);
+
+    // Fetch all reading sessions once to flag common (group) readings on cards
+    useEffect(() => {
+        let isCancelled = false;
+        session.customFetch("/user/readingSessions", { method: "GET" })
+            .then(async (res) => {
+                if (!isCancelled && res.ok) {
+                    const data: ReadingSessionDTO[] = await res.json();
+                    if (Array.isArray(data)) setCommonBookIds(computeCommonReadingBookIds(data));
+                }
+            })
+            .catch(() => {});
+        return () => {
+            isCancelled = true;
+        };
+    }, [session, refreshKey]);
 
     useEffect(() => {
         session.customFetch("/series/categories", { method: "GET" })
@@ -302,15 +327,17 @@ export default function CollectionPage() {
                             // Fallback if backend returns all books as array
                             const all = data.length;
                             let toread = 0;
+                            let reading = 0;
                             let read = 0;
                             let abandoned = 0;
                             for (const b of data) {
                                 const r = (b.readingStatus || "UNREAD").toUpperCase();
                                 if (r === "READ" || r === "LU") read++;
                                 else if (r === "ABANDONED" || r === "ABANDONNE") abandoned++;
+                                else if (r === "READING" || r === "EN_COURS") reading++;
                                 else toread++;
                             }
-                            setStatusCounts({ all, toread, read, abandoned });
+                            setStatusCounts({ all, toread, reading, read, abandoned });
                             setTotalOwned(all);
 
                             const filtered = data.filter((b) => {
@@ -349,6 +376,7 @@ export default function CollectionPage() {
                                 setStatusCounts({
                                     all: data.statusCounts.all ?? data.totalOwned ?? 0,
                                     toread: data.statusCounts.toread ?? 0,
+                                    reading: data.statusCounts.reading ?? 0,
                                     read: data.statusCounts.read ?? 0,
                                     abandoned: data.statusCounts.abandoned ?? 0
                                 });
@@ -545,6 +573,7 @@ export default function CollectionPage() {
                             /* Galerie Mode (Backend Paginated) */
                             <BookList
                                 books={books}
+                                commonBookIds={commonBookIds}
                                 onBookStatusChange={(_bookId, newStatus) => {
                                     if (newStatus !== "OWNED") {
                                         setRefreshKey(prev => prev + 1);

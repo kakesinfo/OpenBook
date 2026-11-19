@@ -64,6 +64,27 @@
     z-index: 2;
   }
 
+  &__common-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-full);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-secondary);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: var(--shadow-sm);
+    z-index: 2;
+
+    svg {
+      font-size: 0.7rem;
+    }
+  }
+
   &__actions {
     position: absolute;
     right: 10px;
