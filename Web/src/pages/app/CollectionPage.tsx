@@ -5,8 +5,7 @@ import BookList from "../../components/BookList/BookList.tsx";
 import Pagination from "../../components/Pagination/Pagination.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import CollectionPageDTO from "../../dto/CollectionPage.dto.ts";
-import ReadingSessionDTO from "../../dto/ReadingSession.dto.ts";
-import { computeCommonReadingBookIds } from "../../components/HomeWidgets/readingUtils.ts";
+import useCommonReadingBookIds from "../../hooks/UseCommonReadingBookIds.ts";
 import { Link, useSearchParams } from "react-router";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -23,7 +22,8 @@ import {
     faList,
     faChevronRight,
     faStar,
-    faGem
+    faGem,
+    faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import Select, {
     type CategoryOption,
@@ -141,7 +141,7 @@ export default function CollectionPage() {
     const [totalPages, setTotalPages] = useState<number>(1);
     const [totalOwned, setTotalOwned] = useState<number>(0);
     const [refreshKey, setRefreshKey] = useState<number>(0);
-    const [commonBookIds, setCommonBookIds] = useState<Set<string>>(new Set());
+    const commonBookIds = useCommonReadingBookIds();
 
     const [statusCounts, setStatusCounts] = useState<Record<TomeStatusFilter, number>>({
         all: 0,
@@ -154,22 +154,6 @@ export default function CollectionPage() {
     const [selectedStatus, setSelectedStatus] = useState<TomeStatusFilter>("all");
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>(DEFAULT_APP_CATEGORIES);
-
-    // Fetch all reading sessions once to flag common (group) readings on cards
-    useEffect(() => {
-        let isCancelled = false;
-        session.customFetch("/user/readingSessions", { method: "GET" })
-            .then(async (res) => {
-                if (!isCancelled && res.ok) {
-                    const data: ReadingSessionDTO[] = await res.json();
-                    if (Array.isArray(data)) setCommonBookIds(computeCommonReadingBookIds(data));
-                }
-            })
-            .catch(() => {});
-        return () => {
-            isCancelled = true;
-        };
-    }, [session, refreshKey]);
 
     useEffect(() => {
         session.customFetch("/series/categories", { method: "GET" })
@@ -573,7 +557,6 @@ export default function CollectionPage() {
                             /* Galerie Mode (Backend Paginated) */
                             <BookList
                                 books={books}
-                                commonBookIds={commonBookIds}
                                 onBookStatusChange={(_bookId, newStatus) => {
                                     if (newStatus !== "OWNED") {
                                         setRefreshKey(prev => prev + 1);
@@ -618,6 +601,11 @@ export default function CollectionPage() {
                                                         </span>
                                                     );
                                                 })()}
+                                                {commonBookIds.has(book.id) && (
+                                                    <span className="collection-row__common-badge" title={tr("Common reading", "Lecture commune")}>
+                                                        <FontAwesomeIcon icon={faUsers} />
+                                                    </span>
+                                                )}
                                             </div>
 
                                             {/* Series / Volume column */}

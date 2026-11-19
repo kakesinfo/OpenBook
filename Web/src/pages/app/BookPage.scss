@@ -138,24 +138,23 @@
     display: block;
   }
 
-  &__cover-common-badge {
+  &__cover-common-ribbon {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    top: 0;
+    left: 12px;
     width: 30px;
-    height: 30px;
-    border-radius: var(--radius-full);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    height: 42px;
     background: var(--accent-secondary);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 10px), 0 100%);
+    display: flex;
+    justify-content: center;
+    padding-top: 8px;
     color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    box-shadow: var(--shadow-md);
-    z-index: 2;
+    z-index: 3;
+    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.5));
 
     svg {
-      font-size: 0.85rem;
+      font-size: 1rem;
     }
   }
 

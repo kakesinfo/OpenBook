@@ -12,6 +12,7 @@ import 'book_reading_session_page.dart';
 import 'components/app_header.dart';
 import 'components/book_completion_dialog.dart';
 import 'components/book_cover.dart';
+import 'components/common_reading_ribbon.dart';
 import 'components/edit_book_sheet.dart';
 import 'components/reading_timer_modal.dart';
 import 'components/start_reading_sheet.dart';
@@ -268,30 +269,10 @@ class BookDetailsPage extends ConsumerWidget {
                     borderRadius: AppTheme.radiusLg,
                   ),
                   if (isCommonReading)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Tooltip(
-                        message: 'Lecture commune',
-                        child: Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: AppTheme.accentSecondary,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.35),
-                              width: 1,
-                            ),
-                            boxShadow: AppTheme.cardShadow,
-                          ),
-                          child: const Icon(
-                            Icons.groups_rounded,
-                            size: 16,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
+                    const Positioned(
+                      top: 0,
+                      left: 8,
+                      child: CommonReadingRibbon(),
                     ),
                 ],
               ),

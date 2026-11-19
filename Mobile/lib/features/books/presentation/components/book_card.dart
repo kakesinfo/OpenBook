@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../application/books_providers.dart';
 import '../../data/book.dart';
 import 'book_cover.dart';
+import 'common_reading_ribbon.dart';
 
 class BookCard extends ConsumerStatefulWidget {
   const BookCard({
@@ -179,28 +180,6 @@ class _BookCardState extends ConsumerState<BookCard>
                       ],
                     ),
                   ),
-                  if (progress.isCommon) ...[
-                    const SizedBox(width: 8),
-                    Tooltip(
-                      message: 'Lecture commune',
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.accentSecondaryLight,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                          border: Border.all(
-                            color: AppTheme.accentSecondary.withValues(alpha: 0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.groups_rounded,
-                          size: 14,
-                          color: AppTheme.accentSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -325,11 +304,22 @@ class _BookCardState extends ConsumerState<BookCard>
                         Positioned(
                           left: 14,
                           bottom: -12,
-                          child: BookCover(
-                            book: book,
-                            width: 92,
-                            height: 140,
-                            borderRadius: AppTheme.radiusMd,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              BookCover(
+                                book: book,
+                                width: 92,
+                                height: 140,
+                                borderRadius: AppTheme.radiusMd,
+                              ),
+                              if (progress.isCommon)
+                                const Positioned(
+                                  top: 0,
+                                  left: 6,
+                                  child: CommonReadingRibbon(),
+                                ),
+                            ],
                           ),
                         ),
                         // Quick Action Buttons (timer + log session)

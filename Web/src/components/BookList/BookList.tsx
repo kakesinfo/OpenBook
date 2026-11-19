@@ -4,27 +4,29 @@ import "./BookList.scss";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBook, faHeart, faCheck } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
+import useCommonReadingBookIds from "../../hooks/UseCommonReadingBookIds.ts";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useSnackbar } from "notistack";
 import BookCard from "../BookCard/BookCard.tsx";
 
-function getStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string) => string) {
+function getStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string) => string, offsetForRibbon = false) {
+    const offsetClass = offsetForRibbon ? " is-offset" : "";
     if (book.status === "FOR_SALE") {
-        return <span className="booklist-card__status-badge is-for-sale">{tr("For sale", "À vendre")}</span>;
+        return <span className={`booklist-card__status-badge is-for-sale${offsetClass}`}>{tr("For sale", "À vendre")}</span>;
     }
     const rStatus = (book.readingStatus || "").toUpperCase();
     if (rStatus === "READ" || rStatus === "LU") {
-        return <span className="booklist-card__status-badge is-read">{tr("Read", "Lu")}</span>;
+        return <span className={`booklist-card__status-badge is-read${offsetClass}`}>{tr("Read", "Lu")}</span>;
     }
 
     if (rStatus === "READING" || rStatus === "EN_COURS") {
-        return <span className="booklist-card__status-badge is-reading">{tr("Reading", "En cours")}</span>;
+        return <span className={`booklist-card__status-badge is-reading${offsetClass}`}>{tr("Reading", "En cours")}</span>;
     }
     if (rStatus === "PAUSED" || rStatus === "EN_PAUSE" || rStatus === "PAUSE") {
-        return <span className="booklist-card__status-badge is-paused">{tr("Paused", "En pause")}</span>;
+        return <span className={`booklist-card__status-badge is-paused${offsetClass}`}>{tr("Paused", "En pause")}</span>;
     }
     if (rStatus === "ABANDONED" || rStatus === "ABANDONNE") {
-        return <span className="booklist-card__status-badge is-abandoned">{tr("Abandoned", "Abandonné")}</span>;
+        return <span className={`booklist-card__status-badge is-abandoned${offsetClass}`}>{tr("Abandoned", "Abandonné")}</span>;
     }
     return null;
 }
@@ -32,7 +34,6 @@ function getStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string) => st
 interface BookListProps {
     books: BookSummaryDTO[];
     onBookStatusChange?: (bookId: string, newStatus: string | null) => void;
-    commonBookIds?: Set<string>;
     showReleaseDate?: boolean;
     showFinishedDate?: boolean;
 }
@@ -40,11 +41,11 @@ interface BookListProps {
 export default function BookList({
     books,
     onBookStatusChange,
-    commonBookIds,
     showReleaseDate = false,
     showFinishedDate = false
 }: BookListProps) {
     const session = useSession();
+    const commonBookIds = useCommonReadingBookIds();
     const { tr } = useLanguage();
     const { enqueueSnackbar } = useSnackbar();
     const [statusOverrides, setStatusOverrides] = useState<Record<string, string | null>>({});
@@ -140,9 +141,9 @@ export default function BookList({
                     <BookCard
                         key={book.id}
                         book={book}
-                        statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" }, tr)}
+                        statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" }, tr, commonBookIds.has(book.id))}
                         badgeText={book.volume > 0 ? `Vol. ${book.volume}` : tr("One-shot", "Unique")}
-                        isCommon={commonBookIds?.has(book.id) ?? false}
+                        isCommon={commonBookIds.has(book.id)}
                         showReleaseDate={showReleaseDate}
                         showFinishedDate={showFinishedDate}
                         actions={

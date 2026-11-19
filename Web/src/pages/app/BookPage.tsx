@@ -1559,7 +1559,7 @@ export default function BookPage() {
                                 )}
                                 {isCommonReading && (
                                     <span
-                                        className="book-page__cover-common-badge"
+                                        className="book-page__cover-common-ribbon"
                                         title={tr("Common reading", "Lecture commune")}
                                     >
                                         <FontAwesomeIcon icon={faUsers} />

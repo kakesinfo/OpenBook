@@ -64,24 +64,23 @@
     z-index: 2;
   }
 
-  &__common-badge {
+  &__common-ribbon {
     position: absolute;
-    bottom: 8px;
+    top: 0;
     left: 8px;
-    width: 24px;
-    height: 24px;
-    border-radius: var(--radius-full);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    width: 22px;
+    height: 30px;
     background: var(--accent-secondary);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 7px), 0 100%);
+    display: flex;
+    justify-content: center;
+    padding-top: 5px;
     color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: var(--shadow-sm);
-    z-index: 2;
+    z-index: 3;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
 
     svg {
-      font-size: 0.7rem;
+      font-size: 0.72rem;
     }
   }
 

@@ -67,7 +67,7 @@ export default function BookCard({
 
                 {statusBadge}
                 {isCommon && (
-                    <span className="book-card__common-badge" title={tr("Common reading", "Lecture commune")}>
+                    <span className="book-card__common-ribbon" title={tr("Common reading", "Lecture commune")}>
                         <FontAwesomeIcon icon={faUsers} />
                     </span>
                 )}
