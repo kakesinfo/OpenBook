@@ -10,24 +10,23 @@ import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useSnackbar } from "notistack";
 import BookCard from "../BookCard/BookCard.tsx";
 
-function getStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string) => string, offsetForRibbon = false) {
-    const offsetClass = offsetForRibbon ? " is-offset" : "";
+function getStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string) => string) {
     if (book.status === "FOR_SALE") {
-        return <span className={`booklist-card__status-badge is-for-sale${offsetClass}`}>{tr("For sale", "À vendre")}</span>;
+        return <span className="booklist-card__status-badge is-for-sale">{tr("For sale", "À vendre")}</span>;
     }
     const rStatus = (book.readingStatus || "").toUpperCase();
     if (rStatus === "READ" || rStatus === "LU") {
-        return <span className={`booklist-card__status-badge is-read${offsetClass}`}>{tr("Read", "Lu")}</span>;
+        return <span className="booklist-card__status-badge is-read">{tr("Read", "Lu")}</span>;
     }
 
     if (rStatus === "READING" || rStatus === "EN_COURS") {
-        return <span className={`booklist-card__status-badge is-reading${offsetClass}`}>{tr("Reading", "En cours")}</span>;
+        return <span className="booklist-card__status-badge is-reading">{tr("Reading", "En cours")}</span>;
     }
     if (rStatus === "PAUSED" || rStatus === "EN_PAUSE" || rStatus === "PAUSE") {
-        return <span className={`booklist-card__status-badge is-paused${offsetClass}`}>{tr("Paused", "En pause")}</span>;
+        return <span className="booklist-card__status-badge is-paused">{tr("Paused", "En pause")}</span>;
     }
     if (rStatus === "ABANDONED" || rStatus === "ABANDONNE") {
-        return <span className={`booklist-card__status-badge is-abandoned${offsetClass}`}>{tr("Abandoned", "Abandonné")}</span>;
+        return <span className="booklist-card__status-badge is-abandoned">{tr("Abandoned", "Abandonné")}</span>;
     }
     return null;
 }
@@ -142,7 +141,7 @@ export default function BookList({
                     <BookCard
                         key={book.id}
                         book={book}
-                        statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" }, tr, isCommonBook(commonBookIds, book.id))}
+                        statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" }, tr)}
                         badgeText={book.volume > 0 ? `Vol. ${book.volume}` : tr("One-shot", "Unique")}
                         isCommon={isCommonBook(commonBookIds, book.id)}
                         showReleaseDate={showReleaseDate}

@@ -16,6 +16,12 @@
     gap: 14px;
     padding: 16px 14px;
   }
+
+  /* Status badge revealed on card hover (card root is .book-card) */
+  .book-card:hover .booklist-card__status-badge {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .booklist-card {
@@ -102,7 +108,7 @@
   /* Status badge on top-left */
   &__status-badge {
     position: absolute;
-    top: 8px;
+    bottom: 8px;
     left: 8px;
     padding: 2px 7px;
     border-radius: 4px;
@@ -112,6 +118,14 @@
     letter-spacing: 0.04em;
     backdrop-filter: blur(6px);
     z-index: 2;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+
+    @media (hover: none) {
+      opacity: 1;
+      transform: translateY(0);
+    }
 
     &.is-for-sale {
       background: var(--accent-primary);
@@ -147,10 +161,6 @@
       background: rgba(239, 68, 68, 0.9);
       color: #fff;
       border: 1px solid rgba(255, 255, 255, 0.25);
-    }
-
-    &.is-offset {
-      left: 38px;
     }
   }
 
