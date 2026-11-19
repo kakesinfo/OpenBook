@@ -72,6 +72,9 @@ class BookDetailsPage extends ConsumerWidget {
         : const AsyncValue<Map<String, dynamic>>.data({});
     final bookDetails = bookDetailsAsync.value;
 
+    final progressAsync = ref.watch(readingProgressByBookProvider(activeBook));
+    final isCommonReading = progressAsync.value?.isCommon ?? false;
+
     int? prevId = (bookDetails?['previousBookId'] as num?)?.toInt();
     Map<String, dynamic>? prevBook = bookDetails?['previousBook'] as Map<String, dynamic>?;
     int? nextId = (bookDetails?['nextBookId'] as num?)?.toInt();
@@ -312,6 +315,13 @@ class BookDetailsPage extends ConsumerWidget {
                                   ? AppTheme.accentRedLight
                                   : AppTheme.accentPrimaryLight))),
                 ),
+                if (isCommonReading)
+                  _TagPill(
+                    label: 'Lecture commune',
+                    icon: Icons.groups_rounded,
+                    color: AppTheme.accentSecondary,
+                    bgColor: AppTheme.accentSecondaryLight,
+                  ),
                 if (activeBook.volume != null && activeBook.volume! > 0)
                   _TagPill(
                     label: 'Tome ${activeBook.volume}',
@@ -590,11 +600,13 @@ class _TagPill extends StatelessWidget {
     required this.label,
     required this.color,
     required this.bgColor,
+    this.icon,
   });
 
   final String label;
   final Color color;
   final Color bgColor;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -605,13 +617,22 @@ class _TagPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTheme.radiusFull),
         border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

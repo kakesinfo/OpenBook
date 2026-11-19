@@ -179,6 +179,28 @@ class _BookCardState extends ConsumerState<BookCard>
                       ],
                     ),
                   ),
+                  if (progress.isCommon) ...[
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: 'Lecture commune',
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentSecondaryLight,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                          border: Border.all(
+                            color: AppTheme.accentSecondary.withValues(alpha: 0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.groups_rounded,
+                          size: 14,
+                          color: AppTheme.accentSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

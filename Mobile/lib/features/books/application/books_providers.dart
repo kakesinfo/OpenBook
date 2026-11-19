@@ -102,6 +102,7 @@ final readingProgressByBookProvider = FutureProvider.family<ReadingProgress, Boo
     progress: progress,
     sessionsCount: activeCycleSessions.length,
     startedAt: startedAt,
+    isCommon: startSession?.isCommon ?? false,
   );
 });
 
@@ -192,6 +193,7 @@ class ReadingProgress {
     required this.progress,
     required this.sessionsCount,
     this.startedAt,
+    this.isCommon = false,
   });
 
   final int currentPage;
@@ -200,6 +202,7 @@ class ReadingProgress {
   final double progress;
   final int sessionsCount;
   final DateTime? startedAt;
+  final bool isCommon;
 
   int get totalMinutesRead => totalSecondsRead ~/ 60;
 
