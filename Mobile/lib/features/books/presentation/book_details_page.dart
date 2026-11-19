@@ -294,6 +294,27 @@ class BookDetailsPage extends ConsumerWidget {
               runSpacing: 8,
               alignment: WrapAlignment.center,
               children: [
+                // Badges liés à l'ouvrage (série / tome)
+                if (activeBook.volume != null && activeBook.volume! > 0)
+                  _TagPill(
+                    label: 'Tome ${activeBook.volume}',
+                    color: AppTheme.accentSecondary,
+                    bgColor: AppTheme.accentSecondaryLight,
+                  ),
+                if (activeBook.series.isNotEmpty)
+                  _TagPill(
+                    label: activeBook.series,
+                    color: AppTheme.textSecondary,
+                    bgColor: AppTheme.bgElevated,
+                  ),
+                // Séparateur entre badges de l'ouvrage et badges utilisateur
+                if ((activeBook.volume != null && activeBook.volume! > 0) || activeBook.series.isNotEmpty)
+                  Container(
+                    width: 1,
+                    height: 16,
+                    color: AppTheme.borderSubtle,
+                  ),
+                // Badges liés à l'utilisateur (statut de lecture, lecture commune)
                 _TagPill(
                   label: activeBook.status.label,
                   color: isWishlisted
@@ -321,18 +342,6 @@ class BookDetailsPage extends ConsumerWidget {
                     icon: Icons.groups_rounded,
                     color: AppTheme.accentSecondary,
                     bgColor: AppTheme.accentSecondaryLight,
-                  ),
-                if (activeBook.volume != null && activeBook.volume! > 0)
-                  _TagPill(
-                    label: 'Tome ${activeBook.volume}',
-                    color: AppTheme.accentSecondary,
-                    bgColor: AppTheme.accentSecondaryLight,
-                  ),
-                if (activeBook.series.isNotEmpty)
-                  _TagPill(
-                    label: activeBook.series,
-                    color: AppTheme.textSecondary,
-                    bgColor: AppTheme.bgElevated,
                   ),
               ],
             ),

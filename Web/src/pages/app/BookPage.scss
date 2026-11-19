@@ -381,11 +381,22 @@
     margin: 4px 0;
   }
 
+  &__tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding-right: 44px;
+  }
+
   &__tags {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    padding-right: 44px;
+
+    &--user {
+      margin-left: auto;
+    }
   }
 
   &__tag {
