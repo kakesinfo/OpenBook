@@ -835,7 +835,7 @@ export default function BookPage() {
                 enqueueSnackbar(errMsg, { variant: "error" });
             }
         } catch (err: unknown) {
-            enqueueSnackbar(`Erreur: ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
         } finally {
             setSubmittingLoan(false);
         }
@@ -859,7 +859,7 @@ export default function BookPage() {
                 enqueueSnackbar(tr("Error removing loan", "Erreur lors du retrait de l'emprunt"), { variant: "error" });
             }
         } catch (err: unknown) {
-            enqueueSnackbar(`Erreur: ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
         } finally {
             setReturningLoan(false);
         }
@@ -3930,6 +3930,7 @@ export default function BookPage() {
                             </label>
                             <input
                                 type="text"
+                                maxLength={150}
                                 placeholder={loanType === "LENT" ? tr("e.g. Thomas, Marie...", "ex: Thomas, Marie...") : tr("e.g. Library, Thomas...", "ex: Médiathèque, Thomas...")}
                                 value={loanPerson}
                                 onChange={(e) => setLoanPerson(e.target.value)}

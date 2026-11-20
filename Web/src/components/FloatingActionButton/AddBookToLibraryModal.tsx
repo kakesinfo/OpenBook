@@ -606,6 +606,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                             </label>
                             <input
                                 type="text"
+                                maxLength={150}
                                 placeholder={loanType === "LENT"
                                     ? tr("e.g., Thomas, Marie...", "ex: Thomas, Marie...")
                                     : tr("e.g., Library, Thomas...", "ex: Médiathèque, Thomas...")}

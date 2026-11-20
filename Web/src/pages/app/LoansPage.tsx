@@ -61,9 +61,17 @@ const LOAN_TABS: LoanTab[] = [
     { id: "LENT", labelEn: "Lent", labelFr: "Prêté", icon: faArrowUp }
 ];
 
+function parseLocalDate(dateStr: string): Date {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim());
+    if (match) {
+        return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    }
+    return new Date(dateStr);
+}
+
 function formatShortDate(dateStr?: string | null, locale?: string): string {
     if (!dateStr) return "—";
-    const parsed = new Date(dateStr);
+    const parsed = parseLocalDate(dateStr);
     if (isNaN(parsed.getTime())) return dateStr;
     return parsed.toLocaleDateString(locale || "fr-FR", {
         day: "2-digit",
@@ -74,7 +82,7 @@ function formatShortDate(dateStr?: string | null, locale?: string): string {
 
 function isDateOverdue(dateStr?: string | null): boolean {
     if (!dateStr) return false;
-    const due = new Date(dateStr);
+    const due = parseLocalDate(dateStr);
     if (isNaN(due.getTime())) return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -777,6 +785,7 @@ export default function LoansPage() {
                             </label>
                             <input
                                 type="text"
+                                maxLength={150}
                                 placeholder={editType === "LENT" ? tr("e.g. Thomas, Marie...", "ex: Thomas, Marie...") : tr("e.g. Library, Thomas...", "ex: Médiathèque, Thomas...")}
                                 value={editPerson}
                                 onChange={(e) => setEditPerson(e.target.value)}

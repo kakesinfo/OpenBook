@@ -412,6 +412,11 @@ public class UserController {
         repositoryService.getUserSellsBookRepository()
                 .findByUserIdAndBookId(user.getId(), id)
                 .ifPresent(entity -> repositoryService.getUserSellsBookRepository().delete(entity));
+
+        repositoryService.getUserLoansBookRepository()
+                .findByUserIdAndBookId(user.getId(), id)
+                .filter(loan -> "LENT".equalsIgnoreCase(loan.getType()))
+                .ifPresent(entity -> repositoryService.getUserLoansBookRepository().delete(entity));
     }
 
     @PostMapping("/readingStatus/{id}/{status}")
@@ -1081,7 +1086,31 @@ public class UserController {
 
         String upperType = request.getType().trim().toUpperCase();
         if (!"BORROWED".equals(upperType) && !"LENT".equals(upperType)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid loan type: " + request.getType());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid loan type (expected BORROWED or LENT)");
+        }
+
+        String personName = request.getPersonName() != null && !request.getPersonName().trim().isEmpty()
+                ? request.getPersonName().trim() : null;
+        if (personName != null && personName.length() > 150) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "personName must be at most 150 characters");
+        }
+
+        LocalDate parsedLoanDate = null;
+        if (request.getLoanDate() != null && !request.getLoanDate().trim().isEmpty()) {
+            try {
+                parsedLoanDate = LocalDate.parse(request.getLoanDate().trim());
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid loanDate format (expected YYYY-MM-DD)");
+            }
+        }
+
+        LocalDate parsedDueDate = null;
+        if (request.getDueDate() != null && !request.getDueDate().trim().isEmpty()) {
+            try {
+                parsedDueDate = LocalDate.parse(request.getDueDate().trim());
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid dueDate format (expected YYYY-MM-DD)");
+            }
         }
 
         BookEntity book = repositoryService.getBookRepository().findById(bookId)
@@ -1097,23 +1126,8 @@ public class UserController {
                 });
 
         entity.setType(upperType);
-        entity.setPersonName(request.getPersonName() != null && !request.getPersonName().trim().isEmpty()
-                ? request.getPersonName().trim() : null);
-
-        LocalDate parsedLoanDate = null;
-        if (request.getLoanDate() != null && !request.getLoanDate().trim().isEmpty()) {
-            try {
-                parsedLoanDate = LocalDate.parse(request.getLoanDate().trim());
-            } catch (Exception ignored) {}
-        }
+        entity.setPersonName(personName);
         entity.setLoanDate(parsedLoanDate);
-
-        LocalDate parsedDueDate = null;
-        if (request.getDueDate() != null && !request.getDueDate().trim().isEmpty()) {
-            try {
-                parsedDueDate = LocalDate.parse(request.getDueDate().trim());
-            } catch (Exception ignored) {}
-        }
         entity.setDueDate(parsedDueDate);
 
         entity.setMemo(request.getMemo() != null && !request.getMemo().trim().isEmpty()

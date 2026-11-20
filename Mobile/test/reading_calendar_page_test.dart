@@ -167,7 +167,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Série de lecture'), findsOneWidget);
-      expect(find.byIcon(Icons.local_fire_department_rounded), findsNWidgets(2));
+      // 1 header streak flame + 2 active calendar day flames
+      expect(find.byIcon(Icons.local_fire_department_rounded), findsNWidgets(3));
     });
 
     testWidgets('covers mode shows no flames and lists monthly books newest first', (tester) async {

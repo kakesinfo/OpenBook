@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_application_1/features/books/application/books_providers.dart';
 import 'package:flutter_application_1/features/books/data/book.dart';
+import 'package:flutter_application_1/features/books/data/reading_cycle.dart';
 import 'package:flutter_application_1/features/books/data/reading_session.dart';
 import 'package:flutter_application_1/features/books/presentation/book_reading_history_page.dart';
 import 'package:flutter_application_1/features/books/presentation/components/book_card.dart';
@@ -349,11 +350,30 @@ void main() {
       tester.view.devicePixelRatio = 3.0;
       addTearDown(tester.view.reset);
 
+      final testCycles = [
+        ReadingCycleRecord(
+          id: 1,
+          bookId: 42,
+          isCommon: true,
+          startedAt: DateTime(2026, 1, 10, 9, 0),
+          endedAt: DateTime(2026, 1, 15, 22, 0),
+          sessions: testSessions.sublist(0, 3),
+        ),
+        ReadingCycleRecord(
+          id: 2,
+          bookId: 42,
+          isCommon: false,
+          startedAt: DateTime(2026, 11, 1, 14, 0),
+          sessions: testSessions.sublist(3, 5),
+        ),
+      ];
+
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             booksControllerProvider.overrideWith(() => _FakeBooksController([testBook])),
             readingSessionsForBookProvider(testBook).overrideWith((ref) async => testSessions),
+            readingCyclesForBookProvider(testBook).overrideWith((ref) async => testCycles),
           ],
           child: MaterialApp(
             home: BookReadingHistoryPage(book: testBook),

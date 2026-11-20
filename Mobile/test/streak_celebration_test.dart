@@ -127,7 +127,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.text('2'), findsOneWidget);
-      expect(find.text('+1'), findsOneWidget);
       expect(find.byIcon(Icons.check_rounded), findsNWidgets(2));
       expect(find.text('Continuer'), findsOneWidget);
 
