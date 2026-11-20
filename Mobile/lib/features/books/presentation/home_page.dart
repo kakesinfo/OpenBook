@@ -4,8 +4,10 @@ import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/books_providers.dart';
+import '../data/achievement.dart';
 import '../data/book.dart';
 import 'abandoned_books_page.dart';
+import 'achievements_page.dart';
 import 'book_details_page.dart';
 import 'book_reading_session_page.dart';
 import 'components/app_header.dart';
@@ -46,6 +48,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       ref.read(booksControllerProvider.notifier).reload(),
       ref.read(notesControllerProvider.notifier).reload(),
       ref.read(wordsControllerProvider.notifier).reload(),
+      ref.read(achievementsControllerProvider.notifier).reload(),
     ]);
   }
 
@@ -58,9 +61,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     final wishlistBooks = ref.watch(wishlistBooksProvider);
     final notesAsync = ref.watch(notesControllerProvider);
     final wordsAsync = ref.watch(wordsControllerProvider);
+    final achievementsAsync = ref.watch(achievementsControllerProvider);
 
     final notes = notesAsync.value ?? const [];
     final words = wordsAsync.value ?? const [];
+    final achievements = achievementsAsync.value ?? const <Achievement>[];
     final retroYears = ref.watch(retrospectiveYearsProvider).value ?? const <int>[];
 
     final viewportHeight = MediaQuery.of(context).size.height;
@@ -242,91 +247,13 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
             ),
 
-            // 3. Carnet & Références (Notes & Glossaire Bento Grid)
+            // 3. Activité & Suivi (Série de lecture + Accès rapide Calendrier / Listes)
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 10),
               sliver: SliverToBoxAdapter(
                 child: _HomeSectionReveal(
                   animate: _animateOnEntry,
                   delayMs: 160,
-                  child: const _SectionHeader(
-                    title: 'Carnet & Lexique',
-                  ),
-                ),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverToBoxAdapter(
-                child: _HomeSectionReveal(
-                  animate: _animateOnEntry,
-                  delayMs: 190,
-                  child: Row(
-                  children: [
-                    Expanded(
-                      child: _FeatureBentoCard(
-                        title: 'Notes',
-                        subtitle: notes.isEmpty
-                            ? 'Fiches de lecture'
-                            : '${notes.length} fiche${notes.length > 1 ? 's' : ''} de lecture',
-                        caption: notes.isNotEmpty && notes.first.book != null
-                            ? 'Récent : ${notes.first.book!.title}'
-                            : 'Une note par livre',
-                        count: notes.length,
-                        icon: Icons.sticky_note_2_rounded,
-                        accentColor: AppTheme.accentPrimary,
-                        lightBg: AppTheme.accentPrimaryLight,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const NotesPage(),
-                          ),
-                        ),
-                        onQuickAdd: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const NotesPage(initialCreate: true),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _FeatureBentoCard(
-                        title: 'Glossaire',
-                        subtitle: words.isEmpty
-                            ? 'Mots & définitions'
-                            : '${words.length} terme${words.length > 1 ? 's' : ''} défini${words.length > 1 ? 's' : ''}',
-                        caption: words.isNotEmpty
-                            ? 'Ex : ${words.first.word}'
-                            : 'Lié à vos lectures',
-                        count: words.length,
-                        icon: Icons.spellcheck_rounded,
-                        accentColor: AppTheme.accentSecondary,
-                        lightBg: AppTheme.accentSecondaryLight,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const GlossaryPage(),
-                          ),
-                        ),
-                        onQuickAdd: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const GlossaryPage(initialCreate: true),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                ),
-              ),
-            ),
-
-            // 4. Rythme & Suivi (Série de lecture + Accès rapide Calendrier / Listes)
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(18, 22, 18, 10),
-              sliver: SliverToBoxAdapter(
-                child: _HomeSectionReveal(
-                  animate: _animateOnEntry,
-                  delayMs: 240,
                   child: const _SectionHeader(
                     title: 'Activité & Suivi',
                   ),
@@ -338,7 +265,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               sliver: SliverToBoxAdapter(
                 child: _HomeSectionReveal(
                   animate: _animateOnEntry,
-                  delayMs: 270,
+                  delayMs: 190,
                   child: const ReadingStreakCard(),
                 ),
               ),
@@ -363,7 +290,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
             ),
 
-            // 5. En pause & Abandonnées (2-column compact Bento row)
+            // En pause & Abandonnées (2-column compact Bento row)
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
               sliver: SliverToBoxAdapter(
@@ -405,6 +332,98 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+
+            // 4. Carnet & Lexique (Notes, Glossaire & Succès Bento Grid)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 22, 18, 10),
+              sliver: SliverToBoxAdapter(
+                child: _HomeSectionReveal(
+                  animate: _animateOnEntry,
+                  delayMs: 240,
+                  child: const _SectionHeader(
+                    title: 'Carnet & Lexique',
+                  ),
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverToBoxAdapter(
+                child: _HomeSectionReveal(
+                  animate: _animateOnEntry,
+                  delayMs: 270,
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _FeatureBentoCard(
+                              title: 'Notes',
+                              subtitle: notes.isEmpty
+                                  ? 'Fiches de lecture'
+                                  : '${notes.length} fiche${notes.length > 1 ? 's' : ''} de lecture',
+                              caption: notes.isNotEmpty && notes.first.book != null
+                                  ? 'Récent : ${notes.first.book!.title}'
+                                  : 'Une note par livre',
+                              count: notes.length,
+                              icon: Icons.sticky_note_2_rounded,
+                              accentColor: AppTheme.accentPrimary,
+                              lightBg: AppTheme.accentPrimaryLight,
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const NotesPage(),
+                                ),
+                              ),
+                              onQuickAdd: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const NotesPage(initialCreate: true),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _FeatureBentoCard(
+                              title: 'Glossaire',
+                              subtitle: words.isEmpty
+                                  ? 'Mots & définitions'
+                                  : '${words.length} terme${words.length > 1 ? 's' : ''} défini${words.length > 1 ? 's' : ''}',
+                              caption: words.isNotEmpty
+                                  ? 'Ex : ${words.first.word}'
+                                  : 'Lié à vos lectures',
+                              count: words.length,
+                              icon: Icons.spellcheck_rounded,
+                              accentColor: AppTheme.accentSecondary,
+                              lightBg: AppTheme.accentSecondaryLight,
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const GlossaryPage(),
+                                ),
+                              ),
+                              onQuickAdd: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const GlossaryPage(initialCreate: true),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _AchievementsBentoCard(
+                        achievements: achievements,
+                        loading: achievementsAsync.isLoading && achievements.isEmpty,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const AchievementsPage(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -977,6 +996,312 @@ class _EmptyHero extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AchievementsBentoCard extends StatelessWidget {
+  const _AchievementsBentoCard({
+    required this.achievements,
+    required this.loading,
+    required this.onTap,
+  });
+
+  final List<Achievement> achievements;
+  final bool loading;
+  final VoidCallback onTap;
+
+  static const _gold = Color(0xFFFFD60A);
+  static const _orange = Color(0xFFFF9500);
+  static const _coral = Color(0xFFFF5E3A);
+
+  @override
+  Widget build(BuildContext context) {
+    final total = achievements.length;
+    final unlocked = achievements.where((a) => a.unlocked).length;
+    final isActive = unlocked > 0;
+    final progress = total > 0 ? (unlocked / total).clamp(0.0, 1.0) : 0.0;
+    final percent = (progress * 100).round();
+    final rankLabel = achievementRankLabel(unlocked, total);
+    final isBeige = AppTheme.currentMode == AppThemeMode.beige;
+    final activeTextColor = isBeige ? const Color(0xFFD95F02) : _orange;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.bgSurface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.borderSubtle, width: 1),
+        boxShadow: AppTheme.cardShadow,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        child: Stack(
+          children: [
+            if (isActive)
+              Positioned(
+                top: -28,
+                left: -18,
+                width: 220,
+                height: 130,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: const Alignment(-0.4, 0.0),
+                        radius: 0.9,
+                        colors: [
+                          _orange.withValues(alpha: isBeige ? 0.12 : 0.14),
+                          _coral.withValues(alpha: 0.04),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(11),
+                          gradient: isActive
+                              ? const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [_gold, _orange, _coral],
+                                )
+                              : null,
+                          color: isActive ? null : AppTheme.bgElevated,
+                          border: Border.all(
+                            color: isActive
+                                ? Colors.white.withValues(alpha: 0.25)
+                                : AppTheme.borderSubtle,
+                          ),
+                          boxShadow: isActive
+                              ? [
+                                  BoxShadow(
+                                    color: _orange.withValues(alpha: 0.38),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Icon(
+                          Icons.emoji_events_rounded,
+                          color: isActive ? Colors.white : AppTheme.textMuted,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 7,
+                              runSpacing: 4,
+                              children: [
+                                Text(
+                                  'Succès',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimary,
+                                    letterSpacing: -0.01,
+                                  ),
+                                ),
+                                if (!loading) ...[
+                                  Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: '$unlocked',
+                                          style: TextStyle(
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppTheme.textPrimary,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: ' / $total',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: AppTheme.textMuted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isActive
+                                          ? _orange.withValues(alpha: 0.14)
+                                          : AppTheme.bgElevated,
+                                      borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusFull),
+                                      border: Border.all(
+                                        color: isActive
+                                            ? _orange.withValues(alpha: 0.38)
+                                            : AppTheme.borderSubtle,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      rankLabel,
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w700,
+                                        color: isActive
+                                            ? activeTextColor
+                                            : AppTheme.textMuted,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 7),
+                            if (loading)
+                              Text(
+                                'Chargement...',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textMuted,
+                                ),
+                              )
+                            else if (total == 0)
+                              Text(
+                                'Créez et cochez vos succès',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textMuted,
+                                ),
+                              )
+                            else
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: SizedBox(
+                                      height: 10,
+                                      child: LayoutBuilder(
+                                        builder: (context, constraints) {
+                                          final w = constraints.maxWidth;
+                                          return Stack(
+                                            alignment: Alignment.centerLeft,
+                                            children: [
+                                              Container(
+                                                height: 7,
+                                                decoration: BoxDecoration(
+                                                  color: AppTheme.bgElevated,
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          999),
+                                                ),
+                                              ),
+                                              Container(
+                                                height: 7,
+                                                width: (w * progress)
+                                                    .clamp(0.0, w),
+                                                decoration: BoxDecoration(
+                                                  gradient:
+                                                      const LinearGradient(
+                                                    colors: [
+                                                      _gold,
+                                                      _orange,
+                                                      _coral
+                                                    ],
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          999),
+                                                  boxShadow: isActive
+                                                      ? [
+                                                          BoxShadow(
+                                                            color: _orange
+                                                                .withValues(
+                                                                    alpha: 0.4),
+                                                            blurRadius: 6,
+                                                          ),
+                                                        ]
+                                                      : null,
+                                                ),
+                                              ),
+                                              for (final m in const [
+                                                0.25,
+                                                0.50,
+                                                0.75,
+                                                1.0
+                                              ])
+                                                Positioned(
+                                                  left: (w * m - 3.5)
+                                                      .clamp(0.0, w - 7),
+                                                  child: Container(
+                                                    width: 7,
+                                                    height: 7,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: progress >= m
+                                                          ? _gold
+                                                          : AppTheme.bgSurface,
+                                                      border: Border.all(
+                                                        color: progress >= m
+                                                            ? _coral
+                                                            : AppTheme
+                                                                .borderSubtle,
+                                                        width: 1.4,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '$percent%',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: isActive
+                                          ? activeTextColor
+                                          : AppTheme.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppTheme.textMuted,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

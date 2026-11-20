@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
+import 'achievement.dart';
 import 'bnf_service.dart';
 import 'book.dart';
 import 'book_note.dart';
@@ -764,6 +765,90 @@ class BooksRepository {
     final response = await _apiClient.delete('/words/$id');
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Impossible de supprimer le mot (${response.statusCode})');
+    }
+  }
+
+  Future<List<Achievement>> getAchievements() async {
+    final response = await _apiClient.get('/achievements');
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Impossible de charger les succès (${response.statusCode})');
+    }
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((item) => Achievement.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<Achievement> createAchievement({
+    required String name,
+    required int totalSteps,
+    required String icon,
+    required String ornament,
+    required String iconColor,
+    required String backgroundColor,
+    DateTime? unlockedAt,
+  }) async {
+    final response = await _apiClient.post(
+      '/achievements',
+      body: {
+        'name': name.trim(),
+        'totalSteps': totalSteps,
+        'icon': icon,
+        'ornament': ornament,
+        'iconColor': iconColor,
+        'backgroundColor': backgroundColor,
+        'unlockedAt': unlockedAt?.toUtc().toIso8601String(),
+      },
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(
+          'Impossible de créer le succès (${response.statusCode})');
+    }
+    return Achievement.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<Achievement> updateAchievement({
+    required int id,
+    String? name,
+    int? totalSteps,
+    int? completedSteps,
+    String? icon,
+    String? ornament,
+    String? iconColor,
+    String? backgroundColor,
+    DateTime? unlockedAt,
+  }) async {
+    final payload = <String, dynamic>{};
+    if (name != null) payload['name'] = name.trim();
+    if (totalSteps != null) payload['totalSteps'] = totalSteps;
+    if (completedSteps != null) payload['completedSteps'] = completedSteps;
+    if (icon != null) payload['icon'] = icon;
+    if (ornament != null) payload['ornament'] = ornament;
+    if (iconColor != null) payload['iconColor'] = iconColor;
+    if (backgroundColor != null) payload['backgroundColor'] = backgroundColor;
+    if (unlockedAt != null) {
+      payload['unlockedAt'] = unlockedAt.toUtc().toIso8601String();
+    }
+
+    final response = await _apiClient.put(
+      '/achievements/$id',
+      body: payload,
+    );
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Impossible de modifier le succès (${response.statusCode})');
+    }
+    return Achievement.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<void> deleteAchievement(int id) async {
+    final response = await _apiClient.delete('/achievements/$id');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception(
+          'Impossible de supprimer le succès (${response.statusCode})');
     }
   }
 
