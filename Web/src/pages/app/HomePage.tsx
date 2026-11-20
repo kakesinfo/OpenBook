@@ -108,6 +108,23 @@ export default function HomePage() {
         };
     }, [collectionBooks]);
 
+    const achievementStats = useMemo(() => {
+        const total = achievements.length;
+        const unlocked = achievements.filter((a) => a.unlocked).length;
+        const percent = total > 0 ? Math.round((unlocked / total) * 100) : 0;
+
+        let rankLabel = tr("Beginner", "Débutant");
+        if (total > 0 && unlocked > 0) {
+            if (percent === 100) rankLabel = tr("Legend", "Légende");
+            else if (percent >= 75) rankLabel = tr("Master", "Maître");
+            else if (percent >= 50) rankLabel = tr("Collector", "Collectionneur");
+            else if (percent >= 25) rankLabel = tr("Explorer", "Explorateur");
+            else rankLabel = tr("Apprentice", "Apprenti");
+        }
+
+        return { total, unlocked, percent, rankLabel, active: unlocked > 0 };
+    }, [achievements, tr]);
+
     return (
         <div className="home-dashboard">
             <WrapperHeader>
@@ -273,27 +290,60 @@ export default function HomePage() {
                                     <FontAwesomeIcon icon={faChevronRight} className="home-bento-tile__arrow" />
                                 </Link>
 
-                                <Link to="/app/achievements" className="home-widget home-bento-tile home-bento-tile--full">
-                                    <div className="home-bento-tile__icon is-amber">
+                                <Link
+                                    to="/app/achievements"
+                                    className={`home-widget home-bento-tile home-bento-tile--full home-bento-tile--achievements ${achievementStats.active ? "is-active" : ""}`}
+                                >
+                                    <div className={`home-bento-tile__icon home-bento-tile__icon--trophy ${achievementStats.active ? "is-active" : ""}`}>
                                         <FontAwesomeIcon icon={faTrophy} />
                                     </div>
-                                    <div className="home-bento-tile__info">
-                                        <span className="home-bento-tile__title">
-                                            {tr("Achievements", "Succès")}
-                                        </span>
-                                        <span className="home-bento-tile__sub">
-                                            {loading
-                                                ? tr("Loading...", "Chargement...")
-                                                : achievements.length === 0
-                                                    ? tr("Personal challenges", "Défis personnels")
-                                                    : tr(
-                                                        `${achievements.filter((a) => a.unlocked).length} / ${achievements.length} unlocked`,
-                                                        `${achievements.filter((a) => a.unlocked).length} / ${achievements.length} débloqué${achievements.filter((a) => a.unlocked).length > 1 ? "s" : ""}`
-                                                    )}
-                                        </span>
-                                        <span className="home-bento-tile__caption">
-                                            {tr("Create and check off your achievements", "Créez et cochez vos succès")}
-                                        </span>
+                                    <div className="home-bento-tile__info home-bento-tile__info--achievements">
+                                        <div className="home-bento-tile__title-row">
+                                            <span className="home-bento-tile__title">
+                                                {tr("Achievements", "Succès")}
+                                            </span>
+                                            {!loading && (
+                                                <>
+                                                    <span className="home-bento-tile__ach-count">
+                                                        <strong>{achievementStats.unlocked}</strong>
+                                                        <span className="home-bento-tile__ach-total"> / {achievementStats.total}</span>
+                                                    </span>
+                                                    <span className={`home-bento-tile__ach-rank ${achievementStats.active ? "is-active" : ""}`}>
+                                                        {achievementStats.rankLabel}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+                                        {loading ? (
+                                            <span className="home-bento-tile__sub">
+                                                {tr("Loading...", "Chargement...")}
+                                            </span>
+                                        ) : achievementStats.total === 0 ? (
+                                            <span className="home-bento-tile__caption">
+                                                {tr("Create and check off your achievements", "Créez et cochez vos succès")}
+                                            </span>
+                                        ) : (
+                                            <div className="home-bento-tile__ach-track-row">
+                                                <div className="home-bento-tile__ach-bar">
+                                                    <div
+                                                        className="home-bento-tile__ach-bar-fill"
+                                                        style={{ width: `${achievementStats.percent}%` }}
+                                                    />
+                                                    <div className="home-bento-tile__ach-milestones" aria-hidden="true">
+                                                        {[25, 50, 75, 100].map((m) => (
+                                                            <span
+                                                                key={m}
+                                                                className={`home-bento-tile__ach-milestone ${achievementStats.percent >= m ? "is-reached" : ""}`}
+                                                                style={{ left: `${m}%` }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <span className={`home-bento-tile__ach-percent ${achievementStats.active ? "is-active" : ""}`}>
+                                                    {achievementStats.percent}%
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     <FontAwesomeIcon icon={faChevronRight} className="home-bento-tile__arrow" />
                                 </Link>

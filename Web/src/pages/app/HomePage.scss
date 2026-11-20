@@ -541,6 +541,179 @@
     font-size: 0.8125rem;
     flex-shrink: 0;
   }
+
+  &--achievements {
+    position: relative;
+    overflow: hidden;
+
+    &.is-active {
+      &::before {
+        content: "";
+        position: absolute;
+        top: -28px;
+        left: -18px;
+        width: 220px;
+        height: 130px;
+        background: radial-gradient(
+          circle at 30% 50%,
+          rgba(255, 149, 0, 0.14) 0%,
+          rgba(255, 94, 58, 0.05) 45%,
+          transparent 75%
+        );
+        pointer-events: none;
+      }
+
+      [data-theme="beige"] & {
+        &::before {
+          background: radial-gradient(
+            circle at 30% 50%,
+            rgba(255, 149, 0, 0.12) 0%,
+            transparent 72%
+          );
+        }
+      }
+    }
+  }
+
+  &__icon--trophy {
+    position: relative;
+    z-index: 1;
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+
+    &.is-active {
+      background: linear-gradient(135deg, #ffd60a 0%, #ff9500 52%, #ff5e3a 100%);
+      border-color: rgba(255, 255, 255, 0.25);
+      color: #ffffff;
+      box-shadow:
+        0 4px 14px rgba(255, 149, 0, 0.38),
+        inset 0 1px 1px rgba(255, 255, 255, 0.35);
+    }
+  }
+
+  &__info--achievements {
+    position: relative;
+    z-index: 1;
+    gap: 7px;
+  }
+
+  &__title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    line-height: 1.2;
+  }
+
+  &__ach-count {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+
+    strong {
+      font-weight: 800;
+    }
+  }
+
+  &__ach-total {
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  &__ach-rank {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-full, 999px);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+
+    &.is-active {
+      background: rgba(255, 149, 0, 0.14);
+      border-color: rgba(255, 149, 0, 0.38);
+      color: #ff9500;
+
+      [data-theme="beige"] & {
+        background: rgba(255, 107, 53, 0.14);
+        border-color: rgba(230, 92, 0, 0.35);
+        color: #d95f02;
+      }
+    }
+  }
+
+  &__ach-track-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 340px;
+    width: 100%;
+  }
+
+  &__ach-bar {
+    position: relative;
+    flex: 1;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    overflow: visible;
+  }
+
+  &__ach-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #ffd60a 0%, #ff9500 55%, #ff5e3a 100%);
+    box-shadow: 0 0 8px rgba(255, 149, 0, 0.42);
+    transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  &__ach-milestones {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  &__ach-milestone {
+    position: absolute;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-surface);
+    border: 1.5px solid var(--border-subtle);
+    transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+
+    &.is-reached {
+      background: #ffd60a;
+      border-color: #ff5e3a;
+      box-shadow: 0 0 5px rgba(255, 149, 0, 0.7);
+    }
+  }
+
+  &__ach-percent {
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+
+    &.is-active {
+      color: #ff9500;
+
+      [data-theme="beige"] & {
+        color: #d95f02;
+      }
+    }
+  }
 }
 
 /* 4. Reading Calendar Widget */

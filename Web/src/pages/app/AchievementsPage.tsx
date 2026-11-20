@@ -179,6 +179,25 @@ export default function AchievementsPage() {
         ? Math.round((unlockedCount / achievements.length) * 100)
         : 0;
 
+    const achievementRank = useMemo(() => {
+        if (achievements.length === 0 || unlockedCount === 0) {
+            return { label: tr("Beginner", "Débutant"), active: false };
+        }
+        if (progressPercent === 100) {
+            return { label: tr("Legend", "Légende"), active: true };
+        }
+        if (progressPercent >= 75) {
+            return { label: tr("Master", "Maître"), active: true };
+        }
+        if (progressPercent >= 50) {
+            return { label: tr("Collector", "Collectionneur"), active: true };
+        }
+        if (progressPercent >= 25) {
+            return { label: tr("Explorer", "Explorateur"), active: true };
+        }
+        return { label: tr("Apprentice", "Apprenti"), active: true };
+    }, [achievements.length, unlockedCount, progressPercent, tr]);
+
     const filterTabs: HeaderFilterTab<FilterTab>[] = useMemo(() => [
         { id: "all", label: tr("All", "Tous"), icon: faTrophy, count: achievements.length },
         { id: "unlocked", label: tr("Unlocked", "Débloqués"), icon: faUnlock, count: unlockedCount },
@@ -414,9 +433,9 @@ export default function AchievementsPage() {
             </WrapperHeader>
 
             <div className="achievements-page__content">
-                <div className="achievements-page__summary">
+                <div className={`achievements-page__summary ${unlockedCount > 0 ? "is-active" : ""}`}>
                     <div className="achievements-page__summary-lead">
-                        <div className="achievements-page__summary-icon">
+                        <div className={`achievements-page__summary-icon ${unlockedCount > 0 ? "is-active" : ""}`}>
                             <FontAwesomeIcon icon={faTrophy} />
                         </div>
                         <div className="achievements-page__summary-progress">
@@ -428,6 +447,9 @@ export default function AchievementsPage() {
                                 <span className="achievements-page__summary-label">
                                     {tr("achievements unlocked", "succès débloqués")}
                                 </span>
+                                <span className={`achievements-page__summary-rank ${achievementRank.active ? "is-active" : ""}`}>
+                                    {achievementRank.label}
+                                </span>
                             </div>
                             <div className="achievements-page__summary-track-row">
                                 <div className="achievements-page__summary-bar">
@@ -435,8 +457,19 @@ export default function AchievementsPage() {
                                         className="achievements-page__summary-bar-fill"
                                         style={{ width: `${progressPercent}%` }}
                                     />
+                                    <div className="achievements-page__summary-milestones" aria-hidden="true">
+                                        {[25, 50, 75, 100].map((m) => (
+                                            <span
+                                                key={m}
+                                                className={`achievements-page__summary-milestone ${progressPercent >= m ? "is-reached" : ""}`}
+                                                style={{ left: `${m}%` }}
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
-                                <span className="achievements-page__summary-percent">{progressPercent}%</span>
+                                <span className={`achievements-page__summary-percent ${unlockedCount > 0 ? "is-active" : ""}`}>
+                                    {progressPercent}%
+                                </span>
                             </div>
                         </div>
                     </div>

@@ -343,7 +343,27 @@ export default function AchievementMedal({
         >
             <OrnamentSvg ornament={ornament} iconColor={iconColor} />
 
-            {/* Enameled metallic medallion */}
+            {/* Subtle twinkling sparkles (visible when unlocked) */}
+            <svg
+                className="achievement-medal__sparkles"
+                viewBox="0 0 160 160"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                style={{ color: iconColor }}
+                aria-hidden="true"
+            >
+                <g className="achievement-medal__sparkle achievement-medal__sparkle--1">
+                    <Sparkle4 cx={24} cy={26} r={5.5} opacity={0.95} />
+                </g>
+                <g className="achievement-medal__sparkle achievement-medal__sparkle--2">
+                    <Sparkle4 cx={138} cy={32} r={4.5} opacity={0.85} />
+                </g>
+                <g className="achievement-medal__sparkle achievement-medal__sparkle--3">
+                    <Sparkle4 cx={134} cy={128} r={4} opacity={0.8} />
+                </g>
+            </svg>
+
+            {/* Glossy enameled metallic medallion */}
             <div
                 className="achievement-card__badge"
                 style={{
@@ -351,6 +371,7 @@ export default function AchievementMedal({
                     color: iconColor
                 }}
             >
+                <div className="achievement-card__badge-gloss" />
                 <div className="achievement-card__badge-ring" />
                 <AchievementIcon icon={icon} />
             </div>
