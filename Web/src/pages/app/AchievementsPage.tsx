@@ -15,7 +15,7 @@ import {
     faUnlock,
     faXmark
 } from "@fortawesome/free-solid-svg-icons";
-import { Dialog, LinearProgress, Popover } from "@mui/material";
+import { Dialog, Popover } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
@@ -414,24 +414,31 @@ export default function AchievementsPage() {
             </WrapperHeader>
 
             <div className="achievements-page__content">
-                <Card className="achievements-page__summary">
-                    <div className="achievements-page__summary-progress">
-                        <div className="achievements-page__summary-info">
-                            <div className="achievements-page__summary-title">
-                                <span>
-                                    {tr(
-                                        `${unlockedCount} / ${achievements.length} achievements unlocked`,
-                                        `${unlockedCount} / ${achievements.length} succès débloqués`
-                                    )}
+                <div className="achievements-page__summary">
+                    <div className="achievements-page__summary-lead">
+                        <div className="achievements-page__summary-icon">
+                            <FontAwesomeIcon icon={faTrophy} />
+                        </div>
+                        <div className="achievements-page__summary-progress">
+                            <div className="achievements-page__summary-info">
+                                <span className="achievements-page__summary-count">
+                                    <strong>{unlockedCount}</strong>
+                                    <span className="achievements-page__summary-total"> / {achievements.length}</span>
+                                </span>
+                                <span className="achievements-page__summary-label">
+                                    {tr("achievements unlocked", "succès débloqués")}
                                 </span>
                             </div>
-                            <span className="achievements-page__summary-percent">{progressPercent}%</span>
+                            <div className="achievements-page__summary-track-row">
+                                <div className="achievements-page__summary-bar">
+                                    <div
+                                        className="achievements-page__summary-bar-fill"
+                                        style={{ width: `${progressPercent}%` }}
+                                    />
+                                </div>
+                                <span className="achievements-page__summary-percent">{progressPercent}%</span>
+                            </div>
                         </div>
-                        <LinearProgress
-                            variant="determinate"
-                            value={progressPercent}
-                            className="achievements-page__summary-bar"
-                        />
                     </div>
 
                     <div className="achievements-page__summary-search">
@@ -441,7 +448,7 @@ export default function AchievementsPage() {
                             placeholder={tr("Search achievements...", "Rechercher un succès...")}
                         />
                     </div>
-                </Card>
+                </div>
 
                 {loading ? (
                     <div className="achievements-page__empty">
