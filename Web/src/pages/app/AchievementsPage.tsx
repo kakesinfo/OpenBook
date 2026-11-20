@@ -20,7 +20,6 @@ import { enqueueSnackbar } from "notistack";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import AchievementDTO from "../../dto/Achievement.dto.ts";
-import Card from "../../components/Card/Card.tsx";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import Select from "../../components/Select/Select.tsx";
 import HeaderFilterTabs, { HeaderFilterTab } from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
@@ -494,7 +493,7 @@ export default function AchievementsPage() {
                         {tr("Loading achievements...", "Chargement des succès...")}
                     </div>
                 ) : filteredAchievements.length === 0 ? (
-                    <Card className="achievements-page__empty-card">
+                    <div className="achievements-page__empty-state">
                         <FontAwesomeIcon icon={faTrophy} className="achievements-page__empty-icon" />
                         <h3>
                             {achievements.length === 0
@@ -522,7 +521,7 @@ export default function AchievementsPage() {
                                 <span>{tr("Create an achievement", "Créer un succès")}</span>
                             </button>
                         )}
-                    </Card>
+                    </div>
                 ) : (
                     <div className="achievements-page__grid">
                         {filteredAchievements.map((achievement) => {
