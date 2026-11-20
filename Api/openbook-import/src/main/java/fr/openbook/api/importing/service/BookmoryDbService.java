@@ -496,7 +496,69 @@ public class BookmoryDbService {
         }
     }
 
-    public boolean importReadingSession(Long userId, Long bookId, BookmoryReadTimer timer, int page) {
+    public Long findOrCreateReadingCycle(
+            Long userId,
+            Long bookId,
+            Instant startedAt,
+            Instant endedAt,
+            boolean isCommon
+    ) {
+        if (userId == null || bookId == null) {
+            return null;
+        }
+        Instant effectiveStart = startedAt != null ? startedAt : Instant.now();
+        Timestamp startTs = Timestamp.valueOf(LocalDateTime.ofInstant(effectiveStart, ZoneOffset.UTC));
+        Timestamp endTs = endedAt != null
+                ? Timestamp.valueOf(LocalDateTime.ofInstant(endedAt, ZoneOffset.UTC))
+                : null;
+
+        try {
+            Long existingId = jdbcTemplate.queryForObject(
+                    "SELECT id FROM reading_cycle WHERE user_id = ? AND book_id = ? AND started_at = ? LIMIT 1",
+                    Long.class, userId, bookId, startTs
+            );
+            if (existingId != null) {
+                if (endTs != null) {
+                    jdbcTemplate.update(
+                            "UPDATE reading_cycle SET ended_at = COALESCE(?, ended_at), updated_at = ? WHERE id = ?",
+                            endTs, endTs, existingId
+                    );
+                }
+                return existingId;
+            }
+        } catch (EmptyResultDataAccessException ignored) {}
+
+        try {
+            KeyHolder keyHolder = new GeneratedKeyHolder();
+            Timestamp updatedTs = endTs != null ? endTs : startTs;
+            jdbcTemplate.update(connection -> {
+                PreparedStatement ps = connection.prepareStatement(
+                        "INSERT INTO reading_cycle (user_id, book_id, is_common, started_at, ended_at, created_at, updated_at) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        new String[]{"id"}
+                );
+                ps.setLong(1, userId);
+                ps.setLong(2, bookId);
+                ps.setBoolean(3, isCommon);
+                ps.setTimestamp(4, startTs);
+                if (endTs != null) {
+                    ps.setTimestamp(5, endTs);
+                } else {
+                    ps.setNull(5, java.sql.Types.TIMESTAMP);
+                }
+                ps.setTimestamp(6, startTs);
+                ps.setTimestamp(7, updatedTs);
+                return ps;
+            }, keyHolder);
+            Number key = keyHolder.getKey();
+            return key != null ? key.longValue() : null;
+        } catch (Exception ex) {
+            log.warn("Failed to insert reading cycle for user {} book {}: {}", userId, bookId, ex.getMessage());
+            return null;
+        }
+    }
+
+    public boolean importReadingSession(Long userId, Long bookId, Long readingCycleId, BookmoryReadTimer timer, int page) {
         if (timer == null || timer.getElapsedSec() == null || timer.getElapsedSec() <= 0 || userId == null || bookId == null) {
             return false;
         }
@@ -510,12 +572,13 @@ public class BookmoryDbService {
             sessionTime = Instant.ofEpochMilli(timer.getCreatedAt());
         }
 
-        return importReadingSessionAt(userId, bookId, page, minutesRead, secondsRead, 1, sessionTime);
+        return importReadingSessionAt(userId, bookId, readingCycleId, page, minutesRead, secondsRead, 1, sessionTime);
     }
 
     public boolean importReadingSessionAt(
             Long userId,
             Long bookId,
+            Long readingCycleId,
             int page,
             int minutesRead,
             int secondsRead,
@@ -526,7 +589,21 @@ public class BookmoryDbService {
             return false;
         }
 
-        LocalDateTime utcSessionTime = LocalDateTime.ofInstant(sessionTime, ZoneOffset.UTC);
+        Long effectiveCycleId = readingCycleId;
+        if (effectiveCycleId == null) {
+            effectiveCycleId = findOrCreateReadingCycle(
+                    userId,
+                    bookId,
+                    sessionTime,
+                    sessionType == 2 ? sessionTime : null,
+                    false
+            );
+            if (effectiveCycleId == null) {
+                return false;
+            }
+        }
+
+        Timestamp utcSessionTime = Timestamp.valueOf(LocalDateTime.ofInstant(sessionTime, ZoneOffset.UTC));
 
         try {
             Long existingId = jdbcTemplate.queryForObject(
@@ -535,8 +612,8 @@ public class BookmoryDbService {
             );
             if (existingId != null) {
                 jdbcTemplate.update(
-                        "UPDATE reading_session SET current_page = ?, minutes_read = ?, seconds_read = ? WHERE id = ?",
-                        Math.max(0, page), Math.max(0, minutesRead), Math.max(0, secondsRead), existingId
+                        "UPDATE reading_session SET reading_cycle_id = ?, current_page = ?, minutes_read = ?, seconds_read = ? WHERE id = ?",
+                        effectiveCycleId, Math.max(0, page), Math.max(0, minutesRead), Math.max(0, secondsRead), existingId
                 );
                 return false;
             }
@@ -544,9 +621,9 @@ public class BookmoryDbService {
 
         try {
             jdbcTemplate.update(
-                    "INSERT INTO reading_session (user_id, book_id, current_page, minutes_read, seconds_read, session_type, created_at) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    userId, bookId, Math.max(0, page), Math.max(0, minutesRead), Math.max(0, secondsRead), sessionType, utcSessionTime
+                    "INSERT INTO reading_session (user_id, book_id, reading_cycle_id, current_page, minutes_read, seconds_read, session_type, created_at) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    userId, bookId, effectiveCycleId, Math.max(0, page), Math.max(0, minutesRead), Math.max(0, secondsRead), sessionType, utcSessionTime
             );
             return true;
         } catch (Exception ex) {
@@ -555,8 +632,8 @@ public class BookmoryDbService {
         }
     }
 
-    public boolean ensureReadingStartSession(Long userId, Long bookId, Instant startTime) {
-        return importReadingSessionAt(userId, bookId, 0, 0, 0, 0, startTime);
+    public boolean ensureReadingStartSession(Long userId, Long bookId, Long readingCycleId, Instant startTime) {
+        return importReadingSessionAt(userId, bookId, readingCycleId, 0, 0, 0, 0, startTime);
     }
 
     public boolean importBookNote(Long userId, Long bookId, List<BookmoryNote> notesForBook, List<String> readComments) {

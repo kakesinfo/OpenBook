@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +8,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../app/theme.dart';
 import '../../application/books_providers.dart';
+import '../../data/bnf_service.dart';
 import '../../data/book.dart';
 
 enum _CoverMode { photo, url }
@@ -20,6 +21,7 @@ Future<Book?> showQuickCreateBookSheet(
   int? initialPrice,
   String? initialCoverUrl,
   BookStatus? initialStatus,
+  BnfBookResult? initialBnf,
 }) {
   return showModalBottomSheet<Book>(
     context: context,
@@ -36,6 +38,7 @@ Future<Book?> showQuickCreateBookSheet(
         initialPrice: initialPrice,
         initialCoverUrl: initialCoverUrl,
         initialStatus: initialStatus,
+        initialBnf: initialBnf,
       );
     },
   );
@@ -49,6 +52,7 @@ class QuickCreateBookSheet extends ConsumerStatefulWidget {
     this.initialPrice,
     this.initialCoverUrl,
     this.initialStatus,
+    this.initialBnf,
   });
 
   final String? initialTitle;
@@ -56,6 +60,7 @@ class QuickCreateBookSheet extends ConsumerStatefulWidget {
   final int? initialPrice;
   final String? initialCoverUrl;
   final BookStatus? initialStatus;
+  final BnfBookResult? initialBnf;
 
   @override
   ConsumerState<QuickCreateBookSheet> createState() => _QuickCreateBookSheetState();
@@ -73,6 +78,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
   _CoverMode _coverMode = _CoverMode.photo;
   String? _localCoverPath;
   bool _isSubmitting = false;
+  BnfBookResult? _bnfResult;
 
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -93,6 +99,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
     _targetStatus = widget.initialStatus == BookStatus.wishlist
         ? BookStatus.wishlist
         : BookStatus.unread;
+    _bnfResult = widget.initialBnf;
 
     _titleController.addListener(_onFieldChanged);
     _isbnController.addListener(_onFieldChanged);
@@ -154,6 +161,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
         final bnf = await ref.read(bnfServiceProvider).lookupByIsbn(scannedCode);
         if (bnf != null && mounted) {
           setState(() {
+            _bnfResult = bnf;
             if (_titleController.text.trim().isEmpty) {
               _titleController.text = bnf.title;
             }
@@ -239,6 +247,17 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
     final priceStr = _priceController.text.trim();
     final price = int.tryParse(priceStr);
 
+    // Si aucun résultat BnF n'est encore associé (ISBN saisi à la main par ex.),
+    // on tente un lookup pour remplir les métadonnées (auteur, éditeur, etc.).
+    if (_bnfResult == null && isbn.isNotEmpty) {
+      final cleanIsbn = _cleanBarcode(isbn);
+      if (cleanIsbn.length == 10 || cleanIsbn.length == 13) {
+        try {
+          _bnfResult = await ref.read(bnfServiceProvider).lookupByIsbn(cleanIsbn);
+        } catch (_) {}
+      }
+    }
+
     String? coverUrl;
     String? localCoverPath;
 
@@ -256,6 +275,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
         coverUrl: coverUrl,
         localCoverPath: localCoverPath,
         status: _targetStatus,
+        bnf: _bnfResult,
       );
 
       if (mounted) {
@@ -381,6 +401,35 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (_bnfResult != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentPrimaryLight,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                          border: Border.all(color: AppTheme.accentPrimary.withValues(alpha: 0.35)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.account_balance_rounded, size: 16, color: AppTheme.accentPrimary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Métadonnées BnF pré-remplies : auteur(s), éditeur, collection, prix, dimensions, description...',
+                                style: TextStyle(
+                                  color: AppTheme.accentPrimary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     // Titre
                     _buildFieldLabel('Titre du livre *', Icons.menu_book_rounded),
                     const SizedBox(height: 6),
@@ -623,7 +672,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
         width: width,
         height: height,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildPlaceholder(width, height),
+        errorBuilder: (_, _, _) => _buildPlaceholder(width, height),
       );
     }
 
@@ -684,7 +733,7 @@ class _QuickCreateBookSheetState extends ConsumerState<QuickCreateBookSheet> {
                   ),
                 );
               },
-              errorBuilder: (_, __, ___) => _buildPlaceholder(width, height),
+              errorBuilder: (_, _, _) => _buildPlaceholder(width, height),
             );
           }
           return _buildPlaceholder(width, height);

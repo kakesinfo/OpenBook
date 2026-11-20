@@ -15,7 +15,7 @@ export default function WishlistPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        setLoading(true);
+        queueMicrotask(() => setLoading(true));
         session.customFetch("/user/wishlist", {
             method: "GET"
         }).then(async (response) => {

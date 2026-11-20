@@ -57,6 +57,8 @@ public class WebSecurityConfig {
                     "/user/wishlist/**",
                     "/user/reading/**",
                     "/user/readingStatus/**",
+                    "/user/readingCycles",
+                    "/user/readingCycles/**",
                     "/user/readingSessions",
                     "/user/readingSessions/**",
                     "/user/statistics/**",

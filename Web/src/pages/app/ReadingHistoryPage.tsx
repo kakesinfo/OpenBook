@@ -13,7 +13,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
-import ReadingSessionDTO from "../../dto/ReadingSession.dto.ts";
+import ReadingCycleDTO from "../../dto/ReadingCycle.dto.ts";
 import BookList from "../../components/BookList/BookList.tsx";
 import Pagination from "../../components/Pagination/Pagination.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
@@ -37,7 +37,7 @@ export default function ReadingHistoryPage() {
     const currentYear = new Date().getFullYear();
 
     const [collectionBooks, setCollectionBooks] = useState<BookSummaryDTO[]>([]);
-    const [readingSessions, setReadingSessions] = useState<ReadingSessionDTO[]>([]);
+    const [readingCycles, setReadingCycles] = useState<ReadingCycleDTO[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [selectedYear, setSelectedYear] = useState<number>(currentYear);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -101,7 +101,9 @@ export default function ReadingHistoryPage() {
 
     useEffect(() => {
         let cancelled = false;
-        setLoading(true);
+        queueMicrotask(() => {
+            if (!cancelled) setLoading(true);
+        });
 
         Promise.all([
             session
@@ -109,11 +111,11 @@ export default function ReadingHistoryPage() {
                 .then(async (res) => (res.ok ? await res.json() : []))
                 .catch(() => []),
             session
-                .customFetch("/user/readingSessions", { method: "GET" })
+                .customFetch("/user/readingCycles", { method: "GET" })
                 .then(async (res) => (res.ok ? await res.json() : []))
                 .catch(() => [])
         ])
-            .then(([colData, sessionsData]) => {
+            .then(([colData, cyclesData]) => {
                 if (cancelled) return;
                 const booksList: BookSummaryDTO[] = Array.isArray(colData)
                     ? colData
@@ -121,7 +123,7 @@ export default function ReadingHistoryPage() {
                         ? colData.content
                         : [];
                 setCollectionBooks(booksList);
-                setReadingSessions(Array.isArray(sessionsData) ? sessionsData : []);
+                setReadingCycles(Array.isArray(cyclesData) ? cyclesData : []);
             })
             .finally(() => {
                 if (!cancelled) setLoading(false);
@@ -133,47 +135,47 @@ export default function ReadingHistoryPage() {
     }, [session]);
 
     const { availableYears, booksByYear } = useMemo(() => {
-        const latestEndByBookId = new Map<number, number>();
-
-        for (const s of readingSessions) {
-            if (!s.createdAt || s.sessionType !== 2) continue;
-            const prevEnd = latestEndByBookId.get(s.bookId) ?? 0;
-            if (s.createdAt > prevEnd) {
-                latestEndByBookId.set(s.bookId, s.createdAt);
-            }
+        const bookById = new Map<number, BookSummaryDTO>();
+        for (const book of collectionBooks) {
+            bookById.set(Number(book.id), book);
         }
 
         const yearsSet = new Set<number>([currentYear]);
         const mapByYear = new Map<number, BookSummaryDTO[]>();
 
-        for (const book of collectionBooks) {
-            const numericId = Number(book.id);
-            const sessionFinishedAt = latestEndByBookId.get(numericId);
-            if (!sessionFinishedAt) continue;
+        for (const cycle of readingCycles) {
+            if (!cycle.endedAt) continue;
+            const book = bookById.get(Number(cycle.bookId));
+            if (!book) continue;
 
-            const bookWithFinishedAt: BookSummaryDTO = {
+            const entry: BookSummaryDTO = {
                 ...book,
-                finishedAt: sessionFinishedAt
+                finishedAt: cycle.endedAt,
+                readingCycleId: cycle.id
             };
 
-            const year = new Date(sessionFinishedAt).getFullYear();
+            const year = new Date(cycle.endedAt).getFullYear();
             yearsSet.add(year);
 
             const list = mapByYear.get(year);
             if (list) {
-                list.push(bookWithFinishedAt);
+                list.push(entry);
             } else {
-                mapByYear.set(year, [bookWithFinishedAt]);
+                mapByYear.set(year, [entry]);
             }
         }
 
         const years = Array.from(yearsSet).sort((a, b) => b - a);
         for (const list of mapByYear.values()) {
-            list.sort((a, b) => (b.finishedAt || 0) - (a.finishedAt || 0));
+            list.sort((a, b) => {
+                const cmp = (b.finishedAt || 0) - (a.finishedAt || 0);
+                if (cmp !== 0) return cmp;
+                return (b.readingCycleId || 0) - (a.readingCycleId || 0);
+            });
         }
 
         return { availableYears: years, booksByYear: mapByYear };
-    }, [collectionBooks, readingSessions, currentYear]);
+    }, [collectionBooks, readingCycles, currentYear]);
 
     const readBooks = useMemo(() => {
         let list = booksByYear.get(selectedYear) || [];
@@ -193,9 +195,12 @@ export default function ReadingHistoryPage() {
         );
     }, [booksByYear, selectedYear, selectedCategories, searchQuery]);
 
-    useEffect(() => {
+    const filtersKey = `${selectedYear}|${selectedCategories.join(",")}|${searchQuery}`;
+    const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+    if (prevFiltersKey !== filtersKey) {
+        setPrevFiltersKey(filtersKey);
         setCurrentPage(1);
-    }, [selectedYear, selectedCategories, searchQuery]);
+    }
 
     const totalItems = readBooks.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -247,8 +252,8 @@ export default function ReadingHistoryPage() {
                             {loading
                                 ? "—"
                                 : language === "fr"
-                                    ? `${readBooks.length} livre${readBooks.length > 1 ? "s" : ""}`
-                                    : `${readBooks.length} book${readBooks.length !== 1 ? "s" : ""}`}
+                                    ? `${readBooks.length} lecture${readBooks.length > 1 ? "s" : ""}`
+                                    : `${readBooks.length} reading${readBooks.length !== 1 ? "s" : ""}`}
                         </span>
                     </div>
 
@@ -371,8 +376,11 @@ export default function ReadingHistoryPage() {
 
                                 {paginatedBooks.map((book) => {
                                     const cat = book.category || book.type;
+                                    const rowKey = book.readingCycleId != null
+                                        ? `${book.id}-cycle-${book.readingCycleId}`
+                                        : book.id;
                                     return (
-                                        <Link to={`/app/book/${book.id}`} className="collection-row" key={book.id}>
+                                        <Link to={`/app/book/${book.id}`} className="collection-row" key={rowKey}>
                                             <div className="collection-row__col collection-row__col--title">
                                                 <FontAwesomeIcon icon={faBook} className="collection-row__book-icon" />
                                                 <span className="collection-row__title" title={book.title}>

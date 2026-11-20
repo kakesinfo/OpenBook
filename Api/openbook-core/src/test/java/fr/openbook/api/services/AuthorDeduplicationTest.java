@@ -34,10 +34,17 @@ public class AuthorDeduplicationTest {
         String key3 = AuthorDeduplicationService.computeTokenKey("", "TYNION IV James");
         String key4 = AuthorDeduplicationService.computeTokenKey("James", "TYNION IV");
 
-        assertEquals("iv james tynion", key1);
+        // "iv" est un suffixe ignorable : supprimé quand au moins 2 vrais tokens restent
+        assertEquals("james tynion", key1);
         assertEquals(key1, key2);
         assertEquals(key1, key3);
         assertEquals(key1, key4);
+    }
+
+    @Test
+    void testComputeTokenKeyKeepsSuffixWithoutOtherTokens() {
+        // "iv" est conservé s'il ne reste qu'un seul autre token
+        assertEquals("iv james", AuthorDeduplicationService.computeTokenKey("James", "IV"));
     }
 
     @Test

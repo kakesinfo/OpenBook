@@ -1,5 +1,5 @@
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faRotate,
@@ -98,7 +98,7 @@ export default function AdminIndexationPage() {
         }
     }, [isIndeterminate]);
 
-    const fetchStatus = async () => {
+    const fetchStatus = useCallback(async () => {
         try {
             const resp = await session.customFetch("/admin/scrapers/status", { method: "GET" });
             if (resp.ok) {
@@ -113,12 +113,14 @@ export default function AdminIndexationPage() {
                     );
                 }
             } else {
+                // Réponse non OK : on conserve l'état actuel
             }
         } catch {
+            // Erreur réseau ignorée : le prochain polling retentera
         }
-    };
+    }, [session]);
 
-    const fetchTotalBooks = async () => {
+    const fetchTotalBooks = useCallback(async () => {
         try {
             const response = await session.customFetch("/books", { method: "GET" });
             if (response.ok) {
@@ -128,13 +130,14 @@ export default function AdminIndexationPage() {
         } catch (err) {
             console.error("Admin fetch total books error:", err);
         }
-    };
+    }, [session]);
 
     // Initial load
     useEffect(() => {
-        fetchStatus();
-        fetchTotalBooks();
-    }, [session]);
+        void (async () => {
+            await Promise.all([fetchStatus(), fetchTotalBooks()]);
+        })();
+    }, [fetchStatus, fetchTotalBooks]);
 
     // Adaptive polling: 1 second during active scan for real-time live updates, 5 seconds when idle
     useEffect(() => {
@@ -146,7 +149,7 @@ export default function AdminIndexationPage() {
             }
         }, intervalMs);
         return () => clearInterval(interval);
-    }, [status?.is_running]);
+    }, [status?.is_running, fetchStatus, fetchTotalBooks]);
 
     const handleToggleSelect = (sourceId: string, e?: React.MouseEvent) => {
         if (e) e.stopPropagation();

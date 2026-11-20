@@ -1809,7 +1809,109 @@
             <column name="category" />
         </createIndex>
     </changeSet>
-    <changeSet id="46" author="Flo">
+    <changeSet id="46" author="Axel">
+        <addColumn tableName="reading_session">
+            <column name="is_common" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet id="47" author="Axel">
+        <createTable tableName="reading_cycle">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+            <column name="user_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="book_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="is_common" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false" />
+            </column>
+            <column name="started_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+            <column name="ended_at" type="timestamp">
+                <constraints nullable="true" />
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="reading_cycle" indexName="idx_reading_cycle_user_id">
+            <column name="user_id" />
+        </createIndex>
+
+        <createIndex tableName="reading_cycle" indexName="idx_reading_cycle_book_id">
+            <column name="book_id" />
+        </createIndex>
+
+        <createIndex tableName="reading_cycle" indexName="idx_reading_cycle_user_book">
+            <column name="user_id" />
+            <column name="book_id" />
+        </createIndex>
+
+        <addForeignKeyConstraint
+            constraintName="fk_reading_cycle_user_id"
+            baseTableName="reading_cycle"
+            baseColumnNames="user_id"
+            referencedTableName="user"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"
+        />
+
+        <addForeignKeyConstraint
+            constraintName="fk_reading_cycle_book_id"
+            baseTableName="reading_cycle"
+            baseColumnNames="book_id"
+            referencedTableName="book"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"
+        />
+
+        <addColumn tableName="reading_session">
+            <column name="reading_cycle_id" type="integer">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+
+        <createIndex tableName="reading_session" indexName="idx_reading_session_reading_cycle_id">
+            <column name="reading_cycle_id" />
+        </createIndex>
+
+        <addForeignKeyConstraint
+            constraintName="fk_reading_session_reading_cycle_id"
+            baseTableName="reading_session"
+            baseColumnNames="reading_cycle_id"
+            referencedTableName="reading_cycle"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"
+        />
+    </changeSet>
+    <changeSet id="48" author="Axel">
+        <customChange class="fr.openbook.api.migration.MigrateReadingSessionsToCyclesChange" />
+    </changeSet>
+    <changeSet id="49" author="Axel">
+        <addNotNullConstraint
+            tableName="reading_session"
+            columnName="reading_cycle_id"
+            columnDataType="integer"
+        />
+        <dropColumn tableName="reading_session" columnName="is_common" />
+    </changeSet>
+    <changeSet id="50" author="Axel">
+        <customChange class="fr.openbook.api.migration.MergeLeadingOrphanProgressCyclesChange" />
+    </changeSet>
+    <changeSet id="51" author="Flo">
         <createTable tableName="achievements">
             <column name="id" type="integer" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false" />
@@ -1860,7 +1962,7 @@
             onUpdate="RESTRICT"
         />
     </changeSet>
-    <changeSet id="47" author="Flo">
+    <changeSet id="52" author="Flo">
         <addColumn tableName="achievements">
             <column name="ornament" type="varchar(40)" defaultValue="laurel">
                 <constraints nullable="false" />

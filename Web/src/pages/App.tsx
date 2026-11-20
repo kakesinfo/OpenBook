@@ -161,7 +161,7 @@ export default function App() {
             <Dialog
                 open={open}
                 onClose={handleClose}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -170,7 +170,7 @@ export default function App() {
                         maxWidth: "560px",
                         margin: "16px",
                     }
-                }}
+                }}}
             >
                 <Card>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>

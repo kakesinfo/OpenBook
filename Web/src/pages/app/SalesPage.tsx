@@ -1,15 +1,14 @@
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import useSession from "../../hooks/UseSession.tsx";
 import Pagination from "../../components/Pagination/Pagination.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import { Dialog } from "@mui/material";
-import { Link } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faBook,
     faLayerGroup,
-    faMagnifyingGlass,
     faTag,
     faCheck,
     faBorderAll,
@@ -65,12 +64,32 @@ export default function SalesPage() {
     const session = useSession();
     const { tr, translateCategory } = useLanguage();
     const { enqueueSnackbar } = useSnackbar();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { tab } = useParams<{ tab?: string }>();
+    const basePath = location.pathname.startsWith("/app/ventes") ? "/app/ventes" : "/app/sales";
 
     const [books, setBooks] = useState<BookSummaryDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
-    const [selectedStatus, setSelectedStatus] = useState<SalesStatusFilter>("all");
+    const tabFromUrl = tab?.toLowerCase();
+    const selectedStatus: SalesStatusFilter =
+        tabFromUrl === "for-sale" || tabFromUrl === "for_sale"
+            ? "FOR_SALE"
+            : tabFromUrl === "sold"
+                ? "SOLD"
+                : "all";
+
+    const handleStatusChange = (status: SalesStatusFilter) => {
+        if (status === "all") {
+            navigate(basePath);
+        } else if (status === "FOR_SALE") {
+            navigate(`${basePath}/for-sale`);
+        } else {
+            navigate(`${basePath}/sold`);
+        }
+    };
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>(DEFAULT_APP_CATEGORIES);
 
@@ -104,7 +123,7 @@ export default function SalesPage() {
         try {
             const saved = localStorage.getItem("sales_display_mode");
             if (saved === "grid" || saved === "list") return saved;
-        } catch (_) {}
+        } catch { /* ignore storage errors */ }
         return "grid";
     });
 
@@ -168,8 +187,9 @@ export default function SalesPage() {
                 }
                 enqueueSnackbar(errMsg, { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setSubmittingSale(false);
         }
@@ -202,10 +222,10 @@ export default function SalesPage() {
         setCurrentPage(1);
         try {
             localStorage.setItem("sales_display_mode", mode);
-        } catch (_) {}
+        } catch { /* ignore storage errors */ }
     };
 
-    const fetchSales = () => {
+    const fetchSales = useCallback(() => {
         setLoading(true);
         session.customFetch("/user/sales", { method: "GET" })
             .then(async (res) => {
@@ -223,14 +243,14 @@ export default function SalesPage() {
             .finally(() => {
                 setLoading(false);
             });
-    };
+    }, [session]);
 
     useEffect(() => {
-        fetchSales();
+        queueMicrotask(() => fetchSales());
         const handleSalesUpdated = () => fetchSales();
         window.addEventListener("sales-updated", handleSalesUpdated);
         return () => window.removeEventListener("sales-updated", handleSalesUpdated);
-    }, [session]);
+    }, [fetchSales]);
 
     // Status toggle: FOR_SALE <-> SOLD
     const handleUpdateStatus = async (e: React.MouseEvent, bookId: string, targetStatus: "FOR_SALE" | "SOLD") => {
@@ -256,8 +276,9 @@ export default function SalesPage() {
             } else {
                 enqueueSnackbar(tr("Error updating status", "Erreur lors de la mise à jour du statut"), { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setActionLoadingId(null);
         }
@@ -288,17 +309,21 @@ export default function SalesPage() {
             } else {
                 enqueueSnackbar(tr("Error removing book", "Erreur lors du retrait de l'album"), { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setActionLoadingId(null);
         }
     };
 
     // Reset page to 1 whenever filters change
-    useEffect(() => {
+    const filtersKey = `${selectedStatus}|${selectedCategories.join(",")}|${searchQuery}`;
+    const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+    if (prevFiltersKey !== filtersKey) {
+        setPrevFiltersKey(filtersKey);
         setCurrentPage(1);
-    }, [selectedStatus, selectedCategories, searchQuery]);
+    }
 
     // Status counts
     const statusCounts = useMemo(() => {
@@ -404,7 +429,7 @@ export default function SalesPage() {
                         count: statusCounts[tab.id]
                     }))}
                     selectedId={selectedStatus}
-                    onChange={setSelectedStatus}
+                    onChange={handleStatusChange}
                 />
             </WrapperHeader>
 
@@ -764,7 +789,7 @@ export default function SalesPage() {
             <Dialog
                 open={saleModalOpen}
                 onClose={() => setSaleModalOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface, #1e1e24)",
                         border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
@@ -774,7 +799,7 @@ export default function SalesPage() {
                         padding: "24px",
                         color: "var(--text-primary)"
                     }
-                }}
+                }}}
             >
                 <div className="tx-dialog">
                     <div className="tx-dialog__header">

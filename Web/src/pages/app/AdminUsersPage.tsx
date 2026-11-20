@@ -102,7 +102,9 @@ export default function AdminUsersPage() {
     }, [session, tr]);
 
     useEffect(() => {
-        fetchUsers();
+        void (async () => {
+            await fetchUsers();
+        })();
     }, [fetchUsers]);
 
     // Open create modal with pre-generated password
@@ -477,13 +479,13 @@ export default function AdminUsersPage() {
             <Dialog
                 open={isCreateOpen}
                 onClose={() => !creating && setIsCreateOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
                         overflow: "visible"
                     }
-                }}
+                }}}
             >
                 <div className="admin-users-dialog">
                     <h3 className="admin-users-dialog__title">
@@ -586,13 +588,13 @@ export default function AdminUsersPage() {
             <Dialog
                 open={Boolean(createdCredentials)}
                 onClose={() => setCreatedCredentials(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
                         overflow: "visible"
                     }
-                }}
+                }}}
             >
                 <div className="admin-users-dialog">
                     <h3 className="admin-users-dialog__title" style={{ color: "#10b981" }}>
@@ -650,13 +652,13 @@ export default function AdminUsersPage() {
             <Dialog
                 open={Boolean(userToReset)}
                 onClose={() => !resetting && setUserToReset(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
                         overflow: "visible"
                     }
-                }}
+                }}}
             >
                 <div className="admin-users-dialog">
                     <h3 className="admin-users-dialog__title">
@@ -720,13 +722,13 @@ export default function AdminUsersPage() {
             <Dialog
                 open={Boolean(userToDelete)}
                 onClose={() => !deleting && setUserToDelete(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
                         overflow: "visible"
                     }
-                }}
+                }}}
             >
                 <div className="admin-users-dialog">
                     <h3 className="admin-users-dialog__title admin-users-dialog__title--danger">

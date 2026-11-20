@@ -165,19 +165,28 @@ export default function Routing() {
                 <Route path="home" element={<UserOnlyRoute><HomePage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="reading-history" element={<UserOnlyRoute><ReadingHistoryPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="news" element={<UserOnlyRoute><NewsPage key={location.pathname}/></UserOnlyRoute>} />
-                <Route path="collection" element={<UserOnlyRoute><CollectionPage key={location.pathname}/></UserOnlyRoute>} />
-                <Route path="sales" element={<UserOnlyRoute><SalesPage key={location.pathname}/></UserOnlyRoute>} />
-                <Route path="ventes" element={<UserOnlyRoute><SalesPage key={location.pathname}/></UserOnlyRoute>} />
-                <Route path="collection/series" element={<UserOnlyRoute><SeriesPage key={location.pathname}/></UserOnlyRoute>} />
-                <Route path="series" element={<UserOnlyRoute><SeriesPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="collection" element={<UserOnlyRoute><CollectionPage /></UserOnlyRoute>} />
+                <Route path="collection/:tab" element={<UserOnlyRoute><CollectionPage /></UserOnlyRoute>} />
+                <Route path="sales" element={<UserOnlyRoute><SalesPage /></UserOnlyRoute>} />
+                <Route path="sales/:tab" element={<UserOnlyRoute><SalesPage /></UserOnlyRoute>} />
+                <Route path="ventes" element={<UserOnlyRoute><SalesPage /></UserOnlyRoute>} />
+                <Route path="ventes/:tab" element={<UserOnlyRoute><SalesPage /></UserOnlyRoute>} />
+                <Route path="collection/series" element={<UserOnlyRoute><SeriesPage /></UserOnlyRoute>} />
+                <Route path="collection/series/ongoing" element={<UserOnlyRoute><SeriesPage tab="ON_GOING" /></UserOnlyRoute>} />
+                <Route path="collection/series/finished" element={<UserOnlyRoute><SeriesPage tab="FINISHED" /></UserOnlyRoute>} />
+                <Route path="series" element={<UserOnlyRoute><SeriesPage /></UserOnlyRoute>} />
+                <Route path="series/ongoing" element={<UserOnlyRoute><SeriesPage tab="ON_GOING" /></UserOnlyRoute>} />
+                <Route path="series/finished" element={<UserOnlyRoute><SeriesPage tab="FINISHED" /></UserOnlyRoute>} />
                 <Route path="series/:id" element={<UserOnlyRoute><SeriesDetailPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="author/:id" element={<UserOnlyRoute><AuthorDetailPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="authors/:id" element={<UserOnlyRoute><AuthorDetailPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="editor/:id" element={<UserOnlyRoute><EditorDetailPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="editors/:id" element={<UserOnlyRoute><EditorDetailPage key={location.pathname}/></UserOnlyRoute>} />
-                <Route path="bibliotheque" element={<UserOnlyRoute><CollectionPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="bibliotheque" element={<UserOnlyRoute><CollectionPage /></UserOnlyRoute>} />
+                <Route path="bibliotheque/:tab" element={<UserOnlyRoute><CollectionPage /></UserOnlyRoute>} />
                 <Route path="wishlist" element={<UserOnlyRoute><WishlistPage key={location.pathname}/></UserOnlyRoute>} />
-                <Route path="planning" element={<UserOnlyRoute><PlanningPage key={location.pathname}/></UserOnlyRoute>} />
+                <Route path="planning" element={<UserOnlyRoute><PlanningPage /></UserOnlyRoute>} />
+                <Route path="planning/:tab" element={<UserOnlyRoute><PlanningPage /></UserOnlyRoute>} />
                 <Route path="notes" element={<UserOnlyRoute><NotesPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="glossary" element={<UserOnlyRoute><GlossaryPage key={location.pathname}/></UserOnlyRoute>} />
                 <Route path="glossaire" element={<UserOnlyRoute><GlossaryPage key={location.pathname}/></UserOnlyRoute>} />
@@ -198,7 +207,8 @@ export default function Routing() {
                 <Route path="admin/logs" element={<AdminOnlyRoute><AdminLogsPage key={location.pathname}/></AdminOnlyRoute>} />
 
                 {/* Routes communes */}
-                <Route path="settings" element={<SettingsPage key={location.pathname}/>} />
+                <Route path="settings" element={<SettingsPage />} />
+                <Route path="settings/:tab" element={<SettingsPage />} />
             </Route>
 
             <Route path="*" element={<Navigate replace to="/" />} />

@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate } from "react-router";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Link, useLocation, useNavigate } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useSnackbar } from "notistack";
@@ -11,7 +11,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
 	faLayerGroup,
 	faPlus,
-	faMagnifyingGlass,
 	faXmark,
 	faBell,
 	faBook,
@@ -50,11 +49,13 @@ const DEFAULT_CATEGORIES: CategoryOption[] = [
     { id: 7, name: "E-book" },
 ];
 
-export default function SeriesPage() {
+export default function SeriesPage({ tab = "all" }: { tab?: "all" | "ON_GOING" | "FINISHED" }) {
     const navigate = useNavigate();
+    const location = useLocation();
     const session = useSession();
     const { tr, translateCategory } = useLanguage();
     const { enqueueSnackbar } = useSnackbar();
+    const basePath = location.pathname.startsWith("/app/collection/series") ? "/app/collection/series" : "/app/series";
 
     const [mySeries, setMySeries] = useState<SeriesDTO[]>([]);
     const [categories, setCategories] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
@@ -62,7 +63,17 @@ export default function SeriesPage() {
 
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-    const [statusFilter, setStatusFilter] = useState<"all" | "ON_GOING" | "FINISHED">("all");
+    const statusFilter = tab;
+
+    const handleStatusFilterChange = (status: "all" | "ON_GOING" | "FINISHED") => {
+        if (status === "all") {
+            navigate(basePath);
+        } else if (status === "ON_GOING") {
+            navigate(`${basePath}/ongoing`);
+        } else {
+            navigate(`${basePath}/finished`);
+        }
+    };
 
     const seriesCategoryOptions: MultiSelectOption[] = useMemo(() => {
         return categories.map((cat) => {
@@ -168,7 +179,7 @@ export default function SeriesPage() {
     }, [session]);
 
     // Fetch user series
-    const fetchUserSeries = async () => {
+    const fetchUserSeries = useCallback(async () => {
         setLoading(true);
         try {
             const res = await session.customFetch("/user/series", { method: "GET" });
@@ -181,11 +192,13 @@ export default function SeriesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [session]);
 
     useEffect(() => {
-        fetchUserSeries();
-    }, [session]);
+        queueMicrotask(() => {
+            void fetchUserSeries();
+        });
+    }, [fetchUserSeries]);
 
     // Debounced book search in Add Book Dialog
     useDebounce(bookSearchQuery, 300, (value) => {
@@ -287,8 +300,9 @@ export default function SeriesPage() {
                 const errData = await res.text();
                 enqueueSnackbar(`${tr("Error", "Erreur")}: ${errData}`, { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setCreating(false);
         }
@@ -332,8 +346,9 @@ export default function SeriesPage() {
                 const errData = await res.text();
                 enqueueSnackbar(`${tr("Error", "Erreur")}: ${errData}`, { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setEditing(false);
         }
@@ -412,8 +427,9 @@ export default function SeriesPage() {
             } else {
                 enqueueSnackbar(tr("Error adding book", "Erreur lors de l'ajout de l'album"), { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setAddingBook(false);
         }
@@ -497,9 +513,12 @@ export default function SeriesPage() {
     }, [mySeries, statusFilter, selectedCategories, searchQuery]);
 
     // Reset page to 1 whenever filters change
-    useEffect(() => {
+    const filtersKey = `${statusFilter}|${selectedCategories.join(",")}|${searchQuery}`;
+    const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+    if (prevFiltersKey !== filtersKey) {
+        setPrevFiltersKey(filtersKey);
         setCurrentPage(1);
-    }, [statusFilter, selectedCategories, searchQuery]);
+    }
 
     // Pagination calculations
     const totalFiltered = displayedSeries.length;
@@ -535,7 +554,7 @@ export default function SeriesPage() {
                         { id: "FINISHED", label: tr("Completed", "Terminées"), count: finishedCount }
                     ]}
                     selectedId={statusFilter}
-                    onChange={setStatusFilter}
+                    onChange={handleStatusFilterChange}
                 />
             </WrapperHeader>
             <div className="series-page__content">
@@ -728,7 +747,7 @@ export default function SeriesPage() {
             <Dialog
                 open={createDialogOpen}
                 onClose={() => setCreateDialogOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -738,7 +757,7 @@ export default function SeriesPage() {
                         padding: "24px",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -881,7 +900,7 @@ export default function SeriesPage() {
             <Dialog
                 open={editDialogOpen}
                 onClose={() => setEditDialogOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -891,7 +910,7 @@ export default function SeriesPage() {
                         padding: "24px",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -1034,14 +1053,14 @@ export default function SeriesPage() {
                 onClose={() => setActiveSeries(null)}
                 maxWidth="md"
                 fullWidth
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         borderRadius: "16px",
                         border: "1px solid var(--border-subtle)",
                         padding: 0
                     }
-                }}
+                }}}
             >
                 {activeSeries && (
                     <div className="series-page__modal">
@@ -1219,7 +1238,7 @@ export default function SeriesPage() {
             <Dialog
                 open={addBookDialogOpen}
                 onClose={() => setAddBookDialogOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -1229,7 +1248,7 @@ export default function SeriesPage() {
                         padding: "24px",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>

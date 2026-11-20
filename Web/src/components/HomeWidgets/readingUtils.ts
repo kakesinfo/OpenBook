@@ -82,3 +82,65 @@ export function formatDurationSeconds(totalSeconds: number): string {
     }
     return `${seconds}s`;
 }
+
+/**
+ * Tells whether the current reading cycle of a book is a common (group) reading.
+ * Prefers grouping by backend readingCycleId when present; falls back to the
+ * last "start" session (sessionType 0) or first session for legacy payloads.
+ */
+export function isCommonReadingSession(sessions: ReadingSessionDTO[], bookId: number): boolean {
+    const bookSessions = sessions.filter((s) => s.bookId === bookId);
+    if (bookSessions.length === 0) return false;
+
+    if (bookSessions.every((s) => s.readingCycleId != null)) {
+        const byCycle = new Map<number, ReadingSessionDTO[]>();
+        for (const s of bookSessions) {
+            const cid = s.readingCycleId as number;
+            const arr = byCycle.get(cid);
+            if (arr) arr.push(s);
+            else byCycle.set(cid, [s]);
+        }
+        const sortedIds = Array.from(byCycle.keys()).sort((a, b) => a - b);
+        for (let i = sortedIds.length - 1; i >= 0; i--) {
+            const group = byCycle.get(sortedIds[i])!;
+            if (!group.some((s) => s.sessionType === 2)) {
+                return group.some((s) => Boolean(s.isCommon));
+            }
+        }
+        const latestGroup = byCycle.get(sortedIds[sortedIds.length - 1])!;
+        return latestGroup.some((s) => Boolean(s.isCommon));
+    }
+
+    let start: ReadingSessionDTO | undefined;
+    for (const s of bookSessions) {
+        if (start === undefined) start = s;
+        if (s.sessionType === 0) start = s;
+    }
+    return Boolean(start?.isCommon);
+}
+
+/**
+ * Returns the set of book ids (as strings, matching BookSummaryDTO.id) whose
+ * current reading cycle is a common reading.
+ */
+export function computeCommonReadingBookIds(sessions: ReadingSessionDTO[]): Set<string> {
+    const byBook = new Map<number, ReadingSessionDTO[]>();
+    for (const s of sessions) {
+        const arr = byBook.get(s.bookId);
+        if (arr) arr.push(s);
+        else byBook.set(s.bookId, [s]);
+    }
+    const ids = new Set<string>();
+    for (const [bookId, arr] of byBook) {
+        if (isCommonReadingSession(arr, bookId)) ids.add(String(bookId));
+    }
+    return ids;
+}
+
+/**
+ * Safe membership test: the backend serializes book ids as JSON numbers while
+ * the set stores strings, so the id is normalized before lookup.
+ */
+export function isCommonBook(commonBookIds: Set<string>, bookId: string | number): boolean {
+    return commonBookIds.has(String(bookId));
+}

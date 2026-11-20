@@ -73,7 +73,7 @@ export default function AdminBackupsPage() {
                     { variant: "error" }
                 );
             }
-        } catch (e) {
+        } catch {
             enqueueSnackbar(
                 tr("Network error while loading backups", "Erreur réseau lors du chargement des sauvegardes"),
                 { variant: "error" }
@@ -84,7 +84,9 @@ export default function AdminBackupsPage() {
     }, [session, tr]);
 
     useEffect(() => {
-        fetchBackups();
+        void (async () => {
+            await fetchBackups();
+        })();
     }, [fetchBackups]);
 
     const handleCreateBackup = async () => {
@@ -110,7 +112,7 @@ export default function AdminBackupsPage() {
                     { variant: "error" }
                 );
             }
-        } catch (e) {
+        } catch {
             enqueueSnackbar(
                 tr("An error occurred during backup creation", "Une erreur est survenue lors de la création de la sauvegarde"),
                 { variant: "error" }
@@ -147,7 +149,7 @@ export default function AdminBackupsPage() {
                 tr("Backup download started", "Téléchargement de la sauvegarde démarré"),
                 { variant: "success" }
             );
-        } catch (e) {
+        } catch {
             enqueueSnackbar(
                 tr("Failed to download backup", "Impossible de télécharger la sauvegarde"),
                 { variant: "error" }
@@ -179,7 +181,7 @@ export default function AdminBackupsPage() {
                     { variant: "error" }
                 );
             }
-        } catch (e) {
+        } catch {
             enqueueSnackbar(
                 tr("Error while deleting backup", "Erreur lors de la suppression de la sauvegarde"),
                 { variant: "error" }
@@ -220,7 +222,7 @@ export default function AdminBackupsPage() {
                     { variant: "error" }
                 );
             }
-        } catch (e: any) {
+        } catch {
             enqueueSnackbar(
                 tr("Error while restoring backup", "Erreur lors de la restauration de la sauvegarde"),
                 { variant: "error" }
@@ -391,7 +393,7 @@ export default function AdminBackupsPage() {
             <Dialog
                 open={backupToRestore !== null}
                 onClose={() => !restoring && setBackupToRestore(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -401,7 +403,7 @@ export default function AdminBackupsPage() {
                         width: "100%",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div className="admin-backups__dialog-content">
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "var(--accent-primary)" }}>
@@ -444,7 +446,7 @@ export default function AdminBackupsPage() {
             <Dialog
                 open={backupToDelete !== null}
                 onClose={() => !deleting && setBackupToDelete(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -454,7 +456,7 @@ export default function AdminBackupsPage() {
                         width: "100%",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div className="admin-backups__dialog-content">
                     <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "#ef4444" }}>

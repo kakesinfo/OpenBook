@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
@@ -35,12 +35,12 @@ export default function AuthorDetailPage() {
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"all" | "owned" | "wishlisted">("all");
+    const [statusFilter, setStatusFilter] = useState<"all" | "owned" | "missing" | "wishlisted">("all");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(24);
 
     // Fetch author data
-    const fetchAuthor = async () => {
+    const fetchAuthor = useCallback(async () => {
         if (!id) return;
         setLoading(true);
         try {
@@ -62,14 +62,18 @@ export default function AuthorDetailPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, session, tr, enqueueSnackbar]);
 
     useEffect(() => {
-        fetchAuthor();
-    }, [id, session]);
+        void (async () => {
+            await fetchAuthor();
+        })();
+    }, [fetchAuthor]);
 
     useEffect(() => {
-        setCurrentPage(1);
+        void (async () => {
+            setCurrentPage(1);
+        })();
     }, [id, searchQuery, statusFilter]);
 
     // Toggle follow
@@ -112,6 +116,8 @@ export default function AuthorDetailPage() {
 
         if (statusFilter === "owned") {
             list = list.filter((b) => b.status === "OWNED");
+        } else if (statusFilter === "missing") {
+            list = list.filter((b) => b.status !== "OWNED");
         } else if (statusFilter === "wishlisted") {
             list = list.filter((b) => b.status === "WISHLISTED");
         }
@@ -143,6 +149,18 @@ export default function AuthorDetailPage() {
     const startIndex = totalItems === 0 ? 0 : (safePage - 1) * (isAll ? totalItems : pageSize);
     const endIndex = isAll ? totalItems : Math.min(startIndex + pageSize, totalItems);
     const paginatedBooks = isAll ? filteredBooks : filteredBooks.slice(startIndex, endIndex);
+
+    const handleBookStatusChange = (bookId: string, newStatus: string | null) => {
+        setAuthor((prev) => {
+            if (!prev || !prev.books) return prev;
+            return {
+                ...prev,
+                books: prev.books.map((b) =>
+                    String(b.id) === String(bookId) ? { ...b, status: newStatus } : b
+                )
+            };
+        });
+    };
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
@@ -218,6 +236,7 @@ export default function AuthorDetailPage() {
 
     const totalBooks = author.books?.length || 0;
     const ownedBooks = (author.books || []).filter((b) => b.status === "OWNED").length;
+    const missingBooks = (author.books || []).filter((b) => b.status !== "OWNED").length;
     const wishlistedBooks = (author.books || []).filter((b) => b.status === "WISHLISTED").length;
 
     return (
@@ -241,9 +260,8 @@ export default function AuthorDetailPage() {
                             tabs={[
                                 { id: "all", label: tr("All", "Tous"), count: totalBooks },
                                 { id: "owned", label: tr("Owned", "Possédés"), count: ownedBooks },
-                                ...(wishlistedBooks > 0
-                                    ? [{ id: "wishlisted" as const, label: tr("Wishlist", "Souhaits"), count: wishlistedBooks }]
-                                    : [])
+                                { id: "missing", label: tr("Missing", "Manquants"), count: missingBooks },
+                                { id: "wishlisted", label: tr("Wishlist", "Souhaits"), count: wishlistedBooks }
                             ]}
                             selectedId={statusFilter}
                             onChange={setStatusFilter}
@@ -320,23 +338,33 @@ export default function AuthorDetailPage() {
 
                 {/* Albums content */}
                 {filteredBooks.length === 0 ? (
-                    <div className="author-detail-page__empty">
-                        <FontAwesomeIcon icon={faBook} className="author-detail-page__empty-icon" />
-                        <h3>
-                            {searchQuery || statusFilter !== "all"
-                                ? tr("No books match the selected criteria", "Aucun album ne correspond aux critères sélectionnés")
-                                : tr("No books found for this author", "Aucun album trouvé pour cet auteur")}
-                        </h3>
-                        <p>
-                            {searchQuery || statusFilter !== "all"
-                                ? tr("Change your filters or reset the search to see all books.", "Modifiez vos filtres ou réinitialisez la recherche pour voir tous les albums.")
-                                : tr("This author does not have any books linked in the database yet.", "Cet auteur n'a pas encore d'album associé dans la base de données.")}
+                    statusFilter !== "all" && !searchQuery ? (
+                        <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "32px 0", margin: 0 }}>
+                            {statusFilter === "missing"
+                                ? tr("You already own all the books", "Vous possédez déjà tous les livres")
+                                : statusFilter === "owned"
+                                ? tr("You don't own any of the books", "Vous ne possédez aucun des livres")
+                                : tr("No books in your wishlist", "Aucun livre dans votre liste de souhaits")}
                         </p>
-                    </div>
+                    ) : (
+                        <div className="author-detail-page__empty">
+                            <FontAwesomeIcon icon={faBook} className="author-detail-page__empty-icon" />
+                            <h3>
+                                {searchQuery
+                                    ? tr("No books match the selected criteria", "Aucun album ne correspond aux critères sélectionnés")
+                                    : tr("No books found for this author", "Aucun album trouvé pour cet auteur")}
+                            </h3>
+                            <p>
+                                {searchQuery
+                                    ? tr("Change your filters or reset the search to see all books.", "Modifiez vos filtres ou réinitialisez la recherche pour voir tous les albums.")
+                                    : tr("This author does not have any books linked in the database yet.", "Cet auteur n'a pas encore d'album associé dans la base de données.")}
+                            </p>
+                        </div>
+                    )
                 ) : (
                     <>
                         {viewMode === "grid" ? (
-                            <BookList books={paginatedBooks} />
+                            <BookList books={paginatedBooks} onBookStatusChange={handleBookStatusChange} />
                         ) : (
                             <div className="author-detail-list">
                                 {paginatedBooks.map((b) => (

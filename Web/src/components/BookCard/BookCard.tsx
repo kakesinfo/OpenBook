@@ -63,8 +63,18 @@ export default function BookCard({
                     />
                 </Link>
 
-                {statusBadge}
-                {badgeText && <span className="book-card__badge">{badgeText}</span>}
+                <div className="book-card__scrim book-card__scrim--top" aria-hidden="true" />
+                {actions && <div className="book-card__scrim book-card__scrim--bottom" aria-hidden="true" />}
+
+                {(statusBadge || badgeText) && (
+                    <div className="book-card__top-bar">
+                        <div className="book-card__top-left">
+                            {statusBadge}
+                        </div>
+                        {badgeText && <span className="book-card__badge">{badgeText}</span>}
+                    </div>
+                )}
+
                 {actions && <div className="book-card__actions">{actions}</div>}
             </div>
 

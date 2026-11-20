@@ -22,7 +22,7 @@ export default function NewsPage() {
     const [totalPages, setTotalPages] = useState(1);
 
     useEffect(() => {
-        setLoading(true);
+        Promise.resolve().then(() => setLoading(true));
         session.customFetch(`/books/${order}?page=${currentPage}&size=${pageSize}&limit=100`, {
             method: "GET"
         }).then(async (response) => {

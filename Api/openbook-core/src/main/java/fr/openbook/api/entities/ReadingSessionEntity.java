@@ -36,6 +36,11 @@ public class ReadingSessionEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "reading_cycle_id", nullable = false)
+    private ReadingCycleEntity readingCycle;
+
     @Column(name = "current_page", nullable = false)
     private Integer currentPage;
 

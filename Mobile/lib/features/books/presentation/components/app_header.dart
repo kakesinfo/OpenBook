@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_application_1/app/theme.dart';
 
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
@@ -21,7 +21,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => Size.fromHeight(
-        (bottom?.preferredSize.height ?? 0.0) + (subtitle != null ? 68.0 : 58.0),
+        (bottom?.preferredSize.height ?? 0.0) + (subtitle != null ? 70.0 : 58.0),
       );
 
   @override

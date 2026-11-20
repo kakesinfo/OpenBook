@@ -151,7 +151,9 @@ export default function AdminConfigPage() {
     }, [session, tr]);
 
     useEffect(() => {
-        fetchConfigs();
+        void (async () => {
+            await fetchConfigs();
+        })();
     }, [fetchConfigs]);
 
     const parseCronIntoBuilder = (cronStr: string) => {
@@ -513,13 +515,13 @@ export default function AdminConfigPage() {
             <Dialog
                 open={Boolean(editingConfig)}
                 onClose={() => !saving && setEditingConfig(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
                         overflow: "visible"
                     }
-                }}
+                }}}
             >
                 {editingConfig && (
                     <div className="admin-config-dialog">

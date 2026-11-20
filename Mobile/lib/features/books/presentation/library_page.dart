@@ -1,9 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/books_providers.dart';
-import '../data/book.dart';
 import 'book_details_page.dart';
 import 'components/app_header.dart';
 import 'components/add_book_sheet.dart';
@@ -35,12 +34,10 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   Widget build(BuildContext context) {
     final booksAsync = ref.watch(booksControllerProvider);
     final books = ref.watch(filteredBooksProvider);
-    final selectedFilter = ref.watch(bookFilterProvider);
 
     return Scaffold(
       appBar: const AppHeader(
         title: 'Mes Albums',
-        subtitle: 'Bibliothèque & Filtres',
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: null,
@@ -50,12 +47,16 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
         icon: const Icon(Icons.add),
         label: const Text('Ajouter un livre'),
       ),
-      body: CustomScrollView(
-        slivers: [
+      body: RefreshIndicator(
+        color: AppTheme.accentPrimary,
+        onRefresh: () => ref.read(booksControllerProvider.notifier).reload(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
           // Search Bar
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: Container(
                 decoration: BoxDecoration(
                   color: AppTheme.bgSurface,
@@ -91,42 +92,6 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
             ),
           ),
 
-          // Filter Chips Row
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-            sliver: SliverToBoxAdapter(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: BookLibraryFilter.values.map((filter) {
-                    final isSelected = selectedFilter == filter;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(filter.label),
-                        selected: isSelected,
-                        onSelected: (_) =>
-                            ref.read(bookFilterProvider.notifier).setFilter(filter),
-                        backgroundColor: AppTheme.bgSurface,
-                        selectedColor: AppTheme.accentPrimaryLight,
-                        side: BorderSide(
-                          color: isSelected
-                              ? AppTheme.accentPrimary.withValues(alpha: 0.4)
-                              : AppTheme.borderSubtle,
-                          width: 1,
-                        ),
-                        labelStyle: TextStyle(
-                          color: isSelected ? AppTheme.accentPrimary : AppTheme.textSecondary,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          fontSize: 13,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-          ),
           booksAsync.when(
             loading: () => SliverFillRemaining(
               child: Center(
@@ -331,6 +296,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
             },
           ),
         ],
+      ),
       ),
     );
   }

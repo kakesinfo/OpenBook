@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
@@ -25,8 +25,7 @@ import {
     faPlus,
     faXmark,
     faBorderAll,
-    faList,
-    faMagnifyingGlass
+    faList
 } from "@fortawesome/free-solid-svg-icons";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import "./SeriesDetailPage.scss";
@@ -57,7 +56,7 @@ export default function SeriesDetailPage() {
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"all" | "owned" | "wishlisted">("all");
+    const [statusFilter, setStatusFilter] = useState<"all" | "owned" | "missing" | "wishlisted">("all");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(24);
 
@@ -80,7 +79,7 @@ export default function SeriesDetailPage() {
     const [addingBook, setAddingBook] = useState(false);
 
     // Fetch Series data
-    const fetchSeries = async () => {
+    const fetchSeries = useCallback(async () => {
         if (!id) return;
         setLoading(true);
         try {
@@ -97,15 +96,20 @@ export default function SeriesDetailPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, session, enqueueSnackbar, tr]);
 
     useEffect(() => {
-        fetchSeries();
-    }, [id, session]);
+        queueMicrotask(() => {
+            void fetchSeries();
+        });
+    }, [fetchSeries]);
 
-    useEffect(() => {
+    const filtersKey = `${id}|${searchQuery}|${statusFilter}`;
+    const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+    if (prevFiltersKey !== filtersKey) {
+        setPrevFiltersKey(filtersKey);
         setCurrentPage(1);
-    }, [id, searchQuery, statusFilter]);
+    }
 
     // Fetch categories for edit dialog
     useEffect(() => {
@@ -208,8 +212,9 @@ export default function SeriesDetailPage() {
                 const errData = await res.text();
                 enqueueSnackbar(`${tr("Error", "Erreur")}: ${errData}`, { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setEditing(false);
         }
@@ -285,8 +290,9 @@ export default function SeriesDetailPage() {
             } else {
                 enqueueSnackbar(tr("Error adding book", "Erreur lors de l'ajout de l'album"), { variant: "error" });
             }
-        } catch (err: any) {
-            enqueueSnackbar(`${tr("Error", "Erreur")}: ${err.message}`, { variant: "error" });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            enqueueSnackbar(`${tr("Error", "Erreur")}: ${message}`, { variant: "error" });
         } finally {
             setAddingBook(false);
         }
@@ -353,6 +359,8 @@ export default function SeriesDetailPage() {
         let list = series.books;
         if (statusFilter === "owned") {
             list = list.filter((b) => b.status === "OWNED");
+        } else if (statusFilter === "missing") {
+            list = list.filter((b) => b.status !== "OWNED");
         } else if (statusFilter === "wishlisted") {
             list = list.filter((b) => b.status === "WISHLISTED");
         }
@@ -380,6 +388,20 @@ export default function SeriesDetailPage() {
     const startIndex = totalItems === 0 ? 0 : (safePage - 1) * (isAll ? totalItems : pageSize);
     const endIndex = isAll ? totalItems : Math.min(startIndex + pageSize, totalItems);
     const paginatedBooks = isAll ? filteredBooks : filteredBooks.slice(startIndex, endIndex);
+
+    const handleBookStatusChange = (bookId: string, newStatus: string | null) => {
+        setSeries((prev) => {
+            if (!prev || !prev.books) return prev;
+            const updatedBooks = prev.books.map((b) =>
+                String(b.id) === String(bookId) ? { ...b, status: newStatus } : b
+            );
+            return {
+                ...prev,
+                books: updatedBooks,
+                ownedCount: updatedBooks.filter((b) => b.status === "OWNED").length
+            };
+        });
+    };
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
@@ -447,6 +469,7 @@ export default function SeriesDetailPage() {
 
     const ownedCount = series.ownedCount || 0;
     const totalCount = series.books?.length || 0;
+    const missingCount = (series.books || []).filter((b) => b.status !== "OWNED").length;
     const wishlistedCount = (series.books || []).filter((b) => b.status === "WISHLISTED").length;
 
     return (
@@ -470,9 +493,8 @@ export default function SeriesDetailPage() {
                             tabs={[
                                 { id: "all", label: tr("All", "Tous"), count: totalCount },
                                 { id: "owned", label: tr("Owned", "Possédés"), count: ownedCount },
-                                ...(wishlistedCount > 0
-                                    ? [{ id: "wishlisted" as const, label: tr("Wishlist", "Souhaits"), count: wishlistedCount }]
-                                    : [])
+                                { id: "missing", label: tr("Missing", "Manquants"), count: missingCount },
+                                { id: "wishlisted", label: tr("Wishlist", "Souhaits"), count: wishlistedCount }
                             ]}
                             selectedId={statusFilter}
                             onChange={setStatusFilter}
@@ -582,33 +604,43 @@ export default function SeriesDetailPage() {
 
                 {/* Albums content */}
                 {filteredBooks.length === 0 ? (
-                    <div className="series-detail-page__empty">
-                        <FontAwesomeIcon icon={faBook} className="series-detail-page__empty-icon" />
-                        <h3>
-                            {searchQuery
-                                ? tr("No books match your search", "Aucun album ne correspond à votre recherche")
-                                : tr("No books are linked to this series yet", "Aucun album n'est encore associé à cette série")}
-                        </h3>
-                        <p>
-                            {searchQuery
-                                ? tr("Try other keywords to find the book.", "Essayez d'autres mots-clés pour retrouver l'album.")
-                                : tr("Link your first book to this series to start the collection!", "Associez votre premier album à cette série pour commencer la collection !")}
+                    statusFilter !== "all" && !searchQuery ? (
+                        <p style={{ color: "var(--text-muted)", textAlign: "center", padding: "32px 0", margin: 0 }}>
+                            {statusFilter === "missing"
+                                ? tr("You already own all the books", "Vous possédez déjà tous les livres")
+                                : statusFilter === "owned"
+                                ? tr("You don't own any of the books", "Vous ne possédez aucun des livres")
+                                : tr("No books in your wishlist", "Aucun livre dans votre liste de souhaits")}
                         </p>
-                        {!searchQuery && (
-                            <button
-                                type="button"
-                                className="series-detail-page__btn series-detail-page__btn--primary"
-                                onClick={handleOpenAddBook}
-                            >
-                                <FontAwesomeIcon icon={faPlus} />
-                                <span>{tr("Link a book", "Associer un album")}</span>
-                            </button>
-                        )}
-                    </div>
+                    ) : (
+                        <div className="series-detail-page__empty">
+                            <FontAwesomeIcon icon={faBook} className="series-detail-page__empty-icon" />
+                            <h3>
+                                {searchQuery
+                                    ? tr("No books match your search", "Aucun album ne correspond à votre recherche")
+                                    : tr("No books are linked to this series yet", "Aucun album n'est encore associé à cette série")}
+                            </h3>
+                            <p>
+                                {searchQuery
+                                    ? tr("Try other keywords to find the book.", "Essayez d'autres mots-clés pour retrouver l'album.")
+                                    : tr("Link your first book to this series to start the collection!", "Associez votre premier album à cette série pour commencer la collection !")}
+                            </p>
+                            {!searchQuery && (
+                                <button
+                                    type="button"
+                                    className="series-detail-page__btn series-detail-page__btn--primary"
+                                    onClick={handleOpenAddBook}
+                                >
+                                    <FontAwesomeIcon icon={faPlus} />
+                                    <span>{tr("Link a book", "Associer un album")}</span>
+                                </button>
+                            )}
+                        </div>
+                    )
                 ) : (
                     <>
                         {viewMode === "grid" ? (
-                            <BookList books={paginatedBooks} />
+                            <BookList books={paginatedBooks} onBookStatusChange={handleBookStatusChange} />
                         ) : (
                             <div className="series-detail-list">
                                 {paginatedBooks.map((b) => (
@@ -690,7 +722,7 @@ export default function SeriesDetailPage() {
             <Dialog
                 open={editDialogOpen}
                 onClose={() => setEditDialogOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -700,7 +732,7 @@ export default function SeriesDetailPage() {
                         padding: "24px",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -863,7 +895,7 @@ export default function SeriesDetailPage() {
             <Dialog
                 open={addBookDialogOpen}
                 onClose={() => setAddBookDialogOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "var(--bg-surface)",
                         color: "var(--text-primary)",
@@ -873,7 +905,7 @@ export default function SeriesDetailPage() {
                         padding: "24px",
                         border: "1px solid var(--border-subtle)"
                     }
-                }}
+                }}}
             >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>

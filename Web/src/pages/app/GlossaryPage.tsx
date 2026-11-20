@@ -1,11 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faSpellCheck,
     faPlus,
-    faMagnifyingGlass,
     faPen,
     faTrash,
     faBook,
@@ -35,7 +34,7 @@ export default function GlossaryPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedLetter, setSelectedLetter] = useState<string>("ALL");
-    const [bookFilterId, setBookFilterId] = useState<string>("");
+    const [bookFilterId] = useState<string>("");
 
     // Create / Edit modal state
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -51,7 +50,7 @@ export default function GlossaryPage() {
     const [submitting, setSubmitting] = useState(false);
 
     // Fetch words
-    const fetchWords = async () => {
+    const fetchWords = useCallback(async () => {
         try {
             setLoading(true);
             const res = await session.customFetch("/words", { method: "GET" });
@@ -65,10 +64,10 @@ export default function GlossaryPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [session, tr]);
 
     // Fetch all books for associations
-    const fetchBooks = async () => {
+    const fetchBooks = useCallback(async () => {
         try {
             const res = await session.customFetch("/books", { method: "GET" });
             if (res.ok) {
@@ -78,23 +77,14 @@ export default function GlossaryPage() {
         } catch (err) {
             console.error("Failed to load books:", err);
         }
-    };
+    }, [session]);
 
     useEffect(() => {
-        fetchWords();
-        fetchBooks();
-    }, []);
-
-    // Filter books for the toolbar filter
-    const bookFilterOptions = useMemo(() => {
-        return [
-            { label: tr("All books", "Tous les livres"), value: "" },
-            ...allBooks.map((b) => ({
-                label: b.seriesName ? `${b.seriesName} - ${b.title}` : b.title,
-                value: String(b.id)
-            }))
-        ];
-    }, [allBooks, tr]);
+        Promise.resolve().then(() => {
+            fetchWords();
+            fetchBooks();
+        });
+    }, [fetchWords, fetchBooks]);
 
     // Available books to add in the modal (excluding already selected)
     const booksAvailableToAdd = useMemo(() => {
@@ -471,7 +461,7 @@ export default function GlossaryPage() {
             <Dialog
                 open={isCreateOpen}
                 onClose={() => !submitting && setIsCreateOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -480,7 +470,7 @@ export default function GlossaryPage() {
                         width: "100%",
                         margin: "16px"
                     }
-                }}
+                }}}
             >
                 <div className="word-modal">
                     <div className="word-modal__header">
@@ -587,7 +577,7 @@ export default function GlossaryPage() {
             <Dialog
                 open={isEditOpen}
                 onClose={() => !submitting && setIsEditOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -596,7 +586,7 @@ export default function GlossaryPage() {
                         width: "100%",
                         margin: "16px"
                     }
-                }}
+                }}}
             >
                 {editingWord && (
                     <div className="word-modal">
@@ -705,7 +695,7 @@ export default function GlossaryPage() {
             <Dialog
                 open={Boolean(deleteConfirmWord)}
                 onClose={() => !submitting && setDeleteConfirmWord(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -714,7 +704,7 @@ export default function GlossaryPage() {
                         width: "100%",
                         margin: "16px"
                     }
-                }}
+                }}}
             >
                 {deleteConfirmWord && (
                     <div className="word-modal">

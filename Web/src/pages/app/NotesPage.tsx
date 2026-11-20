@@ -1,12 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faNoteSticky,
     faPlus,
-    faMagnifyingGlass,
-    faXmark,
     faPen,
     faTrash,
     faClockRotateLeft,
@@ -46,7 +44,7 @@ export default function NotesPage() {
     const [submitting, setSubmitting] = useState(false);
 
     // Fetch notes
-    const fetchNotes = async () => {
+    const fetchNotes = useCallback(async () => {
         try {
             setLoading(true);
             const res = await session.customFetch("/notes", { method: "GET" });
@@ -60,10 +58,10 @@ export default function NotesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [session, tr]);
 
     // Fetch books to allow selecting when creating notes
-    const fetchBooks = async () => {
+    const fetchBooks = useCallback(async () => {
         try {
             const res = await session.customFetch("/books", { method: "GET" });
             if (res.ok) {
@@ -73,12 +71,14 @@ export default function NotesPage() {
         } catch (err) {
             console.error("Failed to load books:", err);
         }
-    };
+    }, [session]);
 
     useEffect(() => {
-        fetchNotes();
-        fetchBooks();
-    }, []);
+        Promise.resolve().then(() => {
+            fetchNotes();
+            fetchBooks();
+        });
+    }, [fetchNotes, fetchBooks]);
 
     // Filter books that already have a note
     const booksWithNotes = useMemo(() => {
@@ -392,7 +392,7 @@ export default function NotesPage() {
             <Dialog
                 open={isCreateOpen}
                 onClose={() => !submitting && setIsCreateOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -401,7 +401,7 @@ export default function NotesPage() {
                         width: "100%",
                         margin: "16px"
                     }
-                }}
+                }}}
             >
                 <div className="note-modal">
                     <div className="note-modal__header">
@@ -492,7 +492,7 @@ export default function NotesPage() {
             <Dialog
                 open={isEditOpen}
                 onClose={() => !submitting && setIsEditOpen(false)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -501,7 +501,7 @@ export default function NotesPage() {
                         width: "100%",
                         margin: "16px"
                     }
-                }}
+                }}}
             >
                 {editingNote && (
                     <div className="note-modal">
@@ -575,7 +575,7 @@ export default function NotesPage() {
             <Dialog
                 open={Boolean(deleteConfirmNote)}
                 onClose={() => !submitting && setDeleteConfirmNote(null)}
-                PaperProps={{
+                slotProps={{ paper: {
                     style: {
                         backgroundColor: "transparent",
                         boxShadow: "none",
@@ -584,7 +584,7 @@ export default function NotesPage() {
                         width: "100%",
                         margin: "16px"
                     }
-                }}
+                }}}
             >
                 {deleteConfirmNote && (
                     <div className="note-modal">

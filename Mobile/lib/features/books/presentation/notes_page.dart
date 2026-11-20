@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -390,12 +390,14 @@ class _NotesPageState extends ConsumerState<NotesPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: null,
-        onPressed: () => _openNoteEditorSheet(context),
-        icon: const Icon(Icons.edit_note_rounded),
-        label: const Text('Nouvelle note'),
-      ),
+      floatingActionButton: allNotes.isEmpty
+          ? null
+          : FloatingActionButton.extended(
+              heroTag: null,
+              onPressed: () => _openNoteEditorSheet(context),
+              icon: const Icon(Icons.edit_note_rounded),
+              label: const Text('Nouvelle note'),
+            ),
       body: RefreshIndicator(
         color: AppTheme.accentPrimary,
         onRefresh: () => ref.read(notesControllerProvider.notifier).reload(),

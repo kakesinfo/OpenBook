@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/books_providers.dart';
 import '../../data/book.dart';
 import 'book_cover.dart';
+import 'common_reading_ribbon.dart';
 
 class BookCard extends ConsumerStatefulWidget {
   const BookCard({
@@ -243,9 +244,21 @@ class _BookCardState extends ConsumerState<BookCard>
                             ),
                           ),
                         ),
+                        // Common reading badge on the card (top-right, off the cover)
+                        if (progress.isCommon)
+                          const Positioned(
+                            top: 14,
+                            right: 14,
+                            child: CommonReadingBadge(compact: true),
+                          ),
                         // Content Info
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(122, 22, 72, 16),
+                          padding: EdgeInsets.fromLTRB(
+                            122,
+                            progress.isCommon ? 38 : 22,
+                            18,
+                            28,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,

@@ -1,12 +1,11 @@
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useNavigate, useParams } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCalendarDays,
     faClockRotateLeft,
     faCalendarPlus,
-    faMagnifyingGlass,
-    faXmark,
     faBook
 } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
@@ -35,11 +34,21 @@ interface TimeTab {
 export default function PlanningPage() {
     const session = useSession();
     const { tr, locale, translateCategory } = useLanguage();
+    const navigate = useNavigate();
+    const { tab } = useParams<{ tab?: string }>();
     const [upcomingBooks, setUpcomingBooks] = useState<BookSummaryDTO[]>([]);
     const [recentBooks, setRecentBooks] = useState<BookSummaryDTO[]>([]);
     const [loadingUpcoming, setLoadingUpcoming] = useState<boolean>(true);
     const [loadingRecent, setLoadingRecent] = useState<boolean>(true);
-    const [timeFilter, setTimeFilter] = useState<TimeFilter>("upcoming");
+    const timeFilter: TimeFilter = tab?.toLowerCase() === "recent" ? "recent" : "upcoming";
+
+    const handleTimeFilterChange = (filter: TimeFilter) => {
+        if (filter === "upcoming") {
+            navigate("/app/planning");
+        } else {
+            navigate(`/app/planning/${filter}`);
+        }
+    };
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [rawCategories, setRawCategories] = useState<CategoryOption[]>(DEFAULT_APP_CATEGORIES);
     const [searchQuery, setSearchQuery] = useState<string>("");
@@ -86,7 +95,7 @@ export default function PlanningPage() {
             .catch(() => {});
     }, [session]);
 
-    const fetchUpcomingBooks = async () => {
+    const fetchUpcomingBooks = useCallback(async () => {
         setLoadingUpcoming(true);
         try {
             const response = await session.customFetch("/books/upcoming", { method: "GET" });
@@ -99,9 +108,9 @@ export default function PlanningPage() {
         } finally {
             setLoadingUpcoming(false);
         }
-    };
+    }, [session]);
 
-    const fetchRecentBooks = async () => {
+    const fetchRecentBooks = useCallback(async () => {
         setLoadingRecent(true);
         try {
             const response = await session.customFetch("/books/recent", { method: "GET" });
@@ -114,14 +123,16 @@ export default function PlanningPage() {
         } finally {
             setLoadingRecent(false);
         }
-    };
+    }, [session]);
 
     useEffect(() => {
-        // Load upcoming releases first for immediate navigation in "À venir"
-        fetchUpcomingBooks();
-        // Load recent releases in parallel in the background
-        fetchRecentBooks();
-    }, [session]);
+        Promise.resolve().then(() => {
+            // Load upcoming releases first for immediate navigation in "À venir"
+            fetchUpcomingBooks();
+            // Load recent releases in parallel in the background
+            fetchRecentBooks();
+        });
+    }, [fetchUpcomingBooks, fetchRecentBooks]);
 
     // Reference dates for time windows
     const { endOfToday, startOfTomorrow, twoMonthsAgo, sixMonthsAhead } = useMemo(() => {
@@ -257,7 +268,7 @@ export default function PlanningPage() {
                         };
                     })}
                     selectedId={timeFilter}
-                    onChange={setTimeFilter}
+                    onChange={handleTimeFilterChange}
                 />
             </WrapperHeader>
 

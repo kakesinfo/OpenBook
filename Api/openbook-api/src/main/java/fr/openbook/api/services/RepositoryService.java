@@ -12,6 +12,7 @@ import fr.openbook.api.repositories.CollectionRepository;
 import fr.openbook.api.repositories.ConfigurationRepository;
 import fr.openbook.api.repositories.EditorRepository;
 import fr.openbook.api.repositories.NoteRepository;
+import fr.openbook.api.repositories.ReadingCycleRepository;
 import fr.openbook.api.repositories.ReadingSessionRepository;
 import fr.openbook.api.repositories.SeriesHasThemeRepository;
 import fr.openbook.api.repositories.SeriesRepository;
@@ -44,6 +45,7 @@ public class RepositoryService
     private final CategoryRepository categoryRepository;
     private final CollectionRepository collectionRepository;
     private final EditorRepository editorRepository;
+    private final ReadingCycleRepository readingCycleRepository;
     private final ReadingSessionRepository readingSessionRepository;
     private final SeriesHasThemeRepository seriesHasThemeRepository;
     private final SeriesRepository seriesRepository;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog } from "@mui/material";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -57,7 +57,7 @@ export default function PlanningCalendarModal({ open, onClose }: Props) {
         };
     };
 
-    const fetchCalendarFeed = async () => {
+    const fetchCalendarFeed = useCallback(async () => {
         setLoading(true);
         try {
             const res = await session.customFetch("/books/planning/calendar-feed", { method: "GET" });
@@ -79,14 +79,15 @@ export default function PlanningCalendarModal({ open, onClose }: Props) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [session, tr, enqueueSnackbar]);
 
     useEffect(() => {
-        if (open) {
+        if (!open) return;
+        Promise.resolve().then(() => {
             setCopied(false);
             fetchCalendarFeed();
-        }
-    }, [open]);
+        });
+    }, [open, fetchCalendarFeed]);
 
     const handleCopy = async () => {
         if (!feedData) return;
@@ -156,7 +157,7 @@ export default function PlanningCalendarModal({ open, onClose }: Props) {
         <Dialog
             open={open}
             onClose={onClose}
-            PaperProps={{
+            slotProps={{ paper: {
                 style: {
                     backgroundColor: "var(--bg-surface)",
                     border: "1px solid var(--border-subtle)",
@@ -168,7 +169,7 @@ export default function PlanningCalendarModal({ open, onClose }: Props) {
                     padding: "24px",
                     margin: "16px"
                 }
-            }}
+            }}}
         >
             <div className="planning-calendar-modal">
                 <div className="planning-calendar-modal__header">

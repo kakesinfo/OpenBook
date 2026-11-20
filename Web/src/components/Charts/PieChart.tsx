@@ -48,8 +48,7 @@ export default function PieChart({ data, totalCount, title }: PieChartProps) {
     }
 
     // Build arcs
-    let accumulatedAngle = -Math.PI / 2; // Start at top (12 o'clock)
-    const slices = data.map((item, index) => {
+    const slices = data.map((item, index, arr) => {
         const isHovered = hoveredIndex === index;
         if (item.count <= 0) {
             return {
@@ -61,9 +60,11 @@ export default function PieChart({ data, totalCount, title }: PieChartProps) {
         }
 
         const sliceAngle = (item.count / totalCount) * 2 * Math.PI;
-        const startAngle = accumulatedAngle;
-        const endAngle = accumulatedAngle + sliceAngle;
-        accumulatedAngle = endAngle;
+        // Start at top (12 o'clock), offset by all previous slices
+        const startAngle = -Math.PI / 2 + arr
+            .slice(0, index)
+            .reduce((sum, prev) => sum + (prev.count / totalCount) * 2 * Math.PI, 0);
+        const endAngle = startAngle + sliceAngle;
 
         const rOut = isHovered ? outerRadius + 6 : outerRadius;
         const rIn = isHovered ? innerRadius - 2 : innerRadius;
@@ -71,7 +72,7 @@ export default function PieChart({ data, totalCount, title }: PieChartProps) {
         // If slice is almost 100%, avoid degenerate SVG arc
         const isFull = sliceAngle >= 2 * Math.PI - 0.001;
 
-        let pathData = "";
+        let pathData: string;
         if (isFull) {
             // Draw donut with 2 arcs
             const midAngle = startAngle + Math.PI;

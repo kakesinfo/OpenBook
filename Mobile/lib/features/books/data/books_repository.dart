@@ -1,11 +1,14 @@
 import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
+import 'bnf_service.dart';
 import 'book.dart';
 import 'book_note.dart';
 import 'book_transaction.dart';
 import 'glossary_word.dart';
+import 'reading_cycle.dart';
 import 'reading_session.dart';
+import 'retrospective.dart';
 
 class BooksRepository {
   BooksRepository(this._apiClient);
@@ -203,6 +206,7 @@ class BooksRepository {
     String? coverUrl,
     String? localCoverPath,
     BookStatus status = BookStatus.unread,
+    BnfBookResult? bnf,
   }) async {
     final cleanTitle = title.trim();
     if (cleanTitle.isEmpty) {
@@ -212,11 +216,18 @@ class BooksRepository {
     final cleanIsbn = isbn?.trim();
     final cleanCoverUrl = coverUrl?.trim();
 
+    final effectivePrice = price ?? bnf?.price;
+    final effectiveCoverUrl = (cleanCoverUrl != null && cleanCoverUrl.isNotEmpty)
+        ? cleanCoverUrl
+        : (bnf != null && bnf.coverUrl.isNotEmpty ? bnf.coverUrl : null);
+
     final payload = <String, dynamic>{
+      // Métadonnées BnF (auteur, éditeur, collection, dimensions, etc.) comme sur le Web
+      if (bnf != null) ...bnf.toBookFields(),
       'title': cleanTitle,
       if (cleanIsbn != null && cleanIsbn.isNotEmpty) 'isbn': cleanIsbn,
-      if (price != null && price >= 0) 'price': price,
-      if (cleanCoverUrl != null && cleanCoverUrl.isNotEmpty) 'coverUrl': cleanCoverUrl,
+      if (effectivePrice != null && effectivePrice >= 0) 'price': effectivePrice,
+      if (effectiveCoverUrl != null && effectiveCoverUrl.isNotEmpty) 'coverUrl': effectiveCoverUrl,
       'addToLibrary': status != BookStatus.wishlist,
     };
 
@@ -454,6 +465,7 @@ class BooksRepository {
     return ReadingSession(
       id: (map['id'] as num?)?.toInt(),
       bookId: (map['bookId'] as num).toInt(),
+      readingCycleId: (map['readingCycleId'] as num?)?.toInt(),
       currentPage: (map['currentPage'] as num?)?.toInt() ?? 0,
       minutesRead: (map['minutesRead'] as num?)?.toInt() ?? 0,
       secondsRead: (map['secondsRead'] as num?)?.toInt() ?? 0,
@@ -461,16 +473,19 @@ class BooksRepository {
           ? DateTime.fromMillisecondsSinceEpoch((map['createdAt'] as num).toInt())
           : DateTime.now(),
       type: ReadingSessionType.values[(map['sessionType'] as int?) ?? ReadingSessionType.progress.index],
+      isCommon: map['isCommon'] == true,
     );
   }
 
   Future<void> addReadingSession(ReadingSession session) async {
     final payload = <String, dynamic>{
       'bookId': session.bookId,
+      if (session.readingCycleId != null) 'readingCycleId': session.readingCycleId,
       'currentPage': session.currentPage,
       'minutesRead': session.minutesRead,
       'secondsRead': session.secondsRead,
       'sessionType': session.type.index,
+      'isCommon': session.isCommon,
       'createdAt': session.createdAt.millisecondsSinceEpoch,
     };
 
@@ -484,6 +499,42 @@ class BooksRepository {
     final response = await _apiClient.delete('/user/readingSessions/$sessionId');
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Impossible de supprimer la session: ${response.statusCode}');
+    }
+  }
+
+  Future<List<ReadingCycleRecord>> getReadingCyclesByBookId(int bookId) async {
+    final response = await _apiClient.get('/user/readingCycles/$bookId');
+    if (response.statusCode != 200) {
+      return [];
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((item) => _cycleFromMap(item as Map<String, dynamic>)).toList();
+  }
+
+  ReadingCycleRecord _cycleFromMap(Map<String, dynamic> map) {
+    final rawSessions = (map['sessions'] as List<dynamic>?) ?? const <dynamic>[];
+    final sessions = rawSessions
+        .map((item) => _sessionFromMap(item as Map<String, dynamic>))
+        .toList();
+    return ReadingCycleRecord(
+      id: (map['id'] as num).toInt(),
+      bookId: (map['bookId'] as num).toInt(),
+      isCommon: map['isCommon'] == true,
+      startedAt: map['startedAt'] != null
+          ? DateTime.fromMillisecondsSinceEpoch((map['startedAt'] as num).toInt())
+          : DateTime.now(),
+      endedAt: map['endedAt'] != null
+          ? DateTime.fromMillisecondsSinceEpoch((map['endedAt'] as num).toInt())
+          : null,
+      sessions: sessions,
+    );
+  }
+
+  Future<void> deleteReadingCycle(int cycleId) async {
+    final response = await _apiClient.delete('/user/readingCycles/$cycleId');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Impossible de supprimer le cycle: ${response.statusCode}');
     }
   }
 
@@ -714,5 +765,59 @@ class BooksRepository {
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Impossible de supprimer le mot (${response.statusCode})');
     }
+  }
+
+  Future<List<int>> getRetrospectiveYears() async {
+    final response = await _apiClient
+        .get('/user/retrospective/years')
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode == 200) {
+      final list = jsonDecode(response.body) as List<dynamic>;
+      return list.map((e) => (e as num).toInt()).toList()
+        ..sort((a, b) => b.compareTo(a));
+    }
+
+    // Fallback to /user/statistics if backend hasn't been updated yet
+    if (response.statusCode == 404) {
+      final statsResponse = await _apiClient
+          .get('/user/statistics')
+          .timeout(const Duration(seconds: 15));
+      if (statsResponse.statusCode == 200) {
+        final data = jsonDecode(statsResponse.body) as Map<String, dynamic>;
+        final years = (data['availableYears'] as List<dynamic>?)
+                ?.map((e) => (e as num).toInt())
+                .toList() ??
+            <int>[];
+        return years..sort((a, b) => b.compareTo(a));
+      }
+    }
+
+    throw Exception('Impossible de charger les années de rétrospective (${response.statusCode})');
+  }
+
+  Future<YearlyRetrospective> getRetrospective(int year) async {
+    if (!YearlyRetrospective.isYearAccessible(year)) {
+      throw Exception(
+        'La rétrospective $year sera accessible à partir du 1er janvier ${year + 1}.',
+      );
+    }
+
+    final response = await _apiClient
+        .get('/user/retrospective?year=$year')
+        .timeout(const Duration(seconds: 20));
+    if (response.statusCode == 403) {
+      throw Exception(
+        'La rétrospective $year sera accessible à partir du 1er janvier ${year + 1}.',
+      );
+    }
+    if (response.statusCode != 200) {
+      throw Exception('Impossible de charger la rétrospective $year (${response.statusCode})');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return YearlyRetrospective.fromJson(
+      data,
+      resolveCover: (raw) => resolveCoverUrl(raw, _apiClient.baseUrl),
+    );
   }
 }
