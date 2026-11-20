@@ -72,11 +72,12 @@ public class AchievementController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required");
         }
 
-        int totalSteps = createDTO.getTotalSteps() != null ? Math.max(1, createDTO.getTotalSteps()) : 1;
+        String name = validateMaxLength(createDTO.getName().trim(), 150, "name");
+        int totalSteps = createDTO.getTotalSteps() != null ? Math.max(1, Math.min(100_000, createDTO.getTotalSteps())) : 1;
 
         AchievementEntity entity = new AchievementEntity();
         entity.setUser(user);
-        entity.setName(createDTO.getName().trim());
+        entity.setName(name);
         entity.setTotalSteps(totalSteps);
         if (createDTO.getUnlockedAt() != null) {
             entity.setCompletedSteps(totalSteps);
@@ -85,10 +86,10 @@ public class AchievementController {
             entity.setCompletedSteps(0);
             entity.setUnlockedAt(null);
         }
-        entity.setIcon(isNonBlank(createDTO.getIcon()) ? createDTO.getIcon().trim() : "trophy");
-        entity.setOrnament(isNonBlank(createDTO.getOrnament()) ? createDTO.getOrnament().trim() : "laurel");
-        entity.setIconColor(isNonBlank(createDTO.getIconColor()) ? createDTO.getIconColor().trim() : "#f59e0b");
-        entity.setBackgroundColor(isNonBlank(createDTO.getBackgroundColor()) ? createDTO.getBackgroundColor().trim() : "#fef3c7");
+        entity.setIcon(isNonBlank(createDTO.getIcon()) ? validateMaxLength(createDTO.getIcon().trim(), 60, "icon") : "trophy");
+        entity.setOrnament(isNonBlank(createDTO.getOrnament()) ? validateMaxLength(createDTO.getOrnament().trim(), 40, "ornament") : "laurel");
+        entity.setIconColor(isNonBlank(createDTO.getIconColor()) ? validateHexColor(createDTO.getIconColor().trim(), "iconColor") : "#f59e0b");
+        entity.setBackgroundColor(isNonBlank(createDTO.getBackgroundColor()) ? validateHexColor(createDTO.getBackgroundColor().trim(), "backgroundColor") : "#fef3c7");
 
         AchievementEntity saved = repositoryService.getAchievementRepository().save(entity);
         return entityToDTO(saved);
@@ -111,11 +112,11 @@ public class AchievementController {
             if (trimmed.isEmpty()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name cannot be empty");
             }
-            entity.setName(trimmed);
+            entity.setName(validateMaxLength(trimmed, 150, "name"));
         }
 
         if (updateDTO.getTotalSteps() != null) {
-            entity.setTotalSteps(Math.max(1, updateDTO.getTotalSteps()));
+            entity.setTotalSteps(Math.max(1, Math.min(100_000, updateDTO.getTotalSteps())));
         }
 
         if (updateDTO.getCompletedSteps() != null) {
@@ -126,16 +127,16 @@ public class AchievementController {
         }
 
         if (isNonBlank(updateDTO.getIcon())) {
-            entity.setIcon(updateDTO.getIcon().trim());
+            entity.setIcon(validateMaxLength(updateDTO.getIcon().trim(), 60, "icon"));
         }
         if (isNonBlank(updateDTO.getOrnament())) {
-            entity.setOrnament(updateDTO.getOrnament().trim());
+            entity.setOrnament(validateMaxLength(updateDTO.getOrnament().trim(), 40, "ornament"));
         }
         if (isNonBlank(updateDTO.getIconColor())) {
-            entity.setIconColor(updateDTO.getIconColor().trim());
+            entity.setIconColor(validateHexColor(updateDTO.getIconColor().trim(), "iconColor"));
         }
         if (isNonBlank(updateDTO.getBackgroundColor())) {
-            entity.setBackgroundColor(updateDTO.getBackgroundColor().trim());
+            entity.setBackgroundColor(validateHexColor(updateDTO.getBackgroundColor().trim(), "backgroundColor"));
         }
 
         if (entity.getCompletedSteps() >= entity.getTotalSteps()) {
@@ -165,5 +166,19 @@ public class AchievementController {
 
     private boolean isNonBlank(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private String validateMaxLength(String value, int maxLength, String fieldName) {
+        if (value.length() > maxLength) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " must be at most " + maxLength + " characters");
+        }
+        return value;
+    }
+
+    private String validateHexColor(String value, String fieldName) {
+        if (value.length() > 20 || !value.matches("^#[0-9a-fA-F]{3,8}$")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " must be a valid hex color");
+        }
+        return value;
     }
 }

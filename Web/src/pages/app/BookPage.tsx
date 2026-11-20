@@ -753,6 +753,20 @@ export default function BookPage() {
         e.preventDefault();
         if (!id || submittingListing) return;
 
+        const trimmedUrl = listingUrl.trim();
+        if (trimmedUrl) {
+            try {
+                const parsed = new URL(trimmedUrl);
+                if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+                    enqueueSnackbar(tr("Listing URL must start with http:// or https://", "L'URL de l'annonce doit commencer par http:// ou https://"), { variant: "error" });
+                    return;
+                }
+            } catch {
+                enqueueSnackbar(tr("Invalid listing URL", "URL d'annonce invalide"), { variant: "error" });
+                return;
+            }
+        }
+
         setSubmittingListing(true);
         try {
             const parsedPrice = listingPrice.trim() ? parseFloat(listingPrice) : null;
@@ -761,7 +775,7 @@ export default function BookPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     price: parsedPrice,
-                    listingUrl: listingUrl.trim() || null
+                    listingUrl: trimmedUrl || null
                 })
             });
 

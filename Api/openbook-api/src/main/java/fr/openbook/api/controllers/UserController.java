@@ -171,7 +171,7 @@ public class UserController {
 
         if (request.getUsername() != null && !request.getUsername().trim().isEmpty()) {
             String newUsername = request.getUsername().trim();
-            if (repositoryService.getUserRepository().existsByUsernameAndIdNot(newUsername, user.getId())) {
+            if (repositoryService.getUserRepository().existsByUsernameIgnoreCaseAndIdNot(newUsername, user.getId())) {
                 return ResponseEntity.badRequest().body("Ce pseudonyme est déjà utilisé.");
             }
             user.setUsername(newUsername);
@@ -180,9 +180,13 @@ public class UserController {
         if (request.getAvatar() != null) {
             String oldAvatar = user.getAvatar();
             String newAvatar = request.getAvatar().trim();
-            user.setAvatar(newAvatar);
-            if (oldAvatar != null && !oldAvatar.isBlank() && !oldAvatar.equals(newAvatar)) {
-                avatarService.deleteAvatarFile(oldAvatar);
+            if (newAvatar.isEmpty()) {
+                user.setAvatar("");
+                if (oldAvatar != null && !oldAvatar.isBlank()) {
+                    avatarService.deleteAvatarFile(oldAvatar);
+                }
+            } else if (!newAvatar.equals(oldAvatar)) {
+                return ResponseEntity.badRequest().body("Veuillez utiliser l'endpoint d'upload pour modifier votre avatar.");
             }
         }
 
@@ -493,7 +497,7 @@ public class UserController {
 
         // 1. Owned / Wishlisted / Lent / Sold books from user_owns_book
         List<UserOwnsBookEntity> ownedBooks = repositoryService.getUserOwnsBooksRepository()
-                .findAll().stream().filter(uob -> uob.getUser() != null && uob.getUser().getId().equals(userId)).toList();
+                .findAllByUserId(userId);
         for (UserOwnsBookEntity uob : ownedBooks) {
             if (uob.getBook() != null && !Boolean.TRUE.equals(uob.getBook().getDeleted())) {
                 BookSummaryDTO dto = entityToSummaryDTO(uob.getBook());
@@ -1354,10 +1358,22 @@ public class UserController {
     @CacheEvict(cacheNames = "user-statistics", allEntries = true)
     public ReadingSessionDTO addReadingSession(HttpSession session, @RequestBody ReadingSessionDTO dto) {
         UserEntity user = getAuthenticatedUser(session);
+        if (dto == null || dto.getBookId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "bookId is required");
+        }
         BookEntity book = repositoryService.getBookRepository().findById(dto.getBookId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found"));
 
         int sessionType = dto.getSessionType() != null ? dto.getSessionType() : 1;
+        if (sessionType < 0 || sessionType > 2) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sessionType must be 0, 1, or 2");
+        }
+        int currentPage = dto.getCurrentPage() != null ? dto.getCurrentPage() : 0;
+        int minutesRead = dto.getMinutesRead() != null ? dto.getMinutesRead() : 0;
+        int secondsRead = dto.getSecondsRead() != null ? dto.getSecondsRead() : 0;
+        if (currentPage < 0 || minutesRead < 0 || secondsRead < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reading progress values cannot be negative");
+        }
         Instant createdAt = dto.getCreatedAt() != null
                 ? Instant.ofEpochMilli(dto.getCreatedAt())
                 : Instant.now();
@@ -1384,9 +1400,9 @@ public class UserController {
         entity.setUser(user);
         entity.setBook(book);
         entity.setReadingCycle(cycle);
-        entity.setCurrentPage(dto.getCurrentPage() != null ? dto.getCurrentPage() : 0);
-        entity.setMinutesRead(dto.getMinutesRead() != null ? dto.getMinutesRead() : 0);
-        entity.setSecondsRead(dto.getSecondsRead() != null ? dto.getSecondsRead() : 0);
+        entity.setCurrentPage(currentPage);
+        entity.setMinutesRead(minutesRead);
+        entity.setSecondsRead(secondsRead);
         entity.setSessionType(sessionType);
         entity.setCreatedAt(createdAt);
 

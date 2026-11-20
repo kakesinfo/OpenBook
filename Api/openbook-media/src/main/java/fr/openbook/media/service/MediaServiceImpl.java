@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URL;
 import java.time.OffsetDateTime;
@@ -262,34 +263,92 @@ public class MediaServiceImpl implements MediaService {
 
         log.info("[MediaService] Deleting image slot and all variants: {}", id);
         UUID uuid = parseUUID(id);
-        if (uuid != null) {
-            try {
-                imageRepository.deleteById(uuid);
-                log.debug("[MediaService] Deleted entity {} from database", uuid);
-            } catch (Exception e) {
-                log.warn("[MediaService] DB delete failed for {}: {}", id, e.getMessage());
-            }
+        if (uuid == null) {
+            log.warn("[MediaService] Refusing to delete non-UUID image id: {}", id);
+            return;
         }
 
-        storageService.deleteImage(id);
-        log.info("[MediaService] Successfully deleted image {}", id);
+        try {
+            imageRepository.deleteById(uuid);
+            log.debug("[MediaService] Deleted entity {} from database", uuid);
+        } catch (Exception e) {
+            log.warn("[MediaService] DB delete failed for {}: {}", id, e.getMessage());
+        }
+
+        storageService.deleteImage(uuid.toString());
+        log.info("[MediaService] Successfully deleted image {}", uuid);
+    }
+
+    private void validateRemoteUri(URI uri) {
+        String scheme = uri.getScheme();
+        if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only http and https URLs are allowed");
+        }
+        String host = uri.getHost();
+        if (host == null || host.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid remote URL host");
+        }
+        try {
+            InetAddress[] addresses = InetAddress.getAllByName(host);
+            if (addresses.length == 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to resolve remote host");
+            }
+            for (InetAddress addr : addresses) {
+                if (addr.isAnyLocalAddress()
+                        || addr.isLoopbackAddress()
+                        || addr.isLinkLocalAddress()
+                        || addr.isSiteLocalAddress()
+                        || addr.isMulticastAddress()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Access to private or local addresses is forbidden");
+                }
+                byte[] bytes = addr.getAddress();
+                // Block IPv6 Unique Local Addresses (fc00::/7) and Carrier-Grade NAT (100.64.0.0/10)
+                if (bytes.length == 16 && (bytes[0] & 0xFE) == 0xFC) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Access to private IPv6 addresses is forbidden");
+                }
+                if (bytes.length == 4 && (bytes[0] & 0xFF) == 100 && (bytes[1] & 0xC0) == 64) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Access to shared private addresses is forbidden");
+                }
+            }
+        } catch (ResponseStatusException rse) {
+            throw rse;
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to resolve remote host");
+        }
     }
 
     private byte[] fetchRemoteImage(String remoteUrl) {
         try {
-            URI uri = URI.create(remoteUrl);
-            URL url = uri.toURL();
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(20_000);
-            conn.setReadTimeout(20_000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36");
-            conn.setRequestProperty("Accept", "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8,*/*;q=0.5");
-            conn.setRequestProperty("Referer", uri.getScheme() + "://" + uri.getHost() + "/");
+            URI currentUri = URI.create(remoteUrl);
+            HttpURLConnection conn = null;
+            int maxRedirects = 3;
 
-            int status = conn.getResponseCode();
-            if (status < 200 || status >= 300) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to fetch remote image: HTTP " + status);
+            for (int i = 0; i <= maxRedirects; i++) {
+                validateRemoteUri(currentUri);
+                URL url = currentUri.toURL();
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setInstanceFollowRedirects(false);
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(20_000);
+                conn.setReadTimeout(20_000);
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36");
+                conn.setRequestProperty("Accept", "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8,*/*;q=0.5");
+                conn.setRequestProperty("Referer", currentUri.getScheme() + "://" + currentUri.getHost() + "/");
+
+                int status = conn.getResponseCode();
+                if (status >= 300 && status < 400) {
+                    String location = conn.getHeaderField("Location");
+                    conn.disconnect();
+                    if (location == null || location.isBlank() || i == maxRedirects) {
+                        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Too many or invalid redirects while fetching remote image");
+                    }
+                    currentUri = currentUri.resolve(location);
+                    continue;
+                }
+                if (status < 200 || status >= 300) {
+                    throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to fetch remote image: HTTP " + status);
+                }
+                break;
             }
 
             try (InputStream in = conn.getInputStream();

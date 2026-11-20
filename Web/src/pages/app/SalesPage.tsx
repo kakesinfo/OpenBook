@@ -33,6 +33,19 @@ import BookCard from "../../components/BookCard/BookCard.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { detectEditionBadge } from "../../utils/editionBadge.ts";
 import "./SalesPage.scss";
+
+function getSafeExternalUrl(rawUrl: string | null | undefined): string | null {
+    if (!rawUrl) return null;
+    try {
+        const parsed = new URL(rawUrl.trim());
+        if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+            return parsed.href;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
 import PageControls from "../../components/PageControls/PageControls.tsx";
 import HeaderFilterTabs from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
@@ -693,20 +706,23 @@ export default function SalesPage() {
 
                                             {/* Listing column */}
                                             <div className="sales-row__col sales-row__col--listing">
-                                                {book.listingUrl ? (
-                                                    <a
-                                                        href={book.listingUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="sales-row__listing-link"
-                                                        title={book.listingUrl}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        {book.listingUrl}
-                                                    </a>
-                                                ) : (
-                                                    <span className="sales-row__price sales-row__price--none">-</span>
-                                                )}
+                                                {(() => {
+                                                    const safeUrl = getSafeExternalUrl(book.listingUrl);
+                                                    return safeUrl ? (
+                                                        <a
+                                                            href={safeUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="sales-row__listing-link"
+                                                            title={safeUrl}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            {book.listingUrl}
+                                                        </a>
+                                                    ) : (
+                                                        <span className="sales-row__price sales-row__price--none">-</span>
+                                                    );
+                                                })()}
                                             </div>
 
                                             {/* Status column */}

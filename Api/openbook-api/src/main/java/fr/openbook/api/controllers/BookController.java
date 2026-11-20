@@ -583,7 +583,11 @@ public class BookController {
                     book.setCoverUrl(remoteCover);
                 }
             } else {
-                book.setCoverUrl(remoteCover);
+                try {
+                    book.setCoverUrl(java.util.UUID.fromString(remoteCover).toString());
+                } catch (IllegalArgumentException e) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Identifiant de couverture invalide");
+                }
             }
         }
 
@@ -1177,6 +1181,11 @@ public class BookController {
         if (trimmed.toLowerCase().startsWith("http://") || trimmed.toLowerCase().startsWith("https://")) {
             return;
         }
+        try {
+            java.util.UUID.fromString(trimmed);
+        } catch (IllegalArgumentException e) {
+            return;
+        }
         long count = repositoryService.getBookRepository().countByCoverUrlAndIdNot(trimmed, bookId);
         if (count == 0) {
             mediaServiceClient.deleteImage(trimmed);
@@ -1239,7 +1248,11 @@ public class BookController {
             String newCoverUuid;
 
             if (coverId != null && !coverId.isBlank()) {
-                newCoverUuid = coverId.trim();
+                try {
+                    newCoverUuid = java.util.UUID.fromString(coverId.trim()).toString();
+                } catch (IllegalArgumentException e) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Identifiant d'image ('coverId') invalide");
+                }
             } else {
                 newCoverUuid = mediaServiceClient.createVirtualImage();
                 mediaServiceClient.uploadRemoteUrl(newCoverUuid, remoteUrl.trim());

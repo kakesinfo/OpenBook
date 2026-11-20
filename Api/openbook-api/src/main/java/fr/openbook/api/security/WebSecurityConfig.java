@@ -10,6 +10,7 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -25,6 +26,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @AllArgsConstructor
 public class WebSecurityConfig {
 
@@ -41,9 +43,11 @@ public class WebSecurityConfig {
                 .requestMatchers("/auth/logout").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/health").permitAll()
-                .requestMatchers("/images", "/images/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/images/*/blob", "/images/*/info", "/images/*").permitAll()
+                .requestMatchers(HttpMethod.HEAD, "/images/*/blob", "/images/*/info", "/images/*").permitAll()
+                .requestMatchers("/images", "/images/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/setup/**").permitAll()
-                .requestMatchers("/api/import/**").permitAll()
+                .requestMatchers("/api/import/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/books/planning/calendar.ics", "/books/planning/calendar/**").permitAll()
                 .requestMatchers("/admin/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(

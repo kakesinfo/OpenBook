@@ -164,11 +164,6 @@ export default function SettingsPage() {
 
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("importBooks", String(importBooks));
-        formData.append("importStatuses", String(importStatuses));
-        formData.append("importReadingSessions", String(importReadingSessions));
-        formData.append("importPurchases", String(importPurchases));
-        formData.append("importNotes", String(importNotes));
 
         setAvatarUploading(true);
         try {

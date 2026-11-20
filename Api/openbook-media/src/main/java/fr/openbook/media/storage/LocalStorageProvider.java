@@ -49,7 +49,19 @@ public class LocalStorageProvider implements StorageProvider {
     }
 
     public Path getImageDir(String id) {
-        return Paths.get(properties.getDataDir(), id);
+        if (id == null || id.isBlank()) {
+            throw new IllegalArgumentException("Invalid image id");
+        }
+        String sanitized = id.trim();
+        if (!sanitized.matches("^[a-zA-Z0-9_-]+$")) {
+            throw new IllegalArgumentException("Invalid image id format");
+        }
+        Path baseDir = Paths.get(properties.getDataDir()).toAbsolutePath().normalize();
+        Path resolved = baseDir.resolve(sanitized).normalize();
+        if (!resolved.startsWith(baseDir) || resolved.equals(baseDir)) {
+            throw new IllegalArgumentException("Invalid image id path");
+        }
+        return resolved;
     }
 
     public Path getMetaPath(String id) {

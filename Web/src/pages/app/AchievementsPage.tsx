@@ -147,28 +147,34 @@ export default function AchievementsPage() {
         [iconInput]
     );
 
-    const fetchAchievements = async () => {
-        try {
-            setLoading(true);
-            const res = await session.customFetch("/achievements", { method: "GET" });
-            if (res.ok) {
-                const data = await res.json();
-                setAchievements(Array.isArray(data) ? data : []);
-            }
-        } catch (err) {
-            console.error("Failed to load achievements:", err);
-            enqueueSnackbar(
-                tr("Failed to load achievements", "Impossible de charger les succès"),
-                { variant: "error" }
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchAchievements();
-    }, []);
+        let cancelled = false;
+        const loadAchievements = async () => {
+            try {
+                const res = await session.customFetch("/achievements", { method: "GET" });
+                if (!cancelled && res.ok) {
+                    const data = await res.json();
+                    setAchievements(Array.isArray(data) ? data : []);
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    console.error("Failed to load achievements:", err);
+                    enqueueSnackbar(
+                        tr("Failed to load achievements", "Impossible de charger les succès"),
+                        { variant: "error" }
+                    );
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        };
+        loadAchievements();
+        return () => {
+            cancelled = true;
+        };
+    }, [session, tr]);
 
     const unlockedCount = useMemo(
         () => achievements.filter((a) => a.unlocked).length,
@@ -389,7 +395,7 @@ export default function AchievementsPage() {
     const formatUnlockedDate = (dateStr: string | null) => {
         if (!dateStr) return "";
         try {
-            return new Date(dateStr).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-US", {
+            return new Date(dateStr).toLocaleDateString(locale, {
                 day: "numeric",
                 month: "short",
                 year: "numeric"
