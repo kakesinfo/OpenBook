@@ -573,7 +573,7 @@ export default function AchievementsPage() {
                 onClose={() => !submitting && setIsFormOpen(false)}
                 maxWidth="sm"
                 fullWidth
-                PaperProps={{ className: "achievements-modal" }}
+                slotProps={{ paper: { className: "achievements-modal" } }}
             >
                 <form onSubmit={handleSaveAchievement}>
                     <div className="achievements-modal__header">
@@ -775,7 +775,7 @@ export default function AchievementsPage() {
                 onClose={() => !submitting && setDeleteConfirm(null)}
                 maxWidth="xs"
                 fullWidth
-                PaperProps={{ className: "achievements-modal" }}
+                slotProps={{ paper: { className: "achievements-modal" } }}
             >
                 <div className="achievements-modal__header">
                     <h3>{tr("Delete achievement", "Supprimer le succès")}</h3>
