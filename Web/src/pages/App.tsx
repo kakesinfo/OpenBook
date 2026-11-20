@@ -14,6 +14,7 @@ import {
     faBook,
     faBookOpen,
     faTag,
+    faRightLeft,
     faLayerGroup,
     faHeart,
     faCalendarDays,
@@ -129,11 +130,12 @@ export default function App() {
                         <WrapperAction icon={faMagnifyingGlass} callback={handleOpen}>{t("nav.search")}</WrapperAction>
                         <WrapperButton to={'/app/home'} icon={faHouse}>{t("nav.home")}</WrapperButton>
                         <WrapperButton to={'/app/news'} icon={faNewspaper}>{t("nav.news")}</WrapperButton>
-                        <WrapperButton to={'/app/collection'} icon={faBook} activeRoutes={['/app/series', '/app/collection/series', '/app/sales', '/app/ventes']}>{t("nav.library")}</WrapperButton>
+                        <WrapperButton to={'/app/collection'} icon={faBook} activeRoutes={['/app/series', '/app/collection/series', '/app/sales', '/app/ventes', '/app/loans', '/app/emprunts']}>{t("nav.library")}</WrapperButton>
                         <WrapperSubGroup>
                             <WrapperSubButton to={'/app/collection'} icon={faBookOpen}>{t("nav.myBooks")}</WrapperSubButton>
                             <WrapperSubButton to={'/app/series'} icon={faLayerGroup}>{t("nav.mySeries")}</WrapperSubButton>
                             <WrapperSubButton to={'/app/sales'} icon={faTag}>{t("nav.mySales")}</WrapperSubButton>
+                            <WrapperSubButton to={'/app/loans'} icon={faRightLeft}>{t("nav.myLoans")}</WrapperSubButton>
                         </WrapperSubGroup>
                         <WrapperButton to={'/app/wishlist'} icon={faHeart}>{t("nav.wishlist")}</WrapperButton>
                         <WrapperButton to={'/app/planning'} icon={faCalendarDays}>{t("nav.planning")}</WrapperButton>

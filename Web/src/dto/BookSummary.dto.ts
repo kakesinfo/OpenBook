@@ -21,4 +21,9 @@ export default interface BookSummaryDTO {
     readingStatus?: string;
     finishedAt?: number | null;
     readingCycleId?: number;
+    loanType?: "BORROWED" | "LENT" | string | null;
+    loanPerson?: string | null;
+    loanDate?: string | null;
+    loanDueDate?: string | null;
+    loanMemo?: string | null;
 }

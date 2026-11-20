@@ -23,6 +23,7 @@ import fr.openbook.api.entities.SeriesHasThemeEntity;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
 import fr.openbook.api.entities.UserSellsBookEntity;
+import fr.openbook.api.entities.UserLoansBookEntity;
 import fr.openbook.api.bnf.BnfClient;
 import fr.openbook.api.bnf.BnfSearchResult;
 import fr.openbook.api.repositories.BookRepository;
@@ -144,6 +145,15 @@ public class BookController {
                     }
                 });
 
+        Map<Long, UserLoansBookEntity> loanMap = new HashMap<>();
+        repositoryService.getUserLoansBookRepository()
+                .findAllByUserId(resolvedUser.getId())
+                .forEach(ulb -> {
+                    if (ulb.getBook() != null && ulb.getBook().getId() != null) {
+                        loanMap.put(ulb.getBook().getId(), ulb);
+                    }
+                });
+
         for (BookSummaryDTO dto : dtos) {
             if (dto.getId() != null) {
                 String st = statusMap.get(dto.getId());
@@ -153,6 +163,14 @@ public class BookController {
                 String rSt = readingStatusMap.get(dto.getId());
                 if (rSt != null) {
                     dto.setReadingStatus(rSt);
+                }
+                UserLoansBookEntity loan = loanMap.get(dto.getId());
+                if (loan != null) {
+                    dto.setLoanType(loan.getType());
+                    dto.setLoanPerson(loan.getPersonName());
+                    dto.setLoanDate(loan.getLoanDate() != null ? loan.getLoanDate().toString() : null);
+                    dto.setLoanDueDate(loan.getDueDate() != null ? loan.getDueDate().toString() : null);
+                    dto.setLoanMemo(loan.getMemo());
                 }
             }
         }

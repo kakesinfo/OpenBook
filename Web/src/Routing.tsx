@@ -16,6 +16,7 @@ import NewsPage from "./pages/app/NewsPage.tsx";
 import ReadingHistoryPage from "./pages/app/ReadingHistoryPage.tsx";
 import CollectionPage from "./pages/app/CollectionPage.tsx";
 import SalesPage from "./pages/app/SalesPage.tsx";
+import LoansPage from "./pages/app/LoansPage.tsx";
 import SeriesPage from "./pages/app/SeriesPage.tsx";
 import SeriesDetailPage from "./pages/app/SeriesDetailPage.tsx";
 import AuthorDetailPage from "./pages/app/AuthorDetailPage.tsx";
@@ -171,6 +172,10 @@ export default function Routing() {
                 <Route path="sales/:tab" element={<UserOnlyRoute><SalesPage /></UserOnlyRoute>} />
                 <Route path="ventes" element={<UserOnlyRoute><SalesPage /></UserOnlyRoute>} />
                 <Route path="ventes/:tab" element={<UserOnlyRoute><SalesPage /></UserOnlyRoute>} />
+                <Route path="loans" element={<UserOnlyRoute><LoansPage /></UserOnlyRoute>} />
+                <Route path="loans/:tab" element={<UserOnlyRoute><LoansPage /></UserOnlyRoute>} />
+                <Route path="emprunts" element={<UserOnlyRoute><LoansPage /></UserOnlyRoute>} />
+                <Route path="emprunts/:tab" element={<UserOnlyRoute><LoansPage /></UserOnlyRoute>} />
                 <Route path="collection/series" element={<UserOnlyRoute><SeriesPage /></UserOnlyRoute>} />
                 <Route path="collection/series/ongoing" element={<UserOnlyRoute><SeriesPage tab="ON_GOING" /></UserOnlyRoute>} />
                 <Route path="collection/series/finished" element={<UserOnlyRoute><SeriesPage tab="FINISHED" /></UserOnlyRoute>} />

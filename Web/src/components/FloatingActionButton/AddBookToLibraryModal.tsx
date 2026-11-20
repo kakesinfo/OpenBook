@@ -12,7 +12,13 @@ import {
     faCoins,
     faLink,
     faArrowLeft,
-    faSpinner
+    faSpinner,
+    faRightLeft,
+    faArrowDown,
+    faArrowUp,
+    faUser,
+    faCalendarDays,
+    faNoteSticky
 } from "@fortawesome/free-solid-svg-icons";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router";
@@ -27,7 +33,7 @@ interface Props {
     open: boolean;
     onClose: () => void;
     onOpenCreateBook?: (initialData?: InitialBookData | string) => void;
-    mode?: "library" | "sale";
+    mode?: "library" | "sale" | "loan";
 }
 
 export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook, mode = "library" }: Props) {
@@ -37,6 +43,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
     const { enqueueSnackbar } = useSnackbar();
 
     const isSaleMode = mode === "sale";
+    const isLoanMode = mode === "loan";
 
     const [query, setQuery] = useState("");
     const [books, setBooks] = useState<BookSummaryDTO[]>([]);
@@ -51,6 +58,16 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
     const [listingPrice, setListingPrice] = useState<string>("");
     const [listingUrl, setListingUrl] = useState<string>("");
     const [submittingListing, setSubmittingListing] = useState(false);
+
+    // Loan details step when lending or borrowing a book
+    const [loanTargetBook, setLoanTargetBook] = useState<BookSummaryDTO | null>(null);
+    const [loanType, setLoanType] = useState<"BORROWED" | "LENT">("LENT");
+    const [loanPerson, setLoanPerson] = useState<string>("");
+    const [loanDate, setLoanDate] = useState<string>("");
+    const [loanDueDate, setLoanDueDate] = useState<string>("");
+    const [loanMemo, setLoanMemo] = useState<string>("");
+    const [submittingLoan, setSubmittingLoan] = useState(false);
+    const [addedLoans, setAddedLoans] = useState<Record<string, "BORROWED" | "LENT">>({});
 
     const inputRef = useRef<HTMLInputElement | null>(null);
     const searchRequestIdRef = useRef(0);
@@ -70,6 +87,14 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
             setListingPrice("");
             setListingUrl("");
             setSubmittingListing(false);
+            setLoanTargetBook(null);
+            setLoanType("LENT");
+            setLoanPerson("");
+            setLoanDate("");
+            setLoanDueDate("");
+            setLoanMemo("");
+            setSubmittingLoan(false);
+            setAddedLoans({});
         }
     }
 
@@ -219,6 +244,88 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
         }
     };
 
+    const getTodayIso = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    };
+
+    const handleOpenLoanStep = (book: BookSummaryDTO, initialType: "BORROWED" | "LENT", e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        if (!session.token || addingIds.has(book.id)) return;
+
+        setLoanTargetBook(book);
+        setLoanType(initialType);
+        setLoanPerson(book.loanPerson || "");
+        setLoanDate(book.loanDate || getTodayIso());
+        setLoanDueDate(book.loanDueDate || "");
+        setLoanMemo(book.loanMemo || "");
+    };
+
+    const handleSaveLoan = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!loanTargetBook || !session.token || submittingLoan) return;
+
+        setSubmittingLoan(true);
+        try {
+            const res = await session.customFetch(`/user/loans/${encodeURIComponent(loanTargetBook.id)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    type: loanType,
+                    personName: loanPerson.trim() || null,
+                    loanDate: loanDate.trim() || null,
+                    dueDate: loanDueDate.trim() || null,
+                    memo: loanMemo.trim() || null
+                })
+            });
+
+            if (res.ok) {
+                const updated: BookSummaryDTO = await res.json();
+                setAddedLoans((prev) => ({ ...prev, [loanTargetBook.id]: loanType }));
+                setBooks((prev) =>
+                    prev.map((b) =>
+                        b.id === loanTargetBook.id
+                            ? {
+                                ...b,
+                                loanType: updated.loanType || loanType,
+                                loanPerson: updated.loanPerson ?? (loanPerson.trim() || null),
+                                loanDate: updated.loanDate ?? (loanDate.trim() || null),
+                                loanDueDate: updated.loanDueDate ?? (loanDueDate.trim() || null),
+                                loanMemo: updated.loanMemo ?? (loanMemo.trim() || null)
+                            }
+                            : b
+                    )
+                );
+                enqueueSnackbar(
+                    loanType === "LENT"
+                        ? tr(`"${loanTargetBook.title}" has been marked as lent!`, `« ${loanTargetBook.title} » a été marqué comme prêté !`)
+                        : tr(`"${loanTargetBook.title}" has been marked as borrowed!`, `« ${loanTargetBook.title} » a été marqué comme emprunté !`),
+                    { variant: "success" }
+                );
+                window.dispatchEvent(new CustomEvent("loans-updated"));
+                setLoanTargetBook(null);
+            } else {
+                let errMsg = tr("Error saving loan", "Erreur lors de l'enregistrement de l'emprunt");
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.message || errData.error || errMsg;
+                } catch {
+                    const text = await res.text().catch(() => "");
+                    if (text) errMsg = text;
+                }
+                enqueueSnackbar(errMsg, { variant: "error" });
+            }
+        } catch (err) {
+            console.error("Error saving loan:", err);
+            enqueueSnackbar(tr("Connection error", "Erreur de connexion"), { variant: "error" });
+        } finally {
+            setSubmittingLoan(false);
+        }
+    };
+
     const handleBookClick = (bookId: string | number) => {
         onClose();
         navigate(`/app/book/${bookId}`);
@@ -257,7 +364,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                         type: a.type
                     }))
                     : [],
-                addToLibrary: true
+                addToLibrary: !isLoanMode
             };
 
             const res = await session.customFetch("/books", {
@@ -268,13 +375,32 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
 
             if (res.ok) {
                 const createdBook = await res.json();
-                enqueueSnackbar(
-                    tr(`"${bnf.title}" has been created and added to your library!`, `« ${bnf.title} » a été créé et ajouté à votre bibliothèque !`),
-                    { variant: "success" }
-                );
-                onClose();
-                if (createdBook?.id) {
-                    navigate(`/app/book/${createdBook.id}`);
+                if (isLoanMode && createdBook?.id) {
+                    const summary: BookSummaryDTO = {
+                        id: String(createdBook.id),
+                        title: createdBook.title || bnf.title,
+                        volume: createdBook.volume ?? (bnf.volume ?? 0),
+                        price: createdBook.price ?? 0,
+                        releaseDate: createdBook.releaseDate || bnf.releaseDate || "",
+                        coverUrl: createdBook.coverUrl || bnf.coverUrl || "",
+                        seriesName: createdBook.seriesName || undefined,
+                        editorName: createdBook.editorName || bnf.editorName || undefined
+                    };
+                    setBooks((prev) => [summary, ...prev]);
+                    handleOpenLoanStep(summary, "LENT");
+                    enqueueSnackbar(
+                        tr(`"${bnf.title}" has been created! Choose loan details below.`, `« ${bnf.title} » a été créé ! Renseignez les détails du prêt/emprunt.`),
+                        { variant: "success" }
+                    );
+                } else {
+                    enqueueSnackbar(
+                        tr(`"${bnf.title}" has been created and added to your library!`, `« ${bnf.title} » a été créé et ajouté à votre bibliothèque !`),
+                        { variant: "success" }
+                    );
+                    onClose();
+                    if (createdBook?.id) {
+                        navigate(`/app/book/${createdBook.id}`);
+                    }
                 }
             } else {
                 let errMsg = tr("Error creating book", "Erreur lors de la création de l'album");
@@ -313,16 +439,20 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                 }
             }}}
         >
-            <div className={`fab-modal ${isSaleMode ? "fab-modal--sale" : ""}`}>
+            <div className={`fab-modal ${isSaleMode ? "fab-modal--sale" : ""} ${isLoanMode ? "fab-modal--loan" : ""}`}>
                 <div className="fab-modal__header">
                     <div className="fab-modal__header-title">
-                        <FontAwesomeIcon icon={isSaleMode ? faTag : faMagnifyingGlass} />
+                        <FontAwesomeIcon icon={isLoanMode ? faRightLeft : isSaleMode ? faTag : faMagnifyingGlass} />
                         <h3>
                             {listingTargetBook
                                 ? tr("List for sale", "Mettre en vente")
-                                : isSaleMode
-                                    ? tr("Search for a book to list for sale", "Chercher un livre à mettre en vente")
-                                    : tr("Add a book to my library", "Ajouter un livre à ma bibliothèque")}
+                                : loanTargetBook
+                                    ? (loanType === "LENT" ? tr("Lend a book", "Prêter un livre") : tr("Borrow a book", "Emprunter un livre"))
+                                    : isLoanMode
+                                        ? tr("Search for a book to lend / borrow", "Chercher un livre à prêter / emprunter")
+                                        : isSaleMode
+                                            ? tr("Search for a book to list for sale", "Chercher un livre à mettre en vente")
+                                            : tr("Add a book to my library", "Ajouter un livre à ma bibliothèque")}
                         </h3>
                     </div>
                     <button
@@ -416,6 +546,142 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                             </button>
                         </div>
                     </form>
+                ) : loanTargetBook ? (
+                    <form className="fab-form" onSubmit={handleSaveLoan}>
+                        <div className="fab-search-item" style={{ cursor: "default" }}>
+                            <div className="fab-search-item__left" style={{ cursor: "default" }}>
+                                <div className="fab-search-item__thumb">
+                                    {loanTargetBook.coverUrl ? (
+                                        <img src={loanTargetBook.coverUrl} alt={loanTargetBook.title} loading="lazy" />
+                                    ) : (
+                                        <FontAwesomeIcon icon={faBook} />
+                                    )}
+                                </div>
+                                <div className="fab-search-item__info">
+                                    {loanTargetBook.seriesName && (
+                                        <span className="fab-search-item__series">
+                                            {loanTargetBook.seriesName}
+                                        </span>
+                                    )}
+                                    <span className="fab-search-item__title">
+                                        {loanTargetBook.title}
+                                    </span>
+                                    <div className="fab-search-item__meta">
+                                        {loanTargetBook.volume !== undefined && loanTargetBook.volume !== null && (
+                                            <span>{loanTargetBook.volume > 0 ? `${tr("Volume", "Tome")} ${loanTargetBook.volume}` : "One-shot"}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="fab-loan-type-toggle" role="radiogroup" aria-label={tr("Loan type", "Type d'emprunt")}>
+                            <button
+                                type="button"
+                                className={`fab-loan-type-btn fab-loan-type-btn--borrowed ${loanType === "BORROWED" ? "is-active" : ""}`}
+                                onClick={() => setLoanType("BORROWED")}
+                            >
+                                <FontAwesomeIcon icon={faArrowDown} />
+                                <span>{tr("Borrowed", "Emprunté")}</span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`fab-loan-type-btn fab-loan-type-btn--lent ${loanType === "LENT" ? "is-active" : ""}`}
+                                onClick={() => setLoanType("LENT")}
+                            >
+                                <FontAwesomeIcon icon={faArrowUp} />
+                                <span>{tr("Lent", "Prêté")}</span>
+                            </button>
+                        </div>
+
+                        <div className="fab-form__field">
+                            <label>
+                                <FontAwesomeIcon icon={faUser} />
+                                <span>
+                                    {loanType === "LENT"
+                                        ? tr("Lent to", "Prêté à")
+                                        : tr("Borrowed from", "Emprunté à")}
+                                </span>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>{tr("(optional)", "(optionnel)")}</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder={loanType === "LENT"
+                                    ? tr("e.g., Thomas, Marie...", "ex: Thomas, Marie...")
+                                    : tr("e.g., Library, Thomas...", "ex: Médiathèque, Thomas...")}
+                                value={loanPerson}
+                                onChange={(e) => setLoanPerson(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="fab-loan-dates-grid">
+                            <div className="fab-form__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faCalendarDays} />
+                                    <span>{loanType === "LENT" ? tr("Lend date", "Date du prêt") : tr("Borrow date", "Date d'emprunt")}</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={loanDate}
+                                    onChange={(e) => setLoanDate(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="fab-form__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faCalendarDays} />
+                                    <span>{tr("Expected return", "Retour prévu")}</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={loanDueDate}
+                                    onChange={(e) => setLoanDueDate(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="fab-form__field">
+                            <label>
+                                <FontAwesomeIcon icon={faNoteSticky} />
+                                <span>{tr("Memo / Notes", "Mémo / Remarques")}</span>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>{tr("(optional)", "(optionnel)")}</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder={tr("e.g., Return before summer...", "ex: À rendre avant cet été...")}
+                                value={loanMemo}
+                                onChange={(e) => setLoanMemo(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="fab-modal__footer">
+                            <button
+                                type="button"
+                                className="fab-btn-cancel"
+                                disabled={submittingLoan}
+                                onClick={() => setLoanTargetBook(null)}
+                                style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
+                            >
+                                <FontAwesomeIcon icon={faArrowLeft} />
+                                <span>{tr("Back", "Retour")}</span>
+                            </button>
+                            <button
+                                type="submit"
+                                className="fab-btn-submit"
+                                disabled={submittingLoan}
+                            >
+                                <FontAwesomeIcon icon={faCheck} />
+                                <span>
+                                    {submittingLoan
+                                        ? tr("Saving...", "Enregistrement...")
+                                        : loanType === "LENT"
+                                            ? tr("Confirm lend", "Confirmer le prêt")
+                                            : tr("Confirm borrow", "Confirmer l'emprunt")}
+                                </span>
+                            </button>
+                        </div>
+                    </form>
                 ) : (
                     <div className="fab-modal__body">
                         <div className="fab-form__field">
@@ -434,7 +700,11 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                         setBnfResults([]);
                                     }
                                 }}
-                                placeholder={isSaleMode ? tr("Search for a book to list for sale...", "Rechercher un livre à mettre en vente...") : tr("Search by title, series or ISBN...", "Rechercher par titre, série ou ISBN...")}
+                                placeholder={isLoanMode
+                                    ? tr("Search for a book to lend or borrow...", "Rechercher un livre à prêter ou emprunter...")
+                                    : isSaleMode
+                                        ? tr("Search for a book to list for sale...", "Rechercher un livre à mettre en vente...")
+                                        : tr("Search by title, series or ISBN...", "Rechercher par titre, série ou ISBN...")}
                                 autoComplete="off"
                             />
                         </div>
@@ -530,7 +800,46 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                                                 </div>
 
                                                 <div className="fab-search-item__actions">
-                                                    {isSaleMode ? (
+                                                    {isLoanMode ? (
+                                                        (() => {
+                                                            const activeLoanType = addedLoans[book.id] || (book.loanType?.toUpperCase() === "LENT" || book.loanType?.toUpperCase() === "BORROWED" ? book.loanType.toUpperCase() : null);
+                                                            if (activeLoanType) {
+                                                                return (
+                                                                    <button
+                                                                        type="button"
+                                                                        className={`fab-badge-owned fab-badge-loan fab-badge-loan--${activeLoanType.toLowerCase()}`}
+                                                                        onClick={(e) => handleOpenLoanStep(book, activeLoanType as "BORROWED" | "LENT", e)}
+                                                                        title={tr("Edit loan", "Modifier l'emprunt")}
+                                                                    >
+                                                                        <FontAwesomeIcon icon={activeLoanType === "LENT" ? faArrowUp : faArrowDown} />
+                                                                        <span>{activeLoanType === "LENT" ? tr("Lent", "Prêté") : tr("Borrowed", "Emprunté")}</span>
+                                                                    </button>
+                                                                );
+                                                            }
+                                                            return (
+                                                                <div className="fab-loan-actions">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="fab-btn-add fab-btn-add--lent"
+                                                                        disabled={isAdding}
+                                                                        onClick={(e) => handleOpenLoanStep(book, "LENT", e)}
+                                                                    >
+                                                                        <FontAwesomeIcon icon={faArrowUp} />
+                                                                        <span>{tr("Lend", "Prêter")}</span>
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="fab-btn-add fab-btn-add--borrowed"
+                                                                        disabled={isAdding}
+                                                                        onClick={(e) => handleOpenLoanStep(book, "BORROWED", e)}
+                                                                    >
+                                                                        <FontAwesomeIcon icon={faArrowDown} />
+                                                                        <span>{tr("Borrow", "Emprunter")}</span>
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        })()
+                                                    ) : isSaleMode ? (
                                                         isForSale ? (
                                                             <span className="fab-badge-owned">
                                                                 <FontAwesomeIcon icon={faCheck} />
@@ -648,7 +957,7 @@ export default function AddBookToLibraryModal({ open, onClose, onOpenCreateBook,
                     </div>
                 )}
 
-                {!listingTargetBook && (
+                {!listingTargetBook && !loanTargetBook && (
                     <div className="fab-modal__footer">
                         <button
                             type="button"

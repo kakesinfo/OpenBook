@@ -17,10 +17,12 @@ import fr.openbook.api.entities.SeriesStatus;
 import fr.openbook.api.entities.UserEntity;
 import fr.openbook.api.entities.UserOwnsBookEntity;
 import fr.openbook.api.entities.UserSellsBookEntity;
+import fr.openbook.api.entities.UserLoansBookEntity;
 import fr.openbook.api.entities.UserBookTransactionEntity;
 import fr.openbook.api.dtos.UserBookTransactionDTO;
 import fr.openbook.api.dtos.CreateBookTransactionRequestDTO;
 import fr.openbook.api.dtos.SaleStatusUpdateRequestDTO;
+import fr.openbook.api.dtos.LoanBookRequestDTO;
 import java.time.LocalDate;
 import java.time.Year;
 import java.time.YearMonth;
@@ -1029,6 +1031,112 @@ public class UserController {
             entity.setStatus(UserOwnsBookStatus.OWNED.name());
             repositoryService.getUserOwnsBooksRepository().saveAndFlush(entity);
         }
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping({"/loans", "/emprunts"})
+    public List<BookSummaryDTO> getUserLoans(HttpSession session) {
+        UserEntity user = getAuthenticatedUser(session);
+
+        List<UserLoansBookEntity> loanEntries = repositoryService.getUserLoansBookRepository()
+                .findAllByUserId(user.getId());
+
+        Map<Long, String> readingStatusMap = repositoryService.getBookStatusRepository()
+                .findAllByUserId(user.getId()).stream()
+                .filter(bse -> bse.getBook() != null)
+                .collect(Collectors.toMap(bse -> bse.getBook().getId(), BookStatusEntity::getStatus, (s1, s2) -> s1));
+
+        return loanEntries.stream()
+                .filter(ulb -> ulb.getBook() != null)
+                .sorted(Comparator.comparing(UserLoansBookEntity::getUpdatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(entity -> {
+                    BookSummaryDTO dto = entityToSummaryDTO(entity.getBook());
+                    dto.setStatus(entity.getType());
+                    dto.setLoanType(entity.getType());
+                    dto.setLoanPerson(entity.getPersonName());
+                    dto.setLoanDate(entity.getLoanDate() != null ? entity.getLoanDate().toString() : null);
+                    dto.setLoanDueDate(entity.getDueDate() != null ? entity.getDueDate().toString() : null);
+                    dto.setLoanMemo(entity.getMemo());
+                    dto.setReadingStatus(readingStatusMap.getOrDefault(entity.getBook().getId(), "UNREAD"));
+                    return dto;
+                })
+                .toList();
+    }
+
+    @RequestMapping(value = {"/loans/{bookId}", "/emprunts/{bookId}"}, method = {RequestMethod.POST, RequestMethod.PUT})
+    public BookSummaryDTO upsertLoan(
+        HttpSession session,
+        @PathVariable Long bookId,
+        @RequestBody LoanBookRequestDTO request
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+        if (request == null || request.getType() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Loan type is required (BORROWED or LENT)");
+        }
+
+        String upperType = request.getType().trim().toUpperCase();
+        if (!"BORROWED".equals(upperType) && !"LENT".equals(upperType)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid loan type: " + request.getType());
+        }
+
+        BookEntity book = repositoryService.getBookRepository().findById(bookId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Book not found"));
+
+        UserLoansBookEntity entity = repositoryService.getUserLoansBookRepository()
+                .findByUserIdAndBookId(user.getId(), bookId)
+                .orElseGet(() -> {
+                    UserLoansBookEntity loan = new UserLoansBookEntity();
+                    loan.setUser(user);
+                    loan.setBook(book);
+                    return loan;
+                });
+
+        entity.setType(upperType);
+        entity.setPersonName(request.getPersonName() != null && !request.getPersonName().trim().isEmpty()
+                ? request.getPersonName().trim() : null);
+
+        LocalDate parsedLoanDate = null;
+        if (request.getLoanDate() != null && !request.getLoanDate().trim().isEmpty()) {
+            try {
+                parsedLoanDate = LocalDate.parse(request.getLoanDate().trim());
+            } catch (Exception ignored) {}
+        }
+        entity.setLoanDate(parsedLoanDate);
+
+        LocalDate parsedDueDate = null;
+        if (request.getDueDate() != null && !request.getDueDate().trim().isEmpty()) {
+            try {
+                parsedDueDate = LocalDate.parse(request.getDueDate().trim());
+            } catch (Exception ignored) {}
+        }
+        entity.setDueDate(parsedDueDate);
+
+        entity.setMemo(request.getMemo() != null && !request.getMemo().trim().isEmpty()
+                ? request.getMemo().trim() : null);
+
+        UserLoansBookEntity saved = repositoryService.getUserLoansBookRepository().saveAndFlush(entity);
+
+        BookSummaryDTO dto = entityToSummaryDTO(saved.getBook());
+        dto.setStatus(saved.getType());
+        dto.setLoanType(saved.getType());
+        dto.setLoanPerson(saved.getPersonName());
+        dto.setLoanDate(saved.getLoanDate() != null ? saved.getLoanDate().toString() : null);
+        dto.setLoanDueDate(saved.getDueDate() != null ? saved.getDueDate().toString() : null);
+        dto.setLoanMemo(saved.getMemo());
+        return dto;
+    }
+
+    @DeleteMapping({"/loans/{bookId}", "/emprunts/{bookId}"})
+    public ResponseEntity<Void> removeLoan(
+        HttpSession session,
+        @PathVariable Long bookId
+    ) {
+        UserEntity user = getAuthenticatedUser(session);
+
+        repositoryService.getUserLoansBookRepository()
+                .findByUserIdAndBookId(user.getId(), bookId)
+                .ifPresent(repositoryService.getUserLoansBookRepository()::delete);
 
         return ResponseEntity.noContent().build();
     }
