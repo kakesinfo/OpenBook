@@ -4,6 +4,8 @@ import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faArrowLeft,
+    faCheck,
+    faChevronDown,
     faLock,
     faMinus,
     faPen,
@@ -13,14 +15,14 @@ import {
     faUnlock,
     faXmark
 } from "@fortawesome/free-solid-svg-icons";
-import { Checkbox, Dialog, LinearProgress } from "@mui/material";
+import { Dialog, LinearProgress, Popover } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import AchievementDTO from "../../dto/Achievement.dto.ts";
 import Card from "../../components/Card/Card.tsx";
-import FormGroup from "../../components/Form/FormGroup.tsx";
 import SearchBar from "../../components/SearchBar/SearchBar.tsx";
+import Select from "../../components/Select/Select.tsx";
 import HeaderFilterTabs, { HeaderFilterTab } from "../../components/HeaderFilterTabs/HeaderFilterTabs.tsx";
 import AchievementIcon, { ACHIEVEMENT_ICON_OPTIONS } from "../../components/AchievementIcon/AchievementIcon.tsx";
 import AchievementMedal, { ACHIEVEMENT_ORNAMENT_OPTIONS } from "../../components/AchievementIcon/AchievementMedal.tsx";
@@ -125,6 +127,25 @@ export default function AchievementsPage() {
     const [iconColorInput, setIconColorInput] = useState("#f59e0b");
     const [bgColorInput, setBgColorInput] = useState("#fef3c7");
     const [unlockedAtInput, setUnlockedAtInput] = useState<string>("");
+
+    // Picker popovers
+    const [iconAnchorEl, setIconAnchorEl] = useState<HTMLElement | null>(null);
+    const [colorPickerState, setColorPickerState] = useState<{
+        anchorEl: HTMLElement;
+        target: "icon" | "bg";
+    } | null>(null);
+
+    const closeFormModal = () => {
+        if (submitting) return;
+        setIconAnchorEl(null);
+        setColorPickerState(null);
+        setIsFormOpen(false);
+    };
+
+    const selectedIconOption = useMemo(
+        () => ACHIEVEMENT_ICON_OPTIONS.find((opt) => opt.id === iconInput) ?? ACHIEVEMENT_ICON_OPTIONS[0],
+        [iconInput]
+    );
 
     const fetchAchievements = async () => {
         try {
@@ -463,7 +484,7 @@ export default function AchievementsPage() {
                                 (achievement.completedSteps / Math.max(1, achievement.totalSteps)) * 100
                             );
                             return (
-                                <Card
+                                <div
                                     key={achievement.id}
                                     className={`achievement-card ${achievement.unlocked ? "is-unlocked" : "is-locked"}`}
                                     style={{
@@ -471,96 +492,136 @@ export default function AchievementsPage() {
                                         "--medal-bg": achievement.backgroundColor
                                     } as React.CSSProperties}
                                 >
-                                    <div className="achievement-card__medal-wrap">
-                                        <AchievementMedal
-                                            icon={achievement.icon}
-                                            ornament={achievement.ornament}
-                                            iconColor={achievement.iconColor}
-                                            backgroundColor={achievement.backgroundColor}
-                                            size="lg"
-                                        />
+                                    <div className="achievement-card__visual">
+                                        <div className="achievement-card__scrim achievement-card__scrim--bottom" />
+
+                                        <div className="achievement-card__top-bar">
+                                            <span
+                                                className={`achievement-card__status-badge ${
+                                                    achievement.unlocked
+                                                        ? "is-unlocked"
+                                                        : achievement.completedSteps > 0
+                                                            ? "is-in-progress"
+                                                            : "is-locked"
+                                                }`}
+                                            >
+                                                <FontAwesomeIcon icon={achievement.unlocked ? faCheck : faLock} />
+                                                <span>
+                                                    {achievement.unlocked
+                                                        ? tr("Unlocked", "Débloqué")
+                                                        : achievement.completedSteps > 0
+                                                            ? tr("In progress", "En cours")
+                                                            : tr("Locked", "À débloquer")}
+                                                </span>
+                                            </span>
+
+                                            {achievement.totalSteps > 1 && (
+                                                <span className="achievement-card__step-badge">
+                                                    {achievement.completedSteps}/{achievement.totalSteps}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="achievement-card__medal-wrap">
+                                            <AchievementMedal
+                                                icon={achievement.icon}
+                                                ornament={achievement.ornament}
+                                                iconColor={achievement.iconColor}
+                                                backgroundColor={achievement.backgroundColor}
+                                                size="lg"
+                                            />
+                                        </div>
+
+                                        {achievement.totalSteps > 1 && (
+                                            <div className="achievement-card__progress-track">
+                                                <div
+                                                    className="achievement-card__progress-fill"
+                                                    style={{ width: `${stepPercent}%` }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="achievement-card__actions">
+                                            {achievement.totalSteps > 1 && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        className="achievement-card__action-btn"
+                                                        disabled={achievement.completedSteps <= 0}
+                                                        onClick={() => updateSteps(achievement, achievement.completedSteps - 1)}
+                                                        title={tr("Decrease step", "Retirer une étape")}
+                                                        aria-label={tr("Decrease step", "Retirer une étape")}
+                                                    >
+                                                        <FontAwesomeIcon icon={faMinus} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="achievement-card__action-btn"
+                                                        disabled={achievement.completedSteps >= achievement.totalSteps}
+                                                        onClick={() => updateSteps(achievement, achievement.completedSteps + 1)}
+                                                        title={tr("Complete a step", "Valider une étape")}
+                                                        aria-label={tr("Complete a step", "Valider une étape")}
+                                                    >
+                                                        <FontAwesomeIcon icon={faPlus} />
+                                                    </button>
+                                                </>
+                                            )}
+
+                                            <button
+                                                type="button"
+                                                className={`achievement-card__action-btn achievement-card__action-btn--toggle ${achievement.unlocked ? "is-active" : ""}`}
+                                                onClick={() => handleToggleCheckbox(achievement, !achievement.unlocked)}
+                                                title={
+                                                    achievement.unlocked
+                                                        ? tr("Mark as locked", "Marquer comme non débloqué")
+                                                        : tr("Mark as unlocked", "Débloquer")
+                                                }
+                                                aria-label={tr(`Toggle ${achievement.name}`, `Basculer ${achievement.name}`)}
+                                            >
+                                                <FontAwesomeIcon icon={faCheck} />
+                                            </button>
+
+                                            <span className="achievement-card__actions-divider" />
+
+                                            <button
+                                                type="button"
+                                                className="achievement-card__action-btn achievement-card__action-btn--edit"
+                                                onClick={() => openEditModal(achievement)}
+                                                title={tr("Edit", "Modifier")}
+                                                aria-label={tr(`Edit ${achievement.name}`, `Modifier ${achievement.name}`)}
+                                            >
+                                                <FontAwesomeIcon icon={faPen} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="achievement-card__action-btn achievement-card__action-btn--delete"
+                                                onClick={() => setDeleteConfirm(achievement)}
+                                                title={tr("Delete", "Supprimer")}
+                                                aria-label={tr(`Delete ${achievement.name}`, `Supprimer ${achievement.name}`)}
+                                            >
+                                                <FontAwesomeIcon icon={faTrash} />
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="achievement-card__info">
-                                        <h3 className="achievement-card__name">{achievement.name}</h3>
-                                        <span className="achievement-card__status">
+                                        <h3 className="achievement-card__title" title={achievement.name}>
+                                            {achievement.name}
+                                        </h3>
+                                        <span className="achievement-card__meta">
                                             {achievement.unlocked
-                                                ? tr(
-                                                    `Unlocked${achievement.unlockedAt ? ` • ${formatUnlockedDate(achievement.unlockedAt)}` : ""}`,
-                                                    `Débloqué${achievement.unlockedAt ? ` • ${formatUnlockedDate(achievement.unlockedAt)}` : ""}`
-                                                )
+                                                ? achievement.unlockedAt
+                                                    ? formatUnlockedDate(achievement.unlockedAt)
+                                                    : tr("Unlocked", "Débloqué")
                                                 : achievement.totalSteps > 1
                                                     ? tr(
-                                                        `${achievement.completedSteps} / ${achievement.totalSteps} steps`,
-                                                        `${achievement.completedSteps} / ${achievement.totalSteps} étapes`
+                                                        `${achievement.completedSteps} / ${achievement.totalSteps} steps (${stepPercent}%)`,
+                                                        `${achievement.completedSteps} / ${achievement.totalSteps} étapes (${stepPercent}%)`
                                                     )
-                                                    : tr("Locked", "À débloquer")}
+                                                    : tr("Not unlocked yet", "Non débloqué")}
                                         </span>
                                     </div>
-
-                                    {achievement.totalSteps > 1 && (
-                                        <div className="achievement-card__steps">
-                                            <LinearProgress
-                                                variant="determinate"
-                                                value={stepPercent}
-                                                className="achievement-card__progress"
-                                            />
-                                            <div className="achievement-card__step-controls">
-                                                <button
-                                                    type="button"
-                                                    className="achievement-card__step-btn"
-                                                    disabled={achievement.completedSteps <= 0}
-                                                    onClick={() => updateSteps(achievement, achievement.completedSteps - 1)}
-                                                    title={tr("Decrease step", "Retirer une étape")}
-                                                >
-                                                    <FontAwesomeIcon icon={faMinus} />
-                                                </button>
-                                                <span className="achievement-card__step-count">
-                                                    {achievement.completedSteps} / {achievement.totalSteps}
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    className="achievement-card__step-btn"
-                                                    disabled={achievement.completedSteps >= achievement.totalSteps}
-                                                    onClick={() => updateSteps(achievement, achievement.completedSteps + 1)}
-                                                    title={tr("Complete a step", "Valider une étape")}
-                                                >
-                                                    <FontAwesomeIcon icon={faPlus} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="achievement-card__footer">
-                                        <button
-                                            type="button"
-                                            className="achievement-card__action-btn"
-                                            onClick={() => openEditModal(achievement)}
-                                            title={tr("Edit", "Modifier")}
-                                        >
-                                            <FontAwesomeIcon icon={faPen} />
-                                        </button>
-                                        <Checkbox
-                                            checked={achievement.unlocked}
-                                            onChange={(e) => handleToggleCheckbox(achievement, e.target.checked)}
-                                            inputProps={{
-                                                "aria-label": tr(
-                                                    `Toggle ${achievement.name}`,
-                                                    `Cocher ${achievement.name}`
-                                                )
-                                            }}
-                                            className="achievement-card__checkbox"
-                                        />
-                                        <button
-                                            type="button"
-                                            className="achievement-card__action-btn is-danger"
-                                            onClick={() => setDeleteConfirm(achievement)}
-                                            title={tr("Delete", "Supprimer")}
-                                        >
-                                            <FontAwesomeIcon icon={faTrash} />
-                                        </button>
-                                    </div>
-                                </Card>
+                                </div>
                             );
                         })}
                     </div>
@@ -570,23 +631,27 @@ export default function AchievementsPage() {
             {/* Create / Edit Modal */}
             <Dialog
                 open={isFormOpen}
-                onClose={() => !submitting && setIsFormOpen(false)}
-                maxWidth="sm"
+                onClose={closeFormModal}
+                maxWidth="xs"
                 fullWidth
-                slotProps={{ paper: { className: "achievements-modal" } }}
+                slotProps={{ paper: { className: "achievements-modal achievements-modal--form" } }}
             >
                 <form onSubmit={handleSaveAchievement}>
                     <div className="achievements-modal__header">
                         <h3>
-                            {editingAchievement
-                                ? tr("Edit achievement", "Modifier le succès")
-                                : tr("New achievement", "Créer un succès")}
+                            <FontAwesomeIcon icon={faTrophy} className="achievements-modal__title-icon" />
+                            <span>
+                                {editingAchievement
+                                    ? tr("Edit achievement", "Modifier le succès")
+                                    : tr("New achievement", "Créer un succès")}
+                            </span>
                         </h3>
                         <button
                             type="button"
                             className="achievements-modal__close"
-                            onClick={() => setIsFormOpen(false)}
+                            onClick={closeFormModal}
                             disabled={submitting}
+                            aria-label={tr("Close", "Fermer")}
                         >
                             <FontAwesomeIcon icon={faXmark} />
                         </button>
@@ -617,7 +682,7 @@ export default function AchievementsPage() {
                             </div>
                         </div>
 
-                        <FormGroup>
+                        <div className="achievements-modal__field">
                             <label htmlFor="achievement-name">
                                 {tr("Achievement name", "Nom du succès")}
                             </label>
@@ -630,120 +695,137 @@ export default function AchievementsPage() {
                                 maxLength={150}
                                 required
                             />
-                        </FormGroup>
+                        </div>
 
-                        <FormGroup>
-                            <label htmlFor="achievement-steps">
-                                {tr("Number of steps", "Nombre d'étapes")}
-                            </label>
-                            <input
-                                id="achievement-steps"
-                                type="number"
-                                min={1}
-                                max={9999}
-                                value={totalStepsInput}
-                                onChange={(e) => setTotalStepsInput(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                                required
-                            />
-                        </FormGroup>
-
-                        <FormGroup>
-                            <label htmlFor="achievement-unlocked-at">
-                                {tr("Unlock date (optional)", "Date d'obtention (optionnel)")}
-                            </label>
-                            <input
-                                id="achievement-unlocked-at"
-                                type="date"
-                                value={unlockedAtInput}
-                                onChange={(e) => setUnlockedAtInput(e.target.value)}
-                            />
-                        </FormGroup>
-
-                        <FormGroup>
-                            <label>{tr("Ornament", "Ornement autour de l'icône")}</label>
-                            <div className="achievements-modal__ornament-grid">
-                                {ACHIEVEMENT_ORNAMENT_OPTIONS.map((opt) => (
-                                    <button
-                                        key={opt.id}
-                                        type="button"
-                                        className={`achievements-modal__ornament-option ${ornamentInput === opt.id ? "is-selected" : ""}`}
-                                        onClick={() => setOrnamentInput(opt.id)}
-                                    >
-                                        {opt.label}
-                                    </button>
-                                ))}
+                        <div className="achievements-modal__row">
+                            <div className="achievements-modal__field">
+                                <label htmlFor="achievement-steps">
+                                    {tr("Number of steps", "Nombre d'étapes")}
+                                </label>
+                                <input
+                                    id="achievement-steps"
+                                    type="number"
+                                    min={1}
+                                    max={9999}
+                                    value={totalStepsInput}
+                                    onChange={(e) => setTotalStepsInput(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                    required
+                                />
                             </div>
-                        </FormGroup>
 
-                        <FormGroup>
-                            <label>{tr("Icon", "Icône")}</label>
-                            <div className="achievements-modal__icon-grid">
-                                {ACHIEVEMENT_ICON_OPTIONS.map((opt) => (
-                                    <button
-                                        key={opt.id}
-                                        type="button"
-                                        className={`achievements-modal__icon-option ${iconInput === opt.id ? "is-selected" : ""}`}
-                                        onClick={() => setIconInput(opt.id)}
-                                        title={opt.label}
-                                    >
-                                        <AchievementIcon icon={opt.id} />
-                                    </button>
-                                ))}
+                            <div className="achievements-modal__field">
+                                <label htmlFor="achievement-unlocked-at">
+                                    {tr("Unlock date (optional)", "Date d'obtention (optionnel)")}
+                                </label>
+                                <input
+                                    id="achievement-unlocked-at"
+                                    type="date"
+                                    value={unlockedAtInput}
+                                    onChange={(e) => setUnlockedAtInput(e.target.value)}
+                                />
                             </div>
-                        </FormGroup>
+                        </div>
 
-                        <div className="achievements-modal__colors">
-                            <FormGroup>
-                                <label htmlFor="achievement-icon-color">
+                        <div className="achievements-modal__row">
+                            <div className="achievements-modal__field">
+                                <label htmlFor="achievement-ornament">
+                                    {tr("Ornament", "Ornement")}
+                                </label>
+                                <Select
+                                    id="achievement-ornament"
+                                    className="achievements-modal__select"
+                                    options={ACHIEVEMENT_ORNAMENT_OPTIONS}
+                                    value={ornamentInput}
+                                    onChange={(val: string) => setOrnamentInput(val)}
+                                    placeholder={tr("Ornament", "Ornement")}
+                                />
+                            </div>
+
+                            <div className="achievements-modal__field">
+                                <label htmlFor="achievement-icon-trigger">
+                                    {tr("Icon", "Icône")}
+                                </label>
+                                <button
+                                    id="achievement-icon-trigger"
+                                    type="button"
+                                    className={`achievements-modal__picker-trigger ${iconAnchorEl ? "is-open" : ""}`}
+                                    onClick={(e) => setIconAnchorEl(e.currentTarget)}
+                                    aria-haspopup="true"
+                                    aria-expanded={Boolean(iconAnchorEl)}
+                                >
+                                    <span
+                                        className="achievements-modal__picker-icon-badge"
+                                        style={{ backgroundColor: bgColorInput, color: iconColorInput }}
+                                    >
+                                        <AchievementIcon icon={iconInput} />
+                                    </span>
+                                    <span className="achievements-modal__picker-label">
+                                        {selectedIconOption.label}
+                                    </span>
+                                    <FontAwesomeIcon
+                                        icon={faChevronDown}
+                                        className={`achievements-modal__picker-chevron ${iconAnchorEl ? "is-open" : ""}`}
+                                    />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="achievements-modal__row">
+                            <div className="achievements-modal__field">
+                                <label htmlFor="achievement-icon-color-trigger">
                                     {tr("Icon color", "Couleur de l'icône")}
                                 </label>
-                                <div className="achievements-modal__color-row">
-                                    <input
-                                        id="achievement-icon-color"
-                                        type="color"
-                                        value={iconColorInput}
-                                        onChange={(e) => setIconColorInput(e.target.value)}
+                                <button
+                                    id="achievement-icon-color-trigger"
+                                    type="button"
+                                    className={`achievements-modal__picker-trigger ${colorPickerState?.target === "icon" ? "is-open" : ""}`}
+                                    onClick={(e) =>
+                                        setColorPickerState({ anchorEl: e.currentTarget, target: "icon" })
+                                    }
+                                    aria-haspopup="true"
+                                    aria-expanded={colorPickerState?.target === "icon"}
+                                >
+                                    <span
+                                        className="achievements-modal__picker-swatch"
+                                        style={{ backgroundColor: iconColorInput }}
                                     />
-                                    <div className="achievements-modal__swatches">
-                                        {COLOR_PRESETS.map((color) => (
-                                            <button
-                                                key={color}
-                                                type="button"
-                                                className={`achievements-modal__swatch ${iconColorInput.toLowerCase() === color ? "is-selected" : ""}`}
-                                                style={{ backgroundColor: color }}
-                                                onClick={() => setIconColorInput(color)}
-                                                aria-label={color}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            </FormGroup>
+                                    <span className="achievements-modal__picker-hex">
+                                        {iconColorInput.toUpperCase()}
+                                    </span>
+                                    <FontAwesomeIcon
+                                        icon={faChevronDown}
+                                        className={`achievements-modal__picker-chevron ${colorPickerState?.target === "icon" ? "is-open" : ""}`}
+                                    />
+                                </button>
+                            </div>
 
-                            <FormGroup>
-                                <label htmlFor="achievement-bg-color">
+                            <div className="achievements-modal__field">
+                                <label htmlFor="achievement-bg-color-trigger">
                                     {tr("Background color", "Couleur de fond")}
                                 </label>
-                                <div className="achievements-modal__color-row">
-                                    <input
-                                        id="achievement-bg-color"
-                                        type="color"
-                                        value={bgColorInput}
-                                        onChange={(e) => setBgColorInput(e.target.value)}
+                                <button
+                                    id="achievement-bg-color-trigger"
+                                    type="button"
+                                    className={`achievements-modal__picker-trigger ${colorPickerState?.target === "bg" ? "is-open" : ""}`}
+                                    onClick={(e) =>
+                                        setColorPickerState({ anchorEl: e.currentTarget, target: "bg" })
+                                    }
+                                    aria-haspopup="true"
+                                    aria-expanded={colorPickerState?.target === "bg"}
+                                >
+                                    <span
+                                        className="achievements-modal__picker-swatch"
+                                        style={{ backgroundColor: bgColorInput }}
                                     />
-                                    <div className="achievements-modal__swatches">
-                                        {BG_PRESETS.map((color) => (
-                                            <button
-                                                key={color}
-                                                type="button"
-                                                className={`achievements-modal__swatch ${bgColorInput.toLowerCase() === color ? "is-selected" : ""}`}
-                                                style={{ backgroundColor: color }}
-                                                onClick={() => setBgColorInput(color)}
-                                                aria-label={color}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            </FormGroup>
+                                    <span className="achievements-modal__picker-hex">
+                                        {bgColorInput.toUpperCase()}
+                                    </span>
+                                    <FontAwesomeIcon
+                                        icon={faChevronDown}
+                                        className={`achievements-modal__picker-chevron ${colorPickerState?.target === "bg" ? "is-open" : ""}`}
+                                    />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -751,7 +833,7 @@ export default function AchievementsPage() {
                         <button
                             type="button"
                             className="achievements-modal__btn is-secondary"
-                            onClick={() => setIsFormOpen(false)}
+                            onClick={closeFormModal}
                             disabled={submitting}
                         >
                             {tr("Cancel", "Annuler")}
@@ -768,6 +850,93 @@ export default function AchievementsPage() {
                     </div>
                 </form>
             </Dialog>
+
+            {/* Icon Picker Popover */}
+            <Popover
+                open={Boolean(iconAnchorEl)}
+                anchorEl={iconAnchorEl}
+                onClose={() => setIconAnchorEl(null)}
+                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                transformOrigin={{ vertical: "top", horizontal: "right" }}
+                slotProps={{ paper: { className: "achievements-popover" } }}
+            >
+                <div className="achievements-popover__title">{tr("Choose an icon", "Choisir une icône")}</div>
+                <div className="achievements-popover__icon-grid">
+                    {ACHIEVEMENT_ICON_OPTIONS.map((opt) => (
+                        <button
+                            key={opt.id}
+                            type="button"
+                            className={`achievements-popover__icon-option ${iconInput === opt.id ? "is-selected" : ""}`}
+                            onClick={() => {
+                                setIconInput(opt.id);
+                                setIconAnchorEl(null);
+                            }}
+                            title={opt.label}
+                            aria-label={opt.label}
+                        >
+                            <AchievementIcon icon={opt.id} />
+                        </button>
+                    ))}
+                </div>
+            </Popover>
+
+            {/* Color Picker Popover */}
+            <Popover
+                open={Boolean(colorPickerState)}
+                anchorEl={colorPickerState?.anchorEl ?? null}
+                onClose={() => setColorPickerState(null)}
+                anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                transformOrigin={{ vertical: "top", horizontal: "left" }}
+                slotProps={{ paper: { className: "achievements-popover" } }}
+            >
+                {colorPickerState && (() => {
+                    const isIcon = colorPickerState.target === "icon";
+                    const currentColor = isIcon ? iconColorInput : bgColorInput;
+                    const setColor = isIcon ? setIconColorInput : setBgColorInput;
+                    const presets = isIcon ? COLOR_PRESETS : BG_PRESETS;
+                    return (
+                        <>
+                            <div className="achievements-popover__title">
+                                {isIcon
+                                    ? tr("Icon color", "Couleur de l'icône")
+                                    : tr("Background color", "Couleur de fond")}
+                            </div>
+                            <div className="achievements-popover__swatches">
+                                {presets.map((color) => (
+                                    <button
+                                        key={color}
+                                        type="button"
+                                        className={`achievements-popover__swatch ${currentColor.toLowerCase() === color ? "is-selected" : ""}`}
+                                        style={{ backgroundColor: color }}
+                                        onClick={() => {
+                                            setColor(color);
+                                            setColorPickerState(null);
+                                        }}
+                                        aria-label={color}
+                                        title={color.toUpperCase()}
+                                    />
+                                ))}
+                            </div>
+                            <div className="achievements-popover__custom">
+                                <label htmlFor="achievement-custom-color">
+                                    {tr("Custom", "Personnalisée")}
+                                </label>
+                                <div className="achievements-popover__custom-controls">
+                                    <input
+                                        id="achievement-custom-color"
+                                        type="color"
+                                        value={currentColor}
+                                        onChange={(e) => setColor(e.target.value)}
+                                    />
+                                    <span className="achievements-popover__custom-hex">
+                                        {currentColor.toUpperCase()}
+                                    </span>
+                                </div>
+                            </div>
+                        </>
+                    );
+                })()}
+            </Popover>
 
             {/* Delete confirmation Modal */}
             <Dialog
