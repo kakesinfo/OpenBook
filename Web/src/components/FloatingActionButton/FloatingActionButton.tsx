@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
@@ -11,10 +11,17 @@ export default function FloatingActionButton() {
     const location = useLocation();
     const { tr } = useLanguage();
     const isSalesPage = location.pathname.startsWith("/app/sales") || location.pathname.startsWith("/app/ventes");
+    const isLoansPage = location.pathname.startsWith("/app/loans") || location.pathname.startsWith("/app/emprunts");
 
     const [addModalOpen, setAddModalOpen] = useState(false);
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [initialData, setInitialData] = useState<InitialBookData | string | undefined>(undefined);
+
+    useEffect(() => {
+        const handleOpenLoanModal = () => setAddModalOpen(true);
+        window.addEventListener("open-loan-modal", handleOpenLoanModal);
+        return () => window.removeEventListener("open-loan-modal", handleOpenLoanModal);
+    }, []);
 
     const handleOpenCreateModal = (data?: InitialBookData | string) => {
         setAddModalOpen(false);
@@ -22,9 +29,13 @@ export default function FloatingActionButton() {
         setCreateModalOpen(true);
     };
 
-    const fabLabel = isSalesPage
-        ? tr("Search for a book to list for sale", "Chercher un livre à mettre en vente")
-        : tr("Add a book to my library", "Ajouter un livre à ma bibliothèque");
+    const fabLabel = isLoansPage
+        ? tr("Search for a book to lend / borrow", "Chercher un livre à prêter / emprunter")
+        : isSalesPage
+            ? tr("Search for a book to list for sale", "Chercher un livre à mettre en vente")
+            : tr("Add a book to my library", "Ajouter un livre à ma bibliothèque");
+
+    const modalMode = isLoansPage ? "loan" : isSalesPage ? "sale" : "library";
 
     return (
         <>
@@ -32,7 +43,7 @@ export default function FloatingActionButton() {
                 {/* Main Floating Action Button directly opens search modal */}
                 <button
                     type="button"
-                    className={`fab-main-btn ${isSalesPage ? "fab-main-btn--sales" : ""}`}
+                    className={`fab-main-btn ${isSalesPage ? "fab-main-btn--sales" : ""} ${isLoansPage ? "fab-main-btn--loans" : ""}`}
                     onClick={() => setAddModalOpen(true)}
                     title={fabLabel}
                     aria-label={fabLabel}
@@ -43,12 +54,12 @@ export default function FloatingActionButton() {
                 </button>
             </div>
 
-            {/* Modal: Add existing book to library or put book for sale */}
+            {/* Modal: Add existing book to library, put book for sale, or lend/borrow book */}
             <AddBookToLibraryModal
                 open={addModalOpen}
                 onClose={() => setAddModalOpen(false)}
                 onOpenCreateBook={handleOpenCreateModal}
-                mode={isSalesPage ? "sale" : "library"}
+                mode={modalMode}
             />
 
             {/* Modal: Create a missing book */}

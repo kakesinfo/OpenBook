@@ -25,6 +25,11 @@ public class BookSummaryDTO {
     private Integer pageCount;
     private String status;
     private String readingStatus;
+    private String loanType;
+    private String loanPerson;
+    private String loanDate;
+    private String loanDueDate;
+    private String loanMemo;
 
     public String getCoverUrl() {
         return MediaUrlUtils.formatCoverUrl(this.coverUrl);

@@ -1969,4 +1969,70 @@
             </column>
         </addColumn>
     </changeSet>
+    <changeSet id="53" author="Axel">
+        <createTable tableName="user_loans_book">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+            <column name="user_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="book_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="type" type="varchar(20)">
+                <constraints nullable="false" />
+            </column>
+            <column name="person_name" type="varchar(150)">
+                <constraints nullable="true" />
+            </column>
+            <column name="loan_date" type="date">
+                <constraints nullable="true" />
+            </column>
+            <column name="due_date" type="date">
+                <constraints nullable="true" />
+            </column>
+            <column name="memo" type="text">
+                <constraints nullable="true" />
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="user_loans_book" indexName="idx_user_loans_book_user_id">
+            <column name="user_id" />
+        </createIndex>
+        <createIndex tableName="user_loans_book" indexName="idx_user_loans_book_book_id">
+            <column name="book_id" />
+        </createIndex>
+
+        <addUniqueConstraint
+            constraintName="uk_user_loans_book_user_id_book_id"
+            tableName="user_loans_book"
+            columnNames="user_id, book_id"
+        />
+
+        <addForeignKeyConstraint
+            constraintName="fk_user_loans_book_user_id"
+            baseTableName="user_loans_book"
+            baseColumnNames="user_id"
+            referencedTableName="user"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"
+        />
+        <addForeignKeyConstraint
+            constraintName="fk_user_loans_book_book_id"
+            baseTableName="user_loans_book"
+            baseColumnNames="book_id"
+            referencedTableName="book"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"
+        />
+    </changeSet>
 </databaseChangeLog>

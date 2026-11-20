@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router";
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import BookDTO from "../../dto/Book.dto";
+import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import SeriesDTO from "../../dto/Series.dto.ts";
 import UserBookTransactionDTO from "../../dto/UserBookTransaction.dto.ts";
 import { useSnackbar } from "notistack";
@@ -55,6 +56,10 @@ import {
     faScaleBalanced,
     faBox,
     faGift,
+    faRightLeft,
+    faArrowDown,
+    faArrowUp,
+    faUser,
     IconDefinition
 } from "@fortawesome/free-solid-svg-icons";
 import { Dialog } from "@mui/material";
@@ -747,6 +752,117 @@ export default function BookPage() {
         setListingPrice(book?.price ? String(book.price) : "");
         setListingUrl("");
         setListingModalOpen(true);
+    };
+
+    // Loan state & modal ("Emprunter / Prêter")
+    const [activeLoan, setActiveLoan] = useState<BookSummaryDTO | null>(null);
+    const [loanModalOpen, setLoanModalOpen] = useState(false);
+    const [loanType, setLoanType] = useState<"BORROWED" | "LENT">("LENT");
+    const [loanPerson, setLoanPerson] = useState("");
+    const [loanDate, setLoanDate] = useState("");
+    const [loanDueDate, setLoanDueDate] = useState("");
+    const [loanMemo, setLoanMemo] = useState("");
+    const [submittingLoan, setSubmittingLoan] = useState(false);
+    const [returningLoan, setReturningLoan] = useState(false);
+
+    useEffect(() => {
+        if (!id || !session.token) return;
+        let cancelled = false;
+        session.customFetch("/user/loans", { method: "GET" })
+            .then(async (res) => {
+                if (!res.ok || cancelled) return;
+                const loans: BookSummaryDTO[] = await res.json();
+                if (cancelled) return;
+                const found = loans.find((l) => String(l.id) === String(id)) || null;
+                setActiveLoan(found);
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, [id, session]);
+
+    const handleOpenLoanModal = () => {
+        const now = new Date();
+        const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        const currentType = (activeLoan?.loanType || activeLoan?.status || "LENT").toUpperCase() === "BORROWED" ? "BORROWED" : "LENT";
+        setLoanType(currentType);
+        setLoanPerson(activeLoan?.loanPerson || "");
+        setLoanDate(activeLoan?.loanDate || todayIso);
+        setLoanDueDate(activeLoan?.loanDueDate || "");
+        setLoanMemo(activeLoan?.loanMemo || "");
+        setLoanModalOpen(true);
+    };
+
+    const handleSaveLoan = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!id || submittingLoan) return;
+
+        setSubmittingLoan(true);
+        try {
+            const res = await session.customFetch(`/user/loans/${encodeURIComponent(id)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    type: loanType,
+                    personName: loanPerson.trim() || null,
+                    loanDate: loanDate.trim() || null,
+                    dueDate: loanDueDate.trim() || null,
+                    memo: loanMemo.trim() || null
+                })
+            });
+
+            if (res.ok) {
+                const saved: BookSummaryDTO = await res.json();
+                setActiveLoan(saved);
+                enqueueSnackbar(
+                    loanType === "LENT"
+                        ? tr("Book marked as lent!", "Livre marqué comme prêté !")
+                        : tr("Book marked as borrowed!", "Livre marqué comme emprunté !"),
+                    { variant: "success" }
+                );
+                window.dispatchEvent(new CustomEvent("loans-updated"));
+                setLoanModalOpen(false);
+            } else {
+                let errMsg = tr("Error saving loan", "Erreur lors de l'enregistrement de l'emprunt");
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.message || errData.error || errMsg;
+                } catch {
+                    const text = await res.text().catch(() => "");
+                    if (text) errMsg = text;
+                }
+                enqueueSnackbar(errMsg, { variant: "error" });
+            }
+        } catch (err: unknown) {
+            enqueueSnackbar(`Erreur: ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
+        } finally {
+            setSubmittingLoan(false);
+        }
+    };
+
+    const handleReturnLoan = async () => {
+        if (!id || returningLoan) return;
+
+        setReturningLoan(true);
+        try {
+            const res = await session.customFetch(`/user/loans/${encodeURIComponent(id)}`, {
+                method: "DELETE"
+            });
+
+            if (res.ok) {
+                setActiveLoan(null);
+                enqueueSnackbar(tr("Book marked as returned!", "Livre marqué comme rendu !"), { variant: "success" });
+                window.dispatchEvent(new CustomEvent("loans-updated"));
+                setLoanModalOpen(false);
+            } else {
+                enqueueSnackbar(tr("Error removing loan", "Erreur lors du retrait de l'emprunt"), { variant: "error" });
+            }
+        } catch (err: unknown) {
+            enqueueSnackbar(`Erreur: ${err instanceof Error ? err.message : String(err)}`, { variant: "error" });
+        } finally {
+            setReturningLoan(false);
+        }
     };
 
     const handleSaveListing = async (e: React.FormEvent) => {
@@ -1732,6 +1848,54 @@ export default function BookPage() {
                                             <FontAwesomeIcon icon={faCoins} />
                                             <span>{tr("Purchase history", "Historique d'achat")}{transactions.length > 0 ? ` (${transactions.length})` : ""}</span>
                                         </button>
+                                        {bookStatus === "FOR_SALE" ? (
+                                            <button
+                                                type="button"
+                                                className="book-page__dropdown-item"
+                                                onClick={() => {
+                                                    setDetailsMenuOpen(false);
+                                                    handleOpenSaleModal();
+                                                }}
+                                            >
+                                                <FontAwesomeIcon icon={faTag} />
+                                                <span>{tr("Mark as sold", "Marquer comme vendu")}</span>
+                                            </button>
+                                        ) : bookStatus === "SOLD" ? (
+                                            <button
+                                                type="button"
+                                                className="book-page__dropdown-item"
+                                                onClick={() => {
+                                                    setDetailsMenuOpen(false);
+                                                    setRelistModalOpen(true);
+                                                }}
+                                            >
+                                                <FontAwesomeIcon icon={faTag} />
+                                                <span>{tr("Relist for sale", "Remettre en vente")}</span>
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                className="book-page__dropdown-item"
+                                                onClick={() => {
+                                                    setDetailsMenuOpen(false);
+                                                    handleOpenListingModal();
+                                                }}
+                                            >
+                                                <FontAwesomeIcon icon={faTag} />
+                                                <span>{tr("List for sale", "Mettre à vendre")}</span>
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            className="book-page__dropdown-item"
+                                            onClick={() => {
+                                                setDetailsMenuOpen(false);
+                                                handleOpenLoanModal();
+                                            }}
+                                        >
+                                            <FontAwesomeIcon icon={faRightLeft} />
+                                            <span>{tr("Borrow / Lend", "Emprunter / Prêter")}</span>
+                                        </button>
                                         <div className="book-page__dropdown-divider" />
                                         <button
                                             type="button"
@@ -1880,7 +2044,7 @@ export default function BookPage() {
                                     </ChangeBookStatusButton>
                                 )}
 
-                                {bookStatus === "FOR_SALE" ? (
+                                {bookStatus === "FOR_SALE" && (
                                     <div className="book-action-group">
                                         <ChangeBookStatusButton
                                             status={bookStatus}
@@ -1902,33 +2066,17 @@ export default function BookPage() {
                                             <span>{tr("Mark as sold", "Marquer comme vendu")}</span>
                                         </button>
                                     </div>
-                                ) : (
-                                    <>
-                                        {bookStatus !== "SOLD" && (
-                                            <ChangeBookStatusButton
-                                                status={bookStatus}
-                                                setStatus={setBookStatus}
-                                                newStatus="FOR_SALE"
-                                                bookId={id}
-                                                session={session}
-                                                icon={faTag}
-                                                onRequestSale={handleOpenListingModal}
-                                            >
-                                                {tr("List for sale", "Mettre à vendre")}
-                                            </ChangeBookStatusButton>
-                                        )}
+                                )}
 
-                                        {bookStatus === "SOLD" && (
-                                            <button
-                                                type="button"
-                                                className="book-action-btn book-action-btn--active"
-                                                onClick={() => setRelistModalOpen(true)}
-                                            >
-                                                <FontAwesomeIcon icon={faCheck} />
-                                                <span>{tr("Sold", "Vendu")}</span>
-                                            </button>
-                                        )}
-                                    </>
+                                {bookStatus === "SOLD" && (
+                                    <button
+                                        type="button"
+                                        className="book-action-btn book-action-btn--active"
+                                        onClick={() => setRelistModalOpen(true)}
+                                    >
+                                        <FontAwesomeIcon icon={faCheck} />
+                                        <span>{tr("Sold", "Vendu")}</span>
+                                    </button>
                                 )}
 
                                 <Select
@@ -3711,6 +3859,161 @@ export default function BookPage() {
                             <span>{relisting ? tr("Relisting...", "Mise en vente...") : tr("Confirm", "Valider")}</span>
                         </button>
                     </div>
+                </div>
+            </Dialog>
+
+            {/* Borrow / Lend Modal */}
+            <Dialog
+                open={loanModalOpen}
+                onClose={() => !submittingLoan && !returningLoan && setLoanModalOpen(false)}
+                slotProps={{ paper: {
+                    style: {
+                        backgroundColor: "var(--bg-surface, #1e1e24)",
+                        border: "1px solid var(--border-subtle, rgba(255, 255, 255, 0.1))",
+                        borderRadius: "16px",
+                        maxWidth: "460px",
+                        width: "100%",
+                        padding: "24px",
+                        color: "var(--text-primary)",
+                        overflow: "visible"
+                    }
+                }}}
+            >
+                <div className="tx-dialog">
+                    <div className="tx-dialog__header">
+                        <div className="tx-dialog__header-title">
+                            <FontAwesomeIcon icon={faRightLeft} style={{ color: "var(--accent-primary)" }} />
+                            <h3>{tr("Borrow / Lend", "Emprunter / Prêter")}</h3>
+                        </div>
+                        <button
+                            type="button"
+                            className="tx-dialog__header-close"
+                            onClick={() => setLoanModalOpen(false)}
+                            disabled={submittingLoan || returningLoan}
+                            aria-label={tr("Close", "Fermer")}
+                        >
+                            <FontAwesomeIcon icon={faXmark} />
+                        </button>
+                    </div>
+
+                    {book && (
+                        <p style={{ margin: "0 0 8px", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+                            {tr("Manage loan details for", "Gérer le prêt ou l'emprunt pour")} <strong>« {book.title} »</strong> :
+                        </p>
+                    )}
+
+                    <form className="tx-dialog__form" onSubmit={handleSaveLoan}>
+                        <div className="fab-loan-type-toggle">
+                            <button
+                                type="button"
+                                className={`fab-loan-type-btn fab-loan-type-btn--borrowed ${loanType === "BORROWED" ? "is-active" : ""}`}
+                                onClick={() => setLoanType("BORROWED")}
+                            >
+                                <FontAwesomeIcon icon={faArrowDown} />
+                                <span>{tr("Borrowed", "Emprunté")}</span>
+                            </button>
+                            <button
+                                type="button"
+                                className={`fab-loan-type-btn fab-loan-type-btn--lent ${loanType === "LENT" ? "is-active" : ""}`}
+                                onClick={() => setLoanType("LENT")}
+                            >
+                                <FontAwesomeIcon icon={faArrowUp} />
+                                <span>{tr("Lent", "Prêté")}</span>
+                            </button>
+                        </div>
+
+                        <div className="tx-dialog__field">
+                            <label>
+                                <FontAwesomeIcon icon={faUser} />
+                                <span>{loanType === "LENT" ? tr("Lent to", "Prêté à") : tr("Borrowed from", "Emprunté à")}</span>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 400, color: "var(--text-muted)" }}>{tr("(optional)", "(optionnel)")}</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder={loanType === "LENT" ? tr("e.g. Thomas, Marie...", "ex: Thomas, Marie...") : tr("e.g. Library, Thomas...", "ex: Médiathèque, Thomas...")}
+                                value={loanPerson}
+                                onChange={(e) => setLoanPerson(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="tx-dialog__grid">
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faCalendarDays} />
+                                    <span>{loanType === "LENT" ? tr("Lend date", "Date du prêt") : tr("Borrow date", "Date d'emprunt")}</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={loanDate}
+                                    onChange={(e) => setLoanDate(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="tx-dialog__field">
+                                <label>
+                                    <FontAwesomeIcon icon={faCalendarDays} />
+                                    <span>{tr("Expected return", "Retour prévu")}</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={loanDueDate}
+                                    onChange={(e) => setLoanDueDate(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="tx-dialog__field">
+                            <label>
+                                <FontAwesomeIcon icon={faNoteSticky} />
+                                <span>{tr("Memo / Notes (optional)", "Mémo / Remarques (optionnel)")}</span>
+                            </label>
+                            <textarea
+                                placeholder={tr("e.g. Return before summer...", "ex: À rendre avant cet été...")}
+                                value={loanMemo}
+                                onChange={(e) => setLoanMemo(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="tx-dialog__actions" style={{ justifyContent: activeLoan ? "space-between" : "flex-end" }}>
+                            {activeLoan && (
+                                <button
+                                    type="button"
+                                    className="tx-dialog__btn-cancel"
+                                    style={{ color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.35)" }}
+                                    disabled={returningLoan || submittingLoan}
+                                    onClick={handleReturnLoan}
+                                >
+                                    {returningLoan ? tr("Removing...", "Retrait...") : tr("Mark as returned", "Marquer comme rendu")}
+                                </button>
+                            )}
+                            <div style={{ display: "flex", gap: "10px" }}>
+                                <button
+                                    type="button"
+                                    className="tx-dialog__btn-cancel"
+                                    onClick={() => setLoanModalOpen(false)}
+                                    disabled={submittingLoan || returningLoan}
+                                >
+                                    {tr("Cancel", "Annuler")}
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={submittingLoan || returningLoan}
+                                    className="tx-dialog__btn-submit"
+                                >
+                                    <FontAwesomeIcon icon={faCheck} />
+                                    <span>
+                                        {submittingLoan
+                                            ? tr("Saving...", "Enregistrement...")
+                                            : activeLoan
+                                                ? tr("Save", "Enregistrer")
+                                                : loanType === "LENT"
+                                                    ? tr("Confirm lend", "Confirmer le prêt")
+                                                    : tr("Confirm borrow", "Confirmer l'emprunt")}
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </Dialog>
         </div>

@@ -210,7 +210,7 @@ export function WrapperNavigation({ title = "OpenBook", badge, children, onSearc
                         </Link>
                         <Link
                             to="/app/collection"
-                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/collection') || location.pathname.includes('/bibliotheque') ? 'active' : ''}`}
+                            className={`wrapper-bottom-nav__item ${location.pathname.includes('/collection') || location.pathname.includes('/bibliotheque') || location.pathname.includes('/loans') || location.pathname.includes('/emprunts') || location.pathname.includes('/sales') || location.pathname.includes('/ventes') ? 'active' : ''}`}
                         >
                             <FontAwesomeIcon icon={faBook} />
                             <span>{t("nav.library")}</span>
