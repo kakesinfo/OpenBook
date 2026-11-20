@@ -1,12 +1,11 @@
 import 'dart:math' as math;
 
-import 'package:confetti/confetti.dart';
 import 'package:flutter_application_1/app/theme.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../application/streak_utils.dart';
 
-/// Écran animé plein écran célébrant l'augmentation de +1 du streak de lecture
+/// Écran animé plein écran célébrant l'augmentation du streak de lecture
 /// lors de la première session ou du premier début de lecture de la journée.
 class StreakCelebrationPage extends StatefulWidget {
   const StreakCelebrationPage({
@@ -51,12 +50,13 @@ class _StreakCelebrationPageState extends State<StreakCelebrationPage>
     with TickerProviderStateMixin {
   late final AnimationController _introController;
   late final AnimationController _ambientController;
-  late final ConfettiController _confettiController;
+  late final AnimationController _raysController;
 
-  late final Animation<double> _flameScale;
+  late final Animation<double> _flameEntranceScale;
+  late final Animation<double> _flameSpin;
+  late final Animation<double> _flameLift;
+  late final Animation<double> _flameSurge;
   late final Animation<double> _shockwaveProgress;
-  late final Animation<double> _incrementProgress;
-  late final Animation<double> _plusOneBadgePop;
   late final Animation<double> _todayIgniteScale;
   late final Animation<double> _textFade;
   late final Animation<double> _ctaFade;
@@ -67,7 +67,6 @@ class _StreakCelebrationPageState extends State<StreakCelebrationPage>
   static const _fireCoral = Color(0xFFFF5E3A);
   static const _fireOrange = Color(0xFFFF9500);
   static const _fireGold = Color(0xFFFFD60A);
-  static const _emerald = Color(0xFF10B981);
 
   @override
   void initState() {
@@ -75,7 +74,7 @@ class _StreakCelebrationPageState extends State<StreakCelebrationPage>
 
     _introController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1650),
+      duration: const Duration(milliseconds: 2800),
     );
 
     _ambientController = AnimationController(
@@ -83,41 +82,80 @@ class _StreakCelebrationPageState extends State<StreakCelebrationPage>
       duration: const Duration(milliseconds: 2600),
     )..repeat();
 
-    _confettiController = ConfettiController(
-      duration: const Duration(seconds: 3),
-    );
+    _raysController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 14),
+    )..repeat();
 
-    _flameScale = CurvedAnimation(
-      parent: _introController,
-      curve: const Interval(0.0, 0.36, curve: Curves.easeOutBack),
-    );
-
-    _shockwaveProgress = CurvedAnimation(
-      parent: _introController,
-      curve: const Interval(0.32, 0.85, curve: Curves.easeOutCubic),
-    );
-
-    _incrementProgress = CurvedAnimation(
-      parent: _introController,
-      curve: const Interval(0.36, 0.68, curve: Curves.easeOutBack),
-    );
-
-    _plusOneBadgePop = TweenSequence<double>([
+    // 1. Flamme qui grandit progressivement en tournant
+    _flameEntranceScale = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 0.0, end: 1.2)
-            .chain(CurveTween(curve: Curves.easeOutBack)),
-        weight: 55,
+        tween: Tween<double>(begin: 0.15, end: 1.14)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 68,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.2, end: 1.0)
+        tween: Tween<double>(begin: 1.14, end: 0.94)
             .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 45,
+        weight: 32,
       ),
     ]).animate(
       CurvedAnimation(
         parent: _introController,
-        curve: const Interval(0.42, 0.78),
+        curve: const Interval(0.0, 0.44),
       ),
+    );
+
+    // 2. Double rotation 3D fluide autour de l'axe vertical (0 -> 4*pi)
+    _flameSpin = Tween<double>(begin: 0.0, end: 4 * math.pi).animate(
+      CurvedAnimation(
+        parent: _introController,
+        curve: const Interval(0.02, 0.46, curve: Curves.easeOutCubic),
+      ),
+    );
+
+    // 3. Lévitation d'entrée puis retour au repos
+    _flameLift = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 24.0, end: -12.0)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 60,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: -12.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 40,
+      ),
+    ]).animate(
+      CurvedAnimation(
+        parent: _introController,
+        curve: const Interval(0.0, 0.56),
+      ),
+    );
+
+    // 4. Surge élastique au moment où le compteur s'incrémente
+    _flameSurge = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.24)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 35,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.24, end: 1.0)
+            .chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 65,
+      ),
+    ]).animate(
+      CurvedAnimation(
+        parent: _introController,
+        curve: const Interval(0.44, 0.86),
+      ),
+    );
+
+    // 5. Ondes de choc concentriques prolongées
+    _shockwaveProgress = CurvedAnimation(
+      parent: _introController,
+      curve: const Interval(0.42, 0.94, curve: Curves.easeOutCubic),
     );
 
     _todayIgniteScale = TweenSequence<double>([
@@ -134,18 +172,18 @@ class _StreakCelebrationPageState extends State<StreakCelebrationPage>
     ]).animate(
       CurvedAnimation(
         parent: _introController,
-        curve: const Interval(0.44, 0.84),
+        curve: const Interval(0.48, 0.86),
       ),
     );
 
     _textFade = CurvedAnimation(
       parent: _introController,
-      curve: const Interval(0.55, 0.85, curve: Curves.easeOut),
+      curve: const Interval(0.56, 0.84, curve: Curves.easeOut),
     );
 
     _ctaFade = CurvedAnimation(
       parent: _introController,
-      curve: const Interval(0.72, 1.0, curve: Curves.easeOutCubic),
+      curve: const Interval(0.74, 1.0, curve: Curves.easeOutCubic),
     );
 
     _introController.addListener(_onIntroTick);
@@ -153,9 +191,8 @@ class _StreakCelebrationPageState extends State<StreakCelebrationPage>
   }
 
   void _onIntroTick() {
-    if (!_hasIncremented && _introController.value >= 0.38) {
+    if (!_hasIncremented && _introController.value >= 0.44) {
       _hasIncremented = true;
-      _confettiController.play();
       if (mounted) {
         setState(() {});
       }
@@ -167,7 +204,7 @@ class _StreakCelebrationPageState extends State<StreakCelebrationPage>
     _introController.removeListener(_onIntroTick);
     _introController.dispose();
     _ambientController.dispose();
-    _confettiController.dispose();
+    _raysController.dispose();
     super.dispose();
   }
 
@@ -206,7 +243,8 @@ class _StreakCelebrationPageState extends State<StreakCelebrationPage>
             animation: Listenable.merge([_introController, _ambientController]),
             builder: (context, _) {
               final pulse = 0.5 + 0.5 * math.sin(_ambientController.value * 2 * math.pi);
-              final glowAlpha = (isBeige ? 0.16 : 0.24) + pulse * 0.08;
+              final surgeGlow = (_flameSurge.value - 1.0).clamp(0.0, 0.3) * 0.45;
+              final glowAlpha = (isBeige ? 0.16 : 0.24) + pulse * 0.08 + surgeGlow;
               return DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -219,10 +257,10 @@ class _StreakCelebrationPageState extends State<StreakCelebrationPage>
                   decoration: BoxDecoration(
                     gradient: RadialGradient(
                       center: const Alignment(0, -0.35),
-                      radius: 0.85 + pulse * 0.08,
+                      radius: 0.85 + pulse * 0.08 + surgeGlow * 0.4,
                       colors: [
-                        _fireOrange.withValues(alpha: glowAlpha),
-                        _fireCoral.withValues(alpha: glowAlpha * 0.45),
+                        _fireOrange.withValues(alpha: glowAlpha.clamp(0.0, 0.55)),
+                        _fireCoral.withValues(alpha: (glowAlpha * 0.45).clamp(0.0, 0.35)),
                         Colors.transparent,
                       ],
                       stops: const [0.0, 0.45, 1.0],
@@ -275,80 +313,131 @@ class _StreakCelebrationPageState extends State<StreakCelebrationPage>
                       children: [
                         const SizedBox(height: 16),
 
-                        // Animated Multi-Layered Flame + Shockwave Aura
+                        // Animated Multi-Layered Flame + Rotating Rays + Orbiting Sparks + Shockwaves
                         SizedBox(
-                          width: 190,
-                          height: 180,
+                          width: 220,
+                          height: 200,
                           child: AnimatedBuilder(
                             animation: Listenable.merge([
                               _introController,
                               _ambientController,
+                              _raysController,
                             ]),
                             builder: (context, _) {
                               final flicker =
                                   math.sin(_ambientController.value * 2 * math.pi);
                               final secondaryFlicker =
                                   math.cos(_ambientController.value * 4 * math.pi);
-                              final boost = _hasIncremented
-                                  ? 1.0 +
-                                      0.06 *
-                                          math.sin(
-                                            _incrementProgress.value * math.pi,
-                                          )
-                                  : 1.0;
+                              final ambientBreath = 1.0 + flicker * 0.032;
+                              final ambientBob = math.sin(_ambientController.value * 2 * math.pi) * 3.5;
+
+                              final totalScale =
+                                  _flameEntranceScale.value * _flameSurge.value * ambientBreath;
+                              final spinAngle = _flameSpin.value;
+                              final tiltAngle = math.sin(spinAngle * 0.5) * 0.08 +
+                                  flicker * 0.025;
+                              final liftY = _flameLift.value + ambientBob;
+
+                              final flameMatrix = Matrix4.identity()
+                                ..setEntry(3, 2, 0.0018)
+                                ..rotateY(spinAngle)
+                                ..rotateZ(tiltAngle);
+
+                              final raysOpacity = (_flameEntranceScale.value * 0.65)
+                                  .clamp(0.0, 1.0) *
+                                  (isBeige ? 0.32 : 0.44);
 
                               return Stack(
                                 alignment: Alignment.center,
                                 children: [
-                                  // Expanding shockwave rings on +1 moment
+                                  // Slowly rotating radiant sunburst rays behind the flame
+                                  Opacity(
+                                    opacity: raysOpacity,
+                                    child: Transform.rotate(
+                                      angle: _raysController.value * 2 * math.pi,
+                                      child: CustomPaint(
+                                        size: const Size(210, 210),
+                                        painter: _FlameSunburstPainter(
+                                          primaryColor: _fireGold,
+                                          secondaryColor: _fireOrange,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Three expanding shockwave rings on ignition burst
                                   if (_shockwaveProgress.value > 0 &&
                                       _shockwaveProgress.value < 1) ...[
                                     _ShockwaveRing(
                                       progress: _shockwaveProgress.value,
                                       color: _fireGold,
-                                      maxRadius: 92,
+                                      maxRadius: 96,
                                     ),
                                     _ShockwaveRing(
-                                      progress: ((_shockwaveProgress.value - 0.18) / 0.82)
+                                      progress: ((_shockwaveProgress.value - 0.14) / 0.86)
+                                          .clamp(0.0, 1.0),
+                                      color: _fireOrange,
+                                      maxRadius: 108,
+                                    ),
+                                    _ShockwaveRing(
+                                      progress: ((_shockwaveProgress.value - 0.28) / 0.72)
                                           .clamp(0.0, 1.0),
                                       color: _fireCoral,
-                                      maxRadius: 108,
+                                      maxRadius: 118,
                                     ),
                                   ],
 
                                   // Soft radial glow behind flame
                                   Container(
-                                    width: 128 + flicker * 8,
-                                    height: 128 + flicker * 8,
+                                    width: (132 + flicker * 10) * _flameSurge.value,
+                                    height: (132 + flicker * 10) * _flameSurge.value,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
                                           color: _fireOrange.withValues(
-                                            alpha: isBeige ? 0.34 : 0.45,
+                                            alpha: isBeige ? 0.36 : 0.48,
                                           ),
-                                          blurRadius: 46,
+                                          blurRadius: 48,
                                           spreadRadius: 8,
                                         ),
                                         BoxShadow(
                                           color: _fireRed.withValues(
-                                            alpha: isBeige ? 0.18 : 0.28,
+                                            alpha: isBeige ? 0.20 : 0.30,
                                           ),
-                                          blurRadius: 72,
-                                          spreadRadius: 12,
+                                          blurRadius: 76,
+                                          spreadRadius: 14,
                                         ),
                                       ],
                                     ),
                                   ),
 
-                                  // Custom-painted vibrant animated flame
-                                  Transform.scale(
-                                    scale: _flameScale.value * boost,
-                                    child: CustomPaint(
-                                      size: const Size(124, 146),
-                                      painter: _AnimatedFlamePainter(
-                                        flicker: flicker,
-                                        secondaryFlicker: secondaryFlicker,
+                                  // Orbiting golden sparks around the flame
+                                  CustomPaint(
+                                    size: const Size(200, 190),
+                                    painter: _OrbitingSparksPainter(
+                                      angle: _raysController.value * 4 * math.pi +
+                                          spinAngle * 0.5,
+                                      opacity: _flameEntranceScale.value.clamp(0.0, 1.0),
+                                      isBeige: isBeige,
+                                    ),
+                                  ),
+
+                                  // Custom-painted vibrant animated flame with 3D spin & surge
+                                  Transform.translate(
+                                    offset: Offset(0, liftY),
+                                    child: Transform(
+                                      alignment: Alignment.center,
+                                      transform: flameMatrix,
+                                      child: Transform.scale(
+                                        scale: totalScale,
+                                        child: CustomPaint(
+                                          size: const Size(128, 150),
+                                          painter: _AnimatedFlamePainter(
+                                            flicker: flicker,
+                                            secondaryFlicker: secondaryFlicker,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -358,110 +447,67 @@ class _StreakCelebrationPageState extends State<StreakCelebrationPage>
                           ),
                         ),
 
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
 
-                        // Animated Streak Counter (previousStreak -> newStreak) + "+1" badge
+                        // Animated Streak Counter (previousStreak -> newStreak)
                         AnimatedBuilder(
                           animation: _introController,
                           builder: (context, _) {
                             return SizedBox(
-                              height: 108,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                clipBehavior: Clip.none,
-                                children: [
-                                  AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 520),
-                                    switchInCurve: Curves.elasticOut,
-                                    switchOutCurve: Curves.easeInCubic,
-                                    transitionBuilder: (child, animation) {
-                                      final isIncoming =
-                                          child.key == ValueKey<int>(widget.data.newStreak);
-                                      final offsetTween = isIncoming
-                                          ? Tween<Offset>(
-                                              begin: const Offset(0, 0.55),
-                                              end: Offset.zero,
-                                            )
-                                          : Tween<Offset>(
-                                              begin: const Offset(0, -0.55),
-                                              end: Offset.zero,
-                                            );
-                                      return FadeTransition(
-                                        opacity: animation,
-                                        child: SlideTransition(
-                                          position: offsetTween.animate(animation),
-                                          child: ScaleTransition(
-                                            scale: Tween<double>(begin: 0.72, end: 1.0)
-                                                .animate(animation),
-                                            child: child,
-                                          ),
+                              height: 104,
+                              child: Center(
+                                child: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 540),
+                                  switchInCurve: Curves.elasticOut,
+                                  switchOutCurve: Curves.easeInCubic,
+                                  transitionBuilder: (child, animation) {
+                                    final isIncoming =
+                                        child.key == ValueKey<int>(widget.data.newStreak);
+                                    final offsetTween = isIncoming
+                                        ? Tween<Offset>(
+                                            begin: const Offset(0, 0.55),
+                                            end: Offset.zero,
+                                          )
+                                        : Tween<Offset>(
+                                            begin: const Offset(0, -0.55),
+                                            end: Offset.zero,
+                                          );
+                                    return FadeTransition(
+                                      opacity: animation,
+                                      child: SlideTransition(
+                                        position: offsetTween.animate(animation),
+                                        child: ScaleTransition(
+                                          scale: Tween<double>(begin: 0.72, end: 1.0)
+                                              .animate(animation),
+                                          child: child,
                                         ),
-                                      );
-                                    },
-                                    child: ShaderMask(
-                                      key: ValueKey<int>(
-                                        _hasIncremented
-                                            ? widget.data.newStreak
-                                            : widget.data.previousStreak,
                                       ),
-                                      shaderCallback: (bounds) => const LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [_fireGold, _fireOrange, _fireCoral],
-                                      ).createShader(bounds),
-                                      child: Text(
-                                        '${_hasIncremented ? widget.data.newStreak : widget.data.previousStreak}',
-                                        style: const TextStyle(
-                                          fontSize: 88,
-                                          height: 1.0,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.white,
-                                          letterSpacing: -2,
-                                          fontFeatures: [FontFeature.tabularFigures()],
-                                        ),
+                                    );
+                                  },
+                                  child: ShaderMask(
+                                    key: ValueKey<int>(
+                                      _hasIncremented
+                                          ? widget.data.newStreak
+                                          : widget.data.previousStreak,
+                                    ),
+                                    shaderCallback: (bounds) => const LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [_fireGold, _fireOrange, _fireCoral],
+                                    ).createShader(bounds),
+                                    child: Text(
+                                      '${_hasIncremented ? widget.data.newStreak : widget.data.previousStreak}',
+                                      style: const TextStyle(
+                                        fontSize: 88,
+                                        height: 1.0,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                        letterSpacing: -2,
+                                        fontFeatures: [FontFeature.tabularFigures()],
                                       ),
                                     ),
                                   ),
-
-                                  // Floating "+1" pill badge
-                                  if (_plusOneBadgePop.value > 0.01)
-                                    Positioned(
-                                      top: 6,
-                                      right: MediaQuery.of(context).size.width * 0.5 - 118,
-                                      child: Transform.scale(
-                                        scale: _plusOneBadgePop.value,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 5,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              colors: [_emerald, Color(0xFF059669)],
-                                            ),
-                                            borderRadius:
-                                                BorderRadius.circular(AppTheme.radiusFull),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: _emerald.withValues(alpha: 0.45),
-                                                blurRadius: 12,
-                                                offset: const Offset(0, 3),
-                                              ),
-                                            ],
-                                          ),
-                                          child: const Text(
-                                            '+1',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w900,
-                                              height: 1.0,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
+                                ),
                               ),
                             );
                           },
@@ -578,36 +624,106 @@ class _StreakCelebrationPageState extends State<StreakCelebrationPage>
               ],
             ),
           ),
-
-          // Celebratory confetti burst from top center
-          Align(
-            alignment: Alignment.topCenter,
-            child: IgnorePointer(
-              child: ConfettiWidget(
-                confettiController: _confettiController,
-                blastDirectionality: BlastDirectionality.explosive,
-                shouldLoop: false,
-                emissionFrequency: 0.06,
-                numberOfParticles: 24,
-                maxBlastForce: 22,
-                minBlastForce: 8,
-                gravity: 0.18,
-                colors: const [
-                  _fireGold,
-                  _fireOrange,
-                  _fireCoral,
-                  _fireRed,
-                  _emerald,
-                  Color(0xFF6366F1),
-                  Color(0xFFEC4899),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
+}
+
+class _FlameSunburstPainter extends CustomPainter {
+  const _FlameSunburstPainter({
+    required this.primaryColor,
+    required this.secondaryColor,
+  });
+
+  final Color primaryColor;
+  final Color secondaryColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxR = size.width / 2;
+    const rayCount = 12;
+
+    for (var i = 0; i < rayCount; i++) {
+      final baseAngle = (i * 2 * math.pi) / rayCount;
+      final spread = (math.pi / rayCount) * 0.42;
+      final rayLength = i.isEven ? maxR : maxR * 0.82;
+
+      final path = Path()
+        ..moveTo(center.dx, center.dy)
+        ..lineTo(
+          center.dx + math.cos(baseAngle - spread) * rayLength,
+          center.dy + math.sin(baseAngle - spread) * rayLength,
+        )
+        ..lineTo(
+          center.dx + math.cos(baseAngle + spread) * rayLength,
+          center.dy + math.sin(baseAngle + spread) * rayLength,
+        )
+        ..close();
+
+      final paint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            (i.isEven ? primaryColor : secondaryColor).withValues(alpha: 0.42),
+            (i.isEven ? primaryColor : secondaryColor).withValues(alpha: 0.0),
+          ],
+          stops: const [0.15, 1.0],
+        ).createShader(Rect.fromCircle(center: center, radius: rayLength));
+
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _FlameSunburstPainter oldDelegate) =>
+      oldDelegate.primaryColor != primaryColor ||
+      oldDelegate.secondaryColor != secondaryColor;
+}
+
+class _OrbitingSparksPainter extends CustomPainter {
+  const _OrbitingSparksPainter({
+    required this.angle,
+    required this.opacity,
+    required this.isBeige,
+  });
+
+  final double angle;
+  final double opacity;
+  final bool isBeige;
+
+  static const _sparks = [
+    (phase: 0.0, rx: 78.0, ry: 26.0, yOff: 18.0, radius: 3.4, color: Color(0xFFFFD60A)),
+    (phase: 1.57, rx: 86.0, ry: 32.0, yOff: -8.0, radius: 2.6, color: Color(0xFFFF9500)),
+    (phase: 3.14, rx: 72.0, ry: 24.0, yOff: 8.0, radius: 3.0, color: Color(0xFFFFF3B0)),
+    (phase: 4.71, rx: 82.0, ry: 30.0, yOff: -18.0, radius: 2.4, color: Color(0xFFFF5E3A)),
+    (phase: 2.35, rx: 66.0, ry: 22.0, yOff: 26.0, radius: 2.2, color: Color(0xFFFFD60A)),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (opacity <= 0.01) return;
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    for (final spark in _sparks) {
+      final a = angle + spark.phase;
+      final x = cx + math.cos(a) * spark.rx;
+      final y = cy + spark.yOff + math.sin(a) * spark.ry;
+      final depth = 0.55 + 0.45 * math.sin(a);
+      final alpha = (opacity * depth * (isBeige ? 0.72 : 0.9)).clamp(0.0, 1.0);
+
+      paint.color = spark.color.withValues(alpha: alpha);
+      canvas.drawCircle(Offset(x, y), spark.radius * (0.75 + 0.35 * depth), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _OrbitingSparksPainter oldDelegate) =>
+      oldDelegate.angle != angle ||
+      oldDelegate.opacity != opacity ||
+      oldDelegate.isBeige != isBeige;
 }
 
 class _AnimatedWeekStrip extends StatelessWidget {
@@ -802,8 +918,8 @@ class _AnimatedFlamePainter extends CustomPainter {
       shadowPaint,
     );
 
-    final tipShift = flicker * 3.5;
-    final sideSway = secondaryFlicker * 2.0;
+    final tipShift = flicker * 4.2;
+    final sideSway = secondaryFlicker * 2.4;
 
     // Outer flame silhouette (vibrant red-coral-orange gradient)
     final outerPath = Path()
@@ -944,7 +1060,7 @@ class _EmberParticlesPainter extends CustomPainter {
     (x: 0.78, yOffset: 0.30, speed: 1.0, radius: 2.8, color: Color(0xFFFF9500)),
     (x: 0.34, yOffset: 0.55, speed: 1.0, radius: 2.4, color: Color(0xFFFF5E3A)),
     (x: 0.66, yOffset: 0.75, speed: 1.0, radius: 3.5, color: Color(0xFFFFD60A)),
-    (x: 0.16, yOffset: 0.42, speed: 1.0, radius: 2.2, color: Color(0xFF10B981)),
+    (x: 0.16, yOffset: 0.42, speed: 1.0, radius: 2.2, color: Color(0xFFFFB703)),
     (x: 0.84, yOffset: 0.15, speed: 1.0, radius: 2.6, color: Color(0xFFFF6B35)),
     (x: 0.45, yOffset: 0.88, speed: 1.0, radius: 2.5, color: Color(0xFFFFB703)),
     (x: 0.56, yOffset: 0.22, speed: 1.0, radius: 2.0, color: Color(0xFFFF5E3A)),

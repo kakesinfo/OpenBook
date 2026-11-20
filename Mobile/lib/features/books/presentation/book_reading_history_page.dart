@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/books_providers.dart';
 import '../data/book.dart';
+import '../data/reading_cycle.dart';
 import '../data/reading_session.dart';
 import 'components/app_header.dart';
 import 'components/common_reading_ribbon.dart';
@@ -198,6 +199,160 @@ List<ReadingCycle> groupSessionsIntoReadingCycles(
   return cycles.reversed.toList();
 }
 
+/// Construit les cycles directement depuis les enregistrements backend
+/// (`GET /user/readingCycles/{bookId}`), y compris les cycles sans aucune session.
+List<ReadingCycle> buildReadingCyclesFromRecords(
+  List<ReadingCycleRecord> records, {
+  BookStatus? bookStatus,
+}) {
+  if (records.isEmpty) {
+    return const <ReadingCycle>[];
+  }
+
+  final sortedRecords = [...records]..sort((a, b) => a.id.compareTo(b.id));
+  final cycles = <ReadingCycle>[];
+
+  for (var i = 0; i < sortedRecords.length; i++) {
+    final record = sortedRecords[i];
+    final isLatest = i == sortedRecords.length - 1;
+
+    final sortedSessions = [...record.sessions]
+      ..sort((a, b) {
+        final cmp = a.createdAt.compareTo(b.createdAt);
+        if (cmp != 0) return cmp;
+        final typeCmp = a.type.index.compareTo(b.type.index);
+        if (typeCmp != 0) return typeCmp;
+        return (a.id ?? 0).compareTo(b.id ?? 0);
+      });
+
+    ReadingSession? endSession;
+    var totalSeconds = 0;
+    var maxPage = 0;
+    var isCommon = record.isCommon;
+
+    for (final session in sortedSessions) {
+      if (session.type == ReadingSessionType.end) {
+        endSession = session;
+      }
+      if (session.isCommon) {
+        isCommon = true;
+      }
+      totalSeconds += session.totalSecondsRead;
+      if (session.currentPage > maxPage) {
+        maxPage = session.currentPage;
+      }
+    }
+
+    final ReadingCycleStatus status;
+    if (record.endedAt != null || endSession != null) {
+      status = ReadingCycleStatus.completed;
+    } else if (isLatest) {
+      status = bookStatus == BookStatus.read
+          ? ReadingCycleStatus.completed
+          : ReadingCycleStatus.inProgress;
+    } else {
+      status = ReadingCycleStatus.unfinished;
+    }
+
+    final startedAt = record.startedAt;
+    final endedAt = record.endedAt ??
+        endSession?.createdAt ??
+        (status == ReadingCycleStatus.completed && sortedSessions.isNotEmpty
+            ? sortedSessions.last.createdAt
+            : null);
+    final lastActivityAt = sortedSessions.isNotEmpty
+        ? sortedSessions.last.createdAt
+        : (endedAt ?? startedAt);
+
+    cycles.add(
+      ReadingCycle(
+        cycleId: record.id,
+        readingNumber: i + 1,
+        sessions: List<ReadingSession>.unmodifiable(sortedSessions),
+        status: status,
+        isCommon: isCommon,
+        startedAt: startedAt,
+        endedAt: endedAt,
+        lastActivityAt: lastActivityAt,
+        totalSecondsRead: totalSeconds,
+        maxPage: maxPage,
+      ),
+    );
+  }
+
+  return cycles.reversed.toList();
+}
+
+Future<void> _confirmAndDeleteCycle(
+  BuildContext context,
+  WidgetRef ref, {
+  required Book book,
+  required ReadingCycle cycle,
+  bool popOnSuccess = false,
+}) async {
+  final bookId = book.id;
+  final cycleId = cycle.cycleId;
+  if (bookId == null || cycleId == null) return;
+
+  final sessionCount = cycle.sessions.length;
+  final message = sessionCount == 0
+      ? 'Ce cycle ne contient aucune session. Voulez-vous le supprimer ?'
+      : 'Ce cycle contient $sessionCount session${sessionCount > 1 ? 's' : ''}. Toutes ses sessions seront également supprimées.';
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      backgroundColor: AppTheme.bgSurface,
+      title: Text(
+        'Supprimer la lecture #${cycle.readingNumber} ?',
+        style: TextStyle(
+          color: AppTheme.textPrimary,
+          fontWeight: FontWeight.w700,
+          fontSize: 17,
+        ),
+      ),
+      content: Text(
+        message,
+        style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: Text('Annuler', style: TextStyle(color: AppTheme.textMuted)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: Text(
+            'Supprimer',
+            style: TextStyle(
+              color: AppTheme.accentRed,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  if (confirmed != true) return;
+
+  try {
+    await ref.read(booksControllerProvider.notifier).deleteReadingCycle(
+          bookId: bookId,
+          cycleId: cycleId,
+        );
+    if (popOnSuccess && context.mounted) {
+      Navigator.of(context).pop();
+    }
+  } catch (error) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Impossible de supprimer le cycle : $error')),
+      );
+    }
+  }
+}
+
 class BookReadingHistoryPage extends ConsumerWidget {
   const BookReadingHistoryPage({
     super.key,
@@ -213,7 +368,7 @@ class BookReadingHistoryPage extends ConsumerWidget {
       (item) => item.id != null && item.id == book.id,
       orElse: () => book,
     );
-    final sessionsAsync = ref.watch(readingSessionsForBookProvider(activeBook));
+    final cyclesAsync = ref.watch(readingCyclesForBookProvider(activeBook));
 
     return Scaffold(
       appBar: AppHeader(
@@ -244,7 +399,7 @@ class BookReadingHistoryPage extends ConsumerWidget {
             style: TextStyle(fontSize: 13, color: AppTheme.textMuted),
           ),
           const SizedBox(height: 20),
-          sessionsAsync.when(
+          cyclesAsync.when(
             loading: () => SizedBox(
               height: 56,
               child: Center(
@@ -255,9 +410,9 @@ class BookReadingHistoryPage extends ConsumerWidget {
               'Impossible de charger les lectures : $error',
               style: TextStyle(color: AppTheme.accentRed),
             ),
-            data: (sessions) {
-              final cycles = groupSessionsIntoReadingCycles(
-                sessions,
+            data: (records) {
+              final cycles = buildReadingCyclesFromRecords(
+                records,
                 bookStatus: activeBook.status,
               );
 
@@ -291,6 +446,14 @@ class BookReadingHistoryPage extends ConsumerWidget {
                     _ReadingCycleCard(
                       cycle: cycles[i],
                       totalPages: activeBook.totalPages,
+                      onDelete: cycles[i].cycleId != null && activeBook.id != null
+                          ? () => _confirmAndDeleteCycle(
+                                context,
+                                ref,
+                                book: activeBook,
+                                cycle: cycles[i],
+                              )
+                          : null,
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -318,11 +481,13 @@ class _ReadingCycleCard extends StatelessWidget {
     required this.cycle,
     required this.totalPages,
     required this.onTap,
+    this.onDelete,
   });
 
   final ReadingCycle cycle;
   final int? totalPages;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -342,7 +507,9 @@ class _ReadingCycleCard extends StatelessWidget {
             : Icons.history_rounded;
 
     final sessionCount = cycle.sessions.length;
-    final sessionLabel = '$sessionCount session${sessionCount > 1 ? 's' : ''}';
+    final sessionLabel = sessionCount == 0
+        ? 'Aucune session'
+        : '$sessionCount session${sessionCount > 1 ? 's' : ''}';
     final durationLabel = _formatCycleDuration(cycle.totalSecondsRead);
     final pageLabel = cycle.maxPage > 0
         ? (totalPages != null && totalPages! > 0
@@ -418,6 +585,17 @@ class _ReadingCycleCard extends StatelessWidget {
                         ],
                       ),
                     ),
+                    if (onDelete != null)
+                      IconButton(
+                        tooltip: 'Supprimer le cycle',
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          color: AppTheme.textMuted,
+                          size: 20,
+                        ),
+                        onPressed: onDelete,
+                      ),
                     Icon(
                       Icons.chevron_right_rounded,
                       color: AppTheme.textMuted,
@@ -596,12 +774,12 @@ class BookReadingCycleSessionsPage extends ConsumerWidget {
       (item) => item.id != null && item.id == book.id,
       orElse: () => book,
     );
-    final sessionsAsync = ref.watch(readingSessionsForBookProvider(activeBook));
+    final cyclesAsync = ref.watch(readingCyclesForBookProvider(activeBook));
 
-    final resolvedCycle = sessionsAsync.maybeWhen(
-      data: (sessions) => _resolveCycle(
-        groupSessionsIntoReadingCycles(
-          sessions,
+    final resolvedCycle = cyclesAsync.maybeWhen(
+      data: (records) => _resolveCycle(
+        buildReadingCyclesFromRecords(
+          records,
           bookStatus: activeBook.status,
         ),
       ),
@@ -620,8 +798,24 @@ class BookReadingCycleSessionsPage extends ConsumerWidget {
           icon: Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: [
+          if (resolvedCycle != null &&
+              resolvedCycle.cycleId != null &&
+              activeBook.id != null)
+            IconButton(
+              tooltip: 'Supprimer le cycle',
+              icon: Icon(Icons.delete_outline_rounded, color: AppTheme.accentRed),
+              onPressed: () => _confirmAndDeleteCycle(
+                context,
+                ref,
+                book: activeBook,
+                cycle: resolvedCycle,
+                popOnSuccess: true,
+              ),
+            ),
+        ],
       ),
-      body: sessionsAsync.when(
+      body: cyclesAsync.when(
         loading: () => Center(
           child: CircularProgressIndicator(color: AppTheme.accentPrimary),
         ),
@@ -632,14 +826,14 @@ class BookReadingCycleSessionsPage extends ConsumerWidget {
             style: TextStyle(color: AppTheme.accentRed),
           ),
         ),
-        data: (sessions) {
-          final cycles = groupSessionsIntoReadingCycles(
-            sessions,
+        data: (records) {
+          final cycles = buildReadingCyclesFromRecords(
+            records,
             bookStatus: activeBook.status,
           );
           final cycle = _resolveCycle(cycles);
 
-          if (cycle == null || cycle.sessions.isEmpty) {
+          if (cycle == null) {
             return Padding(
               padding: const EdgeInsets.all(20),
               child: Container(
@@ -655,7 +849,7 @@ class BookReadingCycleSessionsPage extends ConsumerWidget {
                     Icon(Icons.history_rounded, size: 36, color: AppTheme.textMuted),
                     const SizedBox(height: 12),
                     Text(
-                      'Aucune session restante pour cette lecture.',
+                      'Ce cycle de lecture n\'existe plus.',
                       style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
                       textAlign: TextAlign.center,
                     ),
@@ -723,8 +917,9 @@ class BookReadingCycleSessionsPage extends ConsumerWidget {
                       children: [
                         _CycleMetaItem(
                           icon: Icons.timeline_rounded,
-                          label:
-                              '${orderedSessions.length} session${orderedSessions.length > 1 ? 's' : ''}',
+                          label: orderedSessions.isEmpty
+                              ? 'Aucune session'
+                              : '${orderedSessions.length} session${orderedSessions.length > 1 ? 's' : ''}',
                         ),
                         if (durationLabel.isNotEmpty)
                           _CycleMetaItem(
@@ -753,6 +948,27 @@ class BookReadingCycleSessionsPage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 12),
+              if (orderedSessions.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppTheme.bgSurface,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    border: Border.all(color: AppTheme.borderSubtle, width: 1),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(Icons.timeline_rounded, size: 30, color: AppTheme.textMuted),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Aucune session enregistrée pour ce cycle.',
+                        style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                )
+              else
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Column(

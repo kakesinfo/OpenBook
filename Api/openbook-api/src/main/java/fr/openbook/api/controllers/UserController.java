@@ -1318,6 +1318,12 @@ public class UserController {
             if (!cycle.getUser().getId().equals(user.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
+            List<ReadingSessionEntity> cycleSessions = repositoryService.getReadingSessionRepository()
+                    .findAllByReadingCycleIdOrderByCreatedAtAscIdAsc(cycle.getId());
+            if (!cycleSessions.isEmpty()) {
+                repositoryService.getReadingSessionRepository().deleteAll(cycleSessions);
+                repositoryService.getReadingSessionRepository().flush();
+            }
             repositoryService.getReadingCycleRepository().delete(cycle);
             return ResponseEntity.ok().build();
         }).orElse(ResponseEntity.notFound().build());

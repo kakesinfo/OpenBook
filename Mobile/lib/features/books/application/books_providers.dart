@@ -11,6 +11,7 @@ import '../data/book_transaction.dart';
 import '../data/books_repository.dart';
 import '../data/cover_image_service.dart';
 import '../data/glossary_word.dart';
+import '../data/reading_cycle.dart';
 import '../data/reading_session.dart';
 import '../data/retrospective.dart';
 import 'streak_utils.dart';
@@ -145,6 +146,16 @@ final readingSessionsForBookProvider = FutureProvider.family<List<ReadingSession
 
   final repository = ref.watch(booksRepositoryProvider);
   return repository.getSessionsByBookId(id);
+});
+
+final readingCyclesForBookProvider = FutureProvider.family<List<ReadingCycleRecord>, Book>((ref, book) async {
+  final id = book.id;
+  if (id == null) {
+    return const <ReadingCycleRecord>[];
+  }
+
+  final repository = ref.watch(booksRepositoryProvider);
+  return repository.getReadingCyclesByBookId(id);
 });
 
 final allReadingSessionsProvider = FutureProvider<List<ReadingSession>>((ref) async {
@@ -443,6 +454,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
     await _repository.updateReadingStatus(bookId, completedBook ? 'READ' : 'READING');
     ref.invalidate(readingProgressByBookProvider);
     ref.invalidate(readingSessionsForBookProvider);
+    ref.invalidate(readingCyclesForBookProvider);
     ref.invalidate(allReadingSessionsProvider);
     await reload();
     return streakCelebration;
@@ -485,6 +497,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
 
     ref.invalidate(readingProgressByBookProvider);
     ref.invalidate(readingSessionsForBookProvider);
+    ref.invalidate(readingCyclesForBookProvider);
     ref.invalidate(allReadingSessionsProvider);
     await reload();
     return streakCelebration;
@@ -510,6 +523,31 @@ class BooksController extends AsyncNotifier<List<Book>> {
 
     ref.invalidate(readingProgressByBookProvider);
     ref.invalidate(readingSessionsForBookProvider);
+    ref.invalidate(readingCyclesForBookProvider);
+    ref.invalidate(allReadingSessionsProvider);
+    await reload();
+  }
+
+  Future<void> deleteReadingCycle({
+    required int bookId,
+    required int cycleId,
+  }) async {
+    await _repository.deleteReadingCycle(cycleId);
+
+    final remainingCycles = await _repository.getReadingCyclesByBookId(bookId);
+    if (remainingCycles.isEmpty) {
+      final currentBook = _bookById(bookId);
+      if (currentBook != null &&
+          currentBook.status != BookStatus.wishlist &&
+          currentBook.status != BookStatus.sold &&
+          currentBook.status != BookStatus.lent) {
+        await _repository.updateReadingStatus(bookId, 'UNREAD');
+      }
+    }
+
+    ref.invalidate(readingProgressByBookProvider);
+    ref.invalidate(readingSessionsForBookProvider);
+    ref.invalidate(readingCyclesForBookProvider);
     ref.invalidate(allReadingSessionsProvider);
     await reload();
   }
