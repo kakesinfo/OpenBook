@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from "react";
 import { enqueueSnackbar } from "notistack";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faUser,
@@ -56,9 +56,26 @@ export default function SettingsPage() {
     const session = useSession();
     const { tr } = useLanguage();
     const navigate = useNavigate();
+    const { tab } = useParams<{ tab?: string }>();
     const requiredDeletePhrase = tr("I want to delete my account", "Je veux supprimer mon compte");
 
-    const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+    const tabFromUrl = tab?.toLowerCase();
+    const activeTab: SettingsTab =
+        tabFromUrl === "appearance"
+            ? "appearance"
+            : tabFromUrl === "import" && !session.isAdmin
+                ? "import"
+                : tabFromUrl === "danger"
+                    ? "danger"
+                    : "profile";
+
+    const handleTabChange = (nextTab: SettingsTab) => {
+        if (nextTab === "profile") {
+            navigate("/app/settings");
+        } else {
+            navigate(`/app/settings/${nextTab}`);
+        }
+    };
     const settingsTabs: HeaderFilterTab<SettingsTab>[] = [
         { id: "profile", label: tr("Profile", "Profil"), icon: faUser },
         { id: "appearance", label: tr("Appearance", "Apparence"), icon: faPalette },
@@ -462,7 +479,7 @@ export default function SettingsPage() {
                 <HeaderFilterTabs
                     tabs={settingsTabs}
                     selectedId={activeTab}
-                    onChange={setActiveTab}
+                    onChange={handleTabChange}
                 />
             </WrapperHeader>
 

@@ -129,7 +129,7 @@ export default function HomePage() {
                         </div>
                     </Link>
 
-                    <Link to="/app/collection" className="home-stat-card home-stat-card--secondary">
+                    <Link to="/app/collection/toread" className="home-stat-card home-stat-card--secondary">
                         <div className="home-stat-card__icon">
                             <FontAwesomeIcon icon={faBookmark} />
                         </div>
@@ -143,7 +143,7 @@ export default function HomePage() {
                         </div>
                     </Link>
 
-                    <div className="home-stat-card home-stat-card--amber">
+                    <Link to="/app/collection/reading" className="home-stat-card home-stat-card--amber">
                         <div className="home-stat-card__icon">
                             <FontAwesomeIcon icon={faBookOpen} />
                         </div>
@@ -155,7 +155,7 @@ export default function HomePage() {
                                 {tr("Reading", "En cours")}
                             </span>
                         </div>
-                    </div>
+                    </Link>
 
                     <Link to="/app/wishlist" className="home-stat-card home-stat-card--rose">
                         <div className="home-stat-card__icon">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useSnackbar } from "notistack";
@@ -49,11 +49,13 @@ const DEFAULT_CATEGORIES: CategoryOption[] = [
     { id: 7, name: "E-book" },
 ];
 
-export default function SeriesPage() {
+export default function SeriesPage({ tab = "all" }: { tab?: "all" | "ON_GOING" | "FINISHED" }) {
     const navigate = useNavigate();
+    const location = useLocation();
     const session = useSession();
     const { tr, translateCategory } = useLanguage();
     const { enqueueSnackbar } = useSnackbar();
+    const basePath = location.pathname.startsWith("/app/collection/series") ? "/app/collection/series" : "/app/series";
 
     const [mySeries, setMySeries] = useState<SeriesDTO[]>([]);
     const [categories, setCategories] = useState<CategoryOption[]>(DEFAULT_CATEGORIES);
@@ -61,7 +63,17 @@ export default function SeriesPage() {
 
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-    const [statusFilter, setStatusFilter] = useState<"all" | "ON_GOING" | "FINISHED">("all");
+    const statusFilter = tab;
+
+    const handleStatusFilterChange = (status: "all" | "ON_GOING" | "FINISHED") => {
+        if (status === "all") {
+            navigate(basePath);
+        } else if (status === "ON_GOING") {
+            navigate(`${basePath}/ongoing`);
+        } else {
+            navigate(`${basePath}/finished`);
+        }
+    };
 
     const seriesCategoryOptions: MultiSelectOption[] = useMemo(() => {
         return categories.map((cat) => {
@@ -542,7 +554,7 @@ export default function SeriesPage() {
                         { id: "FINISHED", label: tr("Completed", "Terminées"), count: finishedCount }
                     ]}
                     selectedId={statusFilter}
-                    onChange={setStatusFilter}
+                    onChange={handleStatusFilterChange}
                 />
             </WrapperHeader>
             <div className="series-page__content">

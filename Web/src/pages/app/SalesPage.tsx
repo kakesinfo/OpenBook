@@ -4,7 +4,7 @@ import useSession from "../../hooks/UseSession.tsx";
 import Pagination from "../../components/Pagination/Pagination.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import { Dialog } from "@mui/material";
-import { Link } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faBook,
@@ -64,12 +64,32 @@ export default function SalesPage() {
     const session = useSession();
     const { tr, translateCategory } = useLanguage();
     const { enqueueSnackbar } = useSnackbar();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { tab } = useParams<{ tab?: string }>();
+    const basePath = location.pathname.startsWith("/app/ventes") ? "/app/ventes" : "/app/sales";
 
     const [books, setBooks] = useState<BookSummaryDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
-    const [selectedStatus, setSelectedStatus] = useState<SalesStatusFilter>("all");
+    const tabFromUrl = tab?.toLowerCase();
+    const selectedStatus: SalesStatusFilter =
+        tabFromUrl === "for-sale" || tabFromUrl === "for_sale"
+            ? "FOR_SALE"
+            : tabFromUrl === "sold"
+                ? "SOLD"
+                : "all";
+
+    const handleStatusChange = (status: SalesStatusFilter) => {
+        if (status === "all") {
+            navigate(basePath);
+        } else if (status === "FOR_SALE") {
+            navigate(`${basePath}/for-sale`);
+        } else {
+            navigate(`${basePath}/sold`);
+        }
+    };
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>(DEFAULT_APP_CATEGORIES);
 
@@ -409,7 +429,7 @@ export default function SalesPage() {
                         count: statusCounts[tab.id]
                     }))}
                     selectedId={selectedStatus}
-                    onChange={setSelectedStatus}
+                    onChange={handleStatusChange}
                 />
             </WrapperHeader>
 

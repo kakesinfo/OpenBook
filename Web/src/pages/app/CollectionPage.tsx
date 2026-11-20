@@ -5,7 +5,7 @@ import BookList from "../../components/BookList/BookList.tsx";
 import Pagination from "../../components/Pagination/Pagination.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import CollectionPageDTO from "../../dto/CollectionPage.dto.ts";
-import { Link, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -126,7 +126,11 @@ function getReadingStatusBadge(book: BookSummaryDTO, tr: (en: string, fr: string
 export default function CollectionPage() {
     const session = useSession();
     const { tr, translateCategory } = useLanguage();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { tab } = useParams<{ tab?: string }>();
     const [searchParams, setSearchParams] = useSearchParams();
+    const basePath = location.pathname.startsWith("/app/bibliotheque") ? "/app/bibliotheque" : "/app/collection";
 
     // Read current page from URL (?page=X)
     const pageFromUrl = searchParams.get("page");
@@ -148,7 +152,12 @@ export default function CollectionPage() {
         abandoned: 0
     });
 
-    const [selectedStatus, setSelectedStatus] = useState<TomeStatusFilter>("all");
+    const validStatuses: TomeStatusFilter[] = ["all", "toread", "reading", "read", "abandoned"];
+    const tabFromUrl = tab?.toLowerCase();
+    const selectedStatus: TomeStatusFilter =
+        tabFromUrl && validStatuses.includes(tabFromUrl as TomeStatusFilter)
+            ? (tabFromUrl as TomeStatusFilter)
+            : "all";
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [availableCategories, setAvailableCategories] = useState<CategoryOption[]>(DEFAULT_APP_CATEGORIES);
 
@@ -250,10 +259,13 @@ export default function CollectionPage() {
     };
 
     const handleStatusChange = (status: TomeStatusFilter) => {
-        setSelectedStatus(status);
+        const targetPath = status === "all" ? basePath : `${basePath}/${status}`;
+        const nextParams = new URLSearchParams(searchParams);
         if (currentPage !== 1) {
-            handlePageChange(1);
+            nextParams.set("page", "1");
         }
+        const search = nextParams.toString();
+        navigate(search ? `${targetPath}?${search}` : targetPath);
     };
 
     const handleCategoriesChange = (categories: string[]) => {
