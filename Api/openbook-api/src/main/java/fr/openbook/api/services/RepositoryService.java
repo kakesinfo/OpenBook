@@ -1,5 +1,6 @@
 package fr.openbook.api.services;
 
+import fr.openbook.api.repositories.AchievementRepository;
 import fr.openbook.api.repositories.AuthorRepository;
 import fr.openbook.api.repositories.AuthorTypeRepository;
 import fr.openbook.api.repositories.BookHasAuthorRepository;
@@ -60,4 +61,5 @@ public class RepositoryService
     private final NoteRepository noteRepository;
     private final WordRepository wordRepository;
     private final BookHasWordRepository bookHasWordRepository;
+    private final AchievementRepository achievementRepository;
 }

@@ -64,7 +64,7 @@ export default function ReadingStreakWidget({
 
     return (
         <div
-            className={`home-widget home-streak-widget ${onOpenCalendar ? "is-clickable" : ""}`}
+            className={`home-widget home-streak-widget ${streak > 0 ? "is-active" : ""} ${onOpenCalendar ? "is-clickable" : ""}`}
             onClick={onOpenCalendar}
             role={onOpenCalendar ? "button" : undefined}
             tabIndex={onOpenCalendar ? 0 : undefined}

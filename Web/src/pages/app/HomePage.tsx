@@ -9,13 +9,15 @@ import {
     faCalendarDays,
     faChevronRight,
     faNoteSticky,
-    faSpellCheck
+    faSpellCheck,
+    faTrophy
 } from "@fortawesome/free-solid-svg-icons";
 import { WrapperHeader } from "../../components/Wrapper/Wrapper.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import ReadingSessionDTO from "../../dto/ReadingSession.dto.ts";
 import NoteDTO from "../../dto/Note.dto.ts";
 import WordDTO from "../../dto/Word.dto.ts";
+import AchievementDTO from "../../dto/Achievement.dto.ts";
 import useSession from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import ReadingStreakWidget from "../../components/HomeWidgets/ReadingStreakWidget.tsx";
@@ -31,6 +33,7 @@ export default function HomePage() {
     const [readingSessions, setReadingSessions] = useState<ReadingSessionDTO[]>([]);
     const [notes, setNotes] = useState<NoteDTO[]>([]);
     const [words, setWords] = useState<WordDTO[]>([]);
+    const [achievements, setAchievements] = useState<AchievementDTO[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
     useEffect(() => {
@@ -54,9 +57,12 @@ export default function HomePage() {
                 .catch(() => []),
             session.customFetch("/words", { method: "GET" })
                 .then(async (res) => (res.ok ? await res.json() : []))
+                .catch(() => []),
+            session.customFetch("/achievements", { method: "GET" })
+                .then(async (res) => (res.ok ? await res.json() : []))
                 .catch(() => [])
         ])
-            .then(([colData, wishData, sessionsData, notesData, wordsData]) => {
+            .then(([colData, wishData, sessionsData, notesData, wordsData, achievementsData]) => {
                 if (cancelled) return;
                 const booksList: BookSummaryDTO[] = Array.isArray(colData)
                     ? colData
@@ -68,6 +74,7 @@ export default function HomePage() {
                 setReadingSessions(Array.isArray(sessionsData) ? sessionsData : []);
                 setNotes(Array.isArray(notesData) ? notesData : []);
                 setWords(Array.isArray(wordsData) ? wordsData : []);
+                setAchievements(Array.isArray(achievementsData) ? achievementsData : []);
             })
             .finally(() => {
                 if (!cancelled) setLoading(false);
@@ -100,6 +107,23 @@ export default function HomePage() {
             readBooksCount: readCount
         };
     }, [collectionBooks]);
+
+    const achievementStats = useMemo(() => {
+        const total = achievements.length;
+        const unlocked = achievements.filter((a) => a.unlocked).length;
+        const percent = total > 0 ? Math.round((unlocked / total) * 100) : 0;
+
+        let rankLabel = tr("Beginner", "Débutant");
+        if (total > 0 && unlocked > 0) {
+            if (percent === 100) rankLabel = tr("Legend", "Légende");
+            else if (percent >= 75) rankLabel = tr("Master", "Maître");
+            else if (percent >= 50) rankLabel = tr("Collector", "Collectionneur");
+            else if (percent >= 25) rankLabel = tr("Explorer", "Explorateur");
+            else rankLabel = tr("Apprentice", "Apprenti");
+        }
+
+        return { total, unlocked, percent, rankLabel, active: unlocked > 0 };
+    }, [achievements, tr]);
 
     return (
         <div className="home-dashboard">
@@ -262,6 +286,64 @@ export default function HomePage() {
                                                 ? tr(`Ex: ${words[0].word}`, `Ex : ${words[0].word}`)
                                                 : tr("Linked to your reads", "Lié à vos lectures")}
                                         </span>
+                                    </div>
+                                    <FontAwesomeIcon icon={faChevronRight} className="home-bento-tile__arrow" />
+                                </Link>
+
+                                <Link
+                                    to="/app/achievements"
+                                    className={`home-widget home-bento-tile home-bento-tile--full home-bento-tile--achievements ${achievementStats.active ? "is-active" : ""}`}
+                                >
+                                    <div className={`home-bento-tile__icon home-bento-tile__icon--trophy ${achievementStats.active ? "is-active" : ""}`}>
+                                        <FontAwesomeIcon icon={faTrophy} />
+                                    </div>
+                                    <div className="home-bento-tile__info home-bento-tile__info--achievements">
+                                        <div className="home-bento-tile__title-row">
+                                            <span className="home-bento-tile__title">
+                                                {tr("Achievements", "Succès")}
+                                            </span>
+                                            {!loading && (
+                                                <>
+                                                    <span className="home-bento-tile__ach-count">
+                                                        <strong>{achievementStats.unlocked}</strong>
+                                                        <span className="home-bento-tile__ach-total"> / {achievementStats.total}</span>
+                                                    </span>
+                                                    <span className={`home-bento-tile__ach-rank ${achievementStats.active ? "is-active" : ""}`}>
+                                                        {achievementStats.rankLabel}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+                                        {loading ? (
+                                            <span className="home-bento-tile__sub">
+                                                {tr("Loading...", "Chargement...")}
+                                            </span>
+                                        ) : achievementStats.total === 0 ? (
+                                            <span className="home-bento-tile__caption">
+                                                {tr("Create and check off your achievements", "Créez et cochez vos succès")}
+                                            </span>
+                                        ) : (
+                                            <div className="home-bento-tile__ach-track-row">
+                                                <div className="home-bento-tile__ach-bar">
+                                                    <div
+                                                        className="home-bento-tile__ach-bar-fill"
+                                                        style={{ width: `${achievementStats.percent}%` }}
+                                                    />
+                                                    <div className="home-bento-tile__ach-milestones" aria-hidden="true">
+                                                        {[25, 50, 75, 100].map((m) => (
+                                                            <span
+                                                                key={m}
+                                                                className={`home-bento-tile__ach-milestone ${achievementStats.percent >= m ? "is-reached" : ""}`}
+                                                                style={{ left: `${m}%` }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <span className={`home-bento-tile__ach-percent ${achievementStats.active ? "is-active" : ""}`}>
+                                                    {achievementStats.percent}%
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     <FontAwesomeIcon icon={faChevronRight} className="home-bento-tile__arrow" />
                                 </Link>

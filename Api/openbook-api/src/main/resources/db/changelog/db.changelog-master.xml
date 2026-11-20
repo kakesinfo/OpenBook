@@ -1911,4 +1911,62 @@
     <changeSet id="50" author="Axel">
         <customChange class="fr.openbook.api.migration.MergeLeadingOrphanProgressCyclesChange" />
     </changeSet>
+    <changeSet id="51" author="Flo">
+        <createTable tableName="achievements">
+            <column name="id" type="integer" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false" />
+            </column>
+            <column name="user_id" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="name" type="varchar(150)">
+                <constraints nullable="false" />
+            </column>
+            <column name="total_steps" type="integer" defaultValueNumeric="1">
+                <constraints nullable="false" />
+            </column>
+            <column name="completed_steps" type="integer" defaultValueNumeric="0">
+                <constraints nullable="false" />
+            </column>
+            <column name="icon" type="varchar(60)" defaultValue="trophy">
+                <constraints nullable="false" />
+            </column>
+            <column name="icon_color" type="varchar(20)" defaultValue="#f59e0b">
+                <constraints nullable="false" />
+            </column>
+            <column name="background_color" type="varchar(20)" defaultValue="#fef3c7">
+                <constraints nullable="false" />
+            </column>
+            <column name="unlocked_at" type="timestamp">
+                <constraints nullable="true" />
+            </column>
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false" />
+            </column>
+        </createTable>
+
+        <createIndex tableName="achievements" indexName="idx_achievements_user_id">
+            <column name="user_id" />
+        </createIndex>
+
+        <addForeignKeyConstraint
+            constraintName="fk_achievements_user_id"
+            baseTableName="achievements"
+            baseColumnNames="user_id"
+            referencedTableName="user"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="RESTRICT"
+        />
+    </changeSet>
+    <changeSet id="52" author="Flo">
+        <addColumn tableName="achievements">
+            <column name="ornament" type="varchar(40)" defaultValue="laurel">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+    </changeSet>
 </databaseChangeLog>

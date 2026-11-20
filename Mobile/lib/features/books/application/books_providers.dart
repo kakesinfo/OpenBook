@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/network/api_client.dart';
+import '../data/achievement.dart';
 import '../data/bnf_service.dart';
 import '../data/book.dart';
 import '../data/book_note.dart';
@@ -753,6 +754,89 @@ class WordsController extends AsyncNotifier<List<GlossaryWord>> {
   Future<void> deleteWord(int id) async {
     await _repository.deleteWord(id);
     await reload();
+  }
+}
+
+final achievementsControllerProvider =
+    AsyncNotifierProvider<AchievementsController, List<Achievement>>(
+        AchievementsController.new);
+
+class AchievementsController extends AsyncNotifier<List<Achievement>> {
+  BooksRepository get _repository => ref.read(booksRepositoryProvider);
+
+  @override
+  Future<List<Achievement>> build() async {
+    final client = ref.watch(apiClientProvider);
+    if (!client.isInitialized || !client.isAuthenticated) {
+      return const <Achievement>[];
+    }
+    return _repository.getAchievements();
+  }
+
+  Future<void> reload() async {
+    try {
+      state = AsyncValue.data(await _repository.getAchievements());
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  Future<Achievement> createAchievement({
+    required String name,
+    required int totalSteps,
+    required String icon,
+    required String ornament,
+    required String iconColor,
+    required String backgroundColor,
+    DateTime? unlockedAt,
+  }) async {
+    final created = await _repository.createAchievement(
+      name: name,
+      totalSteps: totalSteps,
+      icon: icon,
+      ornament: ornament,
+      iconColor: iconColor,
+      backgroundColor: backgroundColor,
+      unlockedAt: unlockedAt,
+    );
+    final current = state.value ?? const <Achievement>[];
+    state = AsyncValue.data([created, ...current]);
+    return created;
+  }
+
+  Future<Achievement> updateAchievement({
+    required int id,
+    String? name,
+    int? totalSteps,
+    int? completedSteps,
+    String? icon,
+    String? ornament,
+    String? iconColor,
+    String? backgroundColor,
+    DateTime? unlockedAt,
+  }) async {
+    final updated = await _repository.updateAchievement(
+      id: id,
+      name: name,
+      totalSteps: totalSteps,
+      completedSteps: completedSteps,
+      icon: icon,
+      ornament: ornament,
+      iconColor: iconColor,
+      backgroundColor: backgroundColor,
+      unlockedAt: unlockedAt,
+    );
+    final current = state.value ?? const <Achievement>[];
+    state = AsyncValue.data(
+      current.map((a) => a.id == updated.id ? updated : a).toList(),
+    );
+    return updated;
+  }
+
+  Future<void> deleteAchievement(int id) async {
+    await _repository.deleteAchievement(id);
+    final current = state.value ?? const <Achievement>[];
+    state = AsyncValue.data(current.where((a) => a.id != id).toList());
   }
 }
 
