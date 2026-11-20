@@ -6,6 +6,7 @@ import 'book.dart';
 import 'book_note.dart';
 import 'book_transaction.dart';
 import 'glossary_word.dart';
+import 'reading_cycle.dart';
 import 'reading_session.dart';
 import 'retrospective.dart';
 
@@ -464,6 +465,7 @@ class BooksRepository {
     return ReadingSession(
       id: (map['id'] as num?)?.toInt(),
       bookId: (map['bookId'] as num).toInt(),
+      readingCycleId: (map['readingCycleId'] as num?)?.toInt(),
       currentPage: (map['currentPage'] as num?)?.toInt() ?? 0,
       minutesRead: (map['minutesRead'] as num?)?.toInt() ?? 0,
       secondsRead: (map['secondsRead'] as num?)?.toInt() ?? 0,
@@ -478,6 +480,7 @@ class BooksRepository {
   Future<void> addReadingSession(ReadingSession session) async {
     final payload = <String, dynamic>{
       'bookId': session.bookId,
+      if (session.readingCycleId != null) 'readingCycleId': session.readingCycleId,
       'currentPage': session.currentPage,
       'minutesRead': session.minutesRead,
       'secondsRead': session.secondsRead,
@@ -496,6 +499,42 @@ class BooksRepository {
     final response = await _apiClient.delete('/user/readingSessions/$sessionId');
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Impossible de supprimer la session: ${response.statusCode}');
+    }
+  }
+
+  Future<List<ReadingCycleRecord>> getReadingCyclesByBookId(int bookId) async {
+    final response = await _apiClient.get('/user/readingCycles/$bookId');
+    if (response.statusCode != 200) {
+      return [];
+    }
+
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((item) => _cycleFromMap(item as Map<String, dynamic>)).toList();
+  }
+
+  ReadingCycleRecord _cycleFromMap(Map<String, dynamic> map) {
+    final rawSessions = (map['sessions'] as List<dynamic>?) ?? const <dynamic>[];
+    final sessions = rawSessions
+        .map((item) => _sessionFromMap(item as Map<String, dynamic>))
+        .toList();
+    return ReadingCycleRecord(
+      id: (map['id'] as num).toInt(),
+      bookId: (map['bookId'] as num).toInt(),
+      isCommon: map['isCommon'] == true,
+      startedAt: map['startedAt'] != null
+          ? DateTime.fromMillisecondsSinceEpoch((map['startedAt'] as num).toInt())
+          : DateTime.now(),
+      endedAt: map['endedAt'] != null
+          ? DateTime.fromMillisecondsSinceEpoch((map['endedAt'] as num).toInt())
+          : null,
+      sessions: sessions,
+    );
+  }
+
+  Future<void> deleteReadingCycle(int cycleId) async {
+    final response = await _apiClient.delete('/user/readingCycles/$cycleId');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Impossible de supprimer le cycle: ${response.statusCode}');
     }
   }
 

@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Link } from "react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCalendarDays, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faCalendarDays } from "@fortawesome/free-solid-svg-icons";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import AsyncCoverImage from "../AsyncCoverImage/AsyncCoverImage.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
@@ -12,7 +12,6 @@ interface BookCardProps {
     actions?: ReactNode;
     statusBadge?: ReactNode;
     badgeText?: string;
-    isCommon?: boolean;
     showReleaseDate?: boolean;
     showFinishedDate?: boolean;
     className?: string;
@@ -45,7 +44,6 @@ export default function BookCard({
     actions,
     statusBadge,
     badgeText,
-    isCommon = false,
     showReleaseDate = false,
     showFinishedDate = false,
     className = ""
@@ -68,19 +66,10 @@ export default function BookCard({
                 <div className="book-card__scrim book-card__scrim--top" aria-hidden="true" />
                 {actions && <div className="book-card__scrim book-card__scrim--bottom" aria-hidden="true" />}
 
-                {(statusBadge || isCommon || badgeText) && (
+                {(statusBadge || badgeText) && (
                     <div className="book-card__top-bar">
                         <div className="book-card__top-left">
                             {statusBadge}
-                            {isCommon && (
-                                <span
-                                    className="book-card__common-badge"
-                                    title={tr("Common reading", "Lecture commune")}
-                                    aria-label={tr("Common reading", "Lecture commune")}
-                                >
-                                    <FontAwesomeIcon icon={faUsers} />
-                                </span>
-                            )}
                         </div>
                         {badgeText && <span className="book-card__badge">{badgeText}</span>}
                     </div>

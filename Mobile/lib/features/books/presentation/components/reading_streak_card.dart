@@ -3,20 +3,40 @@ import 'package:flutter_application_1/app/theme.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../application/books_providers.dart';
+import '../../application/streak_utils.dart';
 import '../reading_calendar_page.dart';
 
 class ReadingStreakCard extends ConsumerWidget {
   const ReadingStreakCard({super.key});
 
+  static const _fireGold = Color(0xFFFFD60A);
+  static const _fireOrange = Color(0xFFFF9500);
+  static const _fireCoral = Color(0xFFFF5E3A);
+  static const _fireTodayEnd = Color(0xFFFF6B35);
+  static const _fireBeigeText = Color(0xFFD95F02);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sessionsAsync = ref.watch(allReadingSessionsProvider);
+    final isBeige = AppTheme.currentMode == AppThemeMode.beige;
+    final fireAccentText = isBeige ? _fireBeigeText : _fireOrange;
+
+    final streakCount = sessionsAsync.maybeWhen(
+      data: (sessions) => calculateReadingStreakDays(sessions),
+      orElse: () => 0,
+    );
+    final hasActiveStreak = streakCount > 0;
 
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.bgSurface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.borderSubtle, width: 1),
+        border: Border.all(
+          color: hasActiveStreak
+              ? _fireOrange.withValues(alpha: isBeige ? 0.30 : 0.24)
+              : AppTheme.borderSubtle,
+          width: 1,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -38,17 +58,33 @@ class ReadingStreakCard extends ConsumerWidget {
                     Row(
                       children: [
                         Container(
-                          width: 32,
-                          height: 32,
+                          width: 34,
+                          height: 34,
                           decoration: BoxDecoration(
-                            color: AppTheme.accentAmberLight,
+                            gradient: hasActiveStreak
+                                ? const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [_fireGold, _fireOrange, _fireCoral],
+                                  )
+                                : null,
+                            color: hasActiveStreak ? null : AppTheme.bgElevated,
                             borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                            boxShadow: hasActiveStreak
+                                ? [
+                                    BoxShadow(
+                                      color: _fireOrange.withValues(alpha: 0.35),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ]
+                                : null,
                           ),
                           child: Center(
                             child: Icon(
                               Icons.local_fire_department_rounded,
-                              color: AppTheme.accentAmber,
-                              size: 18,
+                              color: hasActiveStreak ? Colors.white : AppTheme.textMuted,
+                              size: 19,
                             ),
                           ),
                         ),
@@ -83,14 +119,14 @@ class ReadingStreakCard extends ConsumerWidget {
                                 ),
                               ),
                               data: (sessions) {
-                                final count = _calculateStreakDays(sessions);
+                                final count = calculateReadingStreakDays(sessions);
                                 final label = '$count jour${count > 1 ? 's' : ''}';
                                 return Text(
                                   label,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: count > 0 ? AppTheme.accentAmber : AppTheme.textMuted,
-                                    fontWeight: FontWeight.w600,
+                                    color: count > 0 ? fireAccentText : AppTheme.textMuted,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 );
                               },
@@ -108,7 +144,7 @@ class ReadingStreakCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 14),
                 sessionsAsync.when(
-                  loading: () => SizedBox(
+                  loading: () => const SizedBox(
                     height: 48,
                     child: Center(
                       child: SizedBox(
@@ -116,30 +152,26 @@ class ReadingStreakCard extends ConsumerWidget {
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppTheme.accentAmber,
+                          color: _fireOrange,
                         ),
                       ),
                     ),
                   ),
-                  error: (_, _) => _buildWeekRow(activeDayIndices: const {}),
+                  error: (_, _) => _buildWeekRow(
+                    activeDayIndices: const {},
+                    isBeige: isBeige,
+                  ),
                   data: (sessions) {
                     final now = DateTime.now();
-                    final today = DateTime(now.year, now.month, now.day);
-                    // Monday is weekday 1
-                    final startOfWeek = today.subtract(Duration(days: today.weekday - 1));
-
-                    final readDayIndices = <int>{};
-                    for (final s in sessions) {
-                      final sDate = DateTime(s.createdAt.year, s.createdAt.month, s.createdAt.day);
-                      final diffDays = sDate.difference(startOfWeek).inDays;
-                      if (diffDays >= 0 && diffDays < 7) {
-                        readDayIndices.add(diffDays);
-                      }
-                    }
+                    final readDayIndices = currentWeekReadDayIndices(
+                      sessions,
+                      referenceNow: now,
+                    );
 
                     return _buildWeekRow(
                       activeDayIndices: readDayIndices,
-                      currentDayIndex: today.weekday - 1,
+                      currentDayIndex: now.weekday - 1,
+                      isBeige: isBeige,
                     );
                   },
                 ),
@@ -151,51 +183,13 @@ class ReadingStreakCard extends ConsumerWidget {
     );
   }
 
-  int _calculateStreakDays(List<dynamic> sessions) {
-    if (sessions.isEmpty) return 0;
-
-    final readDays = <String>{};
-    for (final s in sessions) {
-      final d = s.createdAt as DateTime;
-      readDays.add('${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}');
-    }
-
-    final now = DateTime.now();
-    var checkDate = DateTime(now.year, now.month, now.day);
-
-    String key(DateTime d) =>
-        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-    int streak = 0;
-
-    // If read today, streak starts from today
-    if (readDays.contains(key(checkDate))) {
-      while (readDays.contains(key(checkDate))) {
-        streak++;
-        checkDate = checkDate.subtract(const Duration(days: 1));
-      }
-      return streak;
-    }
-
-    // If not read today, check if yesterday was read (ongoing streak waiting for today's session)
-    final yesterday = checkDate.subtract(const Duration(days: 1));
-    if (readDays.contains(key(yesterday))) {
-      checkDate = yesterday;
-      while (readDays.contains(key(checkDate))) {
-        streak++;
-        checkDate = checkDate.subtract(const Duration(days: 1));
-      }
-      return streak;
-    }
-
-    return 0;
-  }
-
   Widget _buildWeekRow({
     required Set<int> activeDayIndices,
     int? currentDayIndex,
+    required bool isBeige,
   }) {
     const days = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+    final todayLabelColor = isBeige ? _fireBeigeText : _fireOrange;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -213,7 +207,7 @@ class ReadingStreakCard extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: isToday ? FontWeight.w800 : FontWeight.w600,
-                  color: isToday ? AppTheme.accentPrimary : AppTheme.textMuted,
+                  color: isToday ? todayLabelColor : AppTheme.textMuted,
                 ),
               ),
               const SizedBox(height: 6),
@@ -222,21 +216,42 @@ class ReadingStreakCard extends ConsumerWidget {
                 height: 32,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
+                  gradient: hasRead
+                      ? LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: isToday
+                              ? const [_fireGold, _fireTodayEnd]
+                              : const [_fireOrange, _fireCoral],
+                        )
+                      : null,
                   color: hasRead
-                      ? AppTheme.accentAmberLight
+                      ? null
                       : (isToday ? AppTheme.bgElevated : AppTheme.bgCard),
-                  border: Border.all(
-                    color: hasRead
-                        ? AppTheme.accentAmber.withValues(alpha: 0.4)
-                        : (isToday ? AppTheme.borderMedium : AppTheme.borderSubtle),
-                    width: isToday ? 1.5 : 1,
-                  ),
+                  border: hasRead
+                      ? null
+                      : Border.all(
+                          color: isToday
+                              ? _fireOrange.withValues(alpha: 0.75)
+                              : AppTheme.borderSubtle,
+                          width: isToday ? 1.6 : 1,
+                        ),
+                  boxShadow: hasRead
+                      ? [
+                          BoxShadow(
+                            color: (isToday ? _fireOrange : _fireCoral)
+                                .withValues(alpha: isToday ? 0.46 : 0.30),
+                            blurRadius: isToday ? 12 : 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Center(
                   child: hasRead
-                      ? Icon(
+                      ? const Icon(
                           Icons.local_fire_department_rounded,
-                          color: AppTheme.accentAmber,
+                          color: Colors.white,
                           size: 18,
                         )
                       : Container(
@@ -244,7 +259,9 @@ class ReadingStreakCard extends ConsumerWidget {
                           height: 6,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isToday ? AppTheme.textSecondary : AppTheme.borderMedium,
+                            color: isToday
+                                ? _fireOrange.withValues(alpha: 0.85)
+                                : AppTheme.borderMedium,
                           ),
                         ),
                 ),

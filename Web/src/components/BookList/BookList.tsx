@@ -4,8 +4,6 @@ import "./BookList.scss";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBook, faHeart, faCheck, faBookOpen, faPause, faBan, faTag } from "@fortawesome/free-solid-svg-icons";
 import useSession from "../../hooks/UseSession.tsx";
-import useCommonReadingBookIds from "../../hooks/UseCommonReadingBookIds.ts";
-import { isCommonBook } from "../HomeWidgets/readingUtils.ts";
 import useLanguage from "../../hooks/UseLanguage.tsx";
 import { useSnackbar } from "notistack";
 import BookCard from "../BookCard/BookCard.tsx";
@@ -70,7 +68,6 @@ export default function BookList({
     showFinishedDate = false
 }: BookListProps) {
     const session = useSession();
-    const commonBookIds = useCommonReadingBookIds();
     const { tr } = useLanguage();
     const { enqueueSnackbar } = useSnackbar();
     const [statusOverrides, setStatusOverrides] = useState<Record<string, string | null>>({});
@@ -164,11 +161,10 @@ export default function BookList({
                 const isBusy = Boolean(loadingIds[book.id]);
                 return (
                     <BookCard
-                        key={book.id}
+                        key={book.readingCycleId != null ? `${book.id}-cycle-${book.readingCycleId}` : book.id}
                         book={book}
                         statusBadge={getStatusBadge({ ...book, status: effectiveStatus || "" }, tr)}
                         badgeText={book.volume > 0 ? `Vol. ${book.volume}` : tr("One-shot", "Unique")}
-                        isCommon={isCommonBook(commonBookIds, book.id)}
                         showReleaseDate={showReleaseDate}
                         showFinishedDate={showFinishedDate}
                         actions={

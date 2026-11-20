@@ -308,43 +308,49 @@ public class BookmoryImportService {
             }
         }
 
-        // 12. Reading sessions
+        // 12. Reading cycles & sessions (one reading_cycle per BookmoryRead)
         if (options.isImportReadingSessions() && hasReadingSessionData(b) && job.getUserId() != null && job.getUserId() > 0) {
-            Long earliestSessionMs = null;
-            boolean hasExplicitStart = false;
             for (BookmoryRead read : b.getReads()) {
-                if (read == null) continue;
-                if (read.getStart() != null && read.getStart() > 0) {
-                    hasExplicitStart = true;
-                }
-                if (read.getReadTimerList() != null) {
-                    for (BookmoryReadTimer timer : read.getReadTimerList()) {
-                        if (timer.getElapsedSec() != null && timer.getElapsedSec() > 0) {
-                            Long timerTime = timer.getReadStartedAt() != null && timer.getReadStartedAt() > 0
-                                    ? timer.getReadStartedAt()
-                                    : timer.getCreatedAt();
-                            if (timerTime != null && timerTime > 0) {
-                                if (earliestSessionMs == null || timerTime < earliestSessionMs) {
-                                    earliestSessionMs = timerTime;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+                if (read == null || !hasReadData(read)) continue;
 
-            if (!hasExplicitStart && earliestSessionMs != null) {
-                dbService.ensureReadingStartSession(job.getUserId(), bookId, Instant.ofEpochMilli(earliestSessionMs).minusMillis(1));
-            }
+                Long earliestSessionMs = findEarliestSessionMs(read);
+                boolean hasExplicitStart = read.getStart() != null && read.getStart() > 0;
 
-            for (BookmoryRead read : b.getReads()) {
-                if (read == null) continue;
+                Instant cycleStartedAt;
+                if (hasExplicitStart) {
+                    cycleStartedAt = Instant.ofEpochMilli(read.getStart());
+                } else if (earliestSessionMs != null) {
+                    cycleStartedAt = Instant.ofEpochMilli(earliestSessionMs).minusMillis(1);
+                } else if (read.getEnd() != null && read.getEnd() > 0) {
+                    cycleStartedAt = Instant.ofEpochMilli(read.getEnd());
+                } else if (read.getCreatedAt() != null && read.getCreatedAt() > 0) {
+                    cycleStartedAt = Instant.ofEpochMilli(read.getCreatedAt());
+                } else {
+                    cycleStartedAt = Instant.now();
+                }
+
+                Instant cycleEndedAt = (read.getEnd() != null && read.getEnd() > 0)
+                        ? Instant.ofEpochMilli(read.getEnd())
+                        : null;
+
+                Long readingCycleId = dbService.findOrCreateReadingCycle(
+                        job.getUserId(),
+                        bookId,
+                        cycleStartedAt,
+                        cycleEndedAt,
+                        false
+                );
+                if (readingCycleId == null) {
+                    continue;
+                }
 
                 // Start session (session_type = 0)
-                if (read.getStart() != null && read.getStart() > 0) {
-                    if (dbService.ensureReadingStartSession(job.getUserId(), bookId, Instant.ofEpochMilli(read.getStart()))) {
+                if (hasExplicitStart) {
+                    if (dbService.ensureReadingStartSession(job.getUserId(), bookId, readingCycleId, cycleStartedAt)) {
                         synchronized (job) { job.setImportedReadingSessions(job.getImportedReadingSessions() + 1); }
                     }
+                } else if (earliestSessionMs != null) {
+                    dbService.ensureReadingStartSession(job.getUserId(), bookId, readingCycleId, cycleStartedAt);
                 }
 
                 Map<Long, Integer> pageByTime = new HashMap<>();
@@ -377,7 +383,7 @@ public class BookmoryImportService {
                             page = b.getRealTotalPage().intValue();
                         }
 
-                        if (dbService.importReadingSession(job.getUserId(), bookId, timer, page)) {
+                        if (dbService.importReadingSession(job.getUserId(), bookId, readingCycleId, timer, page)) {
                             synchronized (job) { job.setImportedReadingSessions(job.getImportedReadingSessions() + 1); }
                         }
                     }
@@ -395,6 +401,7 @@ public class BookmoryImportService {
                         if (dbService.importReadingSessionAt(
                                 job.getUserId(),
                                 bookId,
+                                readingCycleId,
                                 pl.getPage().intValue(),
                                 0,
                                 0,
@@ -422,6 +429,7 @@ public class BookmoryImportService {
                     if (dbService.importReadingSessionAt(
                             job.getUserId(),
                             bookId,
+                            readingCycleId,
                             endPage,
                             0,
                             0,
@@ -456,6 +464,55 @@ public class BookmoryImportService {
 
     private static boolean hasPurchaseData(BookmoryBook b) {
         return b.getPurchases() != null && !b.getPurchases().isEmpty();
+    }
+
+    private static boolean hasReadData(BookmoryRead read) {
+        if (read == null) return false;
+        if ((read.getStart() != null && read.getStart() > 0)
+                || (read.getEnd() != null && read.getEnd() > 0)) {
+            return true;
+        }
+        if (read.getPageLogList() != null) {
+            for (BookmoryPageLog pl : read.getPageLogList()) {
+                if (pl != null && pl.getCreatedAt() != null && pl.getCreatedAt() > 0 && pl.getPage() != null) {
+                    return true;
+                }
+            }
+        }
+        if (read.getReadTimerList() != null) {
+            for (BookmoryReadTimer timer : read.getReadTimerList()) {
+                if (timer != null && timer.getElapsedSec() != null && timer.getElapsedSec() > 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static Long findEarliestSessionMs(BookmoryRead read) {
+        Long earliest = null;
+        if (read.getReadTimerList() != null) {
+            for (BookmoryReadTimer timer : read.getReadTimerList()) {
+                if (timer != null && timer.getElapsedSec() != null && timer.getElapsedSec() > 0) {
+                    Long timerTime = timer.getReadStartedAt() != null && timer.getReadStartedAt() > 0
+                            ? timer.getReadStartedAt()
+                            : timer.getCreatedAt();
+                    if (timerTime != null && timerTime > 0 && (earliest == null || timerTime < earliest)) {
+                        earliest = timerTime;
+                    }
+                }
+            }
+        }
+        if (read.getPageLogList() != null) {
+            for (BookmoryPageLog pl : read.getPageLogList()) {
+                if (pl != null && pl.getCreatedAt() != null && pl.getCreatedAt() > 0 && pl.getPage() != null) {
+                    if (earliest == null || pl.getCreatedAt() < earliest) {
+                        earliest = pl.getCreatedAt();
+                    }
+                }
+            }
+        }
+        return earliest;
     }
 
     private static boolean hasReadingSessionData(BookmoryBook b) {

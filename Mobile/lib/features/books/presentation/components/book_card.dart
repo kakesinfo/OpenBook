@@ -244,9 +244,21 @@ class _BookCardState extends ConsumerState<BookCard>
                             ),
                           ),
                         ),
+                        // Common reading badge on the card (top-right, off the cover)
+                        if (progress.isCommon)
+                          const Positioned(
+                            top: 14,
+                            right: 14,
+                            child: CommonReadingBadge(compact: true),
+                          ),
                         // Content Info
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(122, 22, 72, 16),
+                          padding: EdgeInsets.fromLTRB(
+                            122,
+                            progress.isCommon ? 38 : 22,
+                            18,
+                            28,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -304,22 +316,11 @@ class _BookCardState extends ConsumerState<BookCard>
                         Positioned(
                           left: 14,
                           bottom: -12,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              BookCover(
-                                book: book,
-                                width: 92,
-                                height: 140,
-                                borderRadius: AppTheme.radiusMd,
-                              ),
-                              if (progress.isCommon)
-                                const Positioned(
-                                  top: 6,
-                                  left: 6,
-                                  child: CommonReadingRibbon(size: 22),
-                                ),
-                            ],
+                          child: BookCover(
+                            book: book,
+                            width: 92,
+                            height: 140,
+                            borderRadius: AppTheme.radiusMd,
                           ),
                         ),
                         // Quick Action Buttons (timer + log session)

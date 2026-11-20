@@ -11,8 +11,10 @@ import '../data/book_transaction.dart';
 import '../data/books_repository.dart';
 import '../data/cover_image_service.dart';
 import '../data/glossary_word.dart';
+import '../data/reading_cycle.dart';
 import '../data/reading_session.dart';
 import '../data/retrospective.dart';
+import 'streak_utils.dart';
 
 final bnfServiceProvider = Provider<BnfService>((ref) {
   final clientNotifier = ref.watch(apiClientProvider.notifier);
@@ -66,6 +68,34 @@ class BookSearchQueryNotifier extends Notifier<String> {
 final booksControllerProvider =
     AsyncNotifierProvider<BooksController, List<Book>>(BooksController.new);
 
+/// Sélectionne les sessions appartenant au cycle de lecture actif d'un livre.
+/// Quand readingCycleId est renseigné, privilégie le cycle ouvert (sans session
+/// de fin) ayant l'id le plus élevé, sinon le cycle d'id le plus élevé.
+List<ReadingSession> activeCycleSessionsFor(List<ReadingSession> sessions) {
+  if (sessions.isEmpty) return const <ReadingSession>[];
+
+  final hasCycleIds = sessions.every((s) => s.readingCycleId != null);
+  if (hasCycleIds) {
+    final byCycle = <int, List<ReadingSession>>{};
+    for (final s in sessions) {
+      byCycle.putIfAbsent(s.readingCycleId!, () => <ReadingSession>[]).add(s);
+    }
+    final sortedIds = byCycle.keys.toList()..sort();
+    for (final cycleId in sortedIds.reversed) {
+      final group = byCycle[cycleId]!;
+      final hasEnd = group.any((s) => s.type == ReadingSessionType.end);
+      if (!hasEnd) {
+        return group;
+      }
+    }
+    return byCycle[sortedIds.last]!;
+  }
+
+  final lastStartIndex =
+      sessions.lastIndexWhere((session) => session.type == ReadingSessionType.start);
+  return lastStartIndex == -1 ? sessions : sessions.sublist(lastStartIndex);
+}
+
 final readingProgressByBookProvider = FutureProvider.family<ReadingProgress, Book>((ref, book) async {
   final id = book.id;
   if (id == null) {
@@ -78,8 +108,8 @@ final readingProgressByBookProvider = FutureProvider.family<ReadingProgress, Boo
     return ReadingProgress.empty(totalPages: book.totalPages);
   }
 
-  final lastStartIndex = sessions.lastIndexWhere((session) => session.type == ReadingSessionType.start);
-  final activeCycleSessions = lastStartIndex == -1 ? sessions : sessions.sublist(lastStartIndex);
+  final activeCycleSessions = activeCycleSessionsFor(sessions);
+
   final lastProgressSession = activeCycleSessions.lastWhere(
     (session) => session.type != ReadingSessionType.start,
     orElse: () => activeCycleSessions.last,
@@ -90,10 +120,12 @@ final readingProgressByBookProvider = FutureProvider.family<ReadingProgress, Boo
       ? 0.0
       : (lastProgressSession.currentPage / totalPages).clamp(0.0, 1.0);
 
-  final startSession = lastStartIndex != -1
-      ? sessions[lastStartIndex]
-      : (sessions.isNotEmpty ? sessions.first : null);
-  final startedAt = book.startedAt ?? startSession?.createdAt;
+  final startSession = activeCycleSessions.firstWhere(
+    (session) => session.type == ReadingSessionType.start,
+    orElse: () => activeCycleSessions.first,
+  );
+  final startedAt = book.startedAt ?? startSession.createdAt;
+  final isCommon = activeCycleSessions.any((session) => session.isCommon);
 
   return ReadingProgress(
     currentPage: lastProgressSession.currentPage,
@@ -102,7 +134,7 @@ final readingProgressByBookProvider = FutureProvider.family<ReadingProgress, Boo
     progress: progress,
     sessionsCount: activeCycleSessions.length,
     startedAt: startedAt,
-    isCommon: startSession?.isCommon ?? false,
+    isCommon: isCommon,
   );
 });
 
@@ -116,6 +148,16 @@ final readingSessionsForBookProvider = FutureProvider.family<List<ReadingSession
   return repository.getSessionsByBookId(id);
 });
 
+final readingCyclesForBookProvider = FutureProvider.family<List<ReadingCycleRecord>, Book>((ref, book) async {
+  final id = book.id;
+  if (id == null) {
+    return const <ReadingCycleRecord>[];
+  }
+
+  final repository = ref.watch(booksRepositoryProvider);
+  return repository.getReadingCyclesByBookId(id);
+});
+
 final allReadingSessionsProvider = FutureProvider<List<ReadingSession>>((ref) async {
   final client = ref.watch(apiClientProvider);
   if (!client.isInitialized || !client.isAuthenticated) {
@@ -127,10 +169,19 @@ final allReadingSessionsProvider = FutureProvider<List<ReadingSession>>((ref) as
 
 final commonReadingBookIdsProvider = Provider<Set<int>>((ref) {
   final sessions = ref.watch(allReadingSessionsProvider).value ?? const <ReadingSession>[];
-  return {
-    for (final session in sessions)
-      if (session.isCommon) session.bookId,
-  };
+  final byBook = <int, List<ReadingSession>>{};
+  for (final session in sessions) {
+    byBook.putIfAbsent(session.bookId, () => <ReadingSession>[]).add(session);
+  }
+
+  final ids = <int>{};
+  for (final entry in byBook.entries) {
+    final activeCycle = activeCycleSessionsFor(entry.value);
+    if (activeCycle.any((s) => s.isCommon)) {
+      ids.add(entry.key);
+    }
+  }
+  return ids;
 });
 
 final upcomingPlanningBooksProvider = FutureProvider<List<Book>>((ref) async {
@@ -354,7 +405,19 @@ class BooksController extends AsyncNotifier<List<Book>> {
     ref.invalidate(readingProgressByBookProvider);
   }
 
-  Future<void> logReadingSession({
+  Future<List<ReadingSession>> _loadSessionsSnapshot() async {
+    final cached = ref.read(allReadingSessionsProvider).value;
+    if (cached != null) {
+      return cached;
+    }
+    try {
+      return await _repository.getAllReadingSessions();
+    } catch (_) {
+      return const <ReadingSession>[];
+    }
+  }
+
+  Future<StreakCelebrationData?> logReadingSession({
     required Book book,
     required int currentPage,
     required Duration sessionDuration,
@@ -364,8 +427,15 @@ class BooksController extends AsyncNotifier<List<Book>> {
     final sanitizedDuration = sessionDuration.isNegative ? Duration.zero : sessionDuration;
     final bookId = book.id;
     if (bookId == null) {
-      return;
+      return null;
     }
+
+    final effectiveOccurredAt = occurredAt ?? DateTime.now();
+    final sessionsBefore = await _loadSessionsSnapshot();
+    final streakCelebration = evaluateFirstReadingOfDayStreak(
+      sessionsBeforeSave: sessionsBefore,
+      sessionDate: effectiveOccurredAt,
+    );
 
     final totalPages = book.totalPages;
     final completedBook = totalPages != null && totalPages > 0 && sanitizedCurrentPage >= totalPages;
@@ -376,7 +446,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
         currentPage: sanitizedCurrentPage,
         minutesRead: sanitizedDuration.inMinutes,
         secondsRead: sanitizedDuration.inSeconds.remainder(60),
-        createdAt: occurredAt ?? DateTime.now(),
+        createdAt: effectiveOccurredAt,
         type: completedBook ? ReadingSessionType.end : ReadingSessionType.progress,
       ),
     );
@@ -384,23 +454,32 @@ class BooksController extends AsyncNotifier<List<Book>> {
     await _repository.updateReadingStatus(bookId, completedBook ? 'READ' : 'READING');
     ref.invalidate(readingProgressByBookProvider);
     ref.invalidate(readingSessionsForBookProvider);
+    ref.invalidate(readingCyclesForBookProvider);
     ref.invalidate(allReadingSessionsProvider);
     await reload();
+    return streakCelebration;
   }
 
-  Future<void> startReadingSession({
+  Future<StreakCelebrationData?> startReadingSession({
     required Book book,
     DateTime? startedAt,
     bool isCommon = false,
   }) async {
     if (book.status == BookStatus.sold || book.status == BookStatus.lent || book.status == BookStatus.wishlist) {
-      return;
+      return null;
     }
 
     final bookId = book.id;
     if (bookId == null) {
-      return;
+      return null;
     }
+
+    final effectiveStartedAt = startedAt ?? DateTime.now();
+    final sessionsBefore = await _loadSessionsSnapshot();
+    final streakCelebration = evaluateFirstReadingOfDayStreak(
+      sessionsBeforeSave: sessionsBefore,
+      sessionDate: effectiveStartedAt,
+    );
 
     await _repository.addReadingSession(
       ReadingSession(
@@ -408,7 +487,7 @@ class BooksController extends AsyncNotifier<List<Book>> {
         currentPage: 0,
         minutesRead: 0,
         secondsRead: 0,
-        createdAt: startedAt ?? DateTime.now(),
+        createdAt: effectiveStartedAt,
         type: ReadingSessionType.start,
         isCommon: isCommon,
       ),
@@ -418,8 +497,10 @@ class BooksController extends AsyncNotifier<List<Book>> {
 
     ref.invalidate(readingProgressByBookProvider);
     ref.invalidate(readingSessionsForBookProvider);
+    ref.invalidate(readingCyclesForBookProvider);
     ref.invalidate(allReadingSessionsProvider);
     await reload();
+    return streakCelebration;
   }
 
   Future<void> deleteReadingSession({
@@ -442,6 +523,31 @@ class BooksController extends AsyncNotifier<List<Book>> {
 
     ref.invalidate(readingProgressByBookProvider);
     ref.invalidate(readingSessionsForBookProvider);
+    ref.invalidate(readingCyclesForBookProvider);
+    ref.invalidate(allReadingSessionsProvider);
+    await reload();
+  }
+
+  Future<void> deleteReadingCycle({
+    required int bookId,
+    required int cycleId,
+  }) async {
+    await _repository.deleteReadingCycle(cycleId);
+
+    final remainingCycles = await _repository.getReadingCyclesByBookId(bookId);
+    if (remainingCycles.isEmpty) {
+      final currentBook = _bookById(bookId);
+      if (currentBook != null &&
+          currentBook.status != BookStatus.wishlist &&
+          currentBook.status != BookStatus.sold &&
+          currentBook.status != BookStatus.lent) {
+        await _repository.updateReadingStatus(bookId, 'UNREAD');
+      }
+    }
+
+    ref.invalidate(readingProgressByBookProvider);
+    ref.invalidate(readingSessionsForBookProvider);
+    ref.invalidate(readingCyclesForBookProvider);
     ref.invalidate(allReadingSessionsProvider);
     await reload();
   }

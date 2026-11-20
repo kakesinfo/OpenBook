@@ -3,8 +3,6 @@ import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import BookDTO from "../../dto/Book.dto";
 import SeriesDTO from "../../dto/Series.dto.ts";
 import UserBookTransactionDTO from "../../dto/UserBookTransaction.dto.ts";
-import ReadingSessionDTO from "../../dto/ReadingSession.dto.ts";
-import { isCommonReadingSession } from "../../components/HomeWidgets/readingUtils.ts";
 import { useSnackbar } from "notistack";
 import useSession, { SessionContextType } from "../../hooks/UseSession.tsx";
 import useLanguage from "../../hooks/UseLanguage.tsx";
@@ -42,7 +40,6 @@ import {
     faXmark,
     faStar,
     faGem,
-    faUsers,
     faPen,
     faTrash,
     faTrashCan,
@@ -562,7 +559,6 @@ export default function BookPage() {
     const hasSeriesBadges = Boolean(book?.series?.status || (book?.series && book.volume != null) || book?.series?.category || editionBadge);
     const [bookStatus, setBookStatus] = useState<string | null>(null);
     const [readingStatus, setReadingStatus] = useState<string>("UNREAD");
-    const [isCommonReading, setIsCommonReading] = useState<boolean>(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -1314,16 +1310,7 @@ export default function BookPage() {
             setBook(null);
             setBookStatus(null);
             setReadingStatus("UNREAD");
-            setIsCommonReading(false);
             fetchTransactions(id);
-
-            session.customFetch(`/user/readingSessions/${encodeURIComponent(id)}`, { method: "GET" })
-                .then(async (res) => {
-                    if (!res.ok) return;
-                    const data: ReadingSessionDTO[] = await res.json();
-                    if (Array.isArray(data)) setIsCommonReading(isCommonReadingSession(data, Number(id)));
-                })
-                .catch(() => {});
         })();
 
         const fetchUrl = `/books/${encodeURIComponent(id)}?withCollection=1&withEditor=1&withAuthors=1&withStatus=1&withSeries=1`;
@@ -1622,20 +1609,11 @@ export default function BookPage() {
                                         <span>{book.title}</span>
                                     </div>
                                 )}
-                                {(coverStatusBadge || isCommonReading) && (
+                                {coverStatusBadge && (
                                     <>
                                         <div className="book-page__cover-scrim" aria-hidden="true" />
                                         <div className="book-page__cover-top-badges">
                                             {coverStatusBadge}
-                                            {isCommonReading && (
-                                                <span
-                                                    className="book-page__cover-common-badge"
-                                                    title={tr("Common reading", "Lecture commune")}
-                                                    aria-label={tr("Common reading", "Lecture commune")}
-                                                >
-                                                    <FontAwesomeIcon icon={faUsers} />
-                                                </span>
-                                            )}
                                         </div>
                                     </>
                                 )}

@@ -111,6 +111,12 @@ class ReadingCalendarPage extends ConsumerStatefulWidget {
 }
 
 class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
+  static const _fireGold = Color(0xFFFFD60A);
+  static const _fireOrange = Color(0xFFFF9500);
+  static const _fireCoral = Color(0xFFFF5E3A);
+  static const _fireTodayEnd = Color(0xFFFF6B35);
+  static const _fireBeigeText = Color(0xFFD95F02);
+
   DateTime _focusedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime? _selectedDay;
 
@@ -164,6 +170,8 @@ class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
     }
 
     final isStreakMode = widget.mode == ReadingCalendarMode.streak;
+    final isBeige = AppTheme.currentMode == AppThemeMode.beige;
+    final fireAccentText = isBeige ? _fireBeigeText : _fireOrange;
 
     return Scaffold(
       appBar: AppHeader(
@@ -180,7 +188,9 @@ class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
       ),
       body: sessionsAsync.when(
         loading: () => Center(
-          child: CircularProgressIndicator(color: AppTheme.accentPrimary),
+          child: CircularProgressIndicator(
+            color: isStreakMode ? _fireOrange : AppTheme.accentPrimary,
+          ),
         ),
         error: (error, _) => Center(
           child: Padding(
@@ -244,8 +254,12 @@ class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
                             '$daysReadInMonth jour${daysReadInMonth > 1 ? 's' : ''} de lecture',
                             style: TextStyle(
                               fontSize: 12,
-                              color: AppTheme.textMuted,
-                              fontWeight: FontWeight.w500,
+                              color: isStreakMode && daysReadInMonth > 0
+                                  ? fireAccentText
+                                  : AppTheme.textMuted,
+                              fontWeight: isStreakMode && daysReadInMonth > 0
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                             ),
                           ),
                         ],
@@ -269,7 +283,12 @@ class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
                     decoration: BoxDecoration(
                       color: AppTheme.bgSurface,
                       borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                      border: Border.all(color: AppTheme.borderSubtle, width: 1),
+                      border: Border.all(
+                        color: isStreakMode
+                            ? _fireOrange.withValues(alpha: isBeige ? 0.28 : 0.22)
+                            : AppTheme.borderSubtle,
+                        width: 1,
+                      ),
                     ),
                     child: isStreakMode
                         ? _buildStreakMonthCalendar(sessionsByDay)
@@ -285,7 +304,7 @@ class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
                     child: Row(
                       children: [
-                        Icon(Icons.event_note_rounded, size: 18, color: AppTheme.accentPrimary),
+                        Icon(Icons.local_fire_department_rounded, size: 19, color: fireAccentText),
                         const SizedBox(width: 8),
                         Text(
                           _selectedDay == null
@@ -451,6 +470,8 @@ class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final isBeige = AppTheme.currentMode == AppThemeMode.beige;
+    final fireAccentText = isBeige ? _fireBeigeText : _fireOrange;
 
     return Column(
       children: [
@@ -507,25 +528,46 @@ class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
                                 bottom: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: isSelected
-                                    ? AppTheme.accentAmber.withValues(alpha: 0.30)
-                                    : AppTheme.accentAmberLight,
+                                color: _fireOrange.withValues(
+                                  alpha: isBeige ? 0.16 : 0.18,
+                                ),
                                 borderRadius: pillRadius,
                               ),
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
-                                  if (isSelected || isToday)
+                                  if (isSelected)
+                                    Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: isToday
+                                              ? const [_fireGold, _fireTodayEnd]
+                                              : const [_fireOrange, _fireCoral],
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: (isToday ? _fireOrange : _fireCoral)
+                                                .withValues(alpha: 0.45),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  else if (isToday)
                                     Container(
                                       width: 38,
                                       height: 38,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: isSelected
-                                              ? AppTheme.accentAmber
-                                              : AppTheme.accentAmber.withValues(alpha: 0.55),
-                                          width: 1.5,
+                                          color: _fireOrange,
+                                          width: 1.6,
                                         ),
                                       ),
                                     ),
@@ -535,14 +577,14 @@ class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
                                       Icon(
                                         Icons.local_fire_department_rounded,
                                         size: 18,
-                                        color: AppTheme.accentAmber,
+                                        color: isSelected ? Colors.white : _fireOrange,
                                       ),
                                       Text(
                                         '$dayNumber',
                                         style: TextStyle(
                                           fontSize: 9,
                                           fontWeight: FontWeight.w700,
-                                          color: AppTheme.accentAmber.withValues(alpha: 0.95),
+                                          color: isSelected ? Colors.white : fireAccentText,
                                           height: 1.0,
                                         ),
                                       ),
@@ -555,14 +597,16 @@ class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
                               margin: const EdgeInsets.all(2),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? AppTheme.accentPrimary.withValues(alpha: 0.18)
+                                    ? _fireOrange.withValues(alpha: 0.16)
                                     : (isToday ? AppTheme.bgElevated : Colors.transparent),
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: isSelected
-                                      ? AppTheme.accentPrimary
-                                      : (isToday ? AppTheme.borderMedium : Colors.transparent),
-                                  width: 1.5,
+                                      ? _fireOrange
+                                      : (isToday
+                                          ? _fireOrange.withValues(alpha: 0.7)
+                                          : Colors.transparent),
+                                  width: isSelected ? 1.8 : 1.5,
                                 ),
                               ),
                               child: Center(
@@ -570,8 +614,12 @@ class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
                                   '$dayNumber',
                                   style: TextStyle(
                                     fontSize: 13,
-                                    fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
-                                    color: isToday ? AppTheme.textPrimary : AppTheme.textSecondary,
+                                    fontWeight: isToday || isSelected
+                                        ? FontWeight.w800
+                                        : FontWeight.w500,
+                                    color: isSelected || isToday
+                                        ? fireAccentText
+                                        : AppTheme.textSecondary,
                                   ),
                                 ),
                               ),
@@ -911,6 +959,11 @@ class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
   }
 
   Widget _buildSessionCard(ReadingSession session, Book? book) {
+    final isBeige = AppTheme.currentMode == AppThemeMode.beige;
+    final sessionAccent = widget.mode == ReadingCalendarMode.streak
+        ? (isBeige ? _fireBeigeText : _fireOrange)
+        : AppTheme.accentPrimary;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
@@ -962,14 +1015,14 @@ class _ReadingCalendarPageState extends ConsumerState<ReadingCalendarPage> {
                       Icon(
                         Icons.auto_stories_rounded,
                         size: 13,
-                        color: AppTheme.accentPrimary,
+                        color: sessionAccent,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         'Page ${session.currentPage}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppTheme.accentPrimary,
+                          color: sessionAccent,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

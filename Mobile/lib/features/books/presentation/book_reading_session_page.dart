@@ -6,6 +6,7 @@ import '../application/books_providers.dart';
 import '../data/book.dart';
 import 'components/app_header.dart';
 import 'components/book_completion_dialog.dart';
+import 'streak_celebration_page.dart';
 
 class BookReadingSessionPage extends ConsumerStatefulWidget {
   const BookReadingSessionPage({
@@ -137,7 +138,7 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
       final totalPages = book.totalPages;
       final completed = totalPages != null && totalPages > 0 && _currentPage >= totalPages;
 
-      await ref.read(booksControllerProvider.notifier).logReadingSession(
+      final streakData = await ref.read(booksControllerProvider.notifier).logReadingSession(
             book: book,
             currentPage: _currentPage,
             sessionDuration: _duration,
@@ -146,14 +147,18 @@ class _BookReadingSessionPageState extends ConsumerState<BookReadingSessionPage>
       if (!mounted) {
         return;
       }
-      Navigator.of(context).pop();
 
-      if (completed) {
-        if (!context.mounted) {
-          return;
-        }
+      if (streakData != null) {
+        await StreakCelebrationPage.show(context, data: streakData);
+      }
+
+      if (completed && mounted) {
         // Afficher la célébration de complétion si le contexte est toujours disponible
         await BookCompletionDialog.show(context, book);
+      }
+
+      if (mounted) {
+        Navigator.of(context).pop();
       }
     } finally {
       if (mounted) {

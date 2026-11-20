@@ -10,11 +10,12 @@ const promiseCache = new WeakMap<object, Promise<Set<string>>>();
  * Returns the set of book ids (BookSummaryDTO.id strings) whose current reading
  * cycle is a common (group) reading. The underlying request is cached per session.
  */
-export default function useCommonReadingBookIds(): Set<string> {
+export default function useCommonReadingBookIds(enabled: boolean = true): Set<string> {
     const session = useSession();
     const [ids, setIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
+        if (!enabled) return;
         let cancelled = false;
         let promise = promiseCache.get(session);
         if (!promise) {
@@ -34,7 +35,7 @@ export default function useCommonReadingBookIds(): Set<string> {
         return () => {
             cancelled = true;
         };
-    }, [session]);
+    }, [session, enabled]);
 
     return ids;
 }

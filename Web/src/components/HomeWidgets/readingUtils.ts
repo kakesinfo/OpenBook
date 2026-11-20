@@ -85,13 +85,34 @@ export function formatDurationSeconds(totalSeconds: number): string {
 
 /**
  * Tells whether the current reading cycle of a book is a common (group) reading.
- * Mirrors Mobile's ReadingProgress logic: the active cycle starts at the last
- * "start" session (sessionType 0); if there is none, the first session is used.
+ * Prefers grouping by backend readingCycleId when present; falls back to the
+ * last "start" session (sessionType 0) or first session for legacy payloads.
  */
 export function isCommonReadingSession(sessions: ReadingSessionDTO[], bookId: number): boolean {
+    const bookSessions = sessions.filter((s) => s.bookId === bookId);
+    if (bookSessions.length === 0) return false;
+
+    if (bookSessions.every((s) => s.readingCycleId != null)) {
+        const byCycle = new Map<number, ReadingSessionDTO[]>();
+        for (const s of bookSessions) {
+            const cid = s.readingCycleId as number;
+            const arr = byCycle.get(cid);
+            if (arr) arr.push(s);
+            else byCycle.set(cid, [s]);
+        }
+        const sortedIds = Array.from(byCycle.keys()).sort((a, b) => a - b);
+        for (let i = sortedIds.length - 1; i >= 0; i--) {
+            const group = byCycle.get(sortedIds[i])!;
+            if (!group.some((s) => s.sessionType === 2)) {
+                return group.some((s) => Boolean(s.isCommon));
+            }
+        }
+        const latestGroup = byCycle.get(sortedIds[sortedIds.length - 1])!;
+        return latestGroup.some((s) => Boolean(s.isCommon));
+    }
+
     let start: ReadingSessionDTO | undefined;
-    for (const s of sessions) {
-        if (s.bookId !== bookId) continue;
+    for (const s of bookSessions) {
         if (start === undefined) start = s;
         if (s.sessionType === 0) start = s;
     }

@@ -9,11 +9,11 @@ import '../data/books_repository.dart';
 import 'book_purchase_history_page.dart';
 import 'book_reading_history_page.dart';
 import 'book_reading_session_page.dart';
+import 'streak_celebration_page.dart';
 import 'components/app_header.dart';
 import 'components/book_completion_dialog.dart';
 import 'components/book_cover.dart';
 import 'components/book_status_badge.dart';
-import 'components/common_reading_ribbon.dart';
 import 'components/edit_book_sheet.dart';
 import 'components/reading_timer_modal.dart';
 import 'components/start_reading_sheet.dart';
@@ -74,9 +74,6 @@ class BookDetailsPage extends ConsumerWidget {
         : const AsyncValue<Map<String, dynamic>>.data({});
     final bookDetails = bookDetailsAsync.value;
 
-    final progressAsync = ref.watch(readingProgressByBookProvider(activeBook));
-    final isCommonReading = progressAsync.value?.isCommon ?? false;
-
     int? prevId = (bookDetails?['previousBookId'] as num?)?.toInt();
     Map<String, dynamic>? prevBook = bookDetails?['previousBook'] as Map<String, dynamic>?;
     int? nextId = (bookDetails?['nextBookId'] as num?)?.toInt();
@@ -130,7 +127,7 @@ class BookDetailsPage extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            tooltip: 'Historique des sessions',
+            tooltip: 'Historique des lectures',
             icon: Icon(Icons.history_rounded, color: AppTheme.textPrimary),
             onPressed: () {
               Navigator.of(context).push(
@@ -269,7 +266,7 @@ class BookDetailsPage extends ConsumerWidget {
                     height: 250,
                     borderRadius: AppTheme.radiusLg,
                   ),
-                  if (BookStatusBadge.shouldShow(activeBook.status) || isCommonReading) ...[
+                  if (BookStatusBadge.shouldShow(activeBook.status)) ...[
                     Positioned(
                       top: 0,
                       left: 0,
@@ -300,21 +297,9 @@ class BookDetailsPage extends ConsumerWidget {
                     Positioned(
                       top: 10,
                       left: 10,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (BookStatusBadge.shouldShow(activeBook.status))
-                            BookStatusBadge(
-                              status: activeBook.status,
-                              compact: false,
-                            ),
-                          if (isCommonReading) ...[
-                            if (BookStatusBadge.shouldShow(activeBook.status))
-                              const SizedBox(height: 6),
-                            const CommonReadingRibbon(size: 26),
-                          ],
-                        ],
+                      child: BookStatusBadge(
+                        status: activeBook.status,
+                        compact: false,
                       ),
                     ),
                   ],
@@ -525,13 +510,16 @@ class BookDetailsPage extends ConsumerWidget {
                     if (result == null || !context.mounted) {
                       return;
                     }
-                    await ref
+                    final streakData = await ref
                         .read(booksControllerProvider.notifier)
                         .startReadingSession(
                           book: activeBook,
                           startedAt: result.startedAt,
                           isCommon: result.isCommon,
                         );
+                    if (streakData != null && context.mounted) {
+                      await StreakCelebrationPage.show(context, data: streakData);
+                    }
                   },
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,

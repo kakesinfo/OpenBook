@@ -36,6 +36,11 @@ public class ReadingSessionEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "reading_cycle_id", nullable = false)
+    private ReadingCycleEntity readingCycle;
+
     @Column(name = "current_page", nullable = false)
     private Integer currentPage;
 
@@ -47,9 +52,6 @@ public class ReadingSessionEntity {
 
     @Column(name = "session_type", nullable = false)
     private Integer sessionType = 1;
-
-    @Column(name = "is_common", nullable = false)
-    private Boolean isCommon = false;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

@@ -5,8 +5,6 @@ import BookList from "../../components/BookList/BookList.tsx";
 import Pagination from "../../components/Pagination/Pagination.tsx";
 import BookSummaryDTO from "../../dto/BookSummary.dto.ts";
 import CollectionPageDTO from "../../dto/CollectionPage.dto.ts";
-import useCommonReadingBookIds from "../../hooks/UseCommonReadingBookIds.ts";
-import { isCommonBook } from "../../components/HomeWidgets/readingUtils.ts";
 import { Link, useSearchParams } from "react-router";
 import { useDebounce } from "../../hooks/UseDebounce.tsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -23,8 +21,7 @@ import {
     faList,
     faChevronRight,
     faStar,
-    faGem,
-    faUsers
+    faGem
 } from "@fortawesome/free-solid-svg-icons";
 import Select, {
     type CategoryOption,
@@ -142,7 +139,6 @@ export default function CollectionPage() {
     const [totalPages, setTotalPages] = useState<number>(1);
     const [totalOwned, setTotalOwned] = useState<number>(0);
     const [refreshKey, setRefreshKey] = useState<number>(0);
-    const commonBookIds = useCommonReadingBookIds();
 
     const [statusCounts, setStatusCounts] = useState<Record<TomeStatusFilter, number>>({
         all: 0,
@@ -602,11 +598,6 @@ export default function CollectionPage() {
                                                         </span>
                                                     );
                                                 })()}
-                                                {isCommonBook(commonBookIds, book.id) && (
-                                                    <span className="collection-row__common-badge" title={tr("Common reading", "Lecture commune")}>
-                                                        <FontAwesomeIcon icon={faUsers} />
-                                                    </span>
-                                                )}
                                             </div>
 
                                             {/* Series / Volume column */}
